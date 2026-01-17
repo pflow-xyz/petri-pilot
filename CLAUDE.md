@@ -1,55 +1,91 @@
 # Petri Pilot
 
-LLM-augmented Petri net model design and validation tool.
+From requirements to running applications, through verified Petri net models.
+
+**Principle**: LLM designs models. Deterministic codegen produces applications. No LLM-generated code.
 
 ## Quick Start
 
 ```bash
-# Set API key
+# Run as MCP server (for Claude Desktop, Cursor, etc.)
+petri-pilot mcp
+
+# Or use CLI directly
 export ANTHROPIC_API_KEY="your-key"
 
-# Generate a model
-petri-pilot generate "A checkout workflow with cart, payment, and shipping"
+# Generate and validate a model
+petri-pilot generate -auto "order processing workflow"
 
-# Validate a model
-petri-pilot validate model.json
-
-# Generate with auto-refinement
-petri-pilot generate -auto -v "User registration with email verification"
+# Generate application code
+petri-pilot codegen model.json -lang go -o ./myworkflow/
+cd myworkflow && go test ./...
 ```
 
 ## Architecture
 
 ```
 petri-pilot/
-├── cmd/petri-pilot/main.go   # CLI entry point
+├── cmd/petri-pilot/main.go      # CLI entry point
 ├── pkg/
-│   ├── schema/schema.go      # Model IR and validation types
-│   ├── generator/generator.go # LLM-based model generation
-│   ├── validator/validator.go # Formal validation (go-pflow)
-│   └── feedback/feedback.go   # Structured refinement prompts
+│   ├── schema/schema.go         # Model IR and validation types
+│   ├── generator/generator.go   # LLM-based model generation
+│   ├── validator/validator.go   # Formal validation (go-pflow)
+│   ├── feedback/feedback.go     # Structured refinement prompts
+│   ├── mcp/server.go            # MCP server implementation
+│   ├── bridge/converter.go      # schema.Model → metamodel.Schema
+│   ├── codegen/
+│   │   ├── golang/              # Go code generator
+│   │   └── openapi/             # OpenAPI spec generator
+│   └── runtime/
+│       ├── eventstore/          # EventStore interface + impls
+│       ├── aggregate/           # Aggregate interface + impls
+│       └── api/                 # HTTP handler interfaces
 ├── internal/
 │   └── llm/
-│       ├── client.go         # Provider interface
-│       └── claude.go         # Claude implementation
-└── examples/                  # Sample models
+│       ├── client.go            # Provider interface
+│       └── claude.go            # Claude implementation
+└── examples/                    # Sample models
 ```
 
-## Core Loop
+## Core Pipeline
 
 ```
-Requirements → Claude → Model → Validator → Feedback
-     ↑                                         │
-     └─────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  MCP Client (Claude Desktop, Cursor)   │
+│  LLM designs model in conversation      │
+└─────────────────┬───────────────────────┘
+                  │ MCP tools
+    ┌─────────────▼─────────────┐
+    │  petri-pilot MCP server   │
+    │  validate │ analyze │ gen │
+    └─────────────┬─────────────┘
+                  │ deterministic
+    ┌─────────────▼─────────────┐
+    │  Generated Application    │
+    │  workflow │ events │ api  │
+    └─────────────┬─────────────┘
+                  │ implements
+    ┌─────────────▼─────────────┐
+    │  Runtime Interfaces       │
+    │  EventStore │ Aggregate   │
+    └───────────────────────────┘
 ```
 
-1. **Generate**: Claude creates Petri net from natural language
+1. **Design**: LLM creates Petri net from natural language (via MCP or CLI)
 2. **Validate**: go-pflow checks structure, reachability, sensitivity
 3. **Feedback**: Errors/warnings formatted as refinement instructions
-4. **Refine**: Claude fixes issues based on feedback
-5. **Repeat**: Until validation passes
+4. **Refine**: LLM fixes issues based on feedback
+5. **Generate**: Deterministic codegen produces application
 
 ## CLI Reference
+
+### mcp
+
+```bash
+petri-pilot mcp
+
+# Exposes tools: petri_validate, petri_analyze, petri_codegen, petri_visualize
+```
 
 ### generate
 
@@ -74,6 +110,17 @@ Options:
   -json         Output as JSON
 ```
 
+### codegen
+
+```bash
+petri-pilot codegen [options] model.json
+
+Options:
+  -lang string  Target language: go, typescript (default: go)
+  -o dir        Output directory (default: ./generated)
+  -api-only     Generate OpenAPI spec only
+```
+
 ### refine
 
 ```bash
@@ -84,6 +131,15 @@ Options:
   -v            Verbose output
   -model name   Claude model
 ```
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `petri_validate` | Validate model, return structured results |
+| `petri_analyze` | Run reachability/sensitivity analysis |
+| `petri_codegen` | Generate code from validated model |
+| `petri_visualize` | Generate SVG diagram |
 
 ## Key Types
 
@@ -118,16 +174,37 @@ type Arc struct {
 }
 ```
 
-### schema.ValidationResult
+### Runtime Interfaces
 
 ```go
-type ValidationResult struct {
-    Valid    bool              `json:"valid"`
-    Errors   []ValidationError `json:"errors,omitempty"`
-    Warnings []ValidationError `json:"warnings,omitempty"`
-    Analysis *AnalysisResult   `json:"analysis,omitempty"`
+// EventStore - append-only event log
+type EventStore interface {
+    Append(ctx context.Context, streamID string, events []Event) error
+    Read(ctx context.Context, streamID string, fromVersion int) ([]Event, error)
+    Subscribe(ctx context.Context, handler EventHandler) error
+}
+
+// Aggregate - event-sourced state
+type Aggregate interface {
+    ID() string
+    Version() int
+    Apply(event Event) error
+    State() any
 }
 ```
+
+## Generated Output
+
+From a validated model, codegen produces:
+
+| File | Contents |
+|------|----------|
+| `workflow.go` | State machine with guards and transition logic |
+| `events.go` | Event types derived from transitions |
+| `aggregate.go` | Event-sourced aggregate |
+| `api.go` | HTTP handlers per transition |
+| `api_openapi.yaml` | OpenAPI specification |
+| `workflow_test.go` | Tests using SQLite runtime |
 
 ## Validation Pipeline
 
@@ -136,6 +213,7 @@ type ValidationResult struct {
 | Structural | validator | Empty model, unconnected elements, invalid refs |
 | Behavioral | reachability | Deadlocks, liveness, boundedness |
 | Sensitivity | metamodel/petri | Element importance, symmetry groups |
+| Implementability | codegen | Event derivation, type consistency, guard parsability |
 
 ## Error Codes
 
@@ -149,54 +227,15 @@ type ValidationResult struct {
 | INVALID_ARC_TARGET | Error | Arc references unknown target |
 | DEADLOCK_DETECTED | Warning | Terminal states exist (may be intentional) |
 
-## LLM Provider Interface
+## Target Applications
 
-```go
-// internal/llm/client.go
-type Client interface {
-    Complete(ctx context.Context, req Request) (*Response, error)
-}
+All share the pattern: **events → transitions → state**
 
-type Request struct {
-    Prompt      string
-    Temperature float64
-    MaxTokens   int
-    System      string
-}
-```
-
-### Adding New Providers
-
-1. Create `internal/llm/<provider>.go`
-2. Implement `Client` interface
-3. Add initialization in `cmd/petri-pilot/main.go`
-
-## Claude Integration
-
-Uses official SDK: `github.com/anthropics/anthropic-sdk-go`
-
-```go
-// internal/llm/claude.go
-client := llm.NewClaudeClient(llm.ClaudeOptions{
-    APIKey: "",  // defaults to ANTHROPIC_API_KEY env
-    Model:  "claude-sonnet-4-20250514",
-})
-```
-
-### System Prompt
-
-The generator uses a Petri net expert system prompt that:
-- Explains places, transitions, arcs
-- Enforces snake_case naming
-- Requires proper connectivity
-- Encourages conservation constraints
-
-### JSON Extraction
-
-Response parsing handles:
-- JSON in markdown code blocks
-- Raw JSON objects
-- Nested brace matching
+- Workflow engines (order processing, approval flows)
+- Smart contracts (tokens, governance, vesting)
+- Microservice orchestration (sagas, compensation)
+- Game state machines (turn logic, resource management)
+- IoT protocols (device state, command sequences)
 
 ## Development
 
@@ -207,11 +246,14 @@ go build ./cmd/petri-pilot
 # Test
 go test ./...
 
-# Run from source
-go run ./cmd/petri-pilot/... generate "test"
+# Run MCP server
+go run ./cmd/petri-pilot/... mcp
 
-# Validate example
-go run ./cmd/petri-pilot/... validate examples/order-processing.json
+# Generate and validate
+go run ./cmd/petri-pilot/... generate -auto "test workflow"
+
+# Generate code
+go run ./cmd/petri-pilot/... codegen examples/order-processing.json -o ./out
 ```
 
 ## Dependencies
@@ -222,6 +264,8 @@ go run ./cmd/petri-pilot/... validate examples/order-processing.json
 | `github.com/pflow-xyz/go-pflow/reachability` | State space analysis |
 | `github.com/pflow-xyz/go-pflow/metamodel/petri` | Sensitivity analysis |
 | `github.com/anthropics/anthropic-sdk-go` | Claude API client |
+| `github.com/mark3labs/mcp-go` | MCP server implementation |
+| `github.com/mattn/go-sqlite3` | SQLite driver for runtime |
 
 ## Example Model
 
