@@ -1,5 +1,5 @@
 # Binaries
-petri-pilot
+/petri-pilot
 *.exe
 *.exe~
 *.dll

@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 )
@@ -174,6 +175,11 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	language := request.GetString("language", "go")
 	pkgName := request.GetString("package", model.Name)
 
+	// Only Go is supported for now
+	if language != "go" && language != "golang" {
+		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (only 'go' is currently supported)", language)), nil
+	}
+
 	// Validate first
 	opts := validator.DefaultOptions()
 	opts.EnableSensitivity = false
@@ -193,59 +199,30 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("model not ready for code generation:\n- %s", strings.Join(issues, "\n- "))), nil
 	}
 
-	// Enrich model with defaults
-	enriched := bridge.EnrichModel(model)
+	// Create generator
+	gen, err := golang.New(golang.Options{
+		PackageName:  pkgName,
+		IncludeTests: true,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
+	}
 
-	// Infer code generation artifacts
-	routes := bridge.InferAPIRoutes(enriched)
-	events := bridge.InferEvents(enriched)
-	stateFields := bridge.InferAggregateState(enriched)
+	// Generate files in memory
+	files, err := gen.GenerateFiles(model)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("code generation failed: %v", err)), nil
+	}
 
-	// Build detailed output
+	// Build output showing all generated files
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Code generation plan for language: %s\n", language))
-	sb.WriteString(fmt.Sprintf("Package: %s\n\n", pkgName))
+	sb.WriteString(fmt.Sprintf("Generated %d files for package '%s':\n\n", len(files), pkgName))
 
-	sb.WriteString("=== Files to generate ===\n")
-	sb.WriteString(fmt.Sprintf("- %s/workflow.go    (state machine)\n", pkgName))
-	sb.WriteString(fmt.Sprintf("- %s/events.go      (%d event types)\n", pkgName, len(events)))
-	sb.WriteString(fmt.Sprintf("- %s/aggregate.go   (state with %d fields)\n", pkgName, len(stateFields)))
-	sb.WriteString(fmt.Sprintf("- %s/api.go         (%d endpoints)\n", pkgName, len(routes)))
-	sb.WriteString(fmt.Sprintf("- %s/main.go        (wiring)\n\n", pkgName))
-
-	sb.WriteString("=== Events ===\n")
-	for _, e := range events {
-		sb.WriteString(fmt.Sprintf("- %s (from transition: %s)\n", e.Type, e.TransitionID))
-		for _, f := range e.Fields {
-			sb.WriteString(fmt.Sprintf("    %s: %s\n", f.Name, f.Type))
-		}
+	for _, file := range files {
+		sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
+		sb.WriteString(string(file.Content))
+		sb.WriteString("\n\n")
 	}
-	sb.WriteString("\n")
-
-	sb.WriteString("=== API Routes ===\n")
-	for _, r := range routes {
-		sb.WriteString(fmt.Sprintf("- %s %s -> %s\n", r.Method, r.Path, r.EventType))
-	}
-	sb.WriteString("\n")
-
-	sb.WriteString("=== Aggregate State ===\n")
-	for _, f := range stateFields {
-		kind := "token"
-		if !f.IsToken {
-			kind = "data"
-		}
-		sb.WriteString(fmt.Sprintf("- %s: %s (%s)\n", f.Name, f.Type, kind))
-	}
-	sb.WriteString("\n")
-
-	sb.WriteString("=== Metamodel ===\n")
-	meta := bridge.ToMetamodel(enriched)
-	metaJSON, _ := json.MarshalIndent(meta, "", "  ")
-	sb.WriteString(string(metaJSON))
-	sb.WriteString("\n\n")
-
-	sb.WriteString("Note: Full code generation will be implemented in Phase 4.\n")
-	sb.WriteString("See ROADMAP.md for details.")
 
 	return mcp.NewToolResultText(sb.String()), nil
 }
