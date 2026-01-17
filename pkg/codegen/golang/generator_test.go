@@ -166,8 +166,8 @@ func TestGenerateFiles(t *testing.T) {
 		t.Fatalf("GenerateFiles failed: %v", err)
 	}
 
-	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, workflow_test.go
-	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "workflow_test.go"}
+	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, workflow_test.go
+	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "workflow_test.go"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 	}
@@ -253,6 +253,24 @@ func TestGenerateFilesContent(t *testing.T) {
 			// Should contain test functions
 			if !strings.Contains(content, "func Test") {
 				t.Error("workflow_test.go missing test functions")
+			}
+
+		case "openapi.yaml":
+			// Should contain OpenAPI version
+			if !strings.Contains(content, "openapi:") {
+				t.Error("openapi.yaml missing openapi version")
+			}
+			// Should contain model name in title
+			if !strings.Contains(content, "order-processing") {
+				t.Error("openapi.yaml missing model name")
+			}
+			// Should contain paths
+			if !strings.Contains(content, "paths:") {
+				t.Error("openapi.yaml missing paths section")
+			}
+			// Should contain transition endpoints
+			if !strings.Contains(content, "transitions") {
+				t.Error("openapi.yaml missing transitions tag")
 			}
 		}
 	}

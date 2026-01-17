@@ -18,6 +18,7 @@ const (
 	TemplateEvents    = "events"
 	TemplateAggregate = "aggregate"
 	TemplateAPI       = "api"
+	TemplateOpenAPI   = "openapi"
 	TemplateTest      = "test"
 )
 
@@ -32,6 +33,7 @@ var templateInfo = map[string]struct {
 	TemplateEvents:    {File: "events.tmpl", Output: "events.go"},
 	TemplateAggregate: {File: "aggregate.tmpl", Output: "aggregate.go"},
 	TemplateAPI:       {File: "api.tmpl", Output: "api.go"},
+	TemplateOpenAPI:   {File: "openapi.tmpl", Output: "openapi.yaml"},
 	TemplateTest:      {File: "test.tmpl", Output: "workflow_test.go"},
 }
 
@@ -101,11 +103,12 @@ func AllTemplateNames() []string {
 		TemplateEvents,
 		TemplateAggregate,
 		TemplateAPI,
+		TemplateOpenAPI,
 		TemplateTest,
 	}
 }
 
-// CodeTemplateNames returns template names that generate Go code (excludes go.mod).
+// CodeTemplateNames returns template names that generate code (excludes go.mod and tests).
 func CodeTemplateNames() []string {
 	return []string{
 		TemplateMain,
@@ -113,6 +116,7 @@ func CodeTemplateNames() []string {
 		TemplateEvents,
 		TemplateAggregate,
 		TemplateAPI,
+		TemplateOpenAPI,
 	}
 }
 
