@@ -80,6 +80,9 @@ Examples:
   # Generate application code
   petri-pilot codegen model.json -o ./myworkflow/
 
+  # Generate OpenAPI spec only
+  petri-pilot codegen -api-only model.json -o api.yaml
+
   # Run as MCP server
   petri-pilot mcp
 
@@ -400,10 +403,11 @@ func cmdRefine(args []string) {
 
 func cmdCodegen(args []string) {
 	fs := flag.NewFlagSet("codegen", flag.ExitOnError)
-	output := fs.String("o", "./generated", "Output directory for generated code")
+	output := fs.String("o", "./generated", "Output directory (or file path for -api-only)")
 	lang := fs.String("lang", "go", "Target language (go)")
 	pkg := fs.String("pkg", "", "Package name (default: model name)")
 	includeTests := fs.Bool("tests", true, "Include test files")
+	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -418,12 +422,6 @@ func cmdCodegen(args []string) {
 
 	modelPath := fs.Arg(0)
 
-	// Only Go is supported for now
-	if *lang != "go" && *lang != "golang" {
-		fmt.Fprintf(os.Stderr, "Error: unsupported language '%s' (only 'go' is currently supported)\n", *lang)
-		os.Exit(1)
-	}
-
 	// Read model file
 	data, err := os.ReadFile(modelPath)
 	if err != nil {
@@ -434,6 +432,50 @@ func cmdCodegen(args []string) {
 	var model schema.Model
 	if err := json.Unmarshal(data, &model); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Determine package name
+	pkgName := *pkg
+	if pkgName == "" {
+		pkgName = model.Name
+	}
+
+	// API-only mode: just generate OpenAPI spec
+	if *apiOnly {
+		gen, err := golang.New(golang.Options{
+			PackageName: pkgName,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+			os.Exit(1)
+		}
+
+		content, err := gen.Preview(&model, golang.TemplateOpenAPI)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating OpenAPI spec: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Determine output path
+		outPath := *output
+		if outPath == "./generated" {
+			outPath = "openapi.yaml"
+		}
+
+		if err := os.WriteFile(outPath, content, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Generated OpenAPI spec: %s\n", outPath)
+		return
+	}
+
+	// Full codegen mode
+	// Only Go is supported for now
+	if *lang != "go" && *lang != "golang" {
+		fmt.Fprintf(os.Stderr, "Error: unsupported language '%s' (only 'go' is currently supported)\n", *lang)
 		os.Exit(1)
 	}
 
@@ -455,12 +497,6 @@ func cmdCodegen(args []string) {
 			fmt.Fprintf(os.Stderr, "  [%s] %s\n", e.Code, e.Message)
 		}
 		os.Exit(1)
-	}
-
-	// Determine package name
-	pkgName := *pkg
-	if pkgName == "" {
-		pkgName = model.Name
 	}
 
 	// Create generator
