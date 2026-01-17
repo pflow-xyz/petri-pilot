@@ -476,11 +476,145 @@ Fastest route to deployable full-stack app:
 
 ---
 
+## Phase 11: LLM-Complete Application DSL 🚧
+
+Enable LLMs to design complete applications with a single JSON specification.
+
+### Local Metamodel & DSL
+
+Copied and extended go-pflow's metamodel into petri-pilot for full control:
+
+| Package | Purpose |
+|---------|---------|
+| `pkg/metamodel/` | Schema, State, Action, Arc, Runtime, Snapshot |
+| `pkg/dsl/` | Guard expression lexer, parser, evaluator |
+
+### Application Schema
+
+A complete application specification that an LLM can generate:
+
+```json
+{
+  "name": "order-system",
+  "entities": [
+    {
+      "id": "order",
+      "fields": [
+        {"id": "customer_id", "type": "string", "required": true},
+        {"id": "total", "type": "amount"},
+        {"id": "items", "type": "json"}
+      ],
+      "states": [
+        {"id": "draft", "initial": true},
+        {"id": "submitted"},
+        {"id": "approved"},
+        {"id": "shipped"},
+        {"id": "delivered", "terminal": true}
+      ],
+      "actions": [
+        {
+          "id": "submit",
+          "from_states": ["draft"],
+          "to_state": "submitted",
+          "guard": "len(items) > 0 && total > 0",
+          "input": [{"id": "notes", "type": "text"}],
+          "http": {"method": "POST", "path": "/orders/{id}/submit"}
+        }
+      ],
+      "access": [
+        {"action": "submit", "roles": ["customer"], "guard": "user.id == customer_id"}
+      ]
+    }
+  ],
+  "roles": [
+    {"id": "customer"},
+    {"id": "admin", "inherits": ["customer"]}
+  ],
+  "pages": [
+    {"id": "orders", "path": "/orders", "layout": {"type": "list", "entity": "order"}},
+    {"id": "order-detail", "path": "/orders/:id", "layout": {"type": "detail", "entity": "order"}}
+  ],
+  "workflows": [
+    {
+      "id": "order-fulfillment",
+      "trigger": {"type": "event", "entity": "order", "action": "approve"},
+      "steps": [
+        {"id": "notify", "type": "action", "entity": "notification", "action": "send"},
+        {"id": "ship", "type": "action", "entity": "order", "action": "ship"}
+      ]
+    }
+  ]
+}
+```
+
+### DSL Features
+
+| Feature | Example | Status |
+|---------|---------|--------|
+| **Comparisons** | `total >= 100` | ✅ |
+| **Boolean logic** | `a && b \|\| !c` | ✅ |
+| **Map access** | `balances[from] >= amount` | ✅ |
+| **Nested maps** | `allowances[owner][spender]` | ✅ |
+| **Functions** | `len(items) > 0` | ✅ |
+| **Aggregates** | `sum("balances") == totalSupply` | ✅ |
+| **String ops** | `startsWith(name, "VIP")` | ✅ |
+
+### View/Form Generation
+
+```go
+// pkg/metamodel/views.go
+type View struct {
+    ID     string      `json:"id"`
+    Kind   ViewKind    `json:"kind"`   // form, card, table, detail
+    Groups []ViewGroup `json:"groups"`
+}
+
+type ViewField struct {
+    Binding    string          `json:"binding"`
+    Label      string          `json:"label"`
+    Type       FieldType       `json:"type"`  // text, number, address, amount, select
+    Required   bool            `json:"required"`
+    Validation *FieldValidation `json:"validation"`
+}
+```
+
+### Remaining Work
+
+| Component | Status | Priority |
+|-----------|--------|----------|
+| Entity → Schema converter | ✅ Done | - |
+| Form generation from actions | ✅ Done | - |
+| Access control codegen | 🚧 Partial | High |
+| Page/navigation codegen | ❌ TODO | High |
+| Workflow orchestration | ❌ TODO | Medium |
+| Integration webhooks | ❌ TODO | Low |
+
+### LLM Integration
+
+The MCP server will expose:
+
+```go
+// New MCP tool for full application generation
+{Name: "petri_application", InputSchema: ApplicationInput{}}
+
+// ApplicationInput accepts the full application spec
+type ApplicationInput struct {
+    Spec Application `json:"spec"`
+    Options struct {
+        Backend  string `json:"backend"`  // go, typescript
+        Frontend string `json:"frontend"` // react, vue, none
+        Database string `json:"database"` // postgres, sqlite
+    } `json:"options"`
+}
+```
+
+---
+
 ## Dependencies
 
 | Package | Purpose |
 |---------|---------|
-| `github.com/pflow-xyz/go-pflow` | Petri net validation, metamodel, existing Solidity codegen |
+| `github.com/pflow-xyz/go-pflow` | Petri net validation (reachability, sensitivity) |
 | `github.com/mark3labs/mcp-go` | MCP server implementation |
 | `github.com/mattn/go-sqlite3` | SQLite driver for runtime SDK |
 | `github.com/anthropics/anthropic-sdk-go` | Claude API (existing, for legacy CLI) |

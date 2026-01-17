@@ -1,0 +1,42 @@
+{
+  "name": "support-ticket",
+  "description": "A support ticket system: new tickets can be assigned, worked on, escalated, resolved, or closed. Customers can reopen closed tickets.",
+  "places": [
+    {"id": "new", "description": "Ticket just created, awaiting triage", "initial": 1},
+    {"id": "assigned", "description": "Ticket assigned to an agent", "initial": 0},
+    {"id": "in_progress", "description": "Agent is actively working on ticket", "initial": 0},
+    {"id": "escalated", "description": "Ticket escalated to senior support", "initial": 0},
+    {"id": "pending_customer", "description": "Waiting for customer response", "initial": 0},
+    {"id": "resolved", "description": "Issue has been resolved", "initial": 0},
+    {"id": "closed", "description": "Ticket is closed", "initial": 0}
+  ],
+  "transitions": [
+    {"id": "assign", "description": "Assign ticket to an agent"},
+    {"id": "start_work", "description": "Begin working on the ticket"},
+    {"id": "escalate", "description": "Escalate to senior support"},
+    {"id": "request_info", "description": "Request more information from customer"},
+    {"id": "customer_reply", "description": "Customer provides requested information"},
+    {"id": "resolve", "description": "Mark issue as resolved"},
+    {"id": "close", "description": "Close the ticket"},
+    {"id": "reopen", "description": "Customer reopens a closed ticket"}
+  ],
+  "arcs": [
+    {"from": "new", "to": "assign"},
+    {"from": "assign", "to": "assigned"},
+    {"from": "assigned", "to": "start_work"},
+    {"from": "start_work", "to": "in_progress"},
+    {"from": "in_progress", "to": "escalate"},
+    {"from": "escalate", "to": "escalated"},
+    {"from": "escalated", "to": "resolve"},
+    {"from": "in_progress", "to": "request_info"},
+    {"from": "request_info", "to": "pending_customer"},
+    {"from": "pending_customer", "to": "customer_reply"},
+    {"from": "customer_reply", "to": "in_progress"},
+    {"from": "in_progress", "to": "resolve"},
+    {"from": "resolve", "to": "resolved"},
+    {"from": "resolved", "to": "close"},
+    {"from": "close", "to": "closed"},
+    {"from": "closed", "to": "reopen"},
+    {"from": "reopen", "to": "new"}
+  ]
+}

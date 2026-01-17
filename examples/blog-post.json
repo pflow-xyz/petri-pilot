@@ -1,0 +1,29 @@
+{
+  "name": "blog-post",
+  "description": "A blog post workflow: draft → review → published, with ability to reject back to draft",
+  "places": [
+    {"id": "draft", "description": "Post is being written", "initial": 1},
+    {"id": "in_review", "description": "Post is awaiting editorial review", "initial": 0},
+    {"id": "published", "description": "Post is live on the site", "initial": 0},
+    {"id": "archived", "description": "Post has been taken down", "initial": 0}
+  ],
+  "transitions": [
+    {"id": "submit", "description": "Submit draft for review"},
+    {"id": "approve", "description": "Approve and publish the post"},
+    {"id": "reject", "description": "Reject and return to draft"},
+    {"id": "unpublish", "description": "Take down a published post"},
+    {"id": "restore", "description": "Restore archived post to draft"}
+  ],
+  "arcs": [
+    {"from": "draft", "to": "submit"},
+    {"from": "submit", "to": "in_review"},
+    {"from": "in_review", "to": "approve"},
+    {"from": "approve", "to": "published"},
+    {"from": "in_review", "to": "reject"},
+    {"from": "reject", "to": "draft"},
+    {"from": "published", "to": "unpublish"},
+    {"from": "unpublish", "to": "archived"},
+    {"from": "archived", "to": "restore"},
+    {"from": "restore", "to": "draft"}
+  ]
+}

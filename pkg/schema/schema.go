@@ -31,10 +31,26 @@ type Place struct {
 
 	// Extended fields for metamodel compatibility
 	Kind      StateKind `json:"kind,omitempty"`      // "token" or "data" (default: "token")
-	Type      string    `json:"type,omitempty"`      // Data type, e.g., "map[string]int"
+	Type      string    `json:"type,omitempty"`      // Data type for DataKind places
 	Exported  bool      `json:"exported,omitempty"`  // Externally visible state
 	Persisted bool      `json:"persisted,omitempty"` // Should be stored in event store
+
+	// InitialValue is the initial value for data places (JSON-encoded for complex types).
+	// For simple types: "hello" for string, 0 for int64, true for bool
+	// For maps: {} or {"key": value}
+	InitialValue any `json:"initial_value,omitempty"`
 }
+
+// Supported Type values for DataKind places:
+//   Simple types (values from bindings):
+//     - "string"  - text value
+//     - "int64"   - integer value
+//     - "float64" - floating point
+//     - "bool"    - boolean
+//   Collection types (key-value access via arc Keys/Value):
+//     - "map[string]int64"           - balance ledger
+//     - "map[string]string"          - key-value store
+//     - "map[string]map[string]int64" - allowances (nested map)
 
 // IsToken returns true if this is a token-counting place.
 func (p *Place) IsToken() bool {
@@ -44,6 +60,28 @@ func (p *Place) IsToken() bool {
 // IsData returns true if this is a data-holding place.
 func (p *Place) IsData() bool {
 	return p.Kind == DataKind
+}
+
+// IsSimpleType returns true if this data place holds a simple type (string, int64, etc.)
+// rather than a collection type (map).
+func (p *Place) IsSimpleType() bool {
+	if !p.IsData() {
+		return false
+	}
+	switch p.Type {
+	case "string", "int64", "int", "float64", "bool", "time.Time":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsMapType returns true if this data place holds a map type.
+func (p *Place) IsMapType() bool {
+	if !p.IsData() {
+		return false
+	}
+	return len(p.Type) > 4 && p.Type[:4] == "map["
 }
 
 // Transition represents an action/event in the model.

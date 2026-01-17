@@ -1,0 +1,53 @@
+{
+  "name": "ecommerce-checkout",
+  "description": "An e-commerce checkout workflow: cart → payment processing → paid. Payment can fail and retry up to 3 times before cancellation.",
+  "places": [
+    {"id": "cart", "description": "Items in shopping cart", "initial": 1},
+    {"id": "checkout_started", "description": "Checkout process initiated", "initial": 0},
+    {"id": "payment_pending", "description": "Awaiting payment processing", "initial": 0},
+    {"id": "payment_processing", "description": "Payment is being processed", "initial": 0},
+    {"id": "retry_1", "description": "First payment retry available", "initial": 0},
+    {"id": "retry_2", "description": "Second payment retry available", "initial": 0},
+    {"id": "retry_3", "description": "Final payment retry available", "initial": 0},
+    {"id": "paid", "description": "Payment successful", "initial": 0},
+    {"id": "cancelled", "description": "Order cancelled due to payment failure", "initial": 0},
+    {"id": "fulfilled", "description": "Order has been fulfilled", "initial": 0}
+  ],
+  "transitions": [
+    {"id": "start_checkout", "description": "Begin checkout process"},
+    {"id": "enter_payment", "description": "Enter payment details"},
+    {"id": "process_payment", "description": "Process the payment"},
+    {"id": "payment_success", "description": "Payment processed successfully"},
+    {"id": "payment_fail_1", "description": "First payment attempt failed"},
+    {"id": "retry_payment_1", "description": "Retry payment (attempt 2)"},
+    {"id": "payment_fail_2", "description": "Second payment attempt failed"},
+    {"id": "retry_payment_2", "description": "Retry payment (attempt 3)"},
+    {"id": "payment_fail_3", "description": "Third payment attempt failed"},
+    {"id": "cancel_order", "description": "Cancel order after max retries"},
+    {"id": "fulfill", "description": "Fulfill the order"}
+  ],
+  "arcs": [
+    {"from": "cart", "to": "start_checkout"},
+    {"from": "start_checkout", "to": "checkout_started"},
+    {"from": "checkout_started", "to": "enter_payment"},
+    {"from": "enter_payment", "to": "payment_pending"},
+    {"from": "payment_pending", "to": "process_payment"},
+    {"from": "process_payment", "to": "payment_processing"},
+    {"from": "payment_processing", "to": "payment_success"},
+    {"from": "payment_success", "to": "paid"},
+    {"from": "payment_processing", "to": "payment_fail_1"},
+    {"from": "payment_fail_1", "to": "retry_1"},
+    {"from": "retry_1", "to": "retry_payment_1"},
+    {"from": "retry_payment_1", "to": "payment_processing"},
+    {"from": "payment_processing", "to": "payment_fail_2"},
+    {"from": "payment_fail_2", "to": "retry_2"},
+    {"from": "retry_2", "to": "retry_payment_2"},
+    {"from": "retry_payment_2", "to": "payment_processing"},
+    {"from": "payment_processing", "to": "payment_fail_3"},
+    {"from": "payment_fail_3", "to": "retry_3"},
+    {"from": "retry_3", "to": "cancel_order"},
+    {"from": "cancel_order", "to": "cancelled"},
+    {"from": "paid", "to": "fulfill"},
+    {"from": "fulfill", "to": "fulfilled"}
+  ]
+}

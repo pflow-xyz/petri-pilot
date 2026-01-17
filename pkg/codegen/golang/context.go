@@ -24,6 +24,11 @@ type Context struct {
 	Routes      []RouteContext
 	StateFields []StateFieldContext
 
+	// ORM-specific data (for models with DataState places)
+	Collections []CollectionContext
+	DataArcs    []DataArcContext
+	Guards      []GuardContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -58,6 +63,13 @@ type TransitionContext struct {
 	// Petri net connections (derived from arcs)
 	Inputs  []ArcContext // Places that feed into this transition
 	Outputs []ArcContext // Places that this transition feeds into
+
+	// Data arcs for ORM patterns
+	InputDataArcs  []DataArcContext // DataState input arcs
+	OutputDataArcs []DataArcContext // DataState output arcs
+
+	// Guard info (if present)
+	GuardInfo *GuardContext
 
 	// Computed names
 	ConstName   string // e.g., "TransitionValidate"
@@ -106,6 +118,49 @@ type StateFieldContext struct {
 	IsToken   bool
 	Persisted bool
 	JSONName  string // JSON field name
+}
+
+// CollectionContext provides template-friendly access to DataState collections.
+type CollectionContext struct {
+	PlaceID       string // Original place ID
+	Name          string // Go name (e.g., "Balances")
+	FieldName     string // Go field name (e.g., "Balances")
+	VarName       string // Go variable name (e.g., "balances")
+	KeyType       string // Map key type (e.g., "string") - empty for simple types
+	ValueType     string // Value type (e.g., "int64", "string")
+	GoType        string // Full Go type (e.g., "map[string]int64" or "string")
+	IsSimple      bool   // True for simple types (string, int64, bool)
+	IsMap         bool   // True if this is a map type
+	IsNested      bool   // True if this is a nested map
+	NestedKeyType string // Key type of nested map (if IsNested)
+	Description   string
+	Exported      bool
+	Initializer   string // Go initializer (e.g., "make(map[string]int64)" or `""`)
+	ZeroValue     string // Go zero value (e.g., "0", `""`, "nil")
+}
+
+// DataArcContext provides template-friendly access to data arcs.
+type DataArcContext struct {
+	TransitionID string   // Transition this arc belongs to
+	PlaceID      string   // Collection place ID
+	FieldName    string   // Go field name of collection
+	ValueType    string   // Go type of the value (e.g., "int64", "string")
+	IsSimple     bool     // True for simple types (direct assignment)
+	Keys         []string // Key binding names - empty for simple types
+	KeyFields    []string // Go field names for keys (e.g., ["From"])
+	ValueBinding string   // Value binding name (e.g., "amount" or "name")
+	ValueField   string   // Go field name for value (e.g., "Amount")
+	IsInput      bool     // True for input arcs (subtract/read)
+	IsOutput     bool     // True for output arcs (add/write)
+	IsNumeric    bool     // True if value is numeric (can use += / -=)
+}
+
+// GuardContext provides template-friendly access to guard conditions.
+type GuardContext struct {
+	TransitionID string // Transition this guard belongs to
+	Expression   string // Original guard expression
+	GoCode       string // Generated Go code (placeholder for complex guards)
+	Collections  []string // Collections referenced by the guard
 }
 
 // Options for creating a new context.
@@ -162,6 +217,20 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Build state field contexts from bridge inference
 	stateFields := bridge.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
+
+	// Build ORM-specific contexts
+	ormSpec := bridge.ExtractORMSpec(enriched)
+	ctx.Collections = buildCollectionContexts(ormSpec.Collections)
+	ctx.DataArcs = buildDataArcContexts(ormSpec.Operations)
+	ctx.Guards = buildGuardContexts(enriched.Transitions, ormSpec.Collections)
+
+	// Populate data arcs and guard info on transitions
+	for i := range ctx.Transitions {
+		tid := ctx.Transitions[i].ID
+		ctx.Transitions[i].InputDataArcs = ctx.InputDataArcs(tid)
+		ctx.Transitions[i].OutputDataArcs = ctx.OutputDataArcs(tid)
+		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
+	}
 
 	return ctx, nil
 }
@@ -304,6 +373,180 @@ func buildStateFieldContexts(stateFields []bridge.StateField) []StateFieldContex
 	return result
 }
 
+func buildCollectionContexts(collections []bridge.CollectionSpec) []CollectionContext {
+	result := make([]CollectionContext, len(collections))
+	for i, c := range collections {
+		var goType string
+		if c.IsSimple {
+			goType = TypeToGo(c.ValueType)
+		} else if c.IsMap {
+			goType = "map[" + TypeToGo(c.KeyType) + "]" + TypeToGo(c.ValueType)
+			if c.IsNested {
+				goType = "map[" + TypeToGo(c.KeyType) + "]map[" + TypeToGo(c.NestedKeyType) + "]" + TypeToGo(c.ValueType)
+			}
+		} else {
+			goType = TypeToGo(c.ValueType)
+		}
+
+		// Determine initializer based on type
+		var initializer string
+		if c.IsSimple {
+			initializer = GoZeroValue(goType)
+		} else {
+			initializer = GoMapInitializer(goType)
+		}
+
+		result[i] = CollectionContext{
+			PlaceID:       c.PlaceID,
+			Name:          c.Name,
+			FieldName:     ToPascalCase(c.PlaceID),
+			VarName:       ToCamelCase(c.PlaceID),
+			KeyType:       TypeToGo(c.KeyType),
+			ValueType:     TypeToGo(c.ValueType),
+			GoType:        goType,
+			IsSimple:      c.IsSimple,
+			IsMap:         c.IsMap,
+			IsNested:      c.IsNested,
+			NestedKeyType: TypeToGo(c.NestedKeyType),
+			Description:   c.Description,
+			Exported:      c.Exported,
+			Initializer:   initializer,
+			ZeroValue:     GoZeroValue(goType),
+		}
+	}
+	return result
+}
+
+func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
+	var result []DataArcContext
+
+	for _, op := range operations {
+		// Process read arcs (inputs)
+		for _, read := range op.Reads {
+			keyFields := make([]string, len(read.Keys))
+			for i, k := range read.Keys {
+				keyFields[i] = ToPascalCase(k)
+			}
+
+			valueType := TypeToGo(read.CollectionType)
+			if !read.IsSimple {
+				// For maps, the value type is the map's value type
+				_, vt, _ := ParseMapType(read.CollectionType)
+				valueType = TypeToGo(vt)
+			}
+
+			result = append(result, DataArcContext{
+				TransitionID: op.TransitionID,
+				PlaceID:      read.Collection,
+				FieldName:    ToPascalCase(read.Collection),
+				ValueType:    valueType,
+				IsSimple:     read.IsSimple,
+				Keys:         read.Keys,
+				KeyFields:    keyFields,
+				ValueBinding: read.ValueBinding,
+				ValueField:   ToPascalCase(read.ValueBinding),
+				IsInput:      true,
+				IsOutput:     false,
+				IsNumeric:    IsNumericType(valueType),
+			})
+		}
+
+		// Process write arcs (outputs)
+		for _, write := range op.Writes {
+			keyFields := make([]string, len(write.Keys))
+			for i, k := range write.Keys {
+				keyFields[i] = ToPascalCase(k)
+			}
+
+			valueType := TypeToGo(write.CollectionType)
+			if !write.IsSimple {
+				// For maps, the value type is the map's value type
+				_, vt, _ := ParseMapType(write.CollectionType)
+				valueType = TypeToGo(vt)
+			}
+
+			result = append(result, DataArcContext{
+				TransitionID: op.TransitionID,
+				PlaceID:      write.Collection,
+				FieldName:    ToPascalCase(write.Collection),
+				ValueType:    valueType,
+				IsSimple:     write.IsSimple,
+				Keys:         write.Keys,
+				KeyFields:    keyFields,
+				ValueBinding: write.ValueBinding,
+				ValueField:   ToPascalCase(write.ValueBinding),
+				IsInput:      false,
+				IsOutput:     true,
+				IsNumeric:    IsNumericType(valueType),
+			})
+		}
+	}
+
+	return result
+}
+
+func buildGuardContexts(transitions []schema.Transition, collections []bridge.CollectionSpec) []GuardContext {
+	var result []GuardContext
+
+	// Build collection lookup
+	collectionIDs := make(map[string]bool)
+	for _, c := range collections {
+		collectionIDs[c.PlaceID] = true
+	}
+
+	for _, t := range transitions {
+		if t.Guard == "" {
+			continue
+		}
+
+		// Find collections referenced in the guard
+		var referencedCollections []string
+		for _, c := range collections {
+			if containsIdentifier(t.Guard, c.PlaceID) {
+				referencedCollections = append(referencedCollections, c.PlaceID)
+			}
+		}
+
+		result = append(result, GuardContext{
+			TransitionID: t.ID,
+			Expression:   t.Guard,
+			GoCode:       GuardExpressionToGo(t.Guard, "state", "bindings"),
+			Collections:  referencedCollections,
+		})
+	}
+
+	return result
+}
+
+// containsIdentifier checks if an expression contains a specific identifier.
+// This is a simple check - a full implementation would use a proper parser.
+func containsIdentifier(expr, identifier string) bool {
+	// Simple substring check for now
+	// A proper implementation would parse the expression
+	return len(identifier) > 0 && len(expr) > 0 &&
+		(expr == identifier ||
+			containsWord(expr, identifier))
+}
+
+// containsWord checks if expr contains identifier as a word (not part of another word).
+func containsWord(expr, word string) bool {
+	for i := 0; i <= len(expr)-len(word); i++ {
+		if expr[i:i+len(word)] == word {
+			// Check that it's a word boundary
+			before := i == 0 || !isIdentChar(rune(expr[i-1]))
+			after := i+len(word) >= len(expr) || !isIdentChar(rune(expr[i+len(word)]))
+			if before && after {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+}
+
 // InitialPlaces returns a map of place IDs to their initial token counts.
 func (c *Context) InitialPlaces() map[string]int {
 	result := make(map[string]int)
@@ -333,4 +576,84 @@ func (c *Context) HasGuards() bool {
 		}
 	}
 	return false
+}
+
+// HasCollections returns true if the model has any DataState collections.
+func (c *Context) HasCollections() bool {
+	return len(c.Collections) > 0
+}
+
+// HasDataArcs returns true if any transition has data arcs.
+func (c *Context) HasDataArcs() bool {
+	return len(c.DataArcs) > 0
+}
+
+// HasNestedMaps returns true if any collection uses nested maps.
+func (c *Context) HasNestedMaps() bool {
+	for _, coll := range c.Collections {
+		if coll.IsNested {
+			return true
+		}
+	}
+	return false
+}
+
+// CollectionByID returns a collection by its place ID.
+func (c *Context) CollectionByID(placeID string) *CollectionContext {
+	for i := range c.Collections {
+		if c.Collections[i].PlaceID == placeID {
+			return &c.Collections[i]
+		}
+	}
+	return nil
+}
+
+// DataArcsForTransition returns all data arcs for a transition.
+func (c *Context) DataArcsForTransition(transitionID string) []DataArcContext {
+	var result []DataArcContext
+	for _, arc := range c.DataArcs {
+		if arc.TransitionID == transitionID {
+			result = append(result, arc)
+		}
+	}
+	return result
+}
+
+// InputDataArcs returns input data arcs for a transition.
+func (c *Context) InputDataArcs(transitionID string) []DataArcContext {
+	var result []DataArcContext
+	for _, arc := range c.DataArcs {
+		if arc.TransitionID == transitionID && arc.IsInput {
+			result = append(result, arc)
+		}
+	}
+	return result
+}
+
+// OutputDataArcs returns output data arcs for a transition.
+func (c *Context) OutputDataArcs(transitionID string) []DataArcContext {
+	var result []DataArcContext
+	for _, arc := range c.DataArcs {
+		if arc.TransitionID == transitionID && arc.IsOutput {
+			result = append(result, arc)
+		}
+	}
+	return result
+}
+
+// GuardForTransition returns the guard context for a transition, or nil.
+func (c *Context) GuardForTransition(transitionID string) *GuardContext {
+	for i := range c.Guards {
+		if c.Guards[i].TransitionID == transitionID {
+			return &c.Guards[i]
+		}
+	}
+	return nil
+}
+
+// UsesMetamodelRuntime returns true if the generated code should use
+// go-pflow's metamodel.Runtime for execution.
+func (c *Context) UsesMetamodelRuntime() bool {
+	// Use metamodel runtime when we have data places or guards
+	return c.HasDataPlaces() || c.HasGuards()
 }
