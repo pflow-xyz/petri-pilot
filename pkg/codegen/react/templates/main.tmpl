@@ -3,7 +3,58 @@
 // API client
 const API_BASE = ''  // Uses Vite proxy in development
 
+// Auth state
+let currentUser = null
+let authToken = null
+
+// Load auth from localStorage
+function loadAuth() {
+  const stored = localStorage.getItem('auth')
+  if (stored) {
+    try {
+      const auth = JSON.parse(stored)
+      if (auth.expires_at && new Date(auth.expires_at) > new Date()) {
+        authToken = auth.token
+        currentUser = auth.user
+        return true
+      }
+      localStorage.removeItem('auth')
+    } catch (e) {
+      localStorage.removeItem('auth')
+    }
+  }
+  return false
+}
+
+// Save auth to localStorage
+function saveAuth(data) {
+  localStorage.setItem('auth', JSON.stringify(data))
+  authToken = data.token
+  currentUser = data.user
+}
+
+// Clear auth
+function clearAuth() {
+  localStorage.removeItem('auth')
+  authToken = null
+  currentUser = null
+}
+
+// API helpers
+function getHeaders() {
+  const headers = { 'Content-Type': 'application/json' }
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+  return headers
+}
+
 async function handleResponse(response) {
+  if (response.status === 401) {
+    clearAuth()
+    renderAuth()
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || response.statusText)
@@ -12,23 +63,42 @@ async function handleResponse(response) {
 }
 
 const api = {
+  // Auth endpoints
+  async getMe() {
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      headers: getHeaders(),
+    })
+    return handleResponse(response)
+  },
+
+  async logout() {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: getHeaders(),
+    })
+    clearAuth()
+  },
+
+  // Workflow endpoints
   async create() {
     const response = await fetch(`${API_BASE}/api/{{.ProjectName}}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
     })
     return handleResponse(response)
   },
 
   async getState(id) {
-    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${id}`)
+    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${id}`, {
+      headers: getHeaders(),
+    })
     return handleResponse(response)
   },
 
   async executeTransition(transitionId, aggregateId) {
     const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/transitions/${transitionId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId }),
     })
     return handleResponse(response)
@@ -41,6 +111,10 @@ let aggregateId = null
 
 // DOM elements
 const errorEl = document.getElementById('error')
+const authSection = document.getElementById('auth-section')
+const loginBtn = document.getElementById('login-btn')
+const logoutBtn = document.getElementById('logout-btn')
+const userInfo = document.getElementById('user-info')
 const aggregateInput = document.getElementById('aggregate-id')
 const loadBtn = document.getElementById('load-btn')
 const createBtn = document.getElementById('create-btn')
@@ -67,6 +141,20 @@ function showError(message) {
 
 function hideError() {
   errorEl.style.display = 'none'
+}
+
+// Render auth state
+function renderAuth() {
+  if (currentUser) {
+    loginBtn.style.display = 'none'
+    logoutBtn.style.display = 'inline-block'
+    userInfo.textContent = currentUser.login || currentUser.name || 'User'
+    userInfo.style.display = 'inline'
+  } else {
+    loginBtn.style.display = 'inline-block'
+    logoutBtn.style.display = 'none'
+    userInfo.style.display = 'none'
+  }
 }
 
 // Render current state
@@ -177,7 +265,46 @@ async function executeTransition(transitionId) {
   }
 }
 
+// Login with GitHub
+function login() {
+  window.location.href = `${API_BASE}/auth/login`
+}
+
+// Logout
+async function logout() {
+  try {
+    await api.logout()
+  } catch (err) {
+    console.error('Logout error:', err)
+  }
+  clearAuth()
+  renderAuth()
+}
+
+// Handle OAuth callback
+async function handleCallback() {
+  const params = new URLSearchParams(window.location.search)
+  const token = params.get('token')
+  const expiresAt = params.get('expires_at')
+
+  if (token) {
+    // Token returned directly in URL (simplified flow)
+    authToken = token
+    try {
+      const user = await api.getMe()
+      saveAuth({ token, expires_at: expiresAt, user })
+      window.history.replaceState({}, '', window.location.pathname)
+      renderAuth()
+    } catch (err) {
+      clearAuth()
+      showError('Failed to complete login')
+    }
+  }
+}
+
 // Event handlers
+loginBtn.addEventListener('click', login)
+logoutBtn.addEventListener('click', logout)
 loadBtn.addEventListener('click', loadState)
 createBtn.addEventListener('click', createNew)
 
@@ -192,5 +319,8 @@ transitionsGrid.addEventListener('click', (e) => {
   }
 })
 
-// Initial render
+// Initialize
+loadAuth()
+handleCallback()
+renderAuth()
 renderState()

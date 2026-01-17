@@ -23,10 +23,17 @@ type Config struct {
 	DatabaseURL  string
 	DatabaseType string // "sqlite", "postgres"
 
+	// GitHub OAuth settings
+	GitHubClientID     string
+	GitHubClientSecret string
+	GitHubCallbackURL  string
+	AuthEnabled        bool
+
 	// Application settings
 	Environment string // "development", "staging", "production"
 	LogLevel    string // "debug", "info", "warn", "error"
 	LogFormat   string // "text", "json"
+	BaseURL     string // External URL for OAuth callbacks
 }
 
 // LoadConfig loads configuration from environment variables with defaults.
@@ -44,11 +51,20 @@ func LoadConfig() (*Config, error) {
 		DatabaseURL:  getEnv("DATABASE_URL", "file:{{.PackageName}}.db?_journal=WAL"),
 		DatabaseType: getEnv("DATABASE_TYPE", "sqlite"),
 
+		// GitHub OAuth defaults
+		GitHubClientID:     getEnv("GITHUB_CLIENT_ID", ""),
+		GitHubClientSecret: getEnv("GITHUB_CLIENT_SECRET", ""),
+		BaseURL:            getEnv("BASE_URL", "http://localhost:8080"),
+		AuthEnabled:        getBoolEnv("AUTH_ENABLED", false),
+
 		// Application defaults
 		Environment: getEnv("ENVIRONMENT", "development"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 		LogFormat:   getEnv("LOG_FORMAT", "text"),
 	}
+
+	// Derive callback URL from base URL
+	cfg.GitHubCallbackURL = cfg.BaseURL + "/auth/callback"
 
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -85,6 +101,16 @@ func (c *Config) Validate() error {
 	validDBTypes := map[string]bool{"sqlite": true, "postgres": true, "memory": true}
 	if !validDBTypes[c.DatabaseType] {
 		return fmt.Errorf("DATABASE_TYPE must be one of: sqlite, postgres, memory")
+	}
+
+	// Validate GitHub OAuth when enabled
+	if c.AuthEnabled {
+		if c.GitHubClientID == "" {
+			return fmt.Errorf("GITHUB_CLIENT_ID is required when AUTH_ENABLED=true")
+		}
+		if c.GitHubClientSecret == "" {
+			return fmt.Errorf("GITHUB_CLIENT_SECRET is required when AUTH_ENABLED=true")
+		}
 	}
 
 	return nil

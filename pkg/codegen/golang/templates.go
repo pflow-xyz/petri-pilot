@@ -26,6 +26,17 @@ const (
 	TemplateMigrations    = "migrations"
 	TemplateDockerfile    = "dockerfile"
 	TemplateDockerCompose = "docker-compose"
+
+	// Auth templates (Phase 9)
+	TemplateAuth = "auth"
+
+	// Observability templates (Phase 10)
+	TemplateObservability = "observability"
+
+	// Deployment templates (Phase 10)
+	TemplateK8sDeployment = "k8s_deployment"
+	TemplateK8sService    = "k8s_service"
+	TemplateGitHubCI      = "github_ci"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -47,6 +58,17 @@ var templateInfo = map[string]struct {
 	TemplateMigrations:    {File: "migrations.tmpl", Output: "migrations/001_init.sql"},
 	TemplateDockerfile:    {File: "dockerfile.tmpl", Output: "Dockerfile"},
 	TemplateDockerCompose: {File: "docker-compose.tmpl", Output: "docker-compose.yaml"},
+
+	// Auth templates
+	TemplateAuth: {File: "auth.tmpl", Output: "auth.go"},
+
+	// Observability templates
+	TemplateObservability: {File: "observability.tmpl", Output: "observability.go"},
+
+	// Deployment templates
+	TemplateK8sDeployment: {File: "k8s_deployment.tmpl", Output: "k8s/deployment.yaml"},
+	TemplateK8sService:    {File: "k8s_service.tmpl", Output: "k8s/service.yaml"},
+	TemplateGitHubCI:      {File: "github_ci.tmpl", Output: ".github/workflows/ci.yaml"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -134,6 +156,29 @@ func CodeTemplateNames() []string {
 		TemplateAPI,
 		TemplateOpenAPI,
 		TemplateConfig,
+	}
+}
+
+// AuthTemplateNames returns template names for authentication files.
+func AuthTemplateNames() []string {
+	return []string{
+		TemplateAuth,
+	}
+}
+
+// ObservabilityTemplateNames returns template names for observability files.
+func ObservabilityTemplateNames() []string {
+	return []string{
+		TemplateObservability,
+	}
+}
+
+// DeployTemplateNames returns template names for deployment files.
+func DeployTemplateNames() []string {
+	return []string{
+		TemplateK8sDeployment,
+		TemplateK8sService,
+		TemplateGitHubCI,
 	}
 }
 

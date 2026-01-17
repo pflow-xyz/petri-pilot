@@ -28,6 +28,15 @@ type Options struct {
 
 	// IncludeInfra generates Dockerfile, docker-compose.yaml, and migrations if true.
 	IncludeInfra bool
+
+	// IncludeAuth generates GitHub OAuth authentication files if true.
+	IncludeAuth bool
+
+	// IncludeObservability generates logging and metrics files if true.
+	IncludeObservability bool
+
+	// IncludeDeploy generates K8s manifests and CI workflow if true.
+	IncludeDeploy bool
 }
 
 // GeneratedFile represents a generated file's content.
@@ -122,6 +131,15 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 	}
 	if g.opts.IncludeInfra {
 		templateNames = append(templateNames, InfraTemplateNames()...)
+	}
+	if g.opts.IncludeAuth {
+		templateNames = append(templateNames, AuthTemplateNames()...)
+	}
+	if g.opts.IncludeObservability {
+		templateNames = append(templateNames, ObservabilityTemplateNames()...)
+	}
+	if g.opts.IncludeDeploy {
+		templateNames = append(templateNames, DeployTemplateNames()...)
 	}
 
 	// Generate each file

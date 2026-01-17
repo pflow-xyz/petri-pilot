@@ -415,6 +415,9 @@ func cmdCodegen(args []string) {
 	pkg := fs.String("pkg", "", "Package name (default: model name)")
 	includeTests := fs.Bool("tests", true, "Include test files")
 	includeInfra := fs.Bool("infra", true, "Include infrastructure files (Dockerfile, docker-compose, migrations)")
+	includeAuth := fs.Bool("auth", false, "Include GitHub OAuth authentication")
+	includeObs := fs.Bool("observability", false, "Include logging and Prometheus metrics")
+	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 
 	if err := fs.Parse(args); err != nil {
@@ -506,10 +509,13 @@ func cmdCodegen(args []string) {
 
 	// Create generator
 	gen, err := golang.New(golang.Options{
-		OutputDir:    *output,
-		PackageName:  pkgName,
-		IncludeTests: *includeTests,
-		IncludeInfra: *includeInfra,
+		OutputDir:            *output,
+		PackageName:          pkgName,
+		IncludeTests:         *includeTests,
+		IncludeInfra:         *includeInfra,
+		IncludeAuth:          *includeAuth,
+		IncludeObservability: *includeObs,
+		IncludeDeploy:        *includeDeploy,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
