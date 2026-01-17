@@ -39,7 +39,7 @@ All share: **events → state transitions → aggregated state**
 
 ---
 
-## Phase 1: MCP Server
+## Phase 1: MCP Server ✅
 
 Expose petri-pilot as MCP tools for any LLM client.
 
@@ -82,7 +82,7 @@ tools := []mcp.Tool{
 
 ---
 
-## Phase 2: Runtime Interfaces
+## Phase 2: Runtime Interfaces ✅
 
 Pluggable abstractions for generated applications.
 
@@ -140,7 +140,7 @@ engine.Fire("validate", orderID)
 
 ---
 
-## Phase 3: Schema Bridge
+## Phase 3: Schema Bridge ✅
 
 Connect petri-pilot schema to go-pflow metamodel.
 
@@ -165,7 +165,7 @@ go-pflow metamodel.Schema
 
 ---
 
-## Phase 4: Multi-Target Code Generation
+## Phase 4: Multi-Target Code Generation ✅ (Go only)
 
 Generated code uses runtime interfaces.
 
@@ -213,7 +213,7 @@ func (w *OrderWorkflow) Validate(ctx context.Context, orderID string) error {
 
 ---
 
-## Phase 5: CLI Integration
+## Phase 5: CLI Integration ✅
 
 ```bash
 # Run as MCP server
@@ -229,7 +229,7 @@ petri-pilot codegen model.json -api-only -o openapi.yaml
 
 ---
 
-## Phase 6: Validation for Implementability
+## Phase 6: Validation for Implementability ✅
 
 Extend validator to check codegen feasibility.
 
@@ -244,15 +244,235 @@ Extend validator to check codegen feasibility.
 
 ---
 
-## Implementation Order
+# E2E Application Pipeline
 
-1. **`pkg/mcp/`** - MCP server with tools
-2. **`pkg/runtime/eventstore/`** - EventStore interface + SQLite impl
-3. **`pkg/runtime/aggregate/`** - Aggregate interface + SQLite impl
-4. **`pkg/runtime/api/`** - HTTP handler interfaces
-5. **`pkg/bridge/`** - Schema → metamodel converter
-6. **`pkg/codegen/golang/`** - Go project generator using runtime interfaces
-7. **CLI commands** - `petri-pilot mcp`, `petri-pilot codegen`
+Phases 1-6 produce a backend with HTTP API. The following phases complete the full-stack pipeline.
+
+## Phase 7: Backend Completion
+
+Infrastructure templates for production deployment.
+
+| Component | Template | Description |
+|-----------|----------|-------------|
+| Database migrations | `migrations.sql.tmpl` | Event store schema, indexes, snapshots table |
+| Configuration | `config.go.tmpl` | Env-based config struct with validation |
+| Health endpoints | (in `api.go.tmpl`) | `/health`, `/ready` endpoints |
+| Dockerfile | `Dockerfile.tmpl` | Multi-stage build, minimal runtime image |
+| Docker Compose | `docker-compose.yaml.tmpl` | App + Postgres/SQLite for local dev |
+
+### Generated Output
+
+```
+generated/
+├── ...existing files...
+├── migrations/
+│   └── 001_init.sql       # Event store + projections schema
+├── config.go              # Config struct + loader
+├── Dockerfile
+└── docker-compose.yaml
+```
+
+### Migration Schema
+
+```sql
+-- Event store
+CREATE TABLE events (
+    id UUID PRIMARY KEY,
+    stream_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    version INT NOT NULL,
+    data JSONB NOT NULL,
+    metadata JSONB,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(stream_id, version)
+);
+
+-- Projections (generated per place)
+CREATE TABLE order_state (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    version INT NOT NULL,
+    updated_at TIMESTAMPTZ
+);
+```
+
+---
+
+## Phase 8: Frontend Generation
+
+Generate a frontend application from the same Petri net model.
+
+| Component | Description |
+|-----------|-------------|
+| React scaffold | Vite + React + TypeScript project |
+| API client | Generated from OpenAPI spec (openapi-generator) |
+| Transition forms | One form component per transition |
+| State display | Shows current place tokens / aggregate state |
+| Routing | Pages per major workflow state |
+
+### Generated Frontend Structure
+
+```
+generated-frontend/
+├── package.json
+├── vite.config.ts
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── api/
+│   │   └── client.ts          # Generated from OpenAPI
+│   ├── components/
+│   │   ├── StateDisplay.tsx   # Current workflow state
+│   │   ├── TransitionForm.tsx # Generic form component
+│   │   └── transitions/
+│   │       ├── ValidateForm.tsx
+│   │       ├── ShipForm.tsx
+│   │       └── ...            # One per transition
+│   ├── hooks/
+│   │   └── useWorkflow.ts     # State + transition helpers
+│   └── types/
+│       └── index.ts           # Types from OpenAPI
+└── index.html
+```
+
+### MCP Tool Addition
+
+```go
+s.AddTool(frontendTool(), handleFrontend)
+
+func frontendTool() mcp.Tool {
+    return mcp.NewTool("petri_frontend",
+        mcp.WithDescription("Generate React frontend from Petri net model"),
+        mcp.WithString("model", mcp.Required()),
+        mcp.WithString("framework", mcp.Description("react, vue, svelte (default: react)")),
+    )
+}
+```
+
+---
+
+## Phase 9: Real-Time Updates + Auth
+
+Enable live state synchronization and access control.
+
+| Component | Description |
+|-----------|-------------|
+| WebSocket endpoint | `/ws` - broadcasts state changes |
+| SSE alternative | `/events` - server-sent events stream |
+| JWT middleware | Token validation, claims extraction |
+| Permission guards | Transition-level authorization |
+| Frontend auth | Login/logout, token storage, protected routes |
+
+### Backend Additions
+
+```go
+// api.go additions
+func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+    // Upgrade connection, subscribe to aggregate changes
+}
+
+// middleware.go additions
+func JWTAuth(secret string) func(http.Handler) http.Handler
+func RequirePermission(perm string) func(http.Handler) http.Handler
+```
+
+### Frontend Additions
+
+```typescript
+// hooks/useRealtimeState.ts
+export function useRealtimeState(streamId: string) {
+    // WebSocket subscription, automatic reconnect
+}
+
+// context/AuthContext.tsx
+export function AuthProvider({ children }) {
+    // JWT storage, refresh, logout
+}
+```
+
+### Schema Extension
+
+```json
+{
+  "transitions": [
+    {
+      "id": "ship",
+      "permissions": ["orders:write", "shipping:execute"]
+    }
+  ]
+}
+```
+
+---
+
+## Phase 10: Observability + Production Deploy
+
+Production-ready infrastructure.
+
+| Component | Description |
+|-----------|-------------|
+| Structured logging | `slog` with JSON output, request IDs |
+| Prometheus metrics | Request counts, latencies, event store stats |
+| OpenTelemetry traces | Distributed tracing across services |
+| Kubernetes manifests | Deployment, Service, ConfigMap, Secrets |
+| Helm chart | Parameterized K8s deployment |
+| GitHub Actions | CI pipeline template |
+
+### Generated Infrastructure
+
+```
+generated/
+├── ...existing files...
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── configmap.yaml
+│   └── ingress.yaml
+├── helm/
+│   └── petri-app/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+└── .github/
+    └── workflows/
+        └── ci.yaml
+```
+
+### Observability Integration
+
+```go
+// main.go additions
+func main() {
+    // Structured logging
+    logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+    // Prometheus metrics
+    http.Handle("/metrics", promhttp.Handler())
+
+    // OpenTelemetry
+    tp := initTracer()
+    defer tp.Shutdown(ctx)
+}
+```
+
+---
+
+## E2E Implementation Order
+
+| Phase | Priority | Effort | Dependencies |
+|-------|----------|--------|--------------|
+| Phase 7: Backend Completion | High | Medium | None |
+| Phase 8: Frontend Generation | High | Large | Phase 7 (needs stable API) |
+| Phase 9: Real-Time + Auth | Medium | Medium | Phase 8 |
+| Phase 10: Observability | Medium | Small | Phase 7 |
+
+### Quick Win Path
+
+Fastest route to deployable full-stack app:
+
+1. Add `Dockerfile.tmpl` + `docker-compose.yaml.tmpl` (Phase 7 partial)
+2. Shell out to `openapi-generator-cli` for TypeScript client
+3. Minimal React template with generated client + forms
 
 ---
 
@@ -264,3 +484,16 @@ Extend validator to check codegen feasibility.
 | `github.com/mark3labs/mcp-go` | MCP server implementation |
 | `github.com/mattn/go-sqlite3` | SQLite driver for runtime SDK |
 | `github.com/anthropics/anthropic-sdk-go` | Claude API (existing, for legacy CLI) |
+
+### Frontend Dependencies (Phase 8+)
+
+| Package | Purpose |
+|---------|---------|
+| `openapi-generator-cli` | Generate TypeScript client from OpenAPI |
+| `vite` | Frontend build tooling |
+| `react` / `vue` / `svelte` | UI framework |
+| `@tanstack/react-query` | Data fetching + caching |
+| `gorilla/websocket` | WebSocket support (Phase 9) |
+| `golang-jwt/jwt` | JWT validation (Phase 9) |
+| `prometheus/client_golang` | Metrics (Phase 10) |
+| `go.opentelemetry.io/otel` | Tracing (Phase 10) |

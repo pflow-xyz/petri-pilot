@@ -25,6 +25,9 @@ type Options struct {
 
 	// IncludeTests generates workflow_test.go if true.
 	IncludeTests bool
+
+	// IncludeInfra generates Dockerfile, docker-compose.yaml, and migrations if true.
+	IncludeInfra bool
 }
 
 // GeneratedFile represents a generated file's content.
@@ -79,6 +82,13 @@ func (g *Generator) Generate(model *schema.Model) ([]string, error) {
 	var paths []string
 	for _, file := range files {
 		path := filepath.Join(g.opts.OutputDir, file.Name)
+
+		// Create subdirectories if needed (e.g., for migrations/)
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("creating directory %s: %w", dir, err)
+		}
+
 		if err := os.WriteFile(path, file.Content, 0644); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", file.Name, err)
 		}
@@ -109,6 +119,9 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 	templateNames := append([]string{TemplateGoMod}, CodeTemplateNames()...)
 	if g.opts.IncludeTests {
 		templateNames = append(templateNames, TestTemplateNames()...)
+	}
+	if g.opts.IncludeInfra {
+		templateNames = append(templateNames, InfraTemplateNames()...)
 	}
 
 	// Generate each file
@@ -151,6 +164,7 @@ func GenerateToDir(model *schema.Model, outputDir string, includeTests bool) ([]
 	gen, err := New(Options{
 		OutputDir:    outputDir,
 		IncludeTests: includeTests,
+		IncludeInfra: true, // Include infrastructure by default
 	})
 	if err != nil {
 		return nil, err

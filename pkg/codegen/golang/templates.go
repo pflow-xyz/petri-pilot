@@ -20,6 +20,12 @@ const (
 	TemplateAPI       = "api"
 	TemplateOpenAPI   = "openapi"
 	TemplateTest      = "test"
+
+	// Infrastructure templates (Phase 7)
+	TemplateConfig        = "config"
+	TemplateMigrations    = "migrations"
+	TemplateDockerfile    = "dockerfile"
+	TemplateDockerCompose = "docker-compose"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -35,6 +41,12 @@ var templateInfo = map[string]struct {
 	TemplateAPI:       {File: "api.tmpl", Output: "api.go"},
 	TemplateOpenAPI:   {File: "openapi.tmpl", Output: "openapi.yaml"},
 	TemplateTest:      {File: "test.tmpl", Output: "workflow_test.go"},
+
+	// Infrastructure templates
+	TemplateConfig:        {File: "config.tmpl", Output: "config.go"},
+	TemplateMigrations:    {File: "migrations.tmpl", Output: "migrations/001_init.sql"},
+	TemplateDockerfile:    {File: "dockerfile.tmpl", Output: "Dockerfile"},
+	TemplateDockerCompose: {File: "docker-compose.tmpl", Output: "docker-compose.yaml"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -105,10 +117,14 @@ func AllTemplateNames() []string {
 		TemplateAPI,
 		TemplateOpenAPI,
 		TemplateTest,
+		TemplateConfig,
+		TemplateMigrations,
+		TemplateDockerfile,
+		TemplateDockerCompose,
 	}
 }
 
-// CodeTemplateNames returns template names that generate code (excludes go.mod and tests).
+// CodeTemplateNames returns template names that generate code (excludes go.mod, tests, and infra).
 func CodeTemplateNames() []string {
 	return []string{
 		TemplateMain,
@@ -117,6 +133,7 @@ func CodeTemplateNames() []string {
 		TemplateAggregate,
 		TemplateAPI,
 		TemplateOpenAPI,
+		TemplateConfig,
 	}
 }
 
@@ -124,5 +141,14 @@ func CodeTemplateNames() []string {
 func TestTemplateNames() []string {
 	return []string{
 		TemplateTest,
+	}
+}
+
+// InfraTemplateNames returns template names for infrastructure files.
+func InfraTemplateNames() []string {
+	return []string{
+		TemplateMigrations,
+		TemplateDockerfile,
+		TemplateDockerCompose,
 	}
 }

@@ -166,8 +166,8 @@ func TestGenerateFiles(t *testing.T) {
 		t.Fatalf("GenerateFiles failed: %v", err)
 	}
 
-	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, workflow_test.go
-	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "workflow_test.go"}
+	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
+	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 	}
@@ -271,6 +271,20 @@ func TestGenerateFilesContent(t *testing.T) {
 			// Should contain transition endpoints
 			if !strings.Contains(content, "transitions") {
 				t.Error("openapi.yaml missing transitions tag")
+			}
+
+		case "config.go":
+			// Should contain Config struct
+			if !strings.Contains(content, "type Config struct") {
+				t.Error("config.go missing Config struct")
+			}
+			// Should contain LoadConfig function
+			if !strings.Contains(content, "func LoadConfig()") {
+				t.Error("config.go missing LoadConfig function")
+			}
+			// Should contain Validate method
+			if !strings.Contains(content, "func (c *Config) Validate()") {
+				t.Error("config.go missing Validate method")
 			}
 		}
 	}

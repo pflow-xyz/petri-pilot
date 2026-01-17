@@ -12,10 +12,13 @@ import (
 func BuildRouter(app *Application) http.Handler {
 	r := api.NewRouter()
 
-	// Health check
+	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
 		api.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+
+	// Readiness check - verifies dependencies (database, etc.)
+	r.GET("/ready", "Readiness check", HandleReady(app))
 
 	// Create new aggregate
 	r.POST("/api/{{.PackageName}}", "Create new {{.ModelName}}", HandleCreate(app))
@@ -81,6 +84,35 @@ func HandleGetState(app *Application) http.HandlerFunc {
 			State:              agg.State(),
 			Places:             agg.Places(),
 			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+// HandleReady checks if the application is ready to serve requests.
+// Returns 200 if all dependencies are available, 503 otherwise.
+func HandleReady(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		checks := make(map[string]string)
+		ready := true
+
+		// Check event store connectivity
+		if err := app.HealthCheck(r.Context()); err != nil {
+			checks["eventstore"] = err.Error()
+			ready = false
+		} else {
+			checks["eventstore"] = "ok"
+		}
+
+		status := http.StatusOK
+		statusText := "ready"
+		if !ready {
+			status = http.StatusServiceUnavailable
+			statusText = "not ready"
+		}
+
+		api.JSON(w, status, map[string]any{
+			"status": statusText,
+			"checks": checks,
 		})
 	}
 }

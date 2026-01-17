@@ -188,6 +188,17 @@ func (app *Application) GetState(ctx context.Context, id string) (*Aggregate, er
 	return app.Load(ctx, id)
 }
 
+// HealthCheck verifies the event store is accessible.
+func (app *Application) HealthCheck(ctx context.Context) error {
+	// Try to read from a non-existent stream - this exercises the store connection
+	_, err := app.store.Read(ctx, "__health_check__", 0)
+	// Ignore "not found" errors - we just want to verify connectivity
+	if err != nil && err.Error() != "stream not found" {
+		return err
+	}
+	return nil
+}
+
 // Helper to unmarshal event data
 func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
 	var data T

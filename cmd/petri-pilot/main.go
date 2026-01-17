@@ -407,6 +407,7 @@ func cmdCodegen(args []string) {
 	lang := fs.String("lang", "go", "Target language (go)")
 	pkg := fs.String("pkg", "", "Package name (default: model name)")
 	includeTests := fs.Bool("tests", true, "Include test files")
+	includeInfra := fs.Bool("infra", true, "Include infrastructure files (Dockerfile, docker-compose, migrations)")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 
 	if err := fs.Parse(args); err != nil {
@@ -435,11 +436,8 @@ func cmdCodegen(args []string) {
 		os.Exit(1)
 	}
 
-	// Determine package name
+	// Package name is determined by generator if not specified
 	pkgName := *pkg
-	if pkgName == "" {
-		pkgName = model.Name
-	}
 
 	// API-only mode: just generate OpenAPI spec
 	if *apiOnly {
@@ -504,6 +502,7 @@ func cmdCodegen(args []string) {
 		OutputDir:    *output,
 		PackageName:  pkgName,
 		IncludeTests: *includeTests,
+		IncludeInfra: *includeInfra,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
