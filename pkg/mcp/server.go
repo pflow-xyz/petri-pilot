@@ -9,7 +9,6 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
@@ -140,17 +139,22 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("analysis error: %v", err)), nil
 	}
 
+	// Run implementability analysis
+	implResult := v.ValidateImplementability(model)
+
 	// Return analysis-focused output
 	output := struct {
-		Valid    bool                   `json:"valid"`
-		Analysis *schema.AnalysisResult `json:"analysis,omitempty"`
-		Errors   []schema.ValidationError `json:"errors,omitempty"`
-		Warnings []schema.ValidationError `json:"warnings,omitempty"`
+		Valid             bool                              `json:"valid"`
+		Analysis          *schema.AnalysisResult            `json:"analysis,omitempty"`
+		Errors            []schema.ValidationError          `json:"errors,omitempty"`
+		Warnings          []schema.ValidationError          `json:"warnings,omitempty"`
+		Implementability  *validator.ImplementabilityResult `json:"implementability,omitempty"`
 	}{
-		Valid:    result.Valid,
-		Analysis: result.Analysis,
-		Errors:   result.Errors,
-		Warnings: result.Warnings,
+		Valid:            result.Valid,
+		Analysis:         result.Analysis,
+		Errors:           result.Errors,
+		Warnings:         result.Warnings,
+		Implementability: implResult,
 	}
 
 	outputJSON, err := json.MarshalIndent(output, "", "  ")
@@ -193,10 +197,11 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("model validation failed, fix errors before generating code:\n%s", errJSON)), nil
 	}
 
-	// Check codegen readiness
-	issues := bridge.ValidateForCodegen(model)
-	if len(issues) > 0 {
-		return mcp.NewToolResultError(fmt.Sprintf("model not ready for code generation:\n- %s", strings.Join(issues, "\n- "))), nil
+	// Check implementability
+	implResult := v.ValidateImplementability(model)
+	if !implResult.Implementable {
+		errJSON, _ := json.MarshalIndent(implResult.Errors, "", "  ")
+		return mcp.NewToolResultError(fmt.Sprintf("model not implementable:\n%s", errJSON)), nil
 	}
 
 	// Create generator
