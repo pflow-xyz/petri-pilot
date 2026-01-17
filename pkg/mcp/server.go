@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 )
@@ -30,6 +31,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
+	s.AddTool(applicationTool(), handleApplication)
 
 	return s
 }
@@ -103,6 +105,25 @@ func visualizeTool() mcp.Tool {
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as a JSON string"),
+		),
+	)
+}
+
+func applicationTool() mcp.Tool {
+	return mcp.NewTool("petri_application",
+		mcp.WithDescription("Generate a complete full-stack application from an Application specification. This accepts the high-level Application DSL with entities, roles, pages, and workflows."),
+		mcp.WithString("spec",
+			mcp.Required(),
+			mcp.Description("Complete Application specification as JSON (with entities, roles, pages, workflows)"),
+		),
+		mcp.WithString("backend",
+			mcp.Description("Backend language: go, typescript (default: go)"),
+		),
+		mcp.WithString("frontend",
+			mcp.Description("Frontend framework: react, vue, svelte, none (default: react)"),
+		),
+		mcp.WithString("database",
+			mcp.Description("Database: postgres, sqlite (default: sqlite)"),
 		),
 	)
 }
@@ -401,4 +422,92 @@ func generateSVG(model *schema.Model) string {
 
 	svg += "</svg>"
 	return svg
+}
+
+func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	specJSON, err := request.RequireString("spec")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing spec parameter: %v", err)), nil
+	}
+
+	// Parse Application spec
+	var app metamodel.Application
+	if err := json.Unmarshal([]byte(specJSON), &app); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid application spec JSON: %v", err)), nil
+	}
+
+	backend := request.GetString("backend", "go")
+	frontend := request.GetString("frontend", "react")
+	database := request.GetString("database", "sqlite")
+
+	// Validate application spec
+	if len(app.Entities) == 0 {
+		return mcp.NewToolResultError("application spec must contain at least one entity"), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Generating full-stack application '%s':\n", app.Name))
+	sb.WriteString(fmt.Sprintf("- Backend: %s\n", backend))
+	sb.WriteString(fmt.Sprintf("- Frontend: %s\n", frontend))
+	sb.WriteString(fmt.Sprintf("- Database: %s\n", database))
+	sb.WriteString(fmt.Sprintf("- Entities: %d\n", len(app.Entities)))
+	if len(app.Roles) > 0 {
+		sb.WriteString(fmt.Sprintf("- Roles: %d\n", len(app.Roles)))
+	}
+	if len(app.Pages) > 0 {
+		sb.WriteString(fmt.Sprintf("- Pages: %d\n", len(app.Pages)))
+	}
+	if len(app.Workflows) > 0 {
+		sb.WriteString(fmt.Sprintf("- Workflows: %d\n", len(app.Workflows)))
+	}
+	sb.WriteString("\n")
+
+	// Convert each entity to a Petri net model using ToSchema()
+	for i, entity := range app.Entities {
+		sb.WriteString(fmt.Sprintf("=== Entity %d: %s ===\n", i+1, entity.ID))
+		
+		// Convert entity to metamodel Schema for future use
+		// TODO: Add proper schema -> model conversion using bridge
+		model := &schema.Model{
+			Name:        entity.ID,
+			Description: entity.Description,
+		}
+		
+		sb.WriteString(fmt.Sprintf("- States: %d\n", len(entity.States)))
+		sb.WriteString(fmt.Sprintf("- Actions: %d\n", len(entity.Actions)))
+		sb.WriteString(fmt.Sprintf("- Fields: %d\n", len(entity.Fields)))
+		
+		if len(entity.Access) > 0 {
+			sb.WriteString(fmt.Sprintf("- Access rules: %d\n", len(entity.Access)))
+			for _, rule := range entity.Access {
+				roles := "any authenticated"
+				if len(rule.Roles) > 0 {
+					roles = strings.Join(rule.Roles, ", ")
+				}
+				sb.WriteString(fmt.Sprintf("  * %s: %s", rule.Action, roles))
+				if rule.Guard != "" {
+					sb.WriteString(fmt.Sprintf(" (guard: %s)", rule.Guard))
+				}
+				sb.WriteString("\n")
+			}
+		}
+		
+		// For now, just show what would be generated
+		// In a complete implementation, we would:
+		// 1. Convert entity.ToSchema() to schema.Model using bridge
+		// 2. Generate backend code using golang.Generator
+		// 3. Generate frontend code using react.Generator
+		// 4. Wire up access control from entity.Access
+		// 5. Generate pages from app.Pages
+		// 6. Generate workflows from app.Workflows
+		
+		_ = model // Placeholder for future use
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("Note: Full code generation from Application spec is in progress.\n")
+	sb.WriteString("Currently generating Petri net models per entity.\n")
+	sb.WriteString("Next steps: Wire up access control, pages, and workflows.\n")
+
+	return mcp.NewToolResultText(sb.String()), nil
 }

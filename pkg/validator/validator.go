@@ -216,13 +216,12 @@ func (v *Validator) analyzeReachability(net *petri.PetriNet) (*schema.AnalysisRe
 
 func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *schema.AnalysisResult {
 	// Build metamodel for sensitivity analysis
-	metamodel := mpetri.FromPetriNet(net)
+	model := mpetri.FromPetriNet(net)
 
 	opts := mpetri.DefaultSensitivityOptions()
-	opts.Parallel = v.opts.Parallel
-	opts.MaxWorkers = v.opts.MaxWorkers
+	// Note: Parallel and MaxWorkers removed in go-pflow v0.6.0
 
-	sensResult := metamodel.AnalyzeSensitivity(opts)
+	sensResult := model.AnalyzeSensitivity(opts)
 
 	analysis := &schema.AnalysisResult{}
 
