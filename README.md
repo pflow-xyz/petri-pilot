@@ -1,162 +1,164 @@
 # Petri Pilot
 
-LLM-augmented design and validation for Petri net models.
+From requirements to running applications, through verified Petri net models.
 
-## Concept
+## The Idea
 
-Petri Pilot combines the creative power of LLMs with the formal verification capabilities of [go-pflow](https://github.com/pflow-xyz/go-pflow) to create validated process models through an iterative refinement loop:
+Describe your system in plain language. An LLM designs a formal Petri net model. Validation tools check for deadlocks, unreachable states, and structural errors. Deterministic code generation produces a complete application.
+
+**No LLM-generated code.** The LLM designs models. Codegen produces applications. Same model, same output, every time.
+
+## How It Works
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Natural       │     │   LLM           │     │   Petri Net     │
-│   Language      │────▶│   Generator     │────▶│   Model         │
-│   Requirements  │     │                 │     │   (DSL)         │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                                                         │
-        ┌────────────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Validated     │     │   Feedback      │     │   Formal        │
-│   Model         │◀────│   Loop          │◀────│   Validation    │
-│                 │     │                 │     │   (go-pflow)    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+┌─────────────────────────────────────────┐
+│  MCP Client (Claude Desktop, Cursor)   │
+│  LLM designs model in conversation      │
+└─────────────────┬───────────────────────┘
+                  │ MCP tools
+    ┌─────────────▼─────────────┐
+    │  petri-pilot MCP server   │
+    │  validate │ analyze │ gen │
+    └─────────────┬─────────────┘
+                  │ deterministic
+    ┌─────────────▼─────────────┐
+    │  Generated Application    │
+    │  workflow │ events │ api  │
+    └─────────────┬─────────────┘
+                  │ implements
+    ┌─────────────▼─────────────┐
+    │  Runtime Interfaces       │
+    │  EventStore │ Aggregate   │
+    └───────────────────────────┘
 ```
 
-## Why This Works
-
-| LLM Strengths | Formal Methods Strengths |
-|---------------|--------------------------|
-| Natural language understanding | Guaranteed correctness proofs |
-| Creative structure generation | Deadlock detection |
-| Domain knowledge synthesis | Liveness verification |
-| Rapid prototyping | Conservation law checking |
-| Pattern recognition | Sensitivity analysis |
-
-**Together**: LLM generates candidate models quickly, formal methods catch errors the LLM missed, feedback refines until correct.
-
-## Validation Pipeline
-
-1. **Structural Validation**
-   - Parse DSL syntax
-   - Check node connectivity
-   - Verify arc weights
-
-2. **Behavioral Validation**
-   - Reachability analysis (deadlocks, livelocks)
-   - Boundedness checking
-   - Conservation invariants
-
-3. **Sensitivity Analysis**
-   - Element importance ranking
-   - Symmetry group detection
-   - Isolated element detection
-   - Critical path identification
-
-4. **Simulation Validation**
-   - ODE trajectory analysis
-   - Equilibrium detection
-   - Expected behavior verification
-
-## Example Workflow
+## Quick Start
 
 ```bash
-# Generate a model from requirements
-petri-pilot generate "A simple order processing workflow with
-  receive order, validate, process payment, and ship steps.
-  Orders can fail validation and be rejected."
-
-# Output: Generated model with validation results
-# ✓ Syntax valid
-# ✓ All nodes connected
-# ✓ No deadlocks detected
-# ✓ Bounded (max 1 token per place)
-# ⚠ Warning: 'rejected' is a sink (no outgoing arcs)
-#
-# Symmetry groups detected:
-#   [process_payment, ship] - similar structural role
-#
-# Critical elements (high importance):
-#   - validate (0.89) - removal breaks 3 paths
-#   - receive_order (0.95) - entry point
-```
-
-## Installation
-
-```bash
+# Install
 go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+
+# Run as MCP server (for Claude Desktop, Cursor, etc.)
+petri-pilot mcp
+
+# Or use CLI directly
+export ANTHROPIC_API_KEY="your-key"
+
+# Generate a validated model
+petri-pilot generate -auto "order processing with validation and shipping"
+
+# Generate application code
+petri-pilot codegen model.json -lang go -o ./myworkflow/
+cd myworkflow && go test ./...
 ```
 
-## Usage
+## What Gets Generated
 
-### Generate Model
+From a single validated model:
+
+| Output | Description |
+|--------|-------------|
+| `workflow.go` | State machine with guards and transition logic |
+| `events.go` | Event types derived from transitions |
+| `aggregate.go` | Event-sourced aggregate |
+| `api.go` | HTTP handlers per transition |
+| `api_openapi.yaml` | OpenAPI specification |
+| `workflow_test.go` | Tests using SQLite runtime |
+
+The generated project is complete. Run the tests, wire up your storage, deploy.
+
+## Target Applications
+
+The same architecture serves:
+
+- **Workflow engines** — order processing, approval flows, document pipelines
+- **Smart contracts** — tokens, governance, vesting schedules
+- **Microservice orchestration** — sagas, compensation, distributed state
+- **Game state machines** — turn logic, resource management, multiplayer sync
+- **IoT protocols** — device state, command sequences, sensor pipelines
+
+All share: **events → transitions → state**
+
+## Validation
+
+Before code generation, models are validated:
+
+| Check | What It Catches |
+|-------|-----------------|
+| Structural | Unconnected places, invalid arc references |
+| Reachability | Deadlocks, unreachable states |
+| Boundedness | Unbounded token accumulation |
+| Sensitivity | Critical elements, symmetry groups |
+
+Errors feed back to the LLM for refinement. The loop continues until validation passes.
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `petri-pilot mcp` | Run as MCP server |
+| `petri-pilot generate "requirements"` | Generate model from natural language |
+| `petri-pilot validate model.json` | Validate an existing model |
+| `petri-pilot codegen model.json` | Generate application code |
+| `petri-pilot refine model.json "fix X"` | Refine model with instructions |
+
+## MCP Tools
+
+When running as an MCP server, these tools are available:
+
+| Tool | Description |
+|------|-------------|
+| `petri_validate` | Validate model, return structured results |
+| `petri_analyze` | Run reachability/sensitivity analysis |
+| `petri_codegen` | Generate code from validated model |
+| `petri_visualize` | Generate SVG diagram |
+
+## Example
 
 ```bash
-# Interactive generation
-petri-pilot generate "your requirements here"
+$ petri-pilot generate -auto "user registration with email verification"
 
-# From file
-petri-pilot generate -f requirements.txt
+Generating model...
+✓ Created: 4 places, 3 transitions, 6 arcs
 
-# With specific output format
-petri-pilot generate -o model.go "requirements"
+Validating...
+✓ Structural: All elements connected
+✓ Reachability: No deadlocks
+✓ Bounded: Max 1 token per place
+
+Model saved to: user-registration.json
+
+$ petri-pilot codegen user-registration.json -o ./registration/
+
+Generated:
+  registration/workflow.go
+  registration/events.go
+  registration/aggregate.go
+  registration/api.go
+  registration/api_openapi.yaml
+  registration/workflow_test.go
+
+$ cd registration && go test ./...
+PASS
 ```
 
-### Validate Existing Model
+## Why Petri Nets?
 
-```bash
-# Validate a go-pflow model
-petri-pilot validate model.go
+Petri nets are a minimal formalism for modeling concurrent systems:
 
-# Full analysis with sensitivity
-petri-pilot validate -full model.go
-```
+- **Places** hold state (tokens)
+- **Transitions** move state (fire when inputs available)
+- **Arcs** connect places and transitions
 
-### Refine Model
+Four concepts, one firing rule. This simplicity enables formal verification while expressing complex behavior: mutex locks, producer-consumer queues, checkout flows, approval chains.
 
-```bash
-# Iterative refinement loop
-petri-pilot refine model.go "add error handling for payment failures"
-```
+## Dependencies
 
-## Architecture
-
-```
-petri-pilot/
-├── cmd/petri-pilot/     # CLI entry point
-├── pkg/
-│   ├── generator/       # LLM-based model generation
-│   ├── validator/       # Formal validation using go-pflow
-│   ├── feedback/        # Structured feedback for LLM refinement
-│   └── schema/          # Model schema definitions
-├── internal/
-│   └── llm/             # LLM provider abstraction
-└── examples/            # Example requirements and models
-```
-
-## Supported LLM Providers
-
-- Claude (Anthropic) - recommended
-- OpenAI GPT-4
-- Local models via Ollama
-
-## Configuration
-
-```yaml
-# ~/.petri-pilot.yaml
-llm:
-  provider: claude
-  model: claude-sonnet-4-20250514
-
-validation:
-  max_states: 10000
-  sensitivity:
-    parallel: true
-    workers: 0  # auto-detect
-
-output:
-  format: go  # go, jsonld, svg
-```
+| Package | Purpose |
+|---------|---------|
+| [go-pflow](https://github.com/pflow-xyz/go-pflow) | Petri net validation and analysis |
+| [anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go) | Claude API client |
+| [mcp-go](https://github.com/mark3labs/mcp-go) | MCP server implementation |
 
 ## License
 
