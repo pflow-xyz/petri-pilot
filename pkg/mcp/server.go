@@ -466,17 +466,12 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	for i, entity := range app.Entities {
 		sb.WriteString(fmt.Sprintf("=== Entity %d: %s ===\n", i+1, entity.ID))
 		
-		// Convert entity to metamodel Schema
-		entitySchema := entity.ToSchema()
-		
-		// Convert metamodel Schema to Petri net model
+		// Convert entity to metamodel Schema for future use
 		// TODO: Add proper schema -> model conversion using bridge
 		model := &schema.Model{
 			Name:        entity.ID,
 			Description: entity.Description,
 		}
-		
-		_ = entitySchema // TODO: Use this for conversion
 		
 		sb.WriteString(fmt.Sprintf("- States: %d\n", len(entity.States)))
 		sb.WriteString(fmt.Sprintf("- Actions: %d\n", len(entity.Actions)))
@@ -499,13 +494,14 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		
 		// For now, just show what would be generated
 		// In a complete implementation, we would:
-		// 1. Generate backend code using golang.Generator
-		// 2. Generate frontend code using react.Generator
-		// 3. Wire up access control from entity.Access
-		// 4. Generate pages from app.Pages
-		// 5. Generate workflows from app.Workflows
+		// 1. Convert entity.ToSchema() to schema.Model using bridge
+		// 2. Generate backend code using golang.Generator
+		// 3. Generate frontend code using react.Generator
+		// 4. Wire up access control from entity.Access
+		// 5. Generate pages from app.Pages
+		// 6. Generate workflows from app.Workflows
 		
-		_ = model // Use model variable to avoid unused error
+		_ = model // Placeholder for future use
 		sb.WriteString("\n")
 	}
 
