@@ -248,7 +248,7 @@ Extend validator to check codegen feasibility.
 
 Phases 1-6 produce a backend with HTTP API. The following phases complete the full-stack pipeline.
 
-## Phase 7: Backend Completion
+## Phase 7: Backend Completion ✅
 
 Infrastructure templates for production deployment.
 
@@ -298,9 +298,9 @@ CREATE TABLE order_state (
 
 ---
 
-## Phase 8: Frontend Generation
+## Phase 8: Frontend Generation ✅
 
-Generate a frontend application from the same Petri net model.
+Generate a vanilla JS frontend application from the same Petri net model.
 
 | Component | Description |
 |-----------|-------------|
@@ -351,9 +351,9 @@ func frontendTool() mcp.Tool {
 
 ---
 
-## Phase 9: Real-Time Updates + Auth
+## Phase 9: Real-Time Updates + Auth ✅
 
-Enable live state synchronization and access control.
+Enable live state synchronization and access control (GitHub OAuth implemented).
 
 | Component | Description |
 |-----------|-------------|
@@ -405,7 +405,7 @@ export function AuthProvider({ children }) {
 
 ---
 
-## Phase 10: Observability + Production Deploy
+## Phase 10: Observability + Production Deploy ✅
 
 Production-ready infrastructure.
 
