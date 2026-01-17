@@ -1,0 +1,34 @@
+{
+  "name": "order-processing",
+  "description": "Simple order processing workflow with validation and shipping",
+  "places": [
+    {"id": "received", "description": "Order received and awaiting processing", "initial": 1},
+    {"id": "validated", "description": "Order passed validation", "initial": 0},
+    {"id": "rejected", "description": "Order failed validation", "initial": 0},
+    {"id": "paid", "description": "Payment completed", "initial": 0},
+    {"id": "shipped", "description": "Order shipped to customer", "initial": 0},
+    {"id": "completed", "description": "Order fulfilled", "initial": 0}
+  ],
+  "transitions": [
+    {"id": "validate", "description": "Check order validity"},
+    {"id": "reject", "description": "Mark order as invalid"},
+    {"id": "process_payment", "description": "Charge customer payment"},
+    {"id": "ship", "description": "Send order to shipping"},
+    {"id": "confirm", "description": "Mark order as complete"}
+  ],
+  "arcs": [
+    {"from": "received", "to": "validate"},
+    {"from": "validate", "to": "validated"},
+    {"from": "received", "to": "reject"},
+    {"from": "reject", "to": "rejected"},
+    {"from": "validated", "to": "process_payment"},
+    {"from": "process_payment", "to": "paid"},
+    {"from": "paid", "to": "ship"},
+    {"from": "ship", "to": "shipped"},
+    {"from": "shipped", "to": "confirm"},
+    {"from": "confirm", "to": "completed"}
+  ],
+  "constraints": [
+    {"id": "conservation", "expr": "received + validated + rejected + paid + shipped + completed == 1"}
+  ]
+}

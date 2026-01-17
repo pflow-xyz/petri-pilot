@@ -1,0 +1,274 @@
+package eventstore
+
+import (
+	"context"
+	"sync"
+
+	"github.com/google/uuid"
+	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
+)
+
+// MemoryStore is an in-memory event store for testing and development.
+type MemoryStore struct {
+	mu            sync.RWMutex
+	streams       map[string][]*runtime.Event
+	subscriptions map[string]*memorySubscription
+	closed        bool
+}
+
+// NewMemoryStore creates a new in-memory event store.
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{
+		streams:       make(map[string][]*runtime.Event),
+		subscriptions: make(map[string]*memorySubscription),
+	}
+}
+
+// Append adds events to a stream with optimistic concurrency control.
+func (s *MemoryStore) Append(ctx context.Context, streamID string, expectedVersion int, events []*runtime.Event) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return 0, ErrStoreClosed
+	}
+
+	stream := s.streams[streamID]
+	currentVersion := len(stream) - 1
+
+	// Check concurrency
+	if expectedVersion >= 0 && currentVersion != expectedVersion {
+		return 0, ErrConcurrencyConflict
+	}
+
+	// Assign versions and IDs to events
+	for i, event := range events {
+		event.ID = uuid.New().String()
+		event.StreamID = streamID
+		event.Version = currentVersion + i + 1
+	}
+
+	// Append to stream
+	s.streams[streamID] = append(stream, events...)
+	newVersion := len(s.streams[streamID]) - 1
+
+	// Notify subscribers
+	for _, sub := range s.subscriptions {
+		for _, event := range events {
+			if sub.matches(event) {
+				select {
+				case sub.events <- event:
+				default:
+					// Drop if buffer full
+				}
+			}
+		}
+	}
+
+	return newVersion, nil
+}
+
+// Read retrieves events from a stream starting at fromVersion.
+func (s *MemoryStore) Read(ctx context.Context, streamID string, fromVersion int) ([]*runtime.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	stream, exists := s.streams[streamID]
+	if !exists {
+		return nil, nil
+	}
+
+	if fromVersion >= len(stream) {
+		return nil, nil
+	}
+
+	if fromVersion < 0 {
+		fromVersion = 0
+	}
+
+	// Return a copy to prevent modification
+	result := make([]*runtime.Event, len(stream)-fromVersion)
+	copy(result, stream[fromVersion:])
+	return result, nil
+}
+
+// ReadAll retrieves all events matching the filter.
+func (s *MemoryStore) ReadAll(ctx context.Context, filter runtime.EventFilter) ([]*runtime.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	var result []*runtime.Event
+
+	for streamID, stream := range s.streams {
+		if filter.StreamID != "" && filter.StreamID != streamID {
+			continue
+		}
+
+		for _, event := range stream {
+			if s.matchesFilter(event, filter) {
+				result = append(result, event)
+				if filter.Limit > 0 && len(result) >= filter.Limit {
+					return result, nil
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// StreamVersion returns the current version of a stream.
+func (s *MemoryStore) StreamVersion(ctx context.Context, streamID string) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return 0, ErrStoreClosed
+	}
+
+	stream, exists := s.streams[streamID]
+	if !exists {
+		return -1, nil
+	}
+
+	return len(stream) - 1, nil
+}
+
+// Subscribe creates a subscription for new events.
+func (s *MemoryStore) Subscribe(ctx context.Context, filter runtime.EventFilter) (runtime.Subscription, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	sub := &memorySubscription{
+		id:     uuid.New().String(),
+		filter: filter,
+		events: make(chan *runtime.Event, 100),
+		errors: make(chan error, 1),
+		done:   make(chan struct{}),
+		store:  s,
+	}
+
+	s.subscriptions[sub.id] = sub
+
+	go func() {
+		<-ctx.Done()
+		sub.Close()
+	}()
+
+	return sub, nil
+}
+
+// Close releases resources.
+func (s *MemoryStore) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.closed = true
+
+	for _, sub := range s.subscriptions {
+		close(sub.events)
+		close(sub.errors)
+	}
+	s.subscriptions = nil
+
+	return nil
+}
+
+func (s *MemoryStore) matchesFilter(event *runtime.Event, filter runtime.EventFilter) bool {
+	if filter.FromVersion > 0 && event.Version < filter.FromVersion {
+		return false
+	}
+	if filter.ToVersion > 0 && event.Version > filter.ToVersion {
+		return false
+	}
+	if filter.FromTime != nil && event.Timestamp.Before(*filter.FromTime) {
+		return false
+	}
+	if filter.ToTime != nil && event.Timestamp.After(*filter.ToTime) {
+		return false
+	}
+	if len(filter.Types) > 0 {
+		found := false
+		for _, t := range filter.Types {
+			if t == event.Type {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// memorySubscription implements runtime.Subscription.
+type memorySubscription struct {
+	id     string
+	filter runtime.EventFilter
+	events chan *runtime.Event
+	errors chan error
+	done   chan struct{}
+	store  *MemoryStore
+	closed bool
+	mu     sync.Mutex
+}
+
+func (s *memorySubscription) Events() <-chan *runtime.Event {
+	return s.events
+}
+
+func (s *memorySubscription) Errors() <-chan error {
+	return s.errors
+}
+
+func (s *memorySubscription) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+
+	s.store.mu.Lock()
+	delete(s.store.subscriptions, s.id)
+	s.store.mu.Unlock()
+
+	close(s.done)
+	return nil
+}
+
+func (s *memorySubscription) matches(event *runtime.Event) bool {
+	if s.filter.StreamID != "" && s.filter.StreamID != event.StreamID {
+		return false
+	}
+	if len(s.filter.Types) > 0 {
+		found := false
+		for _, t := range s.filter.Types {
+			if t == event.Type {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// Ensure MemoryStore implements Store.
+var _ Store = (*MemoryStore)(nil)

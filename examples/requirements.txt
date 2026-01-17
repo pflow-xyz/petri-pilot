@@ -1,0 +1,31 @@
+# Example Requirements for Petri Pilot
+
+## Order Processing Workflow
+
+Create a Petri net model for an e-commerce order processing system:
+
+1. Orders are received and queued for processing
+2. Each order must be validated before payment
+3. Invalid orders are rejected and moved to a rejection queue
+4. Valid orders proceed to payment processing
+5. After payment, orders are shipped
+6. Shipped orders are marked as complete
+
+Requirements:
+- Only one order can be processed at a time (mutual exclusion)
+- An order cannot be both validated and rejected
+- Total tokens must be conserved (no orders lost)
+
+## User Registration Flow
+
+Create a Petri net for user registration:
+
+1. User submits registration form
+2. Email is verified (async)
+3. Account is activated after email verification
+4. User can optionally set up 2FA
+5. Registration is complete
+
+Constraints:
+- User cannot activate without email verification
+- 2FA setup is optional but must happen before completion
