@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 )
@@ -27,6 +28,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(codegenTool(), handleCodegen)
+	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
 
 	return s
@@ -75,6 +77,22 @@ func codegenTool() mcp.Tool {
 		),
 		mcp.WithString("package",
 			mcp.Description("Package/module name for generated code"),
+		),
+	)
+}
+
+func frontendTool() mcp.Tool {
+	return mcp.NewTool("petri_frontend",
+		mcp.WithDescription("Generate a React frontend application from a Petri net model. Produces a Vite + React + TypeScript project with API client, state display, and transition forms."),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The Petri net model as a JSON string"),
+		),
+		mcp.WithString("project",
+			mcp.Description("Project name for package.json (default: model name)"),
+		),
+		mcp.WithString("api_url",
+			mcp.Description("Backend API base URL (default: http://localhost:8080)"),
 		),
 	)
 }
@@ -222,6 +240,61 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	// Build output showing all generated files
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Generated %d files for package '%s':\n\n", len(files), pkgName))
+
+	for _, file := range files {
+		sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
+		sb.WriteString(string(file.Content))
+		sb.WriteString("\n\n")
+	}
+
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
+func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	model, err := parseModel(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	projectName := request.GetString("project", "")
+	apiURL := request.GetString("api_url", "http://localhost:8080")
+
+	// Validate first
+	opts := validator.DefaultOptions()
+	opts.EnableSensitivity = false
+	v := validator.New(opts)
+	result, err := v.Validate(model)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("validation error: %v", err)), nil
+	}
+	if !result.Valid {
+		errJSON, _ := json.MarshalIndent(result.Errors, "", "  ")
+		return mcp.NewToolResultError(fmt.Sprintf("model validation failed, fix errors before generating frontend:\n%s", errJSON)), nil
+	}
+
+	// Create React generator
+	gen, err := react.New(react.Options{
+		ProjectName: projectName,
+		APIBaseURL:  apiURL,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
+	}
+
+	// Generate files in memory
+	files, err := gen.GenerateFiles(model)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("frontend generation failed: %v", err)), nil
+	}
+
+	// Build output showing all generated files
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Generated %d files for React frontend:\n\n", len(files)))
 
 	for _, file := range files {
 		sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))

@@ -11,6 +11,7 @@ import (
 
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
 	"github.com/pflow-xyz/petri-pilot/pkg/feedback"
 	"github.com/pflow-xyz/petri-pilot/pkg/generator"
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
@@ -34,6 +35,8 @@ func main() {
 		cmdRefine(os.Args[2:])
 	case "codegen":
 		cmdCodegen(os.Args[2:])
+	case "frontend":
+		cmdFrontend(os.Args[2:])
 	case "mcp":
 		cmdMcp()
 	case "help", "-h", "--help":
@@ -57,7 +60,8 @@ Commands:
   generate    Generate a Petri net model from natural language requirements
   validate    Validate an existing Petri net model
   refine      Refine a model based on validation feedback
-  codegen     Generate application code from a validated model
+  codegen     Generate backend application code from a validated model
+  frontend    Generate React frontend from a validated model
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
 
 Options:
@@ -77,8 +81,11 @@ Examples:
   # Validate a model file
   petri-pilot validate model.json
 
-  # Generate application code
+  # Generate backend application code
   petri-pilot codegen model.json -o ./myworkflow/
+
+  # Generate React frontend
+  petri-pilot frontend model.json -o ./myworkflow-frontend/
 
   # Generate OpenAPI spec only
   petri-pilot codegen -api-only model.json -o api.yaml
@@ -520,6 +527,86 @@ func cmdCodegen(args []string) {
 	for _, path := range paths {
 		fmt.Printf("  %s\n", path)
 	}
+}
+
+func cmdFrontend(args []string) {
+	fs := flag.NewFlagSet("frontend", flag.ExitOnError)
+	output := fs.String("o", "./frontend", "Output directory for frontend files")
+	project := fs.String("project", "", "Project name for package.json (default: model name)")
+	apiURL := fs.String("api", "http://localhost:8080", "Backend API base URL")
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Error: model file required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot frontend [options] <model.json>")
+		os.Exit(1)
+	}
+
+	modelPath := fs.Arg(0)
+
+	// Read model file
+	data, err := os.ReadFile(modelPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var model schema.Model
+	if err := json.Unmarshal(data, &model); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Validate first
+	v := validator.New(validator.Options{
+		MaxStates:         10000,
+		EnableSensitivity: false,
+	})
+
+	result, err := v.Validate(&model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !result.Valid {
+		fmt.Fprintln(os.Stderr, "Error: model validation failed")
+		for _, e := range result.Errors {
+			fmt.Fprintf(os.Stderr, "  [%s] %s\n", e.Code, e.Message)
+		}
+		os.Exit(1)
+	}
+
+	// Create frontend generator
+	gen, err := react.New(react.Options{
+		OutputDir:   *output,
+		ProjectName: *project,
+		APIBaseURL:  *apiURL,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Generate files
+	paths, err := gen.Generate(&model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated %d frontend files:\n", len(paths))
+	for _, path := range paths {
+		fmt.Printf("  %s\n", path)
+	}
+	fmt.Printf("\nTo run the frontend:\n")
+	fmt.Printf("  cd %s\n", *output)
+	fmt.Printf("  npm install\n")
+	fmt.Printf("  npm run dev\n")
 }
 
 func cmdMcp() {

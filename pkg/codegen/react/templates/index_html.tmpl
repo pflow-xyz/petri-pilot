@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.ModelName}}</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 2rem;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+      .description {
+        color: #666;
+        margin-bottom: 2rem;
+      }
+      .section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #eee;
+      }
+      .form-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button:hover {
+        background: #0055aa;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .error {
+        color: #cc0000;
+        padding: 1rem;
+        background: #fff0f0;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+      .places-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.5rem;
+      }
+      .place {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+      .place.active {
+        background: #e6f4ea;
+        border: 1px solid #34a853;
+      }
+      .place.inactive {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+      }
+      .token-count {
+        font-weight: bold;
+        min-width: 24px;
+        text-align: center;
+      }
+      .enabled-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .enabled-tag {
+        padding: 0.25rem 0.5rem;
+        background: #e8f0fe;
+        color: #1a73e8;
+        border-radius: 4px;
+        font-size: 0.85rem;
+      }
+      .transitions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+      .transition-card {
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: white;
+      }
+      .transition-card.disabled {
+        opacity: 0.5;
+      }
+      .transition-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      .transition-desc {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 1rem;
+      }
+      .transition-card button {
+        width: 100%;
+      }
+      .info-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      .info-label {
+        font-weight: 500;
+        min-width: 100px;
+        color: #666;
+      }
+      .info-value {
+        font-family: monospace;
+      }
+      #state-section, #actions-section {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>{{.ModelName}}</h1>
+      {{- if .ModelDescription}}
+      <p class="description">{{.ModelDescription}}</p>
+      {{- end}}
+
+      <div id="error" class="error" style="display: none;"></div>
+
+      <div class="section">
+        <h2 class="section-title">Workflow Instance</h2>
+        <div class="form-row">
+          <input type="text" id="aggregate-id" placeholder="Aggregate ID" />
+          <button id="load-btn">Load</button>
+          <button id="create-btn">Create New</button>
+        </div>
+      </div>
+
+      <div id="state-section" class="section">
+        <h2 class="section-title">Current State</h2>
+        <div class="info-row">
+          <span class="info-label">Aggregate ID:</span>
+          <span class="info-value" id="display-id">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Version:</span>
+          <span class="info-value" id="display-version">-</span>
+        </div>
+        <div style="margin-top: 1rem;">
+          <div class="info-label" style="margin-bottom: 0.5rem;">Places:</div>
+          <div class="places-grid" id="places-grid"></div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <div class="info-label" style="margin-bottom: 0.5rem;">Enabled Transitions:</div>
+          <div class="enabled-list" id="enabled-list"></div>
+        </div>
+      </div>
+
+      <div id="actions-section" class="section">
+        <h2 class="section-title">Actions</h2>
+        <div class="transitions-grid" id="transitions-grid"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
