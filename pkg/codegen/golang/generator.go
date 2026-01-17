@@ -37,6 +37,9 @@ type Options struct {
 
 	// IncludeDeploy generates K8s manifests and CI workflow if true.
 	IncludeDeploy bool
+
+	// IncludeRealtime generates SSE and WebSocket handlers if true.
+	IncludeRealtime bool
 }
 
 // GeneratedFile represents a generated file's content.
@@ -140,6 +143,9 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 	}
 	if g.opts.IncludeDeploy {
 		templateNames = append(templateNames, DeployTemplateNames()...)
+	}
+	if g.opts.IncludeRealtime {
+		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
 
 	// Generate each file

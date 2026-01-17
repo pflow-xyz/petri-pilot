@@ -11,6 +11,15 @@ export default defineConfig({
         target: '{{.APIBaseURL}}',
         changeOrigin: true,
       },
+      '/events': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+        ws: true,
+      },
       '/health': {
         target: '{{.APIBaseURL}}',
         changeOrigin: true,

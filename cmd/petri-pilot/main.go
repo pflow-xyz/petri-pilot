@@ -418,6 +418,7 @@ func cmdCodegen(args []string) {
 	includeAuth := fs.Bool("auth", false, "Include GitHub OAuth authentication")
 	includeObs := fs.Bool("observability", false, "Include logging and Prometheus metrics")
 	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")
+	includeRealtime := fs.Bool("realtime", false, "Include SSE and WebSocket handlers")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 
 	if err := fs.Parse(args); err != nil {
@@ -516,6 +517,7 @@ func cmdCodegen(args []string) {
 		IncludeAuth:          *includeAuth,
 		IncludeObservability: *includeObs,
 		IncludeDeploy:        *includeDeploy,
+		IncludeRealtime:      *includeRealtime,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)

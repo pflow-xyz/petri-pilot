@@ -302,14 +302,69 @@ async function handleCallback() {
   }
 }
 
+// Real-time updates
+let eventSource = null
+
+function subscribeToUpdates() {
+  if (!aggregateId) return
+  unsubscribeFromUpdates()
+
+  // Use Server-Sent Events for real-time updates
+  eventSource = new EventSource(`${API_BASE}/events?id=${encodeURIComponent(aggregateId)}`)
+
+  eventSource.addEventListener('connected', (e) => {
+    console.log('Connected to real-time updates')
+  })
+
+  eventSource.addEventListener('state', (e) => {
+    try {
+      const change = JSON.parse(e.data)
+      // Update state from real-time event
+      currentState = {
+        version: change.version,
+        places: change.state,
+        marking: change.state,
+        enabled: change.enabled,
+      }
+      renderState()
+    } catch (err) {
+      console.error('Failed to parse state update:', err)
+    }
+  })
+
+  eventSource.onerror = (e) => {
+    console.error('SSE connection error:', e)
+    // Reconnect after a delay
+    setTimeout(() => {
+      if (aggregateId) subscribeToUpdates()
+    }, 3000)
+  }
+}
+
+function unsubscribeFromUpdates() {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+}
+
 // Event handlers
 loginBtn.addEventListener('click', login)
 logoutBtn.addEventListener('click', logout)
-loadBtn.addEventListener('click', loadState)
-createBtn.addEventListener('click', createNew)
+loadBtn.addEventListener('click', async () => {
+  await loadState()
+  subscribeToUpdates()
+})
+createBtn.addEventListener('click', async () => {
+  await createNew()
+  subscribeToUpdates()
+})
 
-aggregateInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') loadState()
+aggregateInput.addEventListener('keypress', async (e) => {
+  if (e.key === 'Enter') {
+    await loadState()
+    subscribeToUpdates()
+  }
 })
 
 transitionsGrid.addEventListener('click', (e) => {
@@ -318,6 +373,9 @@ transitionsGrid.addEventListener('click', (e) => {
     executeTransition(btn.dataset.transition)
   }
 })
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', unsubscribeFromUpdates)
 
 // Initialize
 loadAuth()

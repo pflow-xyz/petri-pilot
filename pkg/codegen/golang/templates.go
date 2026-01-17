@@ -37,6 +37,9 @@ const (
 	TemplateK8sDeployment = "k8s_deployment"
 	TemplateK8sService    = "k8s_service"
 	TemplateGitHubCI      = "github_ci"
+
+	// Real-time templates
+	TemplateRealtime = "realtime"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -69,6 +72,9 @@ var templateInfo = map[string]struct {
 	TemplateK8sDeployment: {File: "k8s_deployment.tmpl", Output: "k8s/deployment.yaml"},
 	TemplateK8sService:    {File: "k8s_service.tmpl", Output: "k8s/service.yaml"},
 	TemplateGitHubCI:      {File: "github_ci.tmpl", Output: ".github/workflows/ci.yaml"},
+
+	// Real-time templates
+	TemplateRealtime: {File: "realtime.tmpl", Output: "realtime.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -179,6 +185,13 @@ func DeployTemplateNames() []string {
 		TemplateK8sDeployment,
 		TemplateK8sService,
 		TemplateGitHubCI,
+	}
+}
+
+// RealtimeTemplateNames returns template names for real-time files.
+func RealtimeTemplateNames() []string {
+	return []string{
+		TemplateRealtime,
 	}
 }
 
