@@ -6,7 +6,7 @@ I've been circling the same problem for years without seeing it clearly.
 
 I watched a DAO die from the inside. Not from lack of funding or technical failure—from governance rot.
 
-Whales like Multi Chain Capital voted absentmindedly, throwing random weight at proposals. They weren't playing the cooperation game. They were noise in the system—low marginal cost to vote, diversified holdings, no operational stake in outcomes.
+Whales voted absentmindedly, throwing random weight at proposals. They weren't playing the cooperation game. They were noise in the system—low marginal cost to vote, diversified holdings, no operational stake in outcomes.
 
 Meanwhile, community members discovered tit-for-tat reward farming. Cooperation emerged beautifully... around the wrong objective function. Small tasks that triggered reciprocal rewards. A closed loop with no drainage toward protocol goals. The system selected for mutual back-scratching, not useful work.
 
