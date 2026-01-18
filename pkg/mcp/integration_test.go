@@ -104,7 +104,7 @@ func TestCompleteApplicationGeneration(t *testing.T) {
 		t.Fatalf("Failed to create golang generator: %v", err)
 	}
 
-	files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows)
+	files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows, nil)
 	if err != nil {
 		t.Fatalf("Failed to generate backend: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestAccessControlIntegration(t *testing.T) {
 		t.Fatalf("Failed to create generator: %v", err)
 	}
 
-	files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, nil)
+	files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to generate backend: %v", err)
 	}
@@ -422,7 +422,7 @@ func TestWorkflowIntegration(t *testing.T) {
 		t.Fatalf("Failed to create generator: %v", err)
 	}
 
-	files, err := generateBackendWithAccessControl(gen, model, nil, nil, workflows)
+	files, err := generateBackendWithAccessControl(gen, model, nil, nil, workflows, nil)
 	if err != nil {
 		t.Fatalf("Failed to generate backend: %v", err)
 	}
