@@ -18,11 +18,12 @@ import (
 
 // User represents an authenticated GitHub user.
 type User struct {
-	ID        int64  `json:"id"`
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
+	ID        int64    `json:"id"`
+	Login     string   `json:"login"`
+	Name      string   `json:"name"`
+	Email     string   `json:"email"`
+	AvatarURL string   `json:"avatar_url"`
+	Roles     []string `json:"roles,omitempty"` // User roles for access control
 }
 
 // Session represents an authenticated session.

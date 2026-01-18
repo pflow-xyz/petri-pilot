@@ -153,6 +153,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, WorkflowTemplateNames()...)
 	}
 
+	// Include webhooks template if context has webhooks
+	if ctx.HasWebhooks() {
+		templateNames = append(templateNames, WebhookTemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

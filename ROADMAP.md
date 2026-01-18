@@ -574,6 +574,70 @@ type ViewField struct {
 }
 ```
 
+### Event-Triggered Workflow Example
+
+```json
+{
+  "workflows": [{
+    "id": "order-fulfillment",
+    "trigger": {
+      "type": "event",
+      "entity": "order",
+      "action": "approve"
+    },
+    "steps": [
+      {
+        "id": "check-inventory",
+        "type": "condition",
+        "condition": "inventory[productId] >= quantity"
+      },
+      {
+        "id": "wait-for-payment",
+        "type": "wait",
+        "duration": "5m"
+      },
+      {
+        "id": "ship",
+        "type": "action",
+        "entity": "order",
+        "action": "ship"
+      }
+    ]
+  }]
+}
+```
+
+**Generated workflow features:**
+- Condition steps use `dsl.Evaluate` for guard expressions
+- Wait steps support configurable duration (e.g., "5m", "1h", "30s")
+- Event-triggered workflows execute automatically via `OnEvent` method
+- Action steps map workflow context to handler inputs
+
+### Webhook Integration Example
+
+```json
+{
+  "webhooks": [{
+    "id": "notify-shipping",
+    "url": "https://shipping-service.example.com/webhooks/orders",
+    "events": ["order.approved", "order.shipped"],
+    "secret": "webhook-secret-key",
+    "enabled": true,
+    "retryPolicy": {
+      "maxAttempts": 3,
+      "backoffMs": 1000
+    }
+  }]
+}
+```
+
+**Generated webhook features:**
+- Event subscription filtering by event type
+- HMAC-SHA256 signature for request authentication
+- Exponential backoff retry with configurable attempts
+- Asynchronous delivery to prevent blocking
+- Delivery status logging
+
 ### Remaining Work
 
 | Component | Status | Priority |
@@ -583,7 +647,7 @@ type ViewField struct {
 | Access control codegen | ✅ Done | - |
 | Page/navigation codegen | ✅ Done | - |
 | Workflow orchestration | ✅ Done | - |
-| Integration webhooks | ❌ TODO | Low |
+| Integration webhooks | ✅ Done | - |
 
 ### LLM Integration
 

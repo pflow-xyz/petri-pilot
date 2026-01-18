@@ -7,13 +7,16 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
 )
 
 {{if .HasWorkflows}}
 // WorkflowExecutor executes multi-step workflows.
 type WorkflowExecutor struct {
 	// Handlers for entity actions
-	// TODO: Wire this to actual transition handlers
+	// Application code should register handlers using RegisterHandler
+	// before executing workflows that call actions.
 	handlers map[string]func(context.Context, map[string]any) error
 }
 
@@ -87,7 +90,8 @@ func (w *{{.PascalName}}Workflow) Execute(ctx context.Context, triggerData map[s
 	if err := w.execute{{.PascalName}}(ctx, wfCtx); err != nil {
 		log.Printf("Workflow {{$workflow.Name}} failed at step {{.ID}}: %v", err)
 		{{if .OnFailure}}
-		// TODO: Execute failure handler: {{.OnFailure}}
+		// Note: Failure step execution ({{.OnFailure}}) not yet implemented
+		// For now, the workflow returns an error on any step failure
 		{{end}}
 		return fmt.Errorf("step {{.ID}} failed: %w", err)
 	}
@@ -118,12 +122,27 @@ func (w *{{$workflow.PascalName}}Workflow) execute{{.PascalName}}(ctx context.Co
 	return handler(ctx, input)
 	{{else if eq .Type "condition"}}
 	// Evaluate condition: {{.Condition}}
-	// TODO: Implement condition evaluation using dsl.Evaluate
-	return fmt.Errorf("condition steps not yet implemented")
+	result, err := dsl.Evaluate("{{.Condition}}", wfCtx.Data, nil)
+	if err != nil {
+		return fmt.Errorf("condition evaluation failed: %w", err)
+	}
+	if !result {
+		return fmt.Errorf("condition not met: {{.Condition}}")
+	}
+	return nil
 	{{else if eq .Type "wait"}}
-	// Wait step
-	// TODO: Implement wait duration from step config
+	// Wait step{{if .Duration}} - duration: {{.Duration}}{{end}}
+	{{if .Duration}}
+	duration, err := time.ParseDuration("{{.Duration}}")
+	if err != nil {
+		return fmt.Errorf("invalid duration '{{.Duration}}': %w", err)
+	}
+	log.Printf("Waiting for %v", duration)
+	time.Sleep(duration)
+	{{else}}
+	// No duration specified, default to 1 second
 	time.Sleep(1 * time.Second)
+	{{end}}
 	return nil
 	{{else}}
 	return fmt.Errorf("unknown step type: {{.Type}}")
@@ -182,10 +201,13 @@ func (r *WorkflowRegistry) OnEvent(ctx context.Context, entity string, action st
 	// Check for event-triggered workflows
 	{{range .Workflows}}
 	{{if eq .TriggerType "event"}}
-	// TODO: Add trigger entity and action fields to workflow context
-	// For now, workflows are registered but not automatically triggered
-	_ = entity
-	_ = action
+	if "{{.Trigger.Entity}}" == entity && "{{.Trigger.Action}}" == action {
+		log.Printf("Triggering workflow {{.ID}} on event %s.%s", entity, action)
+		if err := r.{{.CamelName}}.Execute(ctx, data); err != nil {
+			log.Printf("Workflow {{.ID}} failed: %v", err)
+			return err
+		}
+	}
 	{{end}}
 	{{end}}
 

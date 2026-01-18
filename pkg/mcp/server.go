@@ -515,6 +515,26 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				})
 			}
 			
+			// Build webhook contexts
+			var webhooks []golang.WebhookContext
+			for _, wh := range app.Webhooks {
+				var retryPolicy *golang.WebhookRetryPolicyContext
+				if wh.RetryPolicy != nil {
+					retryPolicy = &golang.WebhookRetryPolicyContext{
+						MaxAttempts: wh.RetryPolicy.MaxAttempts,
+						BackoffMs:   wh.RetryPolicy.BackoffMs,
+					}
+				}
+				webhooks = append(webhooks, golang.WebhookContext{
+					ID:          wh.ID,
+					URL:         wh.URL,
+					Events:      wh.Events,
+					Secret:      wh.Secret,
+					Enabled:     wh.Enabled,
+					RetryPolicy: retryPolicy,
+				})
+			}
+			
 			// Build workflow contexts (Phase 12)
 			var workflows []golang.WorkflowContext
 			for _, wf := range app.Workflows {
@@ -536,6 +556,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 							Entity:     step.Entity,
 							Action:     step.Action,
 							Condition:  step.Condition,
+							Duration:   step.Duration,
 							Input:      step.Input,
 							OnSuccess:  step.OnSuccess,
 							OnFailure:  step.OnFailure,
@@ -569,8 +590,8 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				continue
 			}
 			
-			// Generate files with access control and workflows context
-			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows)
+			// Generate files with access control, workflows, and webhooks context
+			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows, webhooks)
 			if err != nil {
 				sb.WriteString(fmt.Sprintf("Error generating backend: %v\n", err))
 				continue
@@ -648,14 +669,15 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
-// Helper to generate backend with access control
-func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext) ([]golang.GeneratedFile, error) {
-	// Build context with access rules and workflows
+// Helper to generate backend with access control, workflows, and webhooks
+func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext, webhooks []golang.WebhookContext) ([]golang.GeneratedFile, error) {
+	// Build context with access rules, workflows, and webhooks
 	ctx, err := golang.NewContext(model, golang.ContextOptions{
 		PackageName: model.Name,
 		AccessRules: accessRules,
 		Roles:       roles,
 		Workflows:   workflows,
+		Webhooks:    webhooks,
 	})
 	if err != nil {
 		return nil, err
