@@ -1,5 +1,28 @@
 # Copilot Instructions for Petri-Pilot
 
+## App Generation Workflow
+
+When assigned an issue with the `app-request` label:
+
+1. **Design the Model**: Create `examples/<app-name>.json` with:
+   - Places (states in the workflow)
+   - Transitions (actions/events)
+   - Arcs (flow between places and transitions)
+   - Roles and access rules
+   - Views for UI rendering
+   - Navigation menu
+
+2. **Generate Code**: Run `./petri-pilot codegen examples/<app>.json -o generated/<app>/`
+
+3. **Add E2E Tests**: Copy templates from `e2e/` and customize:
+   - `api.test.ts` - Test each API endpoint
+   - `app.test.ts` - Test UI workflows with Playwright
+   - Replace `{{PLACEHOLDERS}}` with actual values
+
+4. **Verify**: Run `cd generated/<app> && go build && go test ./...`
+
+5. **Update PR**: Mark checkboxes complete, request review
+
 ## Quick Reference
 
 - **Language**: Go 1.21+ for backend, vanilla ES modules for frontend

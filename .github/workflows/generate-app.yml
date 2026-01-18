@@ -1,0 +1,105 @@
+name: Generate App from Issue
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  generate:
+    if: contains(github.event.issue.labels.*.name, 'app-request')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build petri-pilot
+        run: go build -o petri-pilot ./cmd/petri-pilot
+
+      - name: Extract app name from issue
+        id: extract
+        run: |
+          # Extract app name from issue body (between "App Name" and next section)
+          APP_NAME=$(echo "${{ github.event.issue.body }}" | grep -A1 "App Name" | tail -1 | tr -d ' ')
+          echo "app_name=${APP_NAME:-generated-app}" >> $GITHUB_OUTPUT
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Starting app generation for `${{ steps.extract.outputs.app_name }}`...\n\nCopilot will:\n1. Design the Petri net model from your description\n2. Generate Go backend + ES modules frontend\n3. Add E2E tests with Playwright\n4. Create a PR for review'
+            })
+
+      # Copilot coding agent will pick up from here
+      # The workflow creates the scaffolding, Copilot does the LLM work
+
+      - name: Create output directory
+        run: mkdir -p generated/${{ steps.extract.outputs.app_name }}
+
+      - name: Save issue context for Copilot
+        run: |
+          cat > generated/${{ steps.extract.outputs.app_name }}/GENERATION_REQUEST.md << 'EOF'
+          # Generation Request
+
+          Issue: #${{ github.event.issue.number }}
+          App Name: ${{ steps.extract.outputs.app_name }}
+
+          ## Original Request
+          ${{ github.event.issue.body }}
+
+          ## Instructions for Copilot
+
+          1. Use petri-pilot MCP tools to design a Petri net model:
+             - `petri_validate` to check the model
+             - `petri_analyze` for deadlock detection
+             - `petri_codegen` to generate code
+
+          2. Create the model JSON in `examples/${{ steps.extract.outputs.app_name }}.json`
+
+          3. Run: `./petri-pilot codegen examples/${{ steps.extract.outputs.app_name }}.json -o generated/${{ steps.extract.outputs.app_name }}/`
+
+          4. Generate tests in `generated/${{ steps.extract.outputs.app_name }}/e2e/`:
+             - `api.test.ts` - Backend API tests
+             - `app.test.ts` - Frontend E2E tests with Playwright
+
+          5. Verify: `cd generated/${{ steps.extract.outputs.app_name }} && go build && go test ./...`
+          EOF
+
+      - name: Create branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b app/${{ steps.extract.outputs.app_name }}
+          git add generated/${{ steps.extract.outputs.app_name }}/
+          git commit -m "Initialize app generation for ${{ steps.extract.outputs.app_name }}"
+          git push -u origin app/${{ steps.extract.outputs.app_name }}
+
+      - name: Create draft PR for Copilot
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Generated] ${{ steps.extract.outputs.app_name }}`,
+              head: 'app/${{ steps.extract.outputs.app_name }}',
+              base: 'main',
+              draft: true,
+              body: `## Generated App: ${{ steps.extract.outputs.app_name }}\n\nFrom issue #${{ github.event.issue.number }}\n\n### Status\n- [ ] Model designed\n- [ ] Backend generated\n- [ ] Frontend generated\n- [ ] E2E tests added\n- [ ] All tests passing\n\n@Copilot please complete this PR by following the instructions in \`GENERATION_REQUEST.md\``
+            });
+
+            // Assign Copilot to the PR
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              assignees: ['Copilot']
+            });

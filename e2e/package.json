@@ -1,0 +1,12 @@
+{
+  "name": "petri-pilot-e2e",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "test:headed": "HEADLESS=false jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "puppeteer": "^22.0.0"
+  }
+}

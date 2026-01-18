@@ -1,0 +1,15 @@
+{
+  "name": "{{APP_NAME}}-e2e",
+  "version": "1.0.0",
+  "description": "E2E tests for {{APP_NAME}}",
+  "scripts": {
+    "test": "vitest run",
+    "test:api": "vitest run api.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "vitest": "^1.0.0"
+  }
+}
