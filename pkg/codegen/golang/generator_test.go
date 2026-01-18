@@ -167,9 +167,13 @@ func TestGenerateFiles(t *testing.T) {
 	}
 
 	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
-	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go"}
+	// Plus auth.go, middleware.go, permissions.go (when access control is present), and views.go (when views are present)
+	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
+		for _, f := range files {
+			t.Logf("  generated: %s", f.Name)
+		}
 	}
 
 	fileNames := make(map[string]bool)

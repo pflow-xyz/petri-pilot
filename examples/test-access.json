@@ -83,5 +83,43 @@
       "transition": "reject",
       "roles": ["reviewer"]
     }
+  ],
+  "views": [
+    {
+      "id": "item-table",
+      "name": "Items List",
+      "kind": "table",
+      "description": "List view of all items",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "id", "label": "ID", "type": "text", "readonly": true},
+            {"binding": "name", "label": "Name", "type": "text"},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["submit", "approve", "reject"]
+    },
+    {
+      "id": "item-detail",
+      "name": "Item Detail",
+      "kind": "detail",
+      "description": "Full item details",
+      "groups": [
+        {
+          "id": "info",
+          "name": "Item Information",
+          "fields": [
+            {"binding": "id", "label": "ID", "type": "text", "readonly": true},
+            {"binding": "name", "label": "Name", "type": "text"},
+            {"binding": "description", "label": "Description", "type": "textarea"},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["submit", "approve", "reject"]
+    }
   ]
 }

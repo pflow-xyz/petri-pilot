@@ -38,5 +38,147 @@
     {"from": "close", "to": "closed"},
     {"from": "closed", "to": "reopen"},
     {"from": "reopen", "to": "new"}
+  ],
+  "roles": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "End user who submits support tickets"
+    },
+    {
+      "id": "agent",
+      "name": "Support Agent",
+      "description": "First-line support agent who handles tickets"
+    },
+    {
+      "id": "supervisor",
+      "name": "Supervisor",
+      "description": "Senior support who handles escalations",
+      "inherits": ["agent"]
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["supervisor"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "assign",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "start_work",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "escalate",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "request_info",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "customer_reply",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "resolve",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "close",
+      "roles": ["agent"]
+    },
+    {
+      "transition": "reopen",
+      "roles": ["customer"]
+    }
+  ],
+  "views": [
+    {
+      "id": "ticket-table",
+      "name": "Tickets List",
+      "kind": "table",
+      "description": "List view of all support tickets",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "ticket_id", "label": "Ticket #", "type": "text", "readonly": true},
+            {"binding": "subject", "label": "Subject", "type": "text", "readonly": true},
+            {"binding": "priority", "label": "Priority", "type": "text", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "assigned_to", "label": "Assigned To", "type": "text", "readonly": true},
+            {"binding": "created_at", "label": "Created", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["assign", "start_work", "escalate", "resolve"]
+    },
+    {
+      "id": "ticket-detail",
+      "name": "Ticket Detail",
+      "kind": "detail",
+      "description": "Full support ticket details",
+      "groups": [
+        {
+          "id": "ticket",
+          "name": "Ticket Information",
+          "fields": [
+            {"binding": "ticket_id", "label": "Ticket #", "type": "text", "readonly": true},
+            {"binding": "subject", "label": "Subject", "type": "text", "readonly": true},
+            {"binding": "description", "label": "Description", "type": "textarea", "readonly": true},
+            {"binding": "priority", "label": "Priority", "type": "text", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "customer",
+          "name": "Customer Information",
+          "fields": [
+            {"binding": "customer_name", "label": "Name", "type": "text", "readonly": true},
+            {"binding": "customer_email", "label": "Email", "type": "email", "readonly": true}
+          ]
+        },
+        {
+          "id": "assignment",
+          "name": "Assignment",
+          "fields": [
+            {"binding": "assigned_to", "label": "Assigned To", "type": "text", "readonly": true},
+            {"binding": "assigned_at", "label": "Assigned At", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["assign", "start_work", "escalate", "request_info", "resolve", "close", "reopen"]
+    },
+    {
+      "id": "ticket-form",
+      "name": "New Ticket",
+      "kind": "form",
+      "description": "Form for submitting a new support ticket",
+      "groups": [
+        {
+          "id": "ticket",
+          "name": "Ticket Details",
+          "fields": [
+            {"binding": "subject", "label": "Subject", "type": "text", "required": true, "placeholder": "Brief description of the issue"},
+            {"binding": "description", "label": "Description", "type": "textarea", "required": true, "placeholder": "Detailed description of the problem"},
+            {"binding": "priority", "label": "Priority", "type": "select", "required": true}
+          ]
+        },
+        {
+          "id": "contact",
+          "name": "Contact Information",
+          "fields": [
+            {"binding": "customer_name", "label": "Your Name", "type": "text", "required": true},
+            {"binding": "customer_email", "label": "Your Email", "type": "email", "required": true}
+          ]
+        }
+      ],
+      "actions": ["assign"]
+    }
   ]
 }

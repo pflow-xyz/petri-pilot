@@ -25,7 +25,10 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 
 	// Get aggregate state
 	r.GET("/api/{{.PackageName}}/{id}", "Get {{.ModelName}} state", HandleGetState(app))
-
+{{if .HasViews}}
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+{{end}}
 	// Transition endpoints
 {{- range .Routes}}
 	{{- if $.TransitionRequiresAuth .TransitionID}}
@@ -148,9 +151,24 @@ func {{.HandlerName}}(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
 
 {{end}}
+{{- if .HasViews}}
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+{{- end}}

@@ -52,5 +52,171 @@
     {"from": "complete", "to": "paid_off"},
     {"from": "repaying", "to": "mark_default"},
     {"from": "mark_default", "to": "defaulted"}
+  ],
+  "roles": [
+    {
+      "id": "applicant",
+      "name": "Applicant",
+      "description": "Customer applying for a loan"
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "description": "Automated credit check and processing system"
+    },
+    {
+      "id": "underwriter",
+      "name": "Underwriter",
+      "description": "Loan underwriter who reviews applications"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["underwriter"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "run_credit_check",
+      "roles": ["system"]
+    },
+    {
+      "transition": "auto_approve",
+      "roles": ["system"]
+    },
+    {
+      "transition": "flag_for_review",
+      "roles": ["system"]
+    },
+    {
+      "transition": "auto_deny",
+      "roles": ["system"]
+    },
+    {
+      "transition": "underwriter_approve",
+      "roles": ["underwriter"]
+    },
+    {
+      "transition": "underwriter_deny",
+      "roles": ["underwriter"]
+    },
+    {
+      "transition": "finalize_approval",
+      "roles": ["system"]
+    },
+    {
+      "transition": "disburse",
+      "roles": ["admin"]
+    },
+    {
+      "transition": "start_repayment",
+      "roles": ["system"]
+    },
+    {
+      "transition": "make_payment",
+      "roles": ["applicant"]
+    },
+    {
+      "transition": "complete",
+      "roles": ["system"]
+    },
+    {
+      "transition": "mark_default",
+      "roles": ["admin"]
+    }
+  ],
+  "views": [
+    {
+      "id": "loan-table",
+      "name": "Loans List",
+      "kind": "table",
+      "description": "List view of all loan applications",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "application_id", "label": "Application ID", "type": "text", "readonly": true},
+            {"binding": "applicant_name", "label": "Applicant", "type": "text", "readonly": true},
+            {"binding": "amount", "label": "Amount", "type": "number", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "submitted_at", "label": "Submitted", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["underwriter_approve", "underwriter_deny", "disburse"]
+    },
+    {
+      "id": "loan-detail",
+      "name": "Loan Detail",
+      "kind": "detail",
+      "description": "Full loan application details",
+      "groups": [
+        {
+          "id": "applicant",
+          "name": "Applicant Information",
+          "fields": [
+            {"binding": "applicant_name", "label": "Name", "type": "text", "readonly": true},
+            {"binding": "applicant_email", "label": "Email", "type": "email", "readonly": true},
+            {"binding": "applicant_phone", "label": "Phone", "type": "text", "readonly": true},
+            {"binding": "annual_income", "label": "Annual Income", "type": "number", "readonly": true}
+          ]
+        },
+        {
+          "id": "loan",
+          "name": "Loan Details",
+          "fields": [
+            {"binding": "amount", "label": "Loan Amount", "type": "number", "readonly": true},
+            {"binding": "term_months", "label": "Term (Months)", "type": "number", "readonly": true},
+            {"binding": "interest_rate", "label": "Interest Rate", "type": "number", "readonly": true},
+            {"binding": "purpose", "label": "Purpose", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "credit",
+          "name": "Credit Information",
+          "fields": [
+            {"binding": "credit_score", "label": "Credit Score", "type": "number", "readonly": true},
+            {"binding": "debt_to_income", "label": "Debt-to-Income Ratio", "type": "number", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["underwriter_approve", "underwriter_deny", "disburse", "make_payment", "mark_default"]
+    },
+    {
+      "id": "loan-application-form",
+      "name": "Loan Application",
+      "kind": "form",
+      "description": "Form for submitting a loan application",
+      "groups": [
+        {
+          "id": "personal",
+          "name": "Personal Information",
+          "fields": [
+            {"binding": "applicant_name", "label": "Full Name", "type": "text", "required": true},
+            {"binding": "applicant_email", "label": "Email", "type": "email", "required": true},
+            {"binding": "applicant_phone", "label": "Phone", "type": "text", "required": true}
+          ]
+        },
+        {
+          "id": "loan",
+          "name": "Loan Request",
+          "fields": [
+            {"binding": "amount", "label": "Requested Amount", "type": "number", "required": true, "placeholder": "10000"},
+            {"binding": "term_months", "label": "Loan Term (Months)", "type": "number", "required": true},
+            {"binding": "purpose", "label": "Purpose", "type": "text", "required": true}
+          ]
+        },
+        {
+          "id": "income",
+          "name": "Income Information",
+          "fields": [
+            {"binding": "annual_income", "label": "Annual Income", "type": "number", "required": true},
+            {"binding": "employer", "label": "Employer", "type": "text", "required": true}
+          ]
+        }
+      ],
+      "actions": ["run_credit_check"]
+    }
   ]
 }

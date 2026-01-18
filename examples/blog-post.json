@@ -25,5 +25,92 @@
     {"from": "unpublish", "to": "archived"},
     {"from": "archived", "to": "restore"},
     {"from": "restore", "to": "draft"}
+  ],
+  "roles": [
+    {
+      "id": "author",
+      "name": "Author",
+      "description": "Content creator who writes and submits posts"
+    },
+    {
+      "id": "editor",
+      "name": "Editor",
+      "description": "Reviews and approves/rejects submitted posts"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["author", "editor"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "submit",
+      "roles": ["author"]
+    },
+    {
+      "transition": "approve",
+      "roles": ["editor"]
+    },
+    {
+      "transition": "reject",
+      "roles": ["editor"]
+    },
+    {
+      "transition": "unpublish",
+      "roles": ["editor"]
+    },
+    {
+      "transition": "restore",
+      "roles": ["admin"]
+    }
+  ],
+  "views": [
+    {
+      "id": "post-table",
+      "name": "Posts List",
+      "kind": "table",
+      "description": "List view of all blog posts",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "title", "label": "Title", "type": "text"},
+            {"binding": "author", "label": "Author", "type": "text"},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "updated_at", "label": "Last Updated", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["submit", "approve", "reject"]
+    },
+    {
+      "id": "post-detail",
+      "name": "Post Detail",
+      "kind": "detail",
+      "description": "Full detail view of a blog post",
+      "groups": [
+        {
+          "id": "content",
+          "name": "Content",
+          "fields": [
+            {"binding": "title", "label": "Title", "type": "text", "required": true},
+            {"binding": "content", "label": "Content", "type": "textarea", "required": true},
+            {"binding": "author", "label": "Author", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "metadata",
+          "name": "Metadata",
+          "fields": [
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "created_at", "label": "Created", "type": "date", "readonly": true},
+            {"binding": "updated_at", "label": "Updated", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["submit", "approve", "reject", "unpublish", "restore"]
+    }
   ]
 }

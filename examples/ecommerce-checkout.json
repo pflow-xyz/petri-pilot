@@ -49,5 +49,141 @@
     {"from": "cancel_order", "to": "cancelled"},
     {"from": "paid", "to": "fulfill"},
     {"from": "fulfill", "to": "fulfilled"}
+  ],
+  "roles": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "End user making a purchase"
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "description": "Automated payment processing system"
+    },
+    {
+      "id": "fulfillment",
+      "name": "Fulfillment",
+      "description": "Warehouse staff who fulfill orders"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["customer", "system", "fulfillment"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "start_checkout",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "enter_payment",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "process_payment",
+      "roles": ["system"]
+    },
+    {
+      "transition": "payment_success",
+      "roles": ["system"]
+    },
+    {
+      "transition": "payment_fail_1",
+      "roles": ["system"]
+    },
+    {
+      "transition": "retry_payment_1",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "payment_fail_2",
+      "roles": ["system"]
+    },
+    {
+      "transition": "retry_payment_2",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "payment_fail_3",
+      "roles": ["system"]
+    },
+    {
+      "transition": "cancel_order",
+      "roles": ["system"]
+    },
+    {
+      "transition": "fulfill",
+      "roles": ["fulfillment"]
+    }
+  ],
+  "views": [
+    {
+      "id": "order-table",
+      "name": "Orders List",
+      "kind": "table",
+      "description": "List view of all orders",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "order_id", "label": "Order ID", "type": "text", "readonly": true},
+            {"binding": "customer_email", "label": "Customer", "type": "email", "readonly": true},
+            {"binding": "total", "label": "Total", "type": "number", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["start_checkout", "fulfill"]
+    },
+    {
+      "id": "checkout-form",
+      "name": "Checkout",
+      "kind": "form",
+      "description": "Checkout and payment form",
+      "groups": [
+        {
+          "id": "payment",
+          "name": "Payment Details",
+          "fields": [
+            {"binding": "card_number", "label": "Card Number", "type": "text", "required": true, "placeholder": "1234 5678 9012 3456"},
+            {"binding": "expiry", "label": "Expiry Date", "type": "text", "required": true, "placeholder": "MM/YY"},
+            {"binding": "cvv", "label": "CVV", "type": "text", "required": true, "placeholder": "123"}
+          ]
+        },
+        {
+          "id": "billing",
+          "name": "Billing Address",
+          "fields": [
+            {"binding": "billing_name", "label": "Name", "type": "text", "required": true},
+            {"binding": "billing_address", "label": "Address", "type": "text", "required": true},
+            {"binding": "billing_city", "label": "City", "type": "text", "required": true},
+            {"binding": "billing_zip", "label": "ZIP Code", "type": "text", "required": true}
+          ]
+        }
+      ],
+      "actions": ["enter_payment", "process_payment"]
+    },
+    {
+      "id": "order-detail",
+      "name": "Order Detail",
+      "kind": "detail",
+      "description": "Full order details",
+      "groups": [
+        {
+          "id": "order",
+          "name": "Order Information",
+          "fields": [
+            {"binding": "order_id", "label": "Order ID", "type": "text", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "total", "label": "Total", "type": "number", "readonly": true},
+            {"binding": "created_at", "label": "Created", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["retry_payment_1", "retry_payment_2", "cancel_order", "fulfill"]
+    }
   ]
 }

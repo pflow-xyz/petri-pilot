@@ -54,5 +54,134 @@
     {"from": "reject_after_interview", "to": "rejected"},
     {"from": "offer_extended", "to": "decline_offer"},
     {"from": "decline_offer", "to": "rejected"}
+  ],
+  "roles": [
+    {
+      "id": "candidate",
+      "name": "Candidate",
+      "description": "Job applicant"
+    },
+    {
+      "id": "recruiter",
+      "name": "Recruiter",
+      "description": "HR recruiter who screens candidates"
+    },
+    {
+      "id": "hiring_manager",
+      "name": "Hiring Manager",
+      "description": "Manager who conducts interviews and makes hiring decisions"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["recruiter", "hiring_manager"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "start_screening",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "schedule_phone_screen",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "start_background_check",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "complete_phone_screen",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "complete_background_check",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "advance_to_interview",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "conduct_interview",
+      "roles": ["hiring_manager"]
+    },
+    {
+      "transition": "extend_offer",
+      "roles": ["hiring_manager"]
+    },
+    {
+      "transition": "accept_offer",
+      "roles": ["candidate"]
+    },
+    {
+      "transition": "reject_after_screen",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "reject_after_interview",
+      "roles": ["hiring_manager"]
+    },
+    {
+      "transition": "decline_offer",
+      "roles": ["candidate"]
+    }
+  ],
+  "views": [
+    {
+      "id": "applicant-table",
+      "name": "Applicants List",
+      "kind": "table",
+      "description": "List view of all job applicants",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "name", "label": "Name", "type": "text", "readonly": true},
+            {"binding": "email", "label": "Email", "type": "email", "readonly": true},
+            {"binding": "position", "label": "Position", "type": "text", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "applied_at", "label": "Applied", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["start_screening", "conduct_interview", "extend_offer"]
+    },
+    {
+      "id": "applicant-detail",
+      "name": "Applicant Detail",
+      "kind": "detail",
+      "description": "Full applicant profile and application details",
+      "groups": [
+        {
+          "id": "personal",
+          "name": "Personal Information",
+          "fields": [
+            {"binding": "name", "label": "Full Name", "type": "text", "readonly": true},
+            {"binding": "email", "label": "Email", "type": "email", "readonly": true},
+            {"binding": "phone", "label": "Phone", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "application",
+          "name": "Application Details",
+          "fields": [
+            {"binding": "position", "label": "Position Applied", "type": "text", "readonly": true},
+            {"binding": "experience_years", "label": "Years of Experience", "type": "number", "readonly": true},
+            {"binding": "resume_url", "label": "Resume", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "screening",
+          "name": "Screening Results",
+          "fields": [
+            {"binding": "phone_screen_notes", "label": "Phone Screen Notes", "type": "textarea", "readonly": true},
+            {"binding": "background_check_status", "label": "Background Check", "type": "text", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["start_screening", "schedule_phone_screen", "complete_phone_screen", "conduct_interview", "extend_offer", "reject_after_screen", "reject_after_interview"]
+    }
   ]
 }

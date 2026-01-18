@@ -30,5 +30,107 @@
   ],
   "constraints": [
     {"id": "conservation", "expr": "received + validated + rejected + paid + shipped + completed == 1"}
+  ],
+  "roles": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "End user placing orders"
+    },
+    {
+      "id": "fulfillment",
+      "name": "Fulfillment",
+      "description": "Warehouse staff who validate and ship orders"
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "description": "Automated payment processing"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["fulfillment"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "validate",
+      "roles": ["fulfillment"]
+    },
+    {
+      "transition": "reject",
+      "roles": ["fulfillment"]
+    },
+    {
+      "transition": "process_payment",
+      "roles": ["system"]
+    },
+    {
+      "transition": "ship",
+      "roles": ["fulfillment"]
+    },
+    {
+      "transition": "confirm",
+      "roles": ["fulfillment"]
+    }
+  ],
+  "views": [
+    {
+      "id": "order-table",
+      "name": "Orders List",
+      "kind": "table",
+      "description": "List view of all orders",
+      "groups": [
+        {
+          "id": "columns",
+          "fields": [
+            {"binding": "order_id", "label": "Order ID", "type": "text", "readonly": true},
+            {"binding": "customer_name", "label": "Customer", "type": "text", "readonly": true},
+            {"binding": "total", "label": "Total", "type": "number", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "created_at", "label": "Created", "type": "date", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["validate", "reject", "ship", "confirm"]
+    },
+    {
+      "id": "order-detail",
+      "name": "Order Detail",
+      "kind": "detail",
+      "description": "Full order details",
+      "groups": [
+        {
+          "id": "order",
+          "name": "Order Information",
+          "fields": [
+            {"binding": "order_id", "label": "Order ID", "type": "text", "readonly": true},
+            {"binding": "status", "label": "Status", "type": "text", "readonly": true},
+            {"binding": "created_at", "label": "Created", "type": "date", "readonly": true}
+          ]
+        },
+        {
+          "id": "customer",
+          "name": "Customer Information",
+          "fields": [
+            {"binding": "customer_name", "label": "Name", "type": "text", "readonly": true},
+            {"binding": "customer_email", "label": "Email", "type": "email", "readonly": true},
+            {"binding": "shipping_address", "label": "Shipping Address", "type": "text", "readonly": true}
+          ]
+        },
+        {
+          "id": "payment",
+          "name": "Payment",
+          "fields": [
+            {"binding": "total", "label": "Total", "type": "number", "readonly": true},
+            {"binding": "payment_method", "label": "Payment Method", "type": "text", "readonly": true},
+            {"binding": "payment_status", "label": "Payment Status", "type": "text", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["validate", "reject", "process_payment", "ship", "confirm"]
+    }
   ]
 }

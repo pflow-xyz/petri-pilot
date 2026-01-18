@@ -25,6 +25,36 @@ type Model struct {
 	// Access control (Phase 11)
 	Roles  []Role       `json:"roles,omitempty"`
 	Access []AccessRule `json:"access,omitempty"`
+
+	// Views (Phase 13)
+	Views []View `json:"views,omitempty"`
+}
+
+// View represents a UI view definition for presenting workflow data.
+type View struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name,omitempty"`
+	Kind        string      `json:"kind,omitempty"` // form, card, table, detail
+	Description string      `json:"description,omitempty"`
+	Groups      []ViewGroup `json:"groups,omitempty"`
+	Actions     []string    `json:"actions,omitempty"` // Transition IDs that can be triggered from this view
+}
+
+// ViewGroup represents a logical grouping of fields within a view.
+type ViewGroup struct {
+	ID     string      `json:"id"`
+	Name   string      `json:"name,omitempty"`
+	Fields []ViewField `json:"fields"`
+}
+
+// ViewField represents a single field within a view group.
+type ViewField struct {
+	Binding     string `json:"binding"`
+	Label       string `json:"label,omitempty"`
+	Type        string `json:"type,omitempty"` // text, number, select, date, etc.
+	Required    bool   `json:"required,omitempty"`
+	ReadOnly    bool   `json:"readonly,omitempty"`
+	Placeholder string `json:"placeholder,omitempty"`
 }
 
 // Role defines a named role for access control.

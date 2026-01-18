@@ -158,6 +158,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, WebhookTemplateNames()...)
 	}
 
+	// Include views template if context has views (Phase 13)
+	if ctx.HasViews() {
+		templateNames = append(templateNames, ViewTemplateNames()...)
+	}
+
 	// Include auth and permissions templates if context has access control
 	if ctx.HasAccessControl() && !g.opts.IncludeAuth {
 		// Access control requires auth templates for User, Middleware, etc.

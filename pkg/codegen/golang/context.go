@@ -32,7 +32,10 @@ type Context struct {
 	// Access control (Phase 11)
 	AccessRules []AccessRuleContext
 	Roles       []RoleContext
-	
+
+	// Views (Phase 13)
+	Views []ViewContext
+
 	// Workflow orchestration (Phase 12)
 	Workflows []WorkflowContext
 
@@ -75,6 +78,33 @@ type WorkflowStepContext struct {
 	Input      map[string]string // Input field mappings
 	OnSuccess  string            // Next step ID on success
 	OnFailure  string            // Next step ID on failure
+}
+
+// ViewContext provides template-friendly access to view definitions.
+type ViewContext struct {
+	ID          string
+	Name        string
+	Kind        string // form, card, table, detail
+	Description string
+	Groups      []ViewGroupContext
+	Actions     []string // Transition IDs
+}
+
+// ViewGroupContext provides template-friendly access to view groups.
+type ViewGroupContext struct {
+	ID     string
+	Name   string
+	Fields []ViewFieldContext
+}
+
+// ViewFieldContext provides template-friendly access to view fields.
+type ViewFieldContext struct {
+	Binding     string
+	Label       string
+	Type        string // text, number, select, date, etc.
+	Required    bool
+	ReadOnly    bool
+	Placeholder string
 }
 
 // AccessRuleContext provides template-friendly access to access control rules.
@@ -329,6 +359,9 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ctx.AccessRules = buildAccessRuleContexts(accessSpec.Rules)
 	}
 
+	// Build view contexts from schema
+	ctx.Views = buildViewContexts(enriched.Views)
+
 	return ctx, nil
 }
 
@@ -358,6 +391,41 @@ func buildAccessRuleContexts(rules []bridge.AccessRuleSpec) []AccessRuleContext 
 			Guard:        r.Guard,
 			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
 			HasGuard:     r.HasGuard,
+		}
+	}
+	return result
+}
+
+// buildViewContexts converts schema Views to ViewContexts.
+func buildViewContexts(views []schema.View) []ViewContext {
+	result := make([]ViewContext, len(views))
+	for i, v := range views {
+		groups := make([]ViewGroupContext, len(v.Groups))
+		for j, g := range v.Groups {
+			fields := make([]ViewFieldContext, len(g.Fields))
+			for k, f := range g.Fields {
+				fields[k] = ViewFieldContext{
+					Binding:     f.Binding,
+					Label:       f.Label,
+					Type:        f.Type,
+					Required:    f.Required,
+					ReadOnly:    f.ReadOnly,
+					Placeholder: f.Placeholder,
+				}
+			}
+			groups[j] = ViewGroupContext{
+				ID:     g.ID,
+				Name:   g.Name,
+				Fields: fields,
+			}
+		}
+		result[i] = ViewContext{
+			ID:          v.ID,
+			Name:        v.Name,
+			Kind:        v.Kind,
+			Description: v.Description,
+			Groups:      groups,
+			Actions:     v.Actions,
 		}
 	}
 	return result
@@ -809,4 +877,9 @@ func (c *Context) TransitionRequiresAuth(transitionID string) bool {
 // HasWebhooks returns true if the context has any webhooks defined.
 func (c *Context) HasWebhooks() bool {
 	return len(c.Webhooks) > 0
+}
+
+// HasViews returns true if the context has any views defined.
+func (c *Context) HasViews() bool {
+	return len(c.Views) > 0
 }
