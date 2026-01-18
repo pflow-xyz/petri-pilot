@@ -16,7 +16,7 @@ EXAMPLE_TARGETS := $(addprefix validate-,$(EXAMPLE_NAMES))
 CODEGEN_TARGETS := $(addprefix codegen-,$(EXAMPLE_NAMES))
 
 # Default output directory for codegen
-OUTPUT_DIR ?= ./out
+OUTPUT_DIR ?= ./generated
 
 # Build the binary
 build:
