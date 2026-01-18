@@ -3,13 +3,17 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
+	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 
 // BuildRouter creates an HTTP router for the order-processing workflow.
-func BuildRouter(app *Application, middleware *Middleware) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, navigation *Navigation) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -30,8 +34,24 @@ func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r.GET("/api/views", "Get view definitions", HandleGetViews())
 
 
+	// Navigation endpoint
+	r.GET("/api/navigation", "Get navigation menu", HandleNavigation(navigation))
 
 
+	// Admin endpoints
+	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
+	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
+	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
+	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
+
+
+	// Event replay endpoints
+	r.GET("/api/orderprocessing/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/orderprocessing/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+
+
+	r.POST("/api/orderprocessing/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
+	r.POST("/api/orderprocessing/{id}/replay", "Replay from snapshot", HandleReplay(app))
 
 	// Transition endpoints
 	r.Transition("validate", "/api/validate", "Check order validity", middleware.RequirePermission("validate")(HandleValidate(app)))
@@ -302,11 +322,336 @@ func HandleGetViews() http.HandlerFunc {
 }
 
 
+// HandleNavigation returns the navigation menu, filtered by user roles.
+func HandleNavigation(nav *Navigation) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userRoles := getNavUserRoles(r)
+
+		items := []NavigationItem{}
+		for _, item := range nav.Items {
+			if len(item.Roles) == 0 {
+				items = append(items, item)
+				continue
+			}
+
+			if navHasAnyRole(userRoles, item.Roles) {
+				items = append(items, item)
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"brand": nav.Brand,
+			"items": items,
+		})
+	}
+}
+
+// getNavUserRoles extracts user roles from the request context.
+func getNavUserRoles(r *http.Request) []string {
+	user, ok := r.Context().Value("user").(*User)
+	if !ok || user == nil {
+		return nil
+	}
+	return user.Roles
+}
+
+// navHasAnyRole checks if user has at least one of the required roles.
+func navHasAnyRole(userRoles []string, requiredRoles []string) bool {
+	for _, required := range requiredRoles {
+		for _, userRole := range userRoles {
+			if userRole == required {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 
 
+// HandleAdminStats wraps the admin stats handler.
+func HandleAdminStats(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+adminStore, ok := app.store.(interface {
+GetStats(ctx context.Context) (*eventstore.Stats, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+stats, err := adminStore.GetStats(ctx)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, stats)
+}
+}
+
+// HandleAdminListInstances wraps the admin list instances handler.
+func HandleAdminListInstances(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+place := r.URL.Query().Get("place")
+from := r.URL.Query().Get("from")
+to := r.URL.Query().Get("to")
+page := getIntQueryParam(r, "page", 1)
+perPage := getIntQueryParam(r, "per_page", 50)
+
+adminStore, ok := app.store.(interface {
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"instances": instances,
+"total":     total,
+"page":      page,
+"per_page":  perPage,
+})
+}
+}
+
+// HandleAdminGetInstance wraps the admin get instance handler.
+func HandleAdminGetInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+agg, err := app.Load(ctx, id)
+if err != nil {
+api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"id":      agg.ID(),
+"version": agg.Version(),
+"state":   agg.State(),
+})
+}
+}
+
+// HandleAdminGetEvents wraps the admin get events handler.
+func HandleAdminGetEvents(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+from := getIntQueryParam(r, "from", 0)
+
+events, err := app.store.Read(ctx, id, from)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"events": events,
+})
+}
+}
 
 
 
+// HandleGetEvents returns the event history for an aggregate.
+func HandleGetEvents(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		from := getIntQueryParam(r, "from", 0)
 
+		events, err := app.store.Read(ctx, id, from)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"events": events,
+		})
+	}
+}
+
+// HandleGetStateAtVersion returns the aggregate state at a specific version.
+func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		versionStr := r.PathValue("version")
+
+		version := getInt(versionStr, 0)
+		if version <= 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
+			return
+		}
+
+		events, err := app.store.Read(ctx, id, 0)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Create temporary aggregate and replay up to version
+		agg := NewAggregate(id)
+		for _, evt := range events {
+			if evt.Version > version {
+				break
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":      agg.ID(),
+			"version": version,
+			"state":   agg.State(),
+		})
+	}
+}
+
+
+
+// HandleCreateSnapshot creates a snapshot of the current aggregate state.
+func HandleCreateSnapshot(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+agg, err := app.Load(ctx, id)
+if err != nil {
+api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+return
+}
+
+snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
+return
+}
+
+stateBytes, err := json.Marshal(agg.State())
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "MARSHAL_FAILED", err.Error())
+return
+}
+
+snapshot := &eventstore.Snapshot{
+StreamID: id,
+Version:  agg.Version(),
+State:    stateBytes,
+}
+
+if err := snapshotStore.Save(ctx, snapshot); err != nil {
+api.Error(w, http.StatusInternalServerError, "SAVE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusCreated, map[string]interface{}{
+"message": "Snapshot created",
+"version": agg.Version(),
+})
+}
+}
+
+// HandleReplay replays events from the latest snapshot.
+func HandleReplay(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+
+		snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+		if !ok {
+			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
+			return
+		}
+
+		// Load latest snapshot
+		snap, err := snapshotStore.Load(ctx, id)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "LOAD_FAILED", err.Error())
+			return
+		}
+		fromVersion := 0
+
+		agg := NewAggregate(id)
+
+		if snap != nil {
+			// Restore from snapshot
+			var state map[string]int
+			if err := json.Unmarshal(snap.State, &state); err != nil {
+				api.Error(w, http.StatusInternalServerError, "UNMARSHAL_FAILED", err.Error())
+				return
+			}
+
+			// This is a simplified restore - actual implementation depends on aggregate structure
+			fromVersion = snap.Version
+		}
+
+		// Load events after snapshot
+		events, err := app.store.Read(ctx, id, fromVersion)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Replay events
+		eventsApplied := 0
+		for _, evt := range events {
+			if evt.Version <= fromVersion {
+				continue
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+			eventsApplied++
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":                     agg.ID(),
+			"version":                agg.Version(),
+			"state":                  agg.State(),
+			"replayed_from_snapshot": fromVersion,
+			"events_applied":         eventsApplied,
+		})
+	}
+}
+
+
+
+// Helper functions
+
+func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
+	val := r.URL.Query().Get(name)
+	return getInt(val, defaultVal)
+}
+
+func getInt(s string, defaultVal int) int {
+	if s == "" {
+		return defaultVal
+	}
+
+	intVal, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+
+	return intVal
+}
 

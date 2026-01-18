@@ -21,6 +21,6 @@ require (
 	modernc.org/sqlite v1.44.1 // indirect
 )
 
-// For local development, uncomment and adjust paths as needed:
-// replace github.com/pflow-xyz/petri-pilot => ../petri-pilot
-replace github.com/pflow-xyz/petri-pilot => /Users/myork/Workspace/petri-pilot
+// For local development, use a replace directive:
+// replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
+replace github.com/pflow-xyz/petri-pilot => ../..

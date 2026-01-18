@@ -1,6 +1,6 @@
 module {{.ModulePath}}
 
-go 1.23.0
+go 1.22.0
 
 require (
 	github.com/pflow-xyz/petri-pilot v0.1.0
@@ -11,5 +11,5 @@ require (
 	golang.org/x/oauth2 v0.24.0
 )
 
-// For local development, uncomment and adjust paths as needed:
-// replace github.com/pflow-xyz/petri-pilot => ../petri-pilot
+// For local development, use a replace directive:
+// replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot

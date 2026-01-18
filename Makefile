@@ -43,7 +43,7 @@ build-examples: codegen-all
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "Building $$name..."; \
 		cd $(OUTPUT_DIR)/$$name && \
-		echo "replace github.com/pflow-xyz/petri-pilot => $$(cd ../.. && pwd)" >> go.mod && \
+		echo "replace github.com/pflow-xyz/petri-pilot => ../.." >> go.mod && \
 		GOWORK=off go mod tidy && \
 		GOWORK=off go build ./... || exit 1; \
 		cd - > /dev/null; \
@@ -59,7 +59,7 @@ validate-%: examples/%.json
 codegen-%: examples/%.json
 	@echo "=== Generating code from $< ==="
 	@mkdir -p $(OUTPUT_DIR)/$*
-	go run ./cmd/petri-pilot/... codegen -o $(OUTPUT_DIR)/$* $<
+	go run ./cmd/petri-pilot/... codegen -o $(OUTPUT_DIR)/$* --frontend $<
 
 # Run MCP server
 mcp:

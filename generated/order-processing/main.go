@@ -55,9 +55,18 @@ func main() {
 	
 	// Initialize middleware
 	middleware := NewMiddleware(sessions, accessRules)
+	// Initialize navigation
+	navigation := &Navigation{
+		Brand: "Order Processing",
+		Items: []NavigationItem{
+			{Label: "Orders", Path: "/orders", Icon: "📋", Roles: []string{ }},
+			{Label: "New Order", Path: "/orders/new", Icon: "➕", Roles: []string{ }},
+			{Label: "Admin", Path: "/admin", Icon: "⚙️", Roles: []string{"admin", }},
+		},
+	}
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware)
+	router := BuildRouter(app, middleware, navigation)
 
 	// Configure server
 	port := os.Getenv("PORT")

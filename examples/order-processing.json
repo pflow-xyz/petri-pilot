@@ -1,6 +1,30 @@
 {
   "name": "order-processing",
   "description": "Simple order processing workflow with validation and shipping",
+  "navigation": {
+    "brand": "Order Processing",
+    "items": [
+      {"label": "Orders", "path": "/orders", "icon": "📋"},
+      {"label": "New Order", "path": "/orders/new", "icon": "➕"},
+      {"label": "Admin", "path": "/admin", "icon": "⚙️", "roles": ["admin"]}
+    ]
+  },
+  "eventSourcing": {
+    "snapshots": {
+      "enabled": true,
+      "frequency": 100
+    },
+    "retention": {
+      "events": "90d",
+      "snapshots": "1y"
+    }
+  },
+  "admin": {
+    "enabled": true,
+    "path": "/admin",
+    "roles": ["admin"],
+    "features": ["list", "detail", "history"]
+  },
   "places": [
     {"id": "received", "description": "Order received and awaiting processing", "initial": 1},
     {"id": "validated", "description": "Order passed validation", "initial": 0},

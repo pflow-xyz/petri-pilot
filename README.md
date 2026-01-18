@@ -12,27 +12,104 @@ No LLM-generated code. The LLM designs models. Codegen produces apps.
 # Run as MCP server (for Claude Desktop, Cursor)
 petri-pilot mcp
 
-# Or CLI
+# Or generate from CLI
 petri-pilot generate -auto "order processing workflow"
-petri-pilot codegen model.json -o ./app/
+petri-pilot codegen model.json -o ./app/ --frontend
 ```
 
-## What It Does
+## Getting Started with Examples
 
+The `examples/` directory contains ready-to-use models. The `generated/` directory contains pre-built applications with both backend and frontend.
+
+### Run the Order Processing Example
+
+```bash
+# 1. Start the backend
+cd generated/order-processing
+./order-processing
+# Server starts on http://localhost:8080
+
+# 2. In another terminal, start the frontend
+cd generated/order-processing/frontend
+npm install
+npm run dev
+# Frontend starts on http://localhost:5173
 ```
-Natural Language → Petri Net Model → Validated → Generated App
-     (LLM)           (formal)        (go-pflow)    (deterministic)
+
+### What's Included
+
+Each generated app includes:
+
+**Backend (Go)**
+- `main.go` - Application entry point
+- `api.go` - HTTP handlers for all transitions
+- `workflow.go` - Petri net state machine
+- `aggregate.go` - Event-sourced aggregate
+- `auth.go` - GitHub OAuth authentication
+- `middleware.go` - JWT validation, CORS
+- `permissions.go` - Role-based access control
+- `views.go` - View definitions for UI
+- `navigation.go` - Navigation menu (if configured)
+- `admin.go` - Admin dashboard handlers (if configured)
+- `openapi.yaml` - OpenAPI 3.0 specification
+- `Dockerfile` - Production container
+- `docker-compose.yaml` - Local development
+
+**Frontend (ES Modules)**
+- `src/main.js` - Application entry
+- `src/router.js` - Client-side routing
+- `src/navigation.js` - Dynamic navigation from API
+- `src/views.js` - Dynamic forms from view definitions
+- `src/events.js` - Event history with time-travel
+- `src/admin.js` - Admin dashboard
+
+### API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/{model}` | Create new instance |
+| `GET /api/{model}/{id}` | Get instance state |
+| `POST /api/{transition}` | Fire a transition |
+| `GET /api/views` | Get view definitions |
+| `GET /api/navigation` | Get navigation menu |
+| `GET /api/{model}/{id}/events` | Event history |
+| `GET /api/{model}/{id}/at/{version}` | State at version |
+| `GET /admin/stats` | Dashboard statistics |
+| `GET /admin/instances` | List all instances |
+
+## Model Schema
+
+### Basic Model
+
+```json
+{
+  "name": "order-processing",
+  "places": [
+    {"id": "received", "initial": 1},
+    {"id": "validated"},
+    {"id": "shipped"}
+  ],
+  "transitions": [
+    {"id": "validate"},
+    {"id": "ship"}
+  ],
+  "arcs": [
+    {"from": "received", "to": "validate"},
+    {"from": "validate", "to": "validated"},
+    {"from": "validated", "to": "ship"},
+    {"from": "ship", "to": "shipped"}
+  ]
+}
 ```
 
-**Generated output**: workflow engine, event types, HTTP API, OpenAPI spec, tests, Docker setup.
+### Full-Featured Model
 
-## Use Cases
-
-- Workflow engines (orders, approvals)
-- Smart contracts (tokens, governance)
-- Microservice orchestration (sagas)
-- Game state machines
-- IoT protocols
+See `examples/order-processing.json` for a complete example with:
+- Roles and access control
+- Views for forms and tables
+- Navigation configuration
+- Event sourcing with snapshots
+- Admin dashboard
 
 ## MCP Tools
 
@@ -42,6 +119,40 @@ Natural Language → Petri Net Model → Validated → Generated App
 | `petri_analyze` | Reachability analysis |
 | `petri_codegen` | Generate Go application |
 | `petri_application` | Generate full-stack app |
+
+## CLI Commands
+
+```bash
+# Generate model from natural language
+petri-pilot generate "order processing workflow"
+petri-pilot generate -auto "user registration" -o model.json
+
+# Validate a model
+petri-pilot validate model.json
+
+# Generate code
+petri-pilot codegen model.json -o ./app/
+petri-pilot codegen model.json -o ./app/ --frontend
+
+# Generate frontend only
+petri-pilot frontend model.json -o ./frontend/
+```
+
+## Development
+
+```bash
+# Build the CLI
+make build
+
+# Run tests
+make test
+
+# Generate all examples
+make codegen-all
+
+# Build all examples (verifies generated code compiles)
+make build-examples
+```
 
 ## Why Petri Nets?
 
