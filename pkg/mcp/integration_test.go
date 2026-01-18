@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 )
 
@@ -261,10 +261,10 @@ func TestPageNavigationIntegration(t *testing.T) {
 	model := metaSchema.ToModel()
 
 	// Build page contexts
-	var pageContexts []react.PageContext
+	var pageContexts []esmodules.PageContext
 	for _, page := range app.Pages {
 		if page.Layout.Entity == entity.ID || page.Layout.Entity == "" {
-			pageContexts = append(pageContexts, react.PageContext{
+			pageContexts = append(pageContexts, esmodules.PageContext{
 				ID:            page.ID,
 				Title:         page.Name,
 				Path:          page.Path,
@@ -277,7 +277,7 @@ func TestPageNavigationIntegration(t *testing.T) {
 		}
 	}
 
-	gen, err := react.New(react.Options{
+	gen, err := esmodules.New(esmodules.Options{
 		ProjectName: app.Name + "-" + entity.ID,
 		APIBaseURL:  "http://localhost:8080",
 	})
@@ -313,9 +313,9 @@ func TestPageNavigationIntegration(t *testing.T) {
 	}
 
 	// Verify router.js contains page routes
-	var routerFile *react.GeneratedFile
-	var navigationFile *react.GeneratedFile
-	var pagesFile *react.GeneratedFile
+	var routerFile *esmodules.GeneratedFile
+	var navigationFile *esmodules.GeneratedFile
+	var pagesFile *esmodules.GeneratedFile
 
 	for i := range files {
 		switch files[i].Name {

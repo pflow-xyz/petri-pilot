@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
@@ -307,7 +307,7 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	// Create React generator
-	gen, err := react.New(react.Options{
+	gen, err := esmodules.New(esmodules.Options{
 		ProjectName: projectName,
 		APIBaseURL:  apiURL,
 	})
@@ -619,11 +619,11 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 			sb.WriteString("\n--- Frontend Code ---\n")
 			
 			// Build page contexts from application pages
-			var pageContexts []react.PageContext
+			var pageContexts []esmodules.PageContext
 			for _, page := range app.Pages {
 				// Only include pages for this entity
 				if page.Layout.Entity == entity.ID || page.Layout.Entity == "" {
-					pageContexts = append(pageContexts, react.PageContext{
+					pageContexts = append(pageContexts, esmodules.PageContext{
 						ID:            page.ID,
 						Title:         page.Name,
 						Path:          page.Path,
@@ -636,7 +636,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				}
 			}
 			
-			gen, err := react.New(react.Options{
+			gen, err := esmodules.New(esmodules.Options{
 				ProjectName: app.Name + "-" + entity.ID,
 				APIBaseURL:  "http://localhost:8080",
 			})
@@ -736,9 +736,9 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model
 }
 
 // Helper to generate frontend with pages
-func generateFrontendWithPages(gen *react.Generator, model *schema.Model, pages []react.PageContext) ([]react.GeneratedFile, error) {
+func generateFrontendWithPages(gen *esmodules.Generator, model *schema.Model, pages []esmodules.PageContext) ([]esmodules.GeneratedFile, error) {
 	// Build context with pages
-	ctx, err := react.NewContext(model, react.ContextOptions{
+	ctx, err := esmodules.NewContext(model, esmodules.ContextOptions{
 		ProjectName: model.Name,
 		Pages:       pages,
 	})
@@ -747,16 +747,16 @@ func generateFrontendWithPages(gen *react.Generator, model *schema.Model, pages 
 	}
 	
 	// Generate files manually to inject page context
-	var files []react.GeneratedFile
+	var files []esmodules.GeneratedFile
 	
 	templates := gen.GetTemplates()
-	for _, name := range react.AllTemplateNames() {
+	for _, name := range esmodules.AllTemplateNames() {
 		content, err := templates.Execute(name, ctx)
 		if err != nil {
 			return nil, fmt.Errorf("executing template %s: %w", name, err)
 		}
 		
-		files = append(files, react.GeneratedFile{
+		files = append(files, esmodules.GeneratedFile{
 			Name:    templates.OutputFileName(name),
 			Content: content,
 		})

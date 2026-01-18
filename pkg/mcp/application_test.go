@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 )
 
@@ -172,9 +172,9 @@ func TestPageContext(t *testing.T) {
 	}
 	
 	// Build page contexts
-	var pageContexts []react.PageContext
+	var pageContexts []esmodules.PageContext
 	for _, page := range app.Pages {
-		pageContexts = append(pageContexts, react.PageContext{
+		pageContexts = append(pageContexts, esmodules.PageContext{
 			ID:            page.ID,
 			Title:         page.Name,
 			Path:          page.Path,
@@ -305,9 +305,9 @@ func TestCodeGenerationWithPages(t *testing.T) {
 	model := metaSchema.ToModel()
 	
 	// Build page contexts
-	var pageContexts []react.PageContext
+	var pageContexts []esmodules.PageContext
 	for _, page := range app.Pages {
-		pageContexts = append(pageContexts, react.PageContext{
+		pageContexts = append(pageContexts, esmodules.PageContext{
 			ID:            page.ID,
 			Title:         page.Name,
 			Path:          page.Path,
@@ -320,7 +320,7 @@ func TestCodeGenerationWithPages(t *testing.T) {
 	}
 	
 	// Create context with pages
-	ctx, err := react.NewContext(model, react.ContextOptions{
+	ctx, err := esmodules.NewContext(model, esmodules.ContextOptions{
 		ProjectName: "test-app",
 		Pages:       pageContexts,
 	})

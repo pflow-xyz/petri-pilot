@@ -1,5 +1,5 @@
-// Package react generates vanilla JavaScript frontend applications from Petri net models.
-package react
+// Package esmodules generates vanilla JavaScript frontend applications from Petri net models.
+package esmodules
 
 import (
 	"fmt"

@@ -12,7 +12,7 @@ import (
 
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/feedback"
 	"github.com/pflow-xyz/petri-pilot/pkg/generator"
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
@@ -545,7 +545,7 @@ func cmdCodegen(args []string) {
 	if *includeFrontend {
 		frontendDir := filepath.Join(*output, "frontend")
 
-		frontendGen, err := react.New(react.Options{
+		frontendGen, err := esmodules.New(esmodules.Options{
 			OutputDir:   frontendDir,
 			ProjectName: pkgName,
 			APIBaseURL:  "http://localhost:8080",
@@ -621,7 +621,7 @@ func cmdFrontend(args []string) {
 	}
 
 	// Create frontend generator
-	gen, err := react.New(react.Options{
+	gen, err := esmodules.New(esmodules.Options{
 		OutputDir:   *output,
 		ProjectName: *project,
 		APIBaseURL:  *apiURL,

@@ -1,0 +1,458 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pflow-xyz/petri-pilot/schema/petri-model.schema.json",
+  "title": "Petri Net Model",
+  "description": "A Petri net model that can be transformed into a complete application. The model is the source of truth - all code is deterministically generated from it.",
+  "type": "object",
+  "required": ["name", "places", "transitions", "arcs"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique identifier for the model. Used as package name and in generated paths. Use kebab-case (e.g., 'order-processing').",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the model (e.g., '1.0.0')."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this workflow does."
+    },
+    "places": {
+      "type": "array",
+      "description": "States in the Petri net. Each place holds tokens (default) or structured data.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/place" }
+    },
+    "transitions": {
+      "type": "array",
+      "description": "Actions/events that move tokens between places. Each transition becomes an API endpoint.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "arcs": {
+      "type": "array",
+      "description": "Connections between places and transitions. Arcs define the flow of tokens/data.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/arc" }
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Invariants that must hold. Used for validation and runtime checks.",
+      "items": { "$ref": "#/$defs/constraint" }
+    },
+    "roles": {
+      "type": "array",
+      "description": "Named roles for access control. Supports inheritance.",
+      "items": { "$ref": "#/$defs/role" }
+    },
+    "access": {
+      "type": "array",
+      "description": "Access control rules mapping transitions to allowed roles.",
+      "items": { "$ref": "#/$defs/accessRule" }
+    },
+    "views": {
+      "type": "array",
+      "description": "UI view definitions for forms, tables, and detail pages.",
+      "items": { "$ref": "#/$defs/view" }
+    },
+    "navigation": {
+      "$ref": "#/$defs/navigation",
+      "description": "Navigation menu configuration. Generates /api/navigation endpoint."
+    },
+    "admin": {
+      "$ref": "#/$defs/admin",
+      "description": "Admin dashboard configuration. Generates /admin/* endpoints."
+    },
+    "eventSourcing": {
+      "$ref": "#/$defs/eventSourcing",
+      "description": "Event sourcing configuration for snapshots and retention."
+    }
+  },
+  "$defs": {
+    "place": {
+      "type": "object",
+      "description": "A place holds state - either token counts (classic Petri net) or structured data.",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier. Use snake_case (e.g., 'order_received').",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this state."
+        },
+        "initial": {
+          "type": "integer",
+          "description": "Initial token count. Use 1 for the starting state, 0 for others.",
+          "default": 0,
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string",
+          "description": "Whether this place holds tokens (counting) or data (structured).",
+          "enum": ["token", "data"],
+          "default": "token"
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type for 'data' kind places. Simple types: string, int64, float64, bool. Map types: map[string]int64, map[string]string, map[string]map[string]int64.",
+          "examples": ["string", "int64", "map[string]int64"]
+        },
+        "initial_value": {
+          "description": "Initial value for data places. Type depends on 'type' field."
+        },
+        "exported": {
+          "type": "boolean",
+          "description": "Whether this state is externally visible.",
+          "default": false
+        },
+        "persisted": {
+          "type": "boolean",
+          "description": "Whether this state should be persisted in the event store.",
+          "default": false
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "description": "A transition is an action that fires when enabled. Becomes an HTTP endpoint.",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier. Use snake_case (e.g., 'validate_order').",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description. Used in OpenAPI spec."
+        },
+        "guard": {
+          "type": "string",
+          "description": "Boolean expression that must be true for the transition to fire. Uses DSL: comparisons (==, !=, <, >, <=, >=), boolean operators (&&, ||, !), map access (balances[from]).",
+          "examples": ["amount > 0", "balances[from] >= amount", "status == 'approved'"]
+        },
+        "event_type": {
+          "type": "string",
+          "description": "Custom event type name. Defaults to PascalCase of id (e.g., 'validate_order' -> 'ValidateOrder')."
+        },
+        "http_method": {
+          "type": "string",
+          "description": "HTTP method for the endpoint. Defaults to POST.",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "default": "POST"
+        },
+        "http_path": {
+          "type": "string",
+          "description": "Custom HTTP path. Defaults to /api/{transition_id}.",
+          "examples": ["/orders/{id}/confirm", "/api/transfer"]
+        },
+        "bindings": {
+          "type": "object",
+          "description": "Parameter bindings from request to transition context.",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "arc": {
+      "type": "object",
+      "description": "An arc connects a place to a transition (input) or transition to place (output).",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source element ID (place or transition)."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target element ID (place or transition)."
+        },
+        "weight": {
+          "type": "integer",
+          "description": "Number of tokens consumed/produced. Default 1.",
+          "default": 1,
+          "minimum": 1
+        },
+        "keys": {
+          "type": "array",
+          "description": "Map access keys for data places. Used with map types.",
+          "items": { "type": "string" },
+          "examples": [["from", "to"], ["owner"]]
+        },
+        "value": {
+          "type": "string",
+          "description": "Value binding name for data flow. Default 'amount'.",
+          "default": "amount"
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "description": "An invariant that must always hold. Validated at model check time.",
+      "required": ["id", "expr"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the constraint."
+        },
+        "expr": {
+          "type": "string",
+          "description": "Boolean expression over place token counts. Example: 'p1 + p2 + p3 == 1' (conservation).",
+          "examples": ["received + validated + shipped + completed == 1", "total_supply == 1000000"]
+        }
+      }
+    },
+    "role": {
+      "type": "object",
+      "description": "A named role for access control.",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique role identifier.",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable role name."
+        },
+        "description": {
+          "type": "string",
+          "description": "What this role represents."
+        },
+        "inherits": {
+          "type": "array",
+          "description": "Parent role IDs. This role inherits all permissions from parents.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "accessRule": {
+      "type": "object",
+      "description": "Maps a transition to allowed roles and optional guard expression.",
+      "required": ["transition"],
+      "properties": {
+        "transition": {
+          "type": "string",
+          "description": "Transition ID or '*' for all transitions."
+        },
+        "roles": {
+          "type": "array",
+          "description": "Roles allowed to execute this transition. Empty means any authenticated user.",
+          "items": { "type": "string" }
+        },
+        "guard": {
+          "type": "string",
+          "description": "Additional guard expression for fine-grained access control.",
+          "examples": ["user.id == resource.owner_id", "user.department == 'finance'"]
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "description": "A UI view definition. Generates forms, tables, or detail pages.",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique view identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the view."
+        },
+        "kind": {
+          "type": "string",
+          "description": "View type.",
+          "enum": ["form", "card", "table", "detail"]
+        },
+        "description": {
+          "type": "string",
+          "description": "What this view shows."
+        },
+        "groups": {
+          "type": "array",
+          "description": "Logical groupings of fields.",
+          "items": { "$ref": "#/$defs/viewGroup" }
+        },
+        "actions": {
+          "type": "array",
+          "description": "Transition IDs that can be triggered from this view.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "viewGroup": {
+      "type": "object",
+      "description": "A logical grouping of fields within a view.",
+      "required": ["id", "fields"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Group identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the group."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Fields in this group.",
+          "items": { "$ref": "#/$defs/viewField" }
+        }
+      }
+    },
+    "viewField": {
+      "type": "object",
+      "description": "A single field in a view.",
+      "required": ["binding"],
+      "properties": {
+        "binding": {
+          "type": "string",
+          "description": "Data binding path (e.g., 'order.total', 'customer_email')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label."
+        },
+        "type": {
+          "type": "string",
+          "description": "Input type for forms.",
+          "enum": ["text", "number", "email", "date", "datetime", "select", "checkbox", "textarea", "password", "hidden"]
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the field is required.",
+          "default": false
+        },
+        "readonly": {
+          "type": "boolean",
+          "description": "Whether the field is read-only.",
+          "default": false
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Placeholder text for input."
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "description": "Navigation menu configuration.",
+      "required": ["brand", "items"],
+      "properties": {
+        "brand": {
+          "type": "string",
+          "description": "Application name shown in navigation."
+        },
+        "items": {
+          "type": "array",
+          "description": "Navigation menu items.",
+          "items": { "$ref": "#/$defs/navigationItem" }
+        }
+      }
+    },
+    "navigationItem": {
+      "type": "object",
+      "description": "A single navigation menu item.",
+      "required": ["label", "path"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Display text."
+        },
+        "path": {
+          "type": "string",
+          "description": "Navigation path (e.g., '/orders', '/admin')."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon (emoji or icon class)."
+        },
+        "roles": {
+          "type": "array",
+          "description": "Roles that can see this item. Empty means visible to all.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "admin": {
+      "type": "object",
+      "description": "Admin dashboard configuration.",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to generate admin dashboard."
+        },
+        "path": {
+          "type": "string",
+          "description": "Base path for admin routes.",
+          "default": "/admin"
+        },
+        "roles": {
+          "type": "array",
+          "description": "Roles that can access admin.",
+          "items": { "type": "string" }
+        },
+        "features": {
+          "type": "array",
+          "description": "Enabled admin features.",
+          "items": {
+            "type": "string",
+            "enum": ["list", "detail", "history", "transitions"]
+          }
+        }
+      }
+    },
+    "eventSourcing": {
+      "type": "object",
+      "description": "Event sourcing configuration.",
+      "properties": {
+        "snapshots": {
+          "$ref": "#/$defs/snapshotConfig"
+        },
+        "retention": {
+          "$ref": "#/$defs/retentionConfig"
+        }
+      }
+    },
+    "snapshotConfig": {
+      "type": "object",
+      "description": "Automatic snapshot configuration.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to create automatic snapshots.",
+          "default": false
+        },
+        "frequency": {
+          "type": "integer",
+          "description": "Create snapshot every N events.",
+          "minimum": 1,
+          "default": 100
+        }
+      }
+    },
+    "retentionConfig": {
+      "type": "object",
+      "description": "Data retention configuration.",
+      "properties": {
+        "events": {
+          "type": "string",
+          "description": "How long to retain events (e.g., '90d', '1y').",
+          "pattern": "^\\d+[dwmy]$"
+        },
+        "snapshots": {
+          "type": "string",
+          "description": "How long to retain snapshots (e.g., '1y', '5y').",
+          "pattern": "^\\d+[dwmy]$"
+        }
+      }
+    }
+  }
+}

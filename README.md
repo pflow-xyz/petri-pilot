@@ -1,8 +1,10 @@
 # Petri Pilot
 
-**From requirements to running applications, through verified Petri net models.**
+**The model is the application.**
 
 Describe your system in plain language. An LLM designs a formal Petri net model. Validation catches deadlocks and structural errors. Deterministic codegen produces a complete application.
+
+The model contains everything: state machine, access control, UI structure, admin dashboard. Code is a projection. Change the model, regenerate, deploy.
 
 No LLM-generated code. The LLM designs models. Codegen produces apps.
 
@@ -79,6 +81,10 @@ Each generated app includes:
 
 ## Model Schema
 
+The model format is formally specified in [`schema/petri-model.schema.json`](schema/petri-model.schema.json). LLMs can validate against this schema before submitting models.
+
+For architectural details, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ### Basic Model
 
 ```json
@@ -119,6 +125,21 @@ See `examples/order-processing.json` for a complete example with:
 | `petri_analyze` | Reachability analysis |
 | `petri_codegen` | Generate Go application |
 | `petri_application` | Generate full-stack app |
+
+### LLM Integration
+
+The model format is designed for LLM consumption:
+
+1. **JSON Schema** - [`schema/petri-model.schema.json`](schema/petri-model.schema.json) for client-side validation
+2. **Structured feedback** - `petri_validate` returns actionable errors with fix suggestions
+3. **Deterministic output** - Same model always produces same code
+
+Workflow:
+```
+Requirements → LLM generates model → Validate → Fix errors → Generate code
+```
+
+The model is the contract between human intent and machine execution.
 
 ## CLI Commands
 
