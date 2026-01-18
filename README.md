@@ -54,7 +54,52 @@ cd myworkflow && go test ./...
 
 ## What Gets Generated
 
-From a single validated model:
+### Phase 12: Complete Full-Stack Applications ✅
+
+From a single Application specification, petri-pilot now generates complete, production-ready applications:
+
+**Backend (14 files):**
+| Output | Description |
+|--------|-------------|
+| `workflow.go` | State machine with guards and transition logic |
+| `events.go` | Event types derived from transitions |
+| `aggregate.go` | Event-sourced aggregate |
+| `api.go` | HTTP handlers with access control middleware |
+| `middleware.go` | Role-based access control with guard evaluation |
+| `auth.go` | OAuth authentication (GitHub) |
+| `workflows.go` | Multi-step workflow orchestration |
+| `api_openapi.yaml` | OpenAPI specification |
+| `workflow_test.go` | Tests using SQLite runtime |
+| `go.mod` | Go module definition |
+| `main.go` | Application entry point |
+| `migrations/001_init.sql` | Database schema |
+| `Dockerfile` | Container image |
+| `docker-compose.yaml` | Local development environment |
+
+**Frontend (7 files):**
+| Output | Description |
+|--------|-------------|
+| `package.json` | NPM dependencies |
+| `vite.config.js` | Build configuration |
+| `index.html` | HTML entry point |
+| `src/main.js` | JavaScript entry point |
+| `src/router.js` | Client-side routing |
+| `src/navigation.js` | Navigation menu |
+| `src/pages.js` | Page layouts (list/detail/form) |
+
+**Features:**
+- ✅ Role-based access control with guard expressions
+- ✅ Multi-step workflow orchestration
+- ✅ Event-sourced architecture
+- ✅ Complete deployment setup
+- ✅ OAuth authentication
+- ✅ OpenAPI documentation
+
+See `examples/task-manager-app.json` for a complete Application spec example.
+
+### Simple Petri Net Models
+
+From a single validated Petri net model:
 
 | Output | Description |
 |--------|-------------|
@@ -111,7 +156,11 @@ When running as an MCP server, these tools are available:
 | `petri_validate` | Validate model, return structured results |
 | `petri_analyze` | Run reachability/sensitivity analysis |
 | `petri_codegen` | Generate code from validated model |
+| `petri_frontend` | Generate frontend from validated model |
 | `petri_visualize` | Generate SVG diagram |
+| `petri_application` | **Generate complete full-stack application** (Phase 12) |
+
+The `petri_application` tool accepts a complete Application specification with entities, roles, pages, and workflows, and generates both backend and frontend code in a single operation.
 
 ## Example
 
