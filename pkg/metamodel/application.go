@@ -19,6 +19,9 @@ type Application struct {
 	// Integrations define external connections.
 	Integrations []Integration `json:"integrations,omitempty"`
 
+	// Webhooks define outbound webhook integrations.
+	Webhooks []Webhook `json:"webhooks,omitempty"`
+
 	// Workflows define cross-entity orchestration.
 	Workflows []Workflow `json:"workflows,omitempty"`
 }
@@ -193,6 +196,22 @@ type Integration struct {
 	Config      map[string]any `json:"config"`
 }
 
+// Webhook defines an outbound webhook integration.
+type Webhook struct {
+	ID          string       `json:"id"`
+	URL         string       `json:"url"`
+	Events      []string     `json:"events"`      // ["order.created", "order.shipped"]
+	Secret      string       `json:"secret"`      // For HMAC signature
+	Enabled     bool         `json:"enabled"`
+	RetryPolicy *RetryPolicy `json:"retryPolicy,omitempty"`
+}
+
+// RetryPolicy defines webhook retry configuration.
+type RetryPolicy struct {
+	MaxAttempts int `json:"maxAttempts"`
+	BackoffMs   int `json:"backoffMs"`
+}
+
 // Workflow defines cross-entity orchestration.
 type Workflow struct {
 	ID          string `json:"id"`
@@ -221,6 +240,7 @@ type WorkflowStep struct {
 	Entity    string `json:"entity,omitempty"`
 	Action    string `json:"action,omitempty"`
 	Condition string `json:"condition,omitempty"`
+	Duration  string `json:"duration,omitempty"` // Duration for wait steps (e.g., "5m", "1h")
 	Input     map[string]string `json:"input,omitempty"` // Mapping from workflow context
 	OnSuccess string `json:"on_success,omitempty"` // Next step ID
 	OnFailure string `json:"on_failure,omitempty"` // Step ID on failure

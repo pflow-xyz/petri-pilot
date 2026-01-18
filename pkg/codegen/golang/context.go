@@ -36,6 +36,9 @@ type Context struct {
 	// Workflow orchestration (Phase 12)
 	Workflows []WorkflowContext
 
+	// Webhook integrations
+	Webhooks []WebhookContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -68,6 +71,7 @@ type WorkflowStepContext struct {
 	Entity     string            // Entity ID for action steps
 	Action     string            // Action ID for action steps
 	Condition  string            // Guard expression for condition steps
+	Duration   string            // Duration for wait steps (e.g., "5m", "1h")
 	Input      map[string]string // Input field mappings
 	OnSuccess  string            // Next step ID on success
 	OnFailure  string            // Next step ID on failure
@@ -86,6 +90,22 @@ type RoleContext struct {
 	Name        string
 	Description string
 	Inherits    []string // Parent role IDs
+}
+
+// WebhookContext provides template-friendly access to webhook configuration.
+type WebhookContext struct {
+	ID          string
+	URL         string
+	Events      []string
+	Secret      string
+	Enabled     bool
+	RetryPolicy *WebhookRetryPolicyContext
+}
+
+// WebhookRetryPolicyContext provides template-friendly access to retry policy.
+type WebhookRetryPolicyContext struct {
+	MaxAttempts int
+	BackoffMs   int
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -227,6 +247,8 @@ type ContextOptions struct {
 	Roles       []RoleContext
 	// Workflow orchestration (Phase 12)
 	Workflows []WorkflowContext
+	// Webhook integrations
+	Webhooks []WebhookContext
 }
 
 // NewContext creates a Context from a model with computed template data.
@@ -255,6 +277,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		AccessRules:      opts.AccessRules,
 		Roles:            opts.Roles,
 		Workflows:        opts.Workflows,
+		Webhooks:         opts.Webhooks,
 	}
 
 	// Build place contexts
@@ -739,4 +762,9 @@ func (c *Context) TransitionRequiresAuth(transitionID string) bool {
 		}
 	}
 	return false
+}
+
+// HasWebhooks returns true if the context has any webhooks defined.
+func (c *Context) HasWebhooks() bool {
+	return len(c.Webhooks) > 0
 }

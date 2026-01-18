@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
 )
 
 // Middleware provides access control for transitions.
 type Middleware struct {
-	sessions SessionStore
-	rules    map[string]*AccessControl // transition ID -> access control
+	sessions      SessionStore
+	rules         map[string]*AccessControl // transition ID -> access control
+	roleHierarchy map[string][]string       // role -> parent roles
 }
 
 // AccessControl defines who can execute a transition.
@@ -30,9 +32,21 @@ func NewMiddleware(sessions SessionStore, rules []*AccessControl) *Middleware {
 	for _, rule := range rules {
 		ruleMap[rule.TransitionID] = rule
 	}
+	
+	// Build role hierarchy (child -> parents)
+	roleHierarchy := make(map[string][]string)
+	{{if .Roles}}
+	{{range .Roles}}
+	{{if .Inherits}}
+	roleHierarchy["{{.ID}}"] = []string{ {{range $i, $parent := .Inherits}}{{if $i}}, {{end}}"{{$parent}}"{{end}} }
+	{{end}}
+	{{end}}
+	{{end}}
+	
 	return &Middleware{
-		sessions: sessions,
-		rules:    ruleMap,
+		sessions:      sessions,
+		rules:         ruleMap,
+		roleHierarchy: roleHierarchy,
 	}
 }
 
@@ -122,29 +136,15 @@ func (m *Middleware) RequirePermission(transitionID string) func(http.Handler) h
 	}
 }
 
-// getUserRoles extracts roles from a user.
-// In a real implementation, this would query a role store.
-// For now, we check if user login contains role indicators.
+// getUserRoles extracts roles from a user with role hierarchy support.
 func (m *Middleware) getUserRoles(user *User) []string {
-	// TODO: Implement proper role extraction from user claims/database
-	// This is a placeholder implementation
-	roles := []string{"user"}
-	
-	// Example: extract from user metadata
-	// if user.Roles != nil {
-	//     return user.Roles
-	// }
-	
-	// Simple heuristic for demo: check login name
-	login := strings.ToLower(user.Login)
-	if strings.Contains(login, "admin") {
-		roles = append(roles, "admin")
-	}
-	if strings.Contains(login, "customer") {
-		roles = append(roles, "customer")
+	// First check if roles are embedded in user object
+	if len(user.Roles) > 0 {
+		return expandRolesWithInheritance(user.Roles, m.roleHierarchy)
 	}
 	
-	return roles
+	// Fallback to default role
+	return []string{"user"}
 }
 
 // hasAnyRole checks if user has at least one of the required roles.
@@ -172,11 +172,20 @@ func (m *Middleware) buildGuardBindings(user *User, r *http.Request) map[string]
 		"id":    user.ID,
 		"login": user.Login,
 		"email": user.Email,
+		"roles": m.getUserRoles(user),
 	}
 	
-	// TODO: Add request parameters, aggregate state, etc.
-	// bindings["request"] = extractRequestParams(r)
-	// bindings["state"] = getCurrentState(r)
+	// Add request parameters
+	bindings["request"] = extractRequestParams(r)
+	
+	// Add aggregate state (if available in context)
+	if state := getAggregateState(r.Context()); state != nil {
+		bindings["state"] = state
+	}
+	
+	// Add metadata
+	bindings["timestamp"] = time.Now().Unix()
+	bindings["path"] = r.URL.Path
 	
 	return bindings
 }
@@ -188,4 +197,73 @@ func EvaluateGuard(guard string, bindings map[string]any) (bool, error) {
 		return true, nil
 	}
 	return dsl.Evaluate(guard, bindings, nil)
+}
+
+// expandRolesWithInheritance expands a list of roles to include inherited roles.
+func expandRolesWithInheritance(roles []string, hierarchy map[string][]string) []string {
+	seen := make(map[string]bool)
+	expanded := make([]string, 0)
+	
+	var expand func(role string)
+	expand = func(role string) {
+		if seen[role] {
+			return
+		}
+		seen[role] = true
+		expanded = append(expanded, role)
+		
+		// Add parent roles
+		if parents, ok := hierarchy[role]; ok {
+			for _, parent := range parents {
+				expand(parent)
+			}
+		}
+	}
+	
+	for _, role := range roles {
+		expand(role)
+	}
+	
+	return expanded
+}
+
+// extractRequestParams extracts parameters from the HTTP request.
+func extractRequestParams(r *http.Request) map[string]any {
+	params := make(map[string]any)
+	
+	// Query parameters
+	query := make(map[string]any)
+	for key, values := range r.URL.Query() {
+		if len(values) == 1 {
+			query[key] = values[0]
+		} else {
+			query[key] = values
+		}
+	}
+	if len(query) > 0 {
+		params["query"] = query
+	}
+	
+	// Path parameters (if stored in context by router)
+	if pathParams := r.Context().Value("pathParams"); pathParams != nil {
+		if p, ok := pathParams.(map[string]string); ok {
+			params["path"] = p
+		}
+	}
+	
+	// HTTP method and headers
+	params["method"] = r.Method
+	params["headers"] = r.Header
+	
+	return params
+}
+
+// getAggregateState retrieves the current aggregate state from context.
+func getAggregateState(ctx context.Context) map[string]any {
+	if state := ctx.Value("aggregateState"); state != nil {
+		if s, ok := state.(map[string]any); ok {
+			return s
+		}
+	}
+	return nil
 }

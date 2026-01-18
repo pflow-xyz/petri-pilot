@@ -44,6 +44,9 @@ const (
 	
 	// Workflow orchestration templates (Phase 12)
 	TemplateWorkflows = "workflows"
+	
+	// Webhook integration templates
+	TemplateWebhooks = "webhooks"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -83,6 +86,9 @@ var templateInfo = map[string]struct {
 	
 	// Workflow orchestration templates (Phase 12)
 	TemplateWorkflows: {File: "workflows.tmpl", Output: "workflows.go"},
+	
+	// Webhook integration templates
+	TemplateWebhooks: {File: "webhooks.tmpl", Output: "webhooks.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -208,6 +214,13 @@ func RealtimeTemplateNames() []string {
 func WorkflowTemplateNames() []string {
 	return []string{
 		TemplateWorkflows,
+	}
+}
+
+// WebhookTemplateNames returns template names for webhook integration files.
+func WebhookTemplateNames() []string {
+	return []string{
+		TemplateWebhooks,
 	}
 }
 
