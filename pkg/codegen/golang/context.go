@@ -32,9 +32,45 @@ type Context struct {
 	// Access control (Phase 11)
 	AccessRules []AccessRuleContext
 	Roles       []RoleContext
+	
+	// Workflow orchestration (Phase 12)
+	Workflows []WorkflowContext
 
 	// Original model for reference
 	Model *schema.Model
+}
+
+// WorkflowContext provides template-friendly access to workflow orchestration data.
+type WorkflowContext struct {
+	ID          string
+	Name        string
+	Description string
+	PascalName  string // e.g., "TaskNotification"
+	CamelName   string // e.g., "taskNotification"
+	TriggerType string // event, schedule, manual
+	Trigger     WorkflowTriggerContext
+	Steps       []WorkflowStepContext
+}
+
+// WorkflowTriggerContext provides template-friendly access to workflow trigger data.
+type WorkflowTriggerContext struct {
+	Type   string // event, schedule, manual
+	Entity string // Entity ID for event triggers
+	Action string // Action ID for event triggers
+	Cron   string // Cron expression for schedule triggers
+}
+
+// WorkflowStepContext provides template-friendly access to workflow step data.
+type WorkflowStepContext struct {
+	ID         string
+	PascalName string
+	Type       string            // action, condition, parallel, wait
+	Entity     string            // Entity ID for action steps
+	Action     string            // Action ID for action steps
+	Condition  string            // Guard expression for condition steps
+	Input      map[string]string // Input field mappings
+	OnSuccess  string            // Next step ID on success
+	OnFailure  string            // Next step ID on failure
 }
 
 // AccessRuleContext provides template-friendly access to access control rules.
@@ -189,6 +225,8 @@ type ContextOptions struct {
 	// Access control (Phase 11)
 	AccessRules []AccessRuleContext
 	Roles       []RoleContext
+	// Workflow orchestration (Phase 12)
+	Workflows []WorkflowContext
 }
 
 // NewContext creates a Context from a model with computed template data.
@@ -216,6 +254,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		Model:            enriched,
 		AccessRules:      opts.AccessRules,
 		Roles:            opts.Roles,
+		Workflows:        opts.Workflows,
 	}
 
 	// Build place contexts
@@ -680,4 +719,24 @@ func (c *Context) GuardForTransition(transitionID string) *GuardContext {
 func (c *Context) UsesMetamodelRuntime() bool {
 	// Use metamodel runtime when we have data places or guards
 	return c.HasDataPlaces() || c.HasGuards()
+}
+
+// HasWorkflows returns true if the context has any workflows defined.
+func (c *Context) HasWorkflows() bool {
+	return len(c.Workflows) > 0
+}
+
+// HasAccessControl returns true if any access rules or roles are defined.
+func (c *Context) HasAccessControl() bool {
+	return len(c.AccessRules) > 0 || len(c.Roles) > 0
+}
+
+// TransitionRequiresAuth returns true if a transition has access control rules.
+func (c *Context) TransitionRequiresAuth(transitionID string) bool {
+	for _, rule := range c.AccessRules {
+		if rule.TransitionID == transitionID {
+			return true
+		}
+	}
+	return false
 }

@@ -41,6 +41,9 @@ const (
 
 	// Real-time templates
 	TemplateRealtime = "realtime"
+	
+	// Workflow orchestration templates (Phase 12)
+	TemplateWorkflows = "workflows"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -77,6 +80,9 @@ var templateInfo = map[string]struct {
 
 	// Real-time templates
 	TemplateRealtime: {File: "realtime.tmpl", Output: "realtime.go"},
+	
+	// Workflow orchestration templates (Phase 12)
+	TemplateWorkflows: {File: "workflows.tmpl", Output: "workflows.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -195,6 +201,13 @@ func DeployTemplateNames() []string {
 func RealtimeTemplateNames() []string {
 	return []string{
 		TemplateRealtime,
+	}
+}
+
+// WorkflowTemplateNames returns template names for workflow orchestration files.
+func WorkflowTemplateNames() []string {
+	return []string{
+		TemplateWorkflows,
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware{{end}}) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -28,7 +28,11 @@ func BuildRouter(app *Application) http.Handler {
 
 	// Transition endpoints
 {{- range .Routes}}
+	{{- if $.TransitionRequiresAuth .TransitionID}}
+	r.Transition("{{.TransitionID}}", "{{.Path}}", "{{.Description}}", middleware.RequirePermission("{{.TransitionID}}")({{.HandlerName}}(app)))
+	{{- else}}
 	r.Transition("{{.TransitionID}}", "{{.Path}}", "{{.Description}}", {{.HandlerName}}(app))
+	{{- end}}
 {{- end}}
 
 	return r.Build()

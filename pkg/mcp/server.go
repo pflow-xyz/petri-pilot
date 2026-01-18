@@ -515,6 +515,46 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				})
 			}
 			
+			// Build workflow contexts (Phase 12)
+			var workflows []golang.WorkflowContext
+			for _, wf := range app.Workflows {
+				// Only include workflows that trigger on this entity
+				if wf.Trigger.Entity == entity.ID || wf.Trigger.Entity == "" {
+					trigger := golang.WorkflowTriggerContext{
+						Type:   wf.Trigger.Type,
+						Entity: wf.Trigger.Entity,
+						Action: wf.Trigger.Action,
+						Cron:   wf.Trigger.Cron,
+					}
+					
+					var steps []golang.WorkflowStepContext
+					for _, step := range wf.Steps {
+						steps = append(steps, golang.WorkflowStepContext{
+							ID:         step.ID,
+							PascalName: toPascalCase(step.ID),
+							Type:       step.Type,
+							Entity:     step.Entity,
+							Action:     step.Action,
+							Condition:  step.Condition,
+							Input:      step.Input,
+							OnSuccess:  step.OnSuccess,
+							OnFailure:  step.OnFailure,
+						})
+					}
+					
+					workflows = append(workflows, golang.WorkflowContext{
+						ID:          wf.ID,
+						Name:        wf.Name,
+						Description: wf.Description,
+						PascalName:  toPascalCase(wf.ID),
+						CamelName:   toCamelCase(wf.ID),
+						TriggerType: wf.Trigger.Type,
+						Trigger:     trigger,
+						Steps:       steps,
+					})
+				}
+			}
+			
 			gen, err := golang.New(golang.Options{
 				PackageName:          entity.ID,
 				IncludeTests:         true,
@@ -529,8 +569,8 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				continue
 			}
 			
-			// Generate files with access control context
-			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles)
+			// Generate files with access control and workflows context
+			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows)
 			if err != nil {
 				sb.WriteString(fmt.Sprintf("Error generating backend: %v\n", err))
 				continue
@@ -539,6 +579,9 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 			sb.WriteString(fmt.Sprintf("Generated %d backend files\n", len(files)))
 			for _, file := range files {
 				sb.WriteString(fmt.Sprintf("  - %s\n", file.Name))
+			}
+			if len(workflows) > 0 {
+				sb.WriteString(fmt.Sprintf("  - Workflows: %d\n", len(workflows)))
 			}
 		}
 		
@@ -606,12 +649,13 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 }
 
 // Helper to generate backend with access control
-func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext) ([]golang.GeneratedFile, error) {
-	// Build context with access rules
+func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext) ([]golang.GeneratedFile, error) {
+	// Build context with access rules and workflows
 	ctx, err := golang.NewContext(model, golang.ContextOptions{
 		PackageName: model.Name,
 		AccessRules: accessRules,
 		Roles:       roles,
+		Workflows:   workflows,
 	})
 	if err != nil {
 		return nil, err
@@ -639,6 +683,11 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model
 	// Add auth templates if we have access rules or roles
 	if len(accessRules) > 0 || len(roles) > 0 {
 		templateNames = append(templateNames, golang.TemplateAuth, golang.TemplateMiddleware)
+	}
+	
+	// Add workflows template if we have workflows (Phase 12)
+	if len(workflows) > 0 {
+		templateNames = append(templateNames, golang.TemplateWorkflows)
 	}
 	
 	for _, name := range templateNames {
@@ -695,6 +744,15 @@ func toPascalCase(s string) string {
 		}
 	}
 	return strings.Join(words, "")
+}
+
+// Helper function for camelCase conversion
+func toCamelCase(s string) string {
+	pascal := toPascalCase(s)
+	if len(pascal) == 0 {
+		return pascal
+	}
+	return strings.ToLower(pascal[:1]) + pascal[1:]
 }
 
 // Helper to split words by various delimiters
