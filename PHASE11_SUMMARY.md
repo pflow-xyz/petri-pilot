@@ -71,8 +71,8 @@ middleware.RequirePermission("submit") // Checks both role and guard
 - **Description**: Generate complete full-stack application from Application spec
 - **Parameters**:
   - `spec` (required) - Complete Application JSON specification
-  - `backend` - Backend language: go, typescript (default: go)
-  - `frontend` - Frontend framework: react, vue, svelte (default: react)
+  - `backend` - Backend language: go, javascript (default: go)
+  - `frontend` - Frontend framework: esm (ES modules), none (default: esm)
   - `database` - Database: postgres, sqlite (default: sqlite)
 
 **Handler**: `handleApplication()`
@@ -87,7 +87,7 @@ middleware.RequirePermission("submit") // Checks both role and guard
 ```
 Generating full-stack application 'task-manager':
 - Backend: go
-- Frontend: react
+- Frontend: esm (ES modules with plain JavaScript)
 - Database: sqlite
 - Entities: 1
 - Roles: 2
@@ -132,7 +132,7 @@ Generating full-stack application 'task-manager':
 ## What Was NOT Implemented (Future Work)
 
 ### Page/Navigation Codegen (Partial)
-**Status**: React templates exist but need Application.Page support
+**Status**: Vanilla JS templates exist but need Application.Page support
 **Remaining**:
 - Update Context to include pages from Application
 - Generate routing configuration from Page specs
@@ -209,7 +209,7 @@ Templates use Go's `text/template` with custom functions:
 | Criterion | Status | Notes |
 |-----------|--------|-------|
 | Access control middleware generated | ✅ | Template created and registered |
-| React pages and navigation generated | 🚧 | Templates exist, need Application support |
+| Vanilla JS pages and navigation generated | 🚧 | Templates exist, need Application support |
 | Workflows execute multi-step orchestrations | ✅ | Template created with error handling |
 | Webhook handlers support events | ⏸️ | Deferred (low priority) |
 | petri_application tool accepts specs | ✅ | Implemented and tested |
@@ -240,7 +240,7 @@ Templates use Go's `text/template` with custom functions:
     "workflows": [...]
   },
   "backend": "go",
-  "frontend": "react"
+  "frontend": "esm"
 }
 ```
 
@@ -261,7 +261,7 @@ mux.Handle("/tasks/{id}/assign", middleware.RequirePermission("assign")(assignHa
 ## Next Steps
 
 1. **Complete Wiring**: Connect templates to generator
-2. **Page Generation**: Implement React components from Page specs
+2. **Page Generation**: Implement vanilla JavaScript components from Page specs
 3. **Full Integration**: End-to-end Application → Code pipeline
 4. **Documentation**: Usage examples and best practices
 5. **Testing**: Integration tests for complete applications
