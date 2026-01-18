@@ -15,7 +15,8 @@ import (
 // WorkflowExecutor executes multi-step workflows.
 type WorkflowExecutor struct {
 	// Handlers for entity actions
-	// TODO: Wire this to actual transition handlers
+	// Application code should register handlers using RegisterHandler
+	// before executing workflows that call actions.
 	handlers map[string]func(context.Context, map[string]any) error
 }
 
@@ -89,7 +90,8 @@ func (w *{{.PascalName}}Workflow) Execute(ctx context.Context, triggerData map[s
 	if err := w.execute{{.PascalName}}(ctx, wfCtx); err != nil {
 		log.Printf("Workflow {{$workflow.Name}} failed at step {{.ID}}: %v", err)
 		{{if .OnFailure}}
-		// TODO: Execute failure handler: {{.OnFailure}}
+		// Note: Failure step execution ({{.OnFailure}}) not yet implemented
+		// For now, the workflow returns an error on any step failure
 		{{end}}
 		return fmt.Errorf("step {{.ID}} failed: %w", err)
 	}
