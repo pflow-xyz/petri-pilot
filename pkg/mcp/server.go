@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	pflowMetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/examples"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
@@ -19,6 +20,7 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
+	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
 )
 
 // NewServer creates a new MCP server with Petri net tools.
@@ -69,6 +71,9 @@ func NewServer() *server.MCPServer {
 		handleAddViewsPrompt,
 	)
 
+	// Register resources
+	registerResources(s)
+
 	return s
 }
 
@@ -76,6 +81,97 @@ func NewServer() *server.MCPServer {
 func Serve() error {
 	s := NewServer()
 	return server.ServeStdio(s)
+}
+
+// --- Resource Definitions ---
+
+func registerResources(s *server.MCPServer) {
+	// JSON Schema resource
+	s.AddResource(
+		mcp.NewResource(
+			"petri://schema",
+			"Petri Net Model JSON Schema",
+			mcp.WithResourceDescription("JSON Schema (Draft 2020-12) for validating Petri net model definitions. Use this to validate models before calling petri_validate."),
+			mcp.WithMIMEType("application/schema+json"),
+		),
+		handleSchemaResource,
+	)
+
+	// Example models index
+	s.AddResource(
+		mcp.NewResource(
+			"petri://examples",
+			"Example Models Index",
+			mcp.WithResourceDescription("List of available example Petri net models. Each example demonstrates different model features."),
+			mcp.WithMIMEType("application/json"),
+		),
+		handleExamplesIndexResource,
+	)
+
+	// Individual example resources
+	for _, name := range examples.List() {
+		exampleName := name // capture for closure
+		s.AddResource(
+			mcp.NewResource(
+				"petri://examples/"+exampleName,
+				exampleName+" example",
+				mcp.WithResourceDescription("Example Petri net model: "+exampleName),
+				mcp.WithMIMEType("application/json"),
+			),
+			func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+				return handleExampleResource(ctx, request, exampleName)
+			},
+		)
+	}
+}
+
+func handleSchemaResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+	return []mcp.ResourceContents{
+		mcp.TextResourceContents{
+			URI:      "petri://schema",
+			MIMEType: "application/schema+json",
+			Text:     string(jsonschema.SchemaJSON),
+		},
+	}, nil
+}
+
+func handleExamplesIndexResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+	exampleList := examples.List()
+	index := struct {
+		Examples []string `json:"examples"`
+		Count    int      `json:"count"`
+	}{
+		Examples: exampleList,
+		Count:    len(exampleList),
+	}
+
+	data, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	return []mcp.ResourceContents{
+		mcp.TextResourceContents{
+			URI:      "petri://examples",
+			MIMEType: "application/json",
+			Text:     string(data),
+		},
+	}, nil
+}
+
+func handleExampleResource(ctx context.Context, request mcp.ReadResourceRequest, name string) ([]mcp.ResourceContents, error) {
+	content, err := examples.Get(name)
+	if err != nil {
+		return nil, fmt.Errorf("example not found: %s", name)
+	}
+
+	return []mcp.ResourceContents{
+		mcp.TextResourceContents{
+			URI:      "petri://examples/" + name,
+			MIMEType: "application/json",
+			Text:     string(content),
+		},
+	}, nil
 }
 
 // --- Tool Definitions ---

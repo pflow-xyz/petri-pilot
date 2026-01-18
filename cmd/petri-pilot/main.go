@@ -18,6 +18,8 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
+	"github.com/pflow-xyz/petri-pilot/examples"
+	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
 )
 
 func main() {
@@ -42,6 +44,10 @@ func main() {
 		cmdDelegate(os.Args[2:])
 	case "mcp":
 		cmdMcp()
+	case "schema":
+		cmdSchema()
+	case "examples":
+		cmdExamples(os.Args[2:])
 	case "help", "-h", "--help":
 		printUsage()
 	case "version", "-v", "--version":
@@ -67,6 +73,8 @@ Commands:
   frontend    Generate vanilla JavaScript ES modules frontend from a validated model
   delegate    Delegate tasks to GitHub Copilot coding agent
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
+  schema      Print the JSON Schema for Petri net models
+  examples    List or show embedded example models
 
 Options:
   -h, --help      Show this help message
@@ -653,4 +661,31 @@ func cmdMcp() {
 		fmt.Fprintf(os.Stderr, "MCP server error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func cmdSchema() {
+	fmt.Println(string(jsonschema.SchemaJSON))
+}
+
+func cmdExamples(args []string) {
+	if len(args) == 0 {
+		// List all examples
+		fmt.Println("Available examples:")
+		for _, name := range examples.List() {
+			fmt.Printf("  %s\n", name)
+		}
+		fmt.Println("\nUsage: petri-pilot examples <name>")
+		return
+	}
+
+	// Show specific example
+	name := args[0]
+	content, err := examples.Get(name)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Example not found: %s\n", name)
+		fmt.Fprintf(os.Stderr, "Run 'petri-pilot examples' to see available examples\n")
+		os.Exit(1)
+	}
+
+	fmt.Println(string(content))
 }
