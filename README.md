@@ -123,6 +123,7 @@ See `examples/order-processing.json` for a complete example with:
 |------|-------------|
 | `petri_validate` | Check model for errors |
 | `petri_analyze` | Reachability analysis |
+| `petri_simulate` | Simulate workflow execution |
 | `petri_codegen` | Generate Go application |
 | `petri_application` | Generate full-stack app |
 

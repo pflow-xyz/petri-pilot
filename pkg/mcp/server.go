@@ -11,6 +11,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	pflowMetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
@@ -31,6 +33,7 @@ func NewServer() *server.MCPServer {
 	// Register tools
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
+	s.AddTool(simulateTool(), handleSimulate)
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
@@ -96,6 +99,20 @@ func analyzeTool() mcp.Tool {
 		),
 		mcp.WithBoolean("full",
 			mcp.Description("Include sensitivity analysis (element importance, symmetry groups)"),
+		),
+	)
+}
+
+func simulateTool() mcp.Tool {
+	return mcp.NewTool("petri_simulate",
+		mcp.WithDescription("Simulate firing transitions and return the resulting state. Use this to verify workflow behavior before code generation."),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The Petri net model as JSON"),
+		),
+		mcp.WithString("transitions",
+			mcp.Required(),
+			mcp.Description("JSON array of transition IDs to fire in order"),
 		),
 	)
 }
@@ -230,6 +247,153 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	}
 
 	outputJSON, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
+func handleSimulate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	transitionsJSON, err := request.RequireString("transitions")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing transitions parameter: %v", err)), nil
+	}
+
+	// Parse model
+	model, err := parseModel(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	// Parse transition sequence
+	var transitions []string
+	if err := json.Unmarshal([]byte(transitionsJSON), &transitions); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid transitions JSON: %v", err)), nil
+	}
+
+	// Convert to go-pflow metamodel
+	metaSchema := bridge.ToMetamodel(model)
+
+	// Create runtime
+	runtime := pflowMetamodel.NewRuntime(metaSchema)
+
+	// Capture initial marking
+	initialMarking := make(map[string]int)
+	for _, state := range metaSchema.States {
+		if state.IsToken() {
+			initialMarking[state.ID] = runtime.Tokens(state.ID)
+		}
+	}
+
+	// Simulate firing transitions
+	var fired []string
+	var failed []struct {
+		TransitionID string `json:"transition_id"`
+		Reason       string `json:"reason"`
+	}
+
+	for _, transitionID := range transitions {
+		// Check if action exists
+		action := metaSchema.ActionByID(transitionID)
+		if action == nil {
+			failed = append(failed, struct {
+				TransitionID string `json:"transition_id"`
+				Reason       string `json:"reason"`
+			}{
+				TransitionID: transitionID,
+				Reason:       "transition not found in model",
+			})
+			continue
+		}
+
+		// Check if enabled
+		if !runtime.Enabled(transitionID) {
+			// Find out why it's not enabled
+			reason := "insufficient tokens in input places"
+			inputArcs := metaSchema.InputArcs(transitionID)
+			if len(inputArcs) == 0 {
+				reason = "transition has no input arcs"
+			} else {
+				var missingTokens []string
+				for _, arc := range inputArcs {
+					st := metaSchema.StateByID(arc.Source)
+					if st != nil && st.IsToken() {
+						if runtime.Tokens(arc.Source) < 1 {
+							missingTokens = append(missingTokens, arc.Source)
+						}
+					}
+				}
+				if len(missingTokens) > 0 {
+					reason = fmt.Sprintf("insufficient tokens in: %s", strings.Join(missingTokens, ", "))
+				}
+			}
+
+			failed = append(failed, struct {
+				TransitionID string `json:"transition_id"`
+				Reason       string `json:"reason"`
+			}{
+				TransitionID: transitionID,
+				Reason:       reason,
+			})
+			continue
+		}
+
+		// Execute the transition
+		if err := runtime.Execute(transitionID); err != nil {
+			failed = append(failed, struct {
+				TransitionID string `json:"transition_id"`
+				Reason       string `json:"reason"`
+			}{
+				TransitionID: transitionID,
+				Reason:       fmt.Sprintf("execution error: %v", err),
+			})
+			continue
+		}
+
+		fired = append(fired, transitionID)
+	}
+
+	// Capture final marking
+	finalMarking := make(map[string]int)
+	for _, state := range metaSchema.States {
+		if state.IsToken() {
+			finalMarking[state.ID] = runtime.Tokens(state.ID)
+		}
+	}
+
+	// Check for deadlock (no enabled transitions)
+	enabledTransitions := runtime.EnabledActions()
+	isDeadlock := len(enabledTransitions) == 0
+
+	// Build result
+	result := struct {
+		Success        bool              `json:"success"`
+		InitialMarking map[string]int    `json:"initial_marking"`
+		FinalMarking   map[string]int    `json:"final_marking"`
+		Fired          []string          `json:"fired"`
+		Failed         []struct {
+			TransitionID string `json:"transition_id"`
+			Reason       string `json:"reason"`
+		} `json:"failed"`
+		IsDeadlock bool     `json:"is_deadlock"`
+		Enabled    []string `json:"enabled,omitempty"`
+	}{
+		Success:        len(failed) == 0,
+		InitialMarking: initialMarking,
+		FinalMarking:   finalMarking,
+		Fired:          fired,
+		Failed:         failed,
+		IsDeadlock:     isDeadlock,
+		Enabled:        enabledTransitions,
+	}
+
+	outputJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 	}
