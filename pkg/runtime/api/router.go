@@ -105,6 +105,16 @@ func (r *Router) Transition(transitionID, path, description string, handler http
 	return r
 }
 
+// staticFileHandler is a fallback handler for serving static files.
+var staticFileHandler http.Handler
+
+// StaticFiles registers a fallback handler for static files.
+// This should be called last and handles any paths not matched by other routes.
+func (r *Router) StaticFiles(prefix string, handler http.Handler) *Router {
+	staticFileHandler = handler
+	return r
+}
+
 // Build constructs the final HTTP handler.
 func (r *Router) Build() http.Handler {
 	// Group routes by path
@@ -134,8 +144,23 @@ func (r *Router) Build() http.Handler {
 		})
 	}
 
+	// Create wrapper handler that falls back to static files
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Check if this path is registered
+		_, pattern := r.mux.Handler(req)
+		if pattern != "" {
+			r.mux.ServeHTTP(w, req)
+			return
+		}
+		// Fall back to static file handler
+		if staticFileHandler != nil {
+			staticFileHandler.ServeHTTP(w, req)
+			return
+		}
+		Error(w, http.StatusNotFound, "NOT_FOUND", "not found")
+	})
+
 	// Apply middleware
-	var handler http.Handler = r.mux
 	for i := len(r.middleware) - 1; i >= 0; i-- {
 		handler = r.middleware[i](handler)
 	}

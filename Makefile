@@ -1,5 +1,6 @@
 .PHONY: build test clean validate-all codegen-all build-examples help
 .PHONY: $(EXAMPLE_TARGETS) $(CODEGEN_TARGETS)
+.PHONY: $(addprefix run-,$(EXAMPLE_NAMES))
 
 # Default target shows help
 .DEFAULT_GOAL := help
@@ -61,6 +62,19 @@ codegen-%: examples/%.json
 	@mkdir -p $(OUTPUT_DIR)/$*
 	go run ./cmd/petri-pilot/... codegen -o $(OUTPUT_DIR)/$* --frontend $<
 
+# Run individual examples (generates, builds frontend, runs server)
+run-%: codegen-%
+	@echo "=== Running $* ==="
+	@cd $(OUTPUT_DIR)/$* && \
+		echo "replace github.com/pflow-xyz/petri-pilot => ../.." >> go.mod && \
+		GOWORK=off go mod tidy && \
+		if [ -d frontend ]; then \
+			echo "Building frontend..." && \
+			cd frontend && npm install && npm run build && cd ..; \
+		fi && \
+		echo "Starting server..." && \
+		GOWORK=off go run .
+
 # Run MCP server
 mcp:
 	go run ./cmd/petri-pilot/... mcp
@@ -92,6 +106,11 @@ help:
 		echo "  codegen-$$name"; \
 	done
 	@echo ""
+	@echo "Run targets (generates code, builds frontend, runs server):"
+	@for name in $(EXAMPLE_NAMES); do \
+		echo "  run-$$name"; \
+	done
+	@echo ""
 	@echo "Other targets:"
 	@echo "  mcp            Run the MCP server"
 	@echo "  generate       Generate model from requirements (REQ='...')"
@@ -99,4 +118,5 @@ help:
 	@echo "Examples:"
 	@echo "  make validate-order-system"
 	@echo "  make codegen-token-ledger OUTPUT_DIR=./myout"
+	@echo "  make run-order-processing   # Run the order-processing example"
 	@echo "  make generate REQ='order processing workflow'"

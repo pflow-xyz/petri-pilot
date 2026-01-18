@@ -75,7 +75,7 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Starting blog-post server on port %s", port)
+		log.Printf("Starting blog-post server on http://localhost:%s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}

@@ -3,7 +3,11 @@
 package main
 
 import (
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
 )
@@ -40,7 +44,48 @@ func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r.Transition("unpublish", "/api/unpublish", "Take down a published post", middleware.RequirePermission("unpublish")(HandleUnpublish(app)))
 	r.Transition("restore", "/api/restore", "Restore archived post to draft", middleware.RequirePermission("restore")(HandleRestore(app)))
 
+	// Serve frontend static files
+	r.StaticFiles("/", StaticFileHandler())
+
 	return r.Build()
+}
+
+// StaticFileHandler returns an http.Handler that serves static files from frontend/dist.
+// It supports SPA routing by returning index.html for paths that don't match static files.
+func StaticFileHandler() http.HandlerFunc {
+	// Find frontend/dist directory
+	distPath := "frontend/dist"
+	if _, err := os.Stat(distPath); os.IsNotExist(err) {
+		// Try relative to executable
+		exe, _ := os.Executable()
+		distPath = filepath.Join(filepath.Dir(exe), "frontend", "dist")
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Clean the path
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+
+		// Try to serve the file
+		fullPath := filepath.Join(distPath, path)
+
+		// Check if file exists
+		info, err := os.Stat(fullPath)
+		if err != nil || info.IsDir() {
+			// File doesn't exist, serve index.html for SPA routing
+			http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+			return
+		}
+
+		http.ServeFile(w, r, fullPath)
+	}
+}
+
+// StaticFS is a helper interface for embedding static files (optional).
+type StaticFS interface {
+	fs.FS
 }
 
 // HandleCreate creates a new aggregate instance.

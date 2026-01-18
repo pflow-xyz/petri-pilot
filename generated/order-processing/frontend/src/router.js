@@ -5,41 +5,45 @@
  * Provides client-side routing with dynamic route matching
  */
 
-// Route definitions
+// Route definitions - order matters! More specific routes first
 export const routes = [
+  // Root redirects to list
+  {
+    path: '/',
+    component: 'List',
+    title: 'order-processing',
+  },
+  // Entity routes
   {
     path: '/order-processing',
-    component: 'OrderProcessingList',
-    title: 'Order-Processing List',
-  },
-  {
-    path: '/order-processing/:id',
-    component: 'OrderProcessingDetail',
-    title: 'Order-Processing Detail',
+    component: 'List',
+    title: 'order-processing',
   },
   {
     path: '/order-processing/new',
-    component: 'OrderProcessingForm',
-    title: 'New Order-Processing',
+    component: 'Form',
+    title: 'New order-processing',
+  },
+  {
+    path: '/order-processing/:id',
+    component: 'Detail',
+    title: 'order-processing Detail',
   },
   // Admin routes
   {
     path: '/admin',
     component: 'AdminDashboard',
     title: 'Admin Dashboard',
-    roles: ['admin'],
   },
   {
     path: '/admin/instances',
     component: 'AdminInstances',
     title: 'Instances',
-    roles: ['admin'],
   },
   {
     path: '/admin/instances/:id',
     component: 'AdminInstance',
     title: 'Instance Detail',
-    roles: ['admin'],
   },
 ]
 
@@ -47,21 +51,30 @@ export const routes = [
 let currentRoute = null
 let currentParams = {}
 
-// Route matcher
+// Route matcher - tries routes in order, returns first match
 function matchRoute(path) {
+  // Normalize path
+  path = path || '/'
+  if (path !== '/' && path.endsWith('/')) {
+    path = path.slice(0, -1)
+  }
+
   for (const route of routes) {
     const params = {}
-    const pattern = route.path.replace(/:[^/]+/g, '([^/]+)')
+    // Escape special regex chars except our param pattern
+    let pattern = route.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // Replace :param with capture group
+    pattern = pattern.replace(/:[^/]+/g, '([^/]+)')
     const regex = new RegExp(`^${pattern}$`)
     const match = path.match(regex)
-    
+
     if (match) {
       // Extract params from dynamic segments
       const paramNames = (route.path.match(/:[^/]+/g) || []).map(p => p.slice(1))
       paramNames.forEach((name, i) => {
-        params[name] = match[i + 1]
+        params[name] = decodeURIComponent(match[i + 1])
       })
-      
+
       return { route, params }
     }
   }
@@ -70,29 +83,43 @@ function matchRoute(path) {
 
 // Navigate to a path
 export function navigate(path, state = {}) {
+  // Handle relative paths
+  if (!path.startsWith('/')) {
+    path = '/' + path
+  }
+
   const match = matchRoute(path)
-  
+
   if (!match) {
-    console.error(`No route found for path: ${path}`)
+    // Fallback to list page for unknown routes
+    console.warn(`No route found for path: ${path}, falling back to list`)
+    path = '/order-processing'
+    const fallback = matchRoute(path)
+    if (fallback) {
+      currentRoute = fallback.route
+      currentParams = fallback.params
+      window.history.pushState(state, '', path)
+      renderCurrentRoute()
+    }
     return
   }
-  
+
   // Check role requirements
   if (match.route.roles && match.route.roles.length > 0) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate('/') // Redirect to home
+      navigate('/order-processing')
       return
     }
   }
-  
+
   currentRoute = match.route
   currentParams = match.params
-  
+
   // Update browser history
   window.history.pushState(state, '', path)
-  
+
   // Trigger render
   renderCurrentRoute()
 }
@@ -105,6 +132,9 @@ window.addEventListener('popstate', () => {
     currentRoute = match.route
     currentParams = match.params
     renderCurrentRoute()
+  } else {
+    // Fallback to list
+    navigate('/order-processing')
   }
 })
 
@@ -123,7 +153,7 @@ function getCurrentUser() {
 
 // Check if user has any of the required roles
 function hasAnyRole(user, roles) {
-  if (!user.roles) {
+  if (!user || !user.roles) {
     return false
   }
   return roles.some(role => user.roles.includes(role))
@@ -131,14 +161,6 @@ function hasAnyRole(user, roles) {
 
 // Render the current route
 function renderCurrentRoute() {
-  const app = document.getElementById('app')
-  if (!app) return
-  
-  if (!currentRoute) {
-    app.innerHTML = '<div class="error">Page not found</div>'
-    return
-  }
-  
   // Dispatch custom event for page changes
   window.dispatchEvent(new CustomEvent('route-change', {
     detail: {
@@ -162,14 +184,13 @@ export function getCurrentRoute() {
 export function initRouter() {
   const path = window.location.pathname
   const match = matchRoute(path)
-  
+
   if (match) {
     currentRoute = match.route
     currentParams = match.params
   } else {
-    // Default to first route
-    if (routes.length > 0) {
-      navigate(routes[0].path)
-    }
+    // Default to list page
+    currentRoute = routes.find(r => r.path === '/order-processing') || routes[0]
+    currentParams = {}
   }
 }

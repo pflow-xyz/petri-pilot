@@ -2,10 +2,20 @@
 
 /**
  * Navigation component for task-manager application
- * Provides role-based navigation menu fetched from backend
+ * Provides navigation menu with fallback defaults
  */
 
-import { navigate, getCurrentRoute } from './router.js'
+import { navigate } from './router.js'
+
+// Default navigation when backend is unavailable
+const defaultNavigation = {
+  brand: 'task-manager',
+  items: [
+    { label: 'task-manager', path: '/task-manager', icon: '' },
+    { label: 'New', path: '/task-manager/new', icon: '+' },
+    { label: 'Admin', path: '/admin', icon: '' },
+  ]
+}
 
 // Navigation state
 let navigationData = null
@@ -14,7 +24,7 @@ let isLoading = false
 // Fetch navigation from backend
 async function fetchNavigation() {
   if (isLoading) return
-  
+
   isLoading = true
   try {
     const headers = {}
@@ -22,19 +32,17 @@ async function fetchNavigation() {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    
+
     const response = await fetch('/api/navigation', { headers })
     if (response.ok) {
       navigationData = await response.json()
     } else {
-      console.error('Failed to fetch navigation:', response.statusText)
-      // Use fallback empty navigation
-      navigationData = { brand: 'task-manager', items: [] }
+      // Use fallback navigation
+      navigationData = defaultNavigation
     }
   } catch (error) {
-    console.error('Error fetching navigation:', error)
-    // Use fallback empty navigation
-    navigationData = { brand: 'task-manager', items: [] }
+    // Use fallback navigation
+    navigationData = defaultNavigation
   } finally {
     isLoading = false
   }
@@ -46,41 +54,46 @@ export async function createNavigation() {
   if (!navigationData) {
     await fetchNavigation()
   }
-  
+
   const currentPath = window.location.pathname
   const user = getCurrentUser()
-  
-  // Backend filters items by user roles
-  const items = navigationData?.items || []
-  
+
+  // Use fetched items or defaults
+  const items = navigationData?.items || defaultNavigation.items
+  const brand = navigationData?.brand || defaultNavigation.brand
+
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/" onclick="handleNavClick(event, '/')">
-          ${navigationData?.brand || 'task-manager'}
+        <a href="/task-manager" onclick="handleNavClick(event, '/task-manager')">
+          ${brand}
         </a>
       </div>
       <ul class="nav-menu">
-        ${items.map(item => `
-          <li class="${currentPath === item.path ? 'active' : ''}">
-            <a href="${item.path}" onclick="handleNavClick(event, '${item.path}')">
-              ${item.icon ? `<span class="icon">${item.icon}</span>` : ''}
-              ${item.label}
-            </a>
-          </li>
-        `).join('')}
+        ${items.map(item => {
+          const isActive = currentPath === item.path ||
+            (item.path !== '/' && currentPath.startsWith(item.path))
+          return `
+            <li class="${isActive ? 'active' : ''}">
+              <a href="${item.path}" onclick="handleNavClick(event, '${item.path}')">
+                ${item.icon ? `<span class="icon">${item.icon}</span>` : ''}
+                ${item.label}
+              </a>
+            </li>
+          `
+        }).join('')}
       </ul>
       <div class="nav-user">
         ${user ? `
-          <span class="user-name">${user.login || user.name}</span>
-          <button onclick="handleLogout()" class="btn btn-link">Logout</button>
+          <span class="user-name">${user.login || user.name || 'User'}</span>
+          <button onclick="handleLogout()" class="btn btn-link" style="color: rgba(255,255,255,0.8);">Logout</button>
         ` : `
-          <a href="/auth/login" class="btn btn-primary">Login</a>
+          <a href="/auth/login" class="btn btn-primary btn-sm">Login</a>
         `}
       </div>
     </nav>
   `
-  
+
   return html
 }
 
@@ -93,22 +106,29 @@ window.handleNavClick = function(event, path) {
 // Handle logout
 window.handleLogout = async function() {
   try {
-    await fetch('/auth/logout', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-    })
+    const token = getAuthToken()
+    if (token) {
+      await fetch('/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    }
   } catch (e) {
     console.error('Logout error:', e)
   }
-  
+
   // Clear local auth
   localStorage.removeItem('auth')
-  
+
   // Clear navigation cache to refetch with new user context
   navigationData = null
-  
-  // Redirect to home
-  navigate('/')
+
+  // Dispatch auth change event
+  window.dispatchEvent(new CustomEvent('auth-change'))
+
+  // Refresh navigation and redirect
+  await refreshNavigation()
+  navigate('/task-manager')
 }
 
 // Helper functions
@@ -136,20 +156,13 @@ function getAuthToken() {
   return null
 }
 
-function hasAnyRole(user, roles) {
-  if (!user.roles) {
-    return false
-  }
-  return roles.some(role => user.roles.includes(role))
-}
-
 // Refresh navigation (e.g., after login/logout)
 export async function refreshNavigation() {
   navigationData = null
   await fetchNavigation()
-  const navElement = document.querySelector('.navigation')
+  const navElement = document.getElementById('nav')
   if (navElement) {
-    navElement.outerHTML = await createNavigation()
+    navElement.innerHTML = await createNavigation()
   }
 }
 
@@ -164,9 +177,12 @@ window.addEventListener('route-change', () => {
   document.querySelectorAll('.nav-menu li').forEach(li => {
     li.classList.remove('active')
   })
-  
-  const activeLink = document.querySelector(`.nav-menu a[href="${currentPath}"]`)
-  if (activeLink) {
-    activeLink.parentElement.classList.add('active')
-  }
+
+  // Find and highlight active link
+  document.querySelectorAll('.nav-menu a').forEach(a => {
+    const href = a.getAttribute('href')
+    if (href === currentPath || (href !== '/' && currentPath.startsWith(href))) {
+      a.parentElement.classList.add('active')
+    }
+  })
 })
