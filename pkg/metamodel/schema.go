@@ -2,6 +2,8 @@
 // This is a local fork of go-pflow/metamodel, extended for petri-pilot's needs.
 package metamodel
 
+import "github.com/pflow-xyz/petri-pilot/pkg/schema"
+
 // Kind discriminates between token-counting and data-holding states.
 type Kind string
 
@@ -263,4 +265,69 @@ func (s *Schema) OutputArcs(actionID string) []Arc {
 		}
 	}
 	return result
+}
+
+// ToModel converts the local metamodel.Schema to schema.Model for code generation.
+func (s *Schema) ToModel() *schema.Model {
+	model := &schema.Model{
+		Name:        s.Name,
+		Version:     s.Version,
+		Description: s.Description,
+	}
+
+	// Convert states to places
+	for _, state := range s.States {
+		place := schema.Place{
+			ID:          state.ID,
+			Description: state.Description,
+			Type:        state.Type,
+			Exported:    state.Exported,
+		}
+
+		if state.IsToken() {
+			place.Kind = schema.TokenKind
+			place.Initial = state.InitialTokens()
+		} else {
+			place.Kind = schema.DataKind
+			place.Initial = 0
+		}
+
+		model.Places = append(model.Places, place)
+	}
+
+	// Convert actions to transitions
+	for _, action := range s.Actions {
+		transition := schema.Transition{
+			ID:          action.ID,
+			Description: action.Description,
+			Guard:       action.Guard,
+			Bindings:    action.Bindings,
+		}
+		model.Transitions = append(model.Transitions, transition)
+	}
+
+	// Convert arcs
+	for _, arc := range s.Arcs {
+		modelArc := schema.Arc{
+			From:   arc.Source,
+			To:     arc.Target,
+			Weight: arc.Weight,
+			Keys:   arc.Keys,
+			Value:  arc.Value,
+		}
+		if modelArc.Weight == 0 {
+			modelArc.Weight = 1
+		}
+		model.Arcs = append(model.Arcs, modelArc)
+	}
+
+	// Convert constraints
+	for _, constraint := range s.Constraints {
+		model.Constraints = append(model.Constraints, schema.Constraint{
+			ID:   constraint.ID,
+			Expr: constraint.Expr,
+		})
+	}
+
+	return model
 }

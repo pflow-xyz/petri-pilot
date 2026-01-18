@@ -136,3 +136,8 @@ func GenerateToDir(model *schema.Model, outputDir string) ([]string, error) {
 	}
 	return gen.Generate(model)
 }
+
+// GetTemplates returns the template manager for this generator.
+func (g *Generator) GetTemplates() *Templates {
+	return g.templates
+}
