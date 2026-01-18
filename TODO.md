@@ -1,4 +1,63 @@
-# TODO: MCP Enhancements
+# TODO
+
+## Schema Redesign: Events First
+
+Restructure the schema so events (form submissions) are the foundation, with workflow as a layer on top.
+
+**Current approach:** Transitions have `event_type` and `bindings` as attributes - events are subordinate to workflow.
+
+**Proposed approach:** Events define the data contract; workflow constrains valid event sequences.
+
+```
+Events (form submissions with typed payloads)
+    ↓
+Workflow (Petri net constraining valid event sequences)
+    ↓
+State (projection/fold over events)
+    ↓
+Views (derived from event schemas)
+```
+
+**Example structure:**
+```json
+{
+  "events": [
+    {
+      "id": "order_submitted",
+      "fields": [
+        {"name": "customer_name", "type": "string", "required": true},
+        {"name": "items", "type": "array", "of": "line_item"},
+        {"name": "total", "type": "number"}
+      ]
+    },
+    {
+      "id": "order_validated",
+      "fields": [
+        {"name": "validated_by", "type": "string"}
+      ]
+    }
+  ],
+  "workflow": {
+    "transitions": [
+      {"id": "submit", "event": "order_submitted"},
+      {"id": "validate", "event": "order_validated"}
+    ],
+    "places": [...],
+    "arcs": [...]
+  }
+}
+```
+
+**Benefits:**
+- Events define the data contract (what can be submitted)
+- Workflow defines sequencing (when it's valid to submit)
+- Views/forms derive from event schemas automatically
+- Current state is `fold(events)` - pure event sourcing
+- Closes the gap where views reference fields not defined in the model
+
+---
+
+# MCP Enhancements
 
 ## MCP Prompts
 
