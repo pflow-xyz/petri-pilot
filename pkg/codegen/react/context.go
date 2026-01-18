@@ -34,6 +34,7 @@ type Context struct {
 	HasEventSourcing bool
 	HasSnapshots     bool
 	HasViews         bool
+	HasAdmin         bool
 
 	// Original model for reference
 	Model *schema.Model
@@ -131,6 +132,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		HasEventSourcing: true,
 		HasSnapshots:     true,
 		HasViews:         len(enriched.Views) > 0,
+		HasAdmin:         true, // Always generate admin dashboard
 	}
 
 	// Build place contexts

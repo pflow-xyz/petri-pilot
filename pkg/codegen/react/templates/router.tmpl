@@ -17,6 +17,27 @@ export const routes = [
     {{- end}}
   },
 {{- end}}
+{{- if .HasAdmin}}
+  // Admin routes
+  {
+    path: '/admin',
+    component: 'AdminDashboard',
+    title: 'Admin Dashboard',
+    roles: ['admin'],
+  },
+  {
+    path: '/admin/instances',
+    component: 'AdminInstances',
+    title: 'Instances',
+    roles: ['admin'],
+  },
+  {
+    path: '/admin/instances/:id',
+    component: 'AdminInstance',
+    title: 'Instance Detail',
+    roles: ['admin'],
+  },
+{{- end}}
 ]
 
 // Current route state
