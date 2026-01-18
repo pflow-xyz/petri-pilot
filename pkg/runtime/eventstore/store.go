@@ -4,6 +4,7 @@ package eventstore
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
 )
@@ -80,4 +81,29 @@ type SnapshotStore interface {
 
 	// Delete removes snapshots for a stream.
 	Delete(ctx context.Context, streamID string) error
+}
+
+// Instance represents an aggregate instance summary.
+type Instance struct {
+	ID        string                 `json:"id"`
+	Version   int                    `json:"version"`
+	State     map[string]int         `json:"state"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	UpdatedAt time.Time              `json:"updated_at"`
+}
+
+// Stats represents aggregate statistics.
+type Stats struct {
+	TotalInstances int            `json:"total_instances"`
+	ByPlace        map[string]int `json:"by_place"`
+}
+
+// AdminStore provides administrative query capabilities for the event store.
+type AdminStore interface {
+	// ListInstances returns a paginated list of aggregate instances.
+	// place, from, and to are optional filters.
+	ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]Instance, int, error)
+
+	// GetStats returns statistics about stored aggregates.
+	GetStats(ctx context.Context) (*Stats, error)
 }

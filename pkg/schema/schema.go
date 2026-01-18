@@ -28,6 +28,15 @@ type Model struct {
 
 	// Views (Phase 13)
 	Views []View `json:"views,omitempty"`
+
+	// Navigation (Phase 14)
+	Navigation *Navigation `json:"navigation,omitempty"`
+
+	// Admin Dashboard (Phase 14)
+	Admin *Admin `json:"admin,omitempty"`
+
+	// Event Sourcing (Phase 14)
+	EventSourcing *EventSourcing `json:"eventSourcing,omitempty"`
 }
 
 // View represents a UI view definition for presenting workflow data.
@@ -212,4 +221,44 @@ type FeedbackPrompt struct {
 	CurrentModel         *Model           `json:"current_model"`
 	ValidationResult     *ValidationResult `json:"validation_result"`
 	Instructions         string           `json:"instructions"`
+}
+
+// Navigation represents the navigation menu configuration.
+type Navigation struct {
+	Brand string           `json:"brand"`
+	Items []NavigationItem `json:"items"`
+}
+
+// NavigationItem represents a single navigation menu item.
+type NavigationItem struct {
+	Label string   `json:"label"`
+	Path  string   `json:"path"`
+	Icon  string   `json:"icon,omitempty"`
+	Roles []string `json:"roles,omitempty"` // empty = visible to all
+}
+
+// Admin represents admin dashboard configuration.
+type Admin struct {
+	Enabled  bool     `json:"enabled"`
+	Path     string   `json:"path"`
+	Roles    []string `json:"roles"`
+	Features []string `json:"features"` // list, detail, history, transitions
+}
+
+// EventSourcing represents event sourcing configuration.
+type EventSourcing struct {
+	Snapshots *SnapshotConfig  `json:"snapshots,omitempty"`
+	Retention *RetentionConfig `json:"retention,omitempty"`
+}
+
+// SnapshotConfig controls automatic snapshot creation.
+type SnapshotConfig struct {
+	Enabled   bool `json:"enabled"`
+	Frequency int  `json:"frequency"` // Every N events
+}
+
+// RetentionConfig controls event and snapshot retention.
+type RetentionConfig struct {
+	Events    string `json:"events"`    // e.g., "90d"
+	Snapshots string `json:"snapshots"` // e.g., "1y"
 }
