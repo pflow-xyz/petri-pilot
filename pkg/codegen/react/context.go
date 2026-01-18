@@ -30,6 +30,11 @@ type Context struct {
 	// Pages for navigation and routing
 	Pages []PageContext
 
+	// Feature flags
+	HasEventSourcing bool
+	HasSnapshots     bool
+	HasViews         bool
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -122,6 +127,10 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
 		Model:            enriched,
+		// Feature flags - event sourcing is always enabled in generated backends
+		HasEventSourcing: true,
+		HasSnapshots:     true,
+		HasViews:         len(enriched.Views) > 0,
 	}
 
 	// Build place contexts

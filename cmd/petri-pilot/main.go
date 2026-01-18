@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
@@ -423,6 +424,7 @@ func cmdCodegen(args []string) {
 	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")
 	includeRealtime := fs.Bool("realtime", false, "Include SSE and WebSocket handlers")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
+	includeFrontend := fs.Bool("frontend", false, "Generate ES modules frontend in frontend/ subdirectory")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -537,6 +539,32 @@ func cmdCodegen(args []string) {
 	fmt.Printf("Generated %d files:\n", len(paths))
 	for _, path := range paths {
 		fmt.Printf("  %s\n", path)
+	}
+
+	// Generate frontend if requested
+	if *includeFrontend {
+		frontendDir := filepath.Join(*output, "frontend")
+
+		frontendGen, err := react.New(react.Options{
+			OutputDir:   frontendDir,
+			ProjectName: pkgName,
+			APIBaseURL:  "http://localhost:8080",
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating frontend generator: %v\n", err)
+			os.Exit(1)
+		}
+
+		frontendPaths, err := frontendGen.Generate(&model)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("\nGenerated %d frontend files:\n", len(frontendPaths))
+		for _, path := range frontendPaths {
+			fmt.Printf("  %s\n", path)
+		}
 	}
 }
 

@@ -19,6 +19,8 @@ const (
 	TemplateRouter      = "router"
 	TemplateNavigation  = "navigation"
 	TemplatePages       = "pages"
+	TemplateViews       = "views"
+	TemplateEvents      = "events"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -33,6 +35,8 @@ var templateInfo = map[string]struct {
 	TemplateRouter:      {File: "router.tmpl", Output: "src/router.js"},
 	TemplateNavigation:  {File: "navigation.tmpl", Output: "src/navigation.js"},
 	TemplatePages:       {File: "pages.tmpl", Output: "src/pages.js"},
+	TemplateViews:       {File: "views.tmpl", Output: "src/views.js"},
+	TemplateEvents:      {File: "events.tmpl", Output: "src/events.js"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -97,5 +101,7 @@ func AllTemplateNames() []string {
 		TemplateRouter,
 		TemplateNavigation,
 		TemplatePages,
+		TemplateViews,
+		TemplateEvents,
 	}
 }
