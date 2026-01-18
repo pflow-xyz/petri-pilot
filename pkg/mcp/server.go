@@ -41,6 +41,31 @@ func NewServer() *server.MCPServer {
 	s.AddTool(delegateStatusTool(), handleDelegateStatus)
 	s.AddTool(delegateTasksTool(), handleDelegateTasks)
 
+	// Register prompts for guided workflows
+	s.AddPrompt(
+		mcp.NewPrompt("design-workflow",
+			mcp.WithPromptDescription("Guide through designing a new workflow from requirements"),
+			mcp.WithArgument("description", mcp.ArgumentDescription("What the workflow should do")),
+		),
+		handleDesignWorkflowPrompt,
+	)
+
+	s.AddPrompt(
+		mcp.NewPrompt("add-access-control",
+			mcp.WithPromptDescription("Guide adding roles and permissions to an existing model"),
+			mcp.WithArgument("model", mcp.ArgumentDescription("Optional: The Petri net model JSON to add access control to")),
+		),
+		handleAddAccessControlPrompt,
+	)
+
+	s.AddPrompt(
+		mcp.NewPrompt("add-views",
+			mcp.WithPromptDescription("Guide designing UI views for a model"),
+			mcp.WithArgument("model", mcp.ArgumentDescription("Optional: The Petri net model JSON to add views to")),
+		),
+		handleAddViewsPrompt,
+	)
+
 	return s
 }
 
