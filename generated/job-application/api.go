@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the job-application workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,19 +26,26 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/jobapplication/{id}", "Get job-application state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("start_screening", "/api/start_screening", "Begin candidate screening", HandleStartScreening(app))
-	r.Transition("schedule_phone_screen", "/api/schedule_phone_screen", "Schedule phone screen", HandleSchedulePhoneScreen(app))
-	r.Transition("start_background_check", "/api/start_background_check", "Initiate background check", HandleStartBackgroundCheck(app))
-	r.Transition("complete_phone_screen", "/api/complete_phone_screen", "Complete phone screen", HandleCompletePhoneScreen(app))
-	r.Transition("complete_background_check", "/api/complete_background_check", "Complete background check", HandleCompleteBackgroundCheck(app))
-	r.Transition("advance_to_interview", "/api/advance_to_interview", "Both checks passed, advance to interview", HandleAdvanceToInterview(app))
-	r.Transition("conduct_interview", "/api/conduct_interview", "Conduct interview", HandleConductInterview(app))
-	r.Transition("extend_offer", "/api/extend_offer", "Extend job offer", HandleExtendOffer(app))
-	r.Transition("accept_offer", "/api/accept_offer", "Candidate accepts offer", HandleAcceptOffer(app))
-	r.Transition("reject_after_screen", "/api/reject_after_screen", "Reject after screening", HandleRejectAfterScreen(app))
-	r.Transition("reject_after_interview", "/api/reject_after_interview", "Reject after interview", HandleRejectAfterInterview(app))
-	r.Transition("decline_offer", "/api/decline_offer", "Candidate declines offer", HandleDeclineOffer(app))
+	r.Transition("start_screening", "/api/start_screening", "Begin candidate screening", middleware.RequirePermission("start_screening")(HandleStartScreening(app)))
+	r.Transition("schedule_phone_screen", "/api/schedule_phone_screen", "Schedule phone screen", middleware.RequirePermission("schedule_phone_screen")(HandleSchedulePhoneScreen(app)))
+	r.Transition("start_background_check", "/api/start_background_check", "Initiate background check", middleware.RequirePermission("start_background_check")(HandleStartBackgroundCheck(app)))
+	r.Transition("complete_phone_screen", "/api/complete_phone_screen", "Complete phone screen", middleware.RequirePermission("complete_phone_screen")(HandleCompletePhoneScreen(app)))
+	r.Transition("complete_background_check", "/api/complete_background_check", "Complete background check", middleware.RequirePermission("complete_background_check")(HandleCompleteBackgroundCheck(app)))
+	r.Transition("advance_to_interview", "/api/advance_to_interview", "Both checks passed, advance to interview", middleware.RequirePermission("advance_to_interview")(HandleAdvanceToInterview(app)))
+	r.Transition("conduct_interview", "/api/conduct_interview", "Conduct interview", middleware.RequirePermission("conduct_interview")(HandleConductInterview(app)))
+	r.Transition("extend_offer", "/api/extend_offer", "Extend job offer", middleware.RequirePermission("extend_offer")(HandleExtendOffer(app)))
+	r.Transition("accept_offer", "/api/accept_offer", "Candidate accepts offer", middleware.RequirePermission("accept_offer")(HandleAcceptOffer(app)))
+	r.Transition("reject_after_screen", "/api/reject_after_screen", "Reject after screening", middleware.RequirePermission("reject_after_screen")(HandleRejectAfterScreen(app)))
+	r.Transition("reject_after_interview", "/api/reject_after_interview", "Reject after interview", middleware.RequirePermission("reject_after_interview")(HandleRejectAfterInterview(app)))
+	r.Transition("decline_offer", "/api/decline_offer", "Candidate declines offer", middleware.RequirePermission("decline_offer")(HandleDeclineOffer(app)))
 
 	return r.Build()
 }
@@ -153,7 +160,7 @@ func HandleStartScreening(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -185,7 +192,7 @@ func HandleSchedulePhoneScreen(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -217,7 +224,7 @@ func HandleStartBackgroundCheck(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -249,7 +256,7 @@ func HandleCompletePhoneScreen(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -281,7 +288,7 @@ func HandleCompleteBackgroundCheck(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -313,7 +320,7 @@ func HandleAdvanceToInterview(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -345,7 +352,7 @@ func HandleConductInterview(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -377,7 +384,7 @@ func HandleExtendOffer(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -409,7 +416,7 @@ func HandleAcceptOffer(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -441,7 +448,7 @@ func HandleRejectAfterScreen(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -473,7 +480,7 @@ func HandleRejectAfterInterview(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -505,9 +512,32 @@ func HandleDeclineOffer(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

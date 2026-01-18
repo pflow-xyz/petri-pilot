@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the blog-post workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,12 +26,19 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/blogpost/{id}", "Get blog-post state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("submit", "/api/submit", "Submit draft for review", HandleSubmit(app))
-	r.Transition("approve", "/api/approve", "Approve and publish the post", HandleApprove(app))
-	r.Transition("reject", "/api/reject", "Reject and return to draft", HandleReject(app))
-	r.Transition("unpublish", "/api/unpublish", "Take down a published post", HandleUnpublish(app))
-	r.Transition("restore", "/api/restore", "Restore archived post to draft", HandleRestore(app))
+	r.Transition("submit", "/api/submit", "Submit draft for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
+	r.Transition("approve", "/api/approve", "Approve and publish the post", middleware.RequirePermission("approve")(HandleApprove(app)))
+	r.Transition("reject", "/api/reject", "Reject and return to draft", middleware.RequirePermission("reject")(HandleReject(app)))
+	r.Transition("unpublish", "/api/unpublish", "Take down a published post", middleware.RequirePermission("unpublish")(HandleUnpublish(app)))
+	r.Transition("restore", "/api/restore", "Restore archived post to draft", middleware.RequirePermission("restore")(HandleRestore(app)))
 
 	return r.Build()
 }
@@ -146,7 +153,7 @@ func HandleSubmit(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -178,7 +185,7 @@ func HandleApprove(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -210,7 +217,7 @@ func HandleReject(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -242,7 +249,7 @@ func HandleUnpublish(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -274,9 +281,32 @@ func HandleRestore(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

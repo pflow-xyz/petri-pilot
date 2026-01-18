@@ -26,6 +26,13 @@ func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	// Get aggregate state
 	r.GET("/api/accesstest/{id}", "Get access-test state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
 	r.Transition("submit", "/items/{id}/submit", "Submit for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
 	r.Transition("approve", "/items/{id}/approve", "Approve the submission", middleware.RequirePermission("approve")(HandleApprove(app)))
@@ -144,7 +151,7 @@ func HandleSubmit(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -176,7 +183,7 @@ func HandleApprove(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -208,9 +215,32 @@ func HandleReject(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

@@ -41,9 +41,11 @@ func BuildRouter(app *Application, middleware *Middleware, navigation *Navigatio
 	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
 
+
 	// Event replay endpoints
 	r.GET("/api/taskmanager/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/taskmanager/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+
 
 	r.POST("/api/taskmanager/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/taskmanager/{id}/replay", "Replay from snapshot", HandleReplay(app))
@@ -271,28 +273,49 @@ func HandleReject(app *Application) http.HandlerFunc {
 
 
 
-// HandleNavigation wraps the navigation handler.
+// HandleNavigation returns the navigation menu, filtered by user roles.
 func HandleNavigation(nav *Navigation) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-userRoles := getUserRoles(r)
+	return func(w http.ResponseWriter, r *http.Request) {
+		userRoles := getNavUserRoles(r)
 
-items := []NavigationItem{}
-for _, item := range nav.Items {
-if len(item.Roles) == 0 {
-items = append(items, item)
-continue
+		items := []NavigationItem{}
+		for _, item := range nav.Items {
+			if len(item.Roles) == 0 {
+				items = append(items, item)
+				continue
+			}
+
+			if navHasAnyRole(userRoles, item.Roles) {
+				items = append(items, item)
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"brand": nav.Brand,
+			"items": items,
+		})
+	}
 }
 
-if hasAnyRole(userRoles, item.Roles) {
-items = append(items, item)
-}
+// getNavUserRoles extracts user roles from the request context.
+func getNavUserRoles(r *http.Request) []string {
+	user, ok := r.Context().Value("user").(*User)
+	if !ok || user == nil {
+		return nil
+	}
+	return user.Roles
 }
 
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"brand": nav.Brand,
-"items": items,
-})
-}
+// navHasAnyRole checks if user has at least one of the required roles.
+func navHasAnyRole(userRoles []string, requiredRoles []string) bool {
+	for _, required := range requiredRoles {
+		for _, userRole := range userRoles {
+			if userRole == required {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 
@@ -394,60 +417,65 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 }
 
 
+
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
-from := getIntQueryParam(r, "from", 0)
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		from := getIntQueryParam(r, "from", 0)
 
-events, err := app.store.Read(ctx, id, from)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
-return
-}
+		events, err := app.store.Read(ctx, id, from)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
 
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"events": events,
-})
-}
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"events": events,
+		})
+	}
 }
 
 // HandleGetStateAtVersion returns the aggregate state at a specific version.
 func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
-versionStr := r.PathValue("version")
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		versionStr := r.PathValue("version")
 
-version := getInt(versionStr, 0)
-if version <= 0 {
-api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
-return
+		version := getInt(versionStr, 0)
+		if version <= 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
+			return
+		}
+
+		events, err := app.store.Read(ctx, id, 0)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Create temporary aggregate and replay up to version
+		agg := NewAggregate(id)
+		for _, evt := range events {
+			if evt.Version > version {
+				break
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":      agg.ID(),
+			"version": version,
+			"state":   agg.State(),
+		})
+	}
 }
 
-events, err := app.store.Read(ctx, id, 0)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
-return
-}
-
-// Create temporary aggregate and replay up to version
-agg := NewAggregate(id)
-}
-if err := agg.Apply(evt); err != nil {
-api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
-return
-}
-}
-
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"id":      agg.ID(),
-"version": version,
-"state":   agg.State(),
-})
-}
-}
 
 
 // HandleCreateSnapshot creates a snapshot of the current aggregate state.
@@ -494,69 +522,87 @@ api.JSON(w, http.StatusCreated, map[string]interface{}{
 
 // HandleReplay replays events from the latest snapshot.
 func HandleReplay(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
 
-snapshotStore, ok := app.store.(eventstore.SnapshotStore)
-if !ok {
-api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
-return
+		snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+		if !ok {
+			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
+			return
+		}
+
+		// Load latest snapshot
+		snap, err := snapshotStore.Load(ctx, id)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "LOAD_FAILED", err.Error())
+			return
+		}
+		fromVersion := 0
+
+		agg := NewAggregate(id)
+
+		if snap != nil {
+			// Restore from snapshot
+			var state map[string]int
+			if err := json.Unmarshal(snap.State, &state); err != nil {
+				api.Error(w, http.StatusInternalServerError, "UNMARSHAL_FAILED", err.Error())
+				return
+			}
+
+			// This is a simplified restore - actual implementation depends on aggregate structure
+			fromVersion = snap.Version
+		}
+
+		// Load events after snapshot
+		events, err := app.store.Read(ctx, id, fromVersion)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Replay events
+		eventsApplied := 0
+		for _, evt := range events {
+			if evt.Version <= fromVersion {
+				continue
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+			eventsApplied++
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":                     agg.ID(),
+			"version":                agg.Version(),
+			"state":                  agg.State(),
+			"replayed_from_snapshot": fromVersion,
+			"events_applied":         eventsApplied,
+		})
+	}
 }
 
-// Load latest snapshot
-if err := json.Unmarshal(snap.State, &state); err != nil {
-api.Error(w, http.StatusInternalServerError, "UNMARSHAL_FAILED", err.Error())
-return
-}
-
-// Load events after snapshot
-events, err := app.store.Read(ctx, id, fromVersion)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
-return
-}
-
-// Replay events
-eventsApplied := 0
-for _, evt := range events {
-if evt.Version <= fromVersion {
-continue
-}
-if err := agg.Apply(evt); err != nil {
-api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
-return
-}
-eventsApplied++
-}
-
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"id":                      agg.ID(),
-"version":                 agg.Version(),
-"state":                   agg.State(),
-"replayed_from_snapshot":  fromVersion,
-"events_applied":          eventsApplied,
-})
-}
-}
 
 
 // Helper functions
 
 func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
-val := r.URL.Query().Get(name)
-return getInt(val, defaultVal)
+	val := r.URL.Query().Get(name)
+	return getInt(val, defaultVal)
 }
 
 func getInt(s string, defaultVal int) int {
-if s == "" {
-return defaultVal
+	if s == "" {
+		return defaultVal
+	}
+
+	intVal, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+
+	return intVal
 }
 
-intVal, err := strconv.Atoi(s)
-if err != nil {
-return defaultVal
-}
-
-return intVal
-}

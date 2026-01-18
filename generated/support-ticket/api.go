@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the support-ticket workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,15 +26,22 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/supportticket/{id}", "Get support-ticket state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("assign", "/api/assign", "Assign ticket to an agent", HandleAssign(app))
-	r.Transition("start_work", "/api/start_work", "Begin working on the ticket", HandleStartWork(app))
-	r.Transition("escalate", "/api/escalate", "Escalate to senior support", HandleEscalate(app))
-	r.Transition("request_info", "/api/request_info", "Request more information from customer", HandleRequestInfo(app))
-	r.Transition("customer_reply", "/api/customer_reply", "Customer provides requested information", HandleCustomerReply(app))
-	r.Transition("resolve", "/api/resolve", "Mark issue as resolved", HandleResolve(app))
-	r.Transition("close", "/api/close", "Close the ticket", HandleClose(app))
-	r.Transition("reopen", "/api/reopen", "Customer reopens a closed ticket", HandleReopen(app))
+	r.Transition("assign", "/api/assign", "Assign ticket to an agent", middleware.RequirePermission("assign")(HandleAssign(app)))
+	r.Transition("start_work", "/api/start_work", "Begin working on the ticket", middleware.RequirePermission("start_work")(HandleStartWork(app)))
+	r.Transition("escalate", "/api/escalate", "Escalate to senior support", middleware.RequirePermission("escalate")(HandleEscalate(app)))
+	r.Transition("request_info", "/api/request_info", "Request more information from customer", middleware.RequirePermission("request_info")(HandleRequestInfo(app)))
+	r.Transition("customer_reply", "/api/customer_reply", "Customer provides requested information", middleware.RequirePermission("customer_reply")(HandleCustomerReply(app)))
+	r.Transition("resolve", "/api/resolve", "Mark issue as resolved", middleware.RequirePermission("resolve")(HandleResolve(app)))
+	r.Transition("close", "/api/close", "Close the ticket", middleware.RequirePermission("close")(HandleClose(app)))
+	r.Transition("reopen", "/api/reopen", "Customer reopens a closed ticket", middleware.RequirePermission("reopen")(HandleReopen(app)))
 
 	return r.Build()
 }
@@ -149,7 +156,7 @@ func HandleAssign(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -181,7 +188,7 @@ func HandleStartWork(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -213,7 +220,7 @@ func HandleEscalate(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -245,7 +252,7 @@ func HandleRequestInfo(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -277,7 +284,7 @@ func HandleCustomerReply(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -309,7 +316,7 @@ func HandleResolve(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -341,7 +348,7 @@ func HandleClose(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -373,9 +380,32 @@ func HandleReopen(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

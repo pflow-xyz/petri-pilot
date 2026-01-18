@@ -21,9 +21,73 @@ func main() {
 
 	// Create application
 	app := NewApplication(store)
+	// Initialize sessions for authentication
+	sessions := NewInMemorySessionStore()
+	
+	// Configure access control rules
+	accessRules := []*AccessControl{
+		{
+			TransitionID: "start_checkout",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "enter_payment",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "process_payment",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_success",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_1",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "retry_payment_1",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_2",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "retry_payment_2",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_3",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "cancel_order",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "fulfill",
+			Roles:        []string{"fulfillment",  },
+			Guard:        "",
+		},
+	}
+	
+	// Initialize middleware
+	middleware := NewMiddleware(sessions, accessRules)
 
 	// Build HTTP router
-	router := BuildRouter(app)
+	router := BuildRouter(app, middleware)
 
 	// Configure server
 	port := os.Getenv("PORT")

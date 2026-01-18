@@ -21,9 +21,78 @@ func main() {
 
 	// Create application
 	app := NewApplication(store)
+	// Initialize sessions for authentication
+	sessions := NewInMemorySessionStore()
+	
+	// Configure access control rules
+	accessRules := []*AccessControl{
+		{
+			TransitionID: "start_screening",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "schedule_phone_screen",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "start_background_check",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "complete_phone_screen",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "complete_background_check",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "advance_to_interview",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "conduct_interview",
+			Roles:        []string{"hiring_manager",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "extend_offer",
+			Roles:        []string{"hiring_manager",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "accept_offer",
+			Roles:        []string{"candidate",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "reject_after_screen",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "reject_after_interview",
+			Roles:        []string{"hiring_manager",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "decline_offer",
+			Roles:        []string{"candidate",  },
+			Guard:        "",
+		},
+	}
+	
+	// Initialize middleware
+	middleware := NewMiddleware(sessions, accessRules)
 
 	// Build HTTP router
-	router := BuildRouter(app)
+	router := BuildRouter(app, middleware)
 
 	// Configure server
 	port := os.Getenv("PORT")

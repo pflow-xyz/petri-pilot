@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the loan-application workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,19 +26,26 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/loanapplication/{id}", "Get loan-application state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("run_credit_check", "/api/run_credit_check", "Initiate automated credit check", HandleRunCreditCheck(app))
-	r.Transition("auto_approve", "/api/auto_approve", "Automatic approval based on credit score", HandleAutoApprove(app))
-	r.Transition("flag_for_review", "/api/flag_for_review", "Flag application for manual review", HandleFlagForReview(app))
-	r.Transition("underwriter_approve", "/api/underwriter_approve", "Underwriter approves the application", HandleUnderwriterApprove(app))
-	r.Transition("underwriter_deny", "/api/underwriter_deny", "Underwriter denies the application", HandleUnderwriterDeny(app))
-	r.Transition("auto_deny", "/api/auto_deny", "Automatic denial based on credit score", HandleAutoDeny(app))
-	r.Transition("finalize_approval", "/api/finalize_approval", "Finalize loan approval", HandleFinalizeApproval(app))
-	r.Transition("disburse", "/api/disburse", "Disburse loan funds to customer", HandleDisburse(app))
-	r.Transition("start_repayment", "/api/start_repayment", "Begin repayment period", HandleStartRepayment(app))
-	r.Transition("make_payment", "/api/make_payment", "Customer makes a payment", HandleMakePayment(app))
-	r.Transition("complete", "/api/complete", "Final payment received, loan complete", HandleComplete(app))
-	r.Transition("mark_default", "/api/mark_default", "Mark loan as defaulted", HandleMarkDefault(app))
+	r.Transition("run_credit_check", "/api/run_credit_check", "Initiate automated credit check", middleware.RequirePermission("run_credit_check")(HandleRunCreditCheck(app)))
+	r.Transition("auto_approve", "/api/auto_approve", "Automatic approval based on credit score", middleware.RequirePermission("auto_approve")(HandleAutoApprove(app)))
+	r.Transition("flag_for_review", "/api/flag_for_review", "Flag application for manual review", middleware.RequirePermission("flag_for_review")(HandleFlagForReview(app)))
+	r.Transition("underwriter_approve", "/api/underwriter_approve", "Underwriter approves the application", middleware.RequirePermission("underwriter_approve")(HandleUnderwriterApprove(app)))
+	r.Transition("underwriter_deny", "/api/underwriter_deny", "Underwriter denies the application", middleware.RequirePermission("underwriter_deny")(HandleUnderwriterDeny(app)))
+	r.Transition("auto_deny", "/api/auto_deny", "Automatic denial based on credit score", middleware.RequirePermission("auto_deny")(HandleAutoDeny(app)))
+	r.Transition("finalize_approval", "/api/finalize_approval", "Finalize loan approval", middleware.RequirePermission("finalize_approval")(HandleFinalizeApproval(app)))
+	r.Transition("disburse", "/api/disburse", "Disburse loan funds to customer", middleware.RequirePermission("disburse")(HandleDisburse(app)))
+	r.Transition("start_repayment", "/api/start_repayment", "Begin repayment period", middleware.RequirePermission("start_repayment")(HandleStartRepayment(app)))
+	r.Transition("make_payment", "/api/make_payment", "Customer makes a payment", middleware.RequirePermission("make_payment")(HandleMakePayment(app)))
+	r.Transition("complete", "/api/complete", "Final payment received, loan complete", middleware.RequirePermission("complete")(HandleComplete(app)))
+	r.Transition("mark_default", "/api/mark_default", "Mark loan as defaulted", middleware.RequirePermission("mark_default")(HandleMarkDefault(app)))
 
 	return r.Build()
 }
@@ -153,7 +160,7 @@ func HandleRunCreditCheck(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -185,7 +192,7 @@ func HandleAutoApprove(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -217,7 +224,7 @@ func HandleFlagForReview(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -249,7 +256,7 @@ func HandleUnderwriterApprove(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -281,7 +288,7 @@ func HandleUnderwriterDeny(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -313,7 +320,7 @@ func HandleAutoDeny(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -345,7 +352,7 @@ func HandleFinalizeApproval(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -377,7 +384,7 @@ func HandleDisburse(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -409,7 +416,7 @@ func HandleStartRepayment(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -441,7 +448,7 @@ func HandleMakePayment(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -473,7 +480,7 @@ func HandleComplete(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -505,9 +512,32 @@ func HandleMarkDefault(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

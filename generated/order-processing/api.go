@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the order-processing workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,12 +26,19 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/orderprocessing/{id}", "Get order-processing state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("validate", "/api/validate", "Check order validity", HandleValidate(app))
-	r.Transition("reject", "/api/reject", "Mark order as invalid", HandleReject(app))
-	r.Transition("process_payment", "/api/process_payment", "Charge customer payment", HandleProcessPayment(app))
-	r.Transition("ship", "/api/ship", "Send order to shipping", HandleShip(app))
-	r.Transition("confirm", "/api/confirm", "Mark order as complete", HandleConfirm(app))
+	r.Transition("validate", "/api/validate", "Check order validity", middleware.RequirePermission("validate")(HandleValidate(app)))
+	r.Transition("reject", "/api/reject", "Mark order as invalid", middleware.RequirePermission("reject")(HandleReject(app)))
+	r.Transition("process_payment", "/api/process_payment", "Charge customer payment", middleware.RequirePermission("process_payment")(HandleProcessPayment(app)))
+	r.Transition("ship", "/api/ship", "Send order to shipping", middleware.RequirePermission("ship")(HandleShip(app)))
+	r.Transition("confirm", "/api/confirm", "Mark order as complete", middleware.RequirePermission("confirm")(HandleConfirm(app)))
 
 	return r.Build()
 }
@@ -146,7 +153,7 @@ func HandleValidate(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -178,7 +185,7 @@ func HandleReject(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -210,7 +217,7 @@ func HandleProcessPayment(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -242,7 +249,7 @@ func HandleShip(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -274,9 +281,32 @@ func HandleConfirm(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

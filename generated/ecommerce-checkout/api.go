@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the ecommerce-checkout workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -26,18 +26,25 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/ecommercecheckout/{id}", "Get ecommerce-checkout state", HandleGetState(app))
 
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
+
+
+
+
+
 	// Transition endpoints
-	r.Transition("start_checkout", "/api/start_checkout", "Begin checkout process", HandleStartCheckout(app))
-	r.Transition("enter_payment", "/api/enter_payment", "Enter payment details", HandleEnterPayment(app))
-	r.Transition("process_payment", "/api/process_payment", "Process the payment", HandleProcessPayment(app))
-	r.Transition("payment_success", "/api/payment_success", "Payment processed successfully", HandlePaymentSuccess(app))
-	r.Transition("payment_fail_1", "/api/payment_fail_1", "First payment attempt failed", HandlePaymentFail1(app))
-	r.Transition("retry_payment_1", "/api/retry_payment_1", "Retry payment (attempt 2)", HandleRetryPayment1(app))
-	r.Transition("payment_fail_2", "/api/payment_fail_2", "Second payment attempt failed", HandlePaymentFail2(app))
-	r.Transition("retry_payment_2", "/api/retry_payment_2", "Retry payment (attempt 3)", HandleRetryPayment2(app))
-	r.Transition("payment_fail_3", "/api/payment_fail_3", "Third payment attempt failed", HandlePaymentFail3(app))
-	r.Transition("cancel_order", "/api/cancel_order", "Cancel order after max retries", HandleCancelOrder(app))
-	r.Transition("fulfill", "/api/fulfill", "Fulfill the order", HandleFulfill(app))
+	r.Transition("start_checkout", "/api/start_checkout", "Begin checkout process", middleware.RequirePermission("start_checkout")(HandleStartCheckout(app)))
+	r.Transition("enter_payment", "/api/enter_payment", "Enter payment details", middleware.RequirePermission("enter_payment")(HandleEnterPayment(app)))
+	r.Transition("process_payment", "/api/process_payment", "Process the payment", middleware.RequirePermission("process_payment")(HandleProcessPayment(app)))
+	r.Transition("payment_success", "/api/payment_success", "Payment processed successfully", middleware.RequirePermission("payment_success")(HandlePaymentSuccess(app)))
+	r.Transition("payment_fail_1", "/api/payment_fail_1", "First payment attempt failed", middleware.RequirePermission("payment_fail_1")(HandlePaymentFail1(app)))
+	r.Transition("retry_payment_1", "/api/retry_payment_1", "Retry payment (attempt 2)", middleware.RequirePermission("retry_payment_1")(HandleRetryPayment1(app)))
+	r.Transition("payment_fail_2", "/api/payment_fail_2", "Second payment attempt failed", middleware.RequirePermission("payment_fail_2")(HandlePaymentFail2(app)))
+	r.Transition("retry_payment_2", "/api/retry_payment_2", "Retry payment (attempt 3)", middleware.RequirePermission("retry_payment_2")(HandleRetryPayment2(app)))
+	r.Transition("payment_fail_3", "/api/payment_fail_3", "Third payment attempt failed", middleware.RequirePermission("payment_fail_3")(HandlePaymentFail3(app)))
+	r.Transition("cancel_order", "/api/cancel_order", "Cancel order after max retries", middleware.RequirePermission("cancel_order")(HandleCancelOrder(app)))
+	r.Transition("fulfill", "/api/fulfill", "Fulfill the order", middleware.RequirePermission("fulfill")(HandleFulfill(app)))
 
 	return r.Build()
 }
@@ -152,7 +159,7 @@ func HandleStartCheckout(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -184,7 +191,7 @@ func HandleEnterPayment(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -216,7 +223,7 @@ func HandleProcessPayment(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -248,7 +255,7 @@ func HandlePaymentSuccess(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -280,7 +287,7 @@ func HandlePaymentFail1(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -312,7 +319,7 @@ func HandleRetryPayment1(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -344,7 +351,7 @@ func HandlePaymentFail2(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -376,7 +383,7 @@ func HandleRetryPayment2(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -408,7 +415,7 @@ func HandlePaymentFail3(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -440,7 +447,7 @@ func HandleCancelOrder(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
@@ -472,9 +479,32 @@ func HandleFulfill(app *Application) http.HandlerFunc {
 			Success:     true,
 			AggregateID: agg.ID(),
 			Version:     agg.Version(),
-			State:       agg.State(),
+			State:       agg.Places(),
 		})
 	}
 }
+
+
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+
+
+
+
+
+
+
 
 

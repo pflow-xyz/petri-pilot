@@ -23,4 +23,4 @@ require (
 
 // For local development, uncomment and adjust paths as needed:
 // replace github.com/pflow-xyz/petri-pilot => ../petri-pilot
-replace github.com/pflow-xyz/petri-pilot => /home/runner/work/petri-pilot/petri-pilot
+replace github.com/pflow-xyz/petri-pilot => /Users/myork/Workspace/petri-pilot
