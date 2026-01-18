@@ -3,6 +3,6 @@ package main
 
 // Event replay and snapshot handlers are implemented in api.go
 // This file serves as a placeholder for event sourcing configuration
-{{if .HasSnapshots}}
-// Automatic snapshots are enabled with frequency: {{.EventSourcing.Snapshots.Frequency}}
-{{end}}
+
+// Automatic snapshots are enabled with frequency: 10
+

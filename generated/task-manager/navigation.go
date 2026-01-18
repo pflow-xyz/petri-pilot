@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-{{if .Navigation}}
+
 // NavigationItem represents a menu item in the navigation.
 type NavigationItem struct {
 	Label string   `json:"label"`
@@ -20,4 +20,4 @@ type Navigation struct {
 	Brand string           `json:"brand"`
 	Items []NavigationItem `json:"items"`
 }
-{{end}}
+
