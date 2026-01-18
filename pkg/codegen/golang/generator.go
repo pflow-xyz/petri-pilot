@@ -147,6 +147,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 	if g.opts.IncludeRealtime {
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
+	
+	// Include workflows template if context has workflows (Phase 12)
+	if ctx.HasWorkflows() {
+		templateNames = append(templateNames, WorkflowTemplateNames()...)
+	}
 
 	// Generate each file
 	var files []GeneratedFile
