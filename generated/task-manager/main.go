@@ -21,40 +21,48 @@ func main() {
 
 	// Create application
 	app := NewApplication(store)
-	
-	{{- if .HasAccessControl}}
 	// Initialize sessions for authentication
 	sessions := NewInMemorySessionStore()
 	
 	// Configure access control rules
 	accessRules := []*AccessControl{
-		{{- range .AccessRules}}
 		{
-			TransitionID: "{{.TransitionID}}",
-			Roles:        []string{ {{- range .Roles}}"{{.}}", {{end}} },
-			Guard:        "{{.Guard}}",
+			TransitionID: "start",
+			Roles:        []string{"user",  },
+			Guard:        "",
 		},
-		{{- end}}
+		{
+			TransitionID: "submit",
+			Roles:        []string{"user",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "approve",
+			Roles:        []string{"reviewer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "reject",
+			Roles:        []string{"reviewer",  },
+			Guard:        "",
+		},
 	}
 	
 	// Initialize middleware
 	middleware := NewMiddleware(sessions, accessRules)
-	{{- end}}
-
-	{{- if .HasNavigation}}
 	// Initialize navigation
 	navigation := &Navigation{
-		Brand: "{{.Navigation.Brand}}",
+		Brand: "Task Manager",
 		Items: []NavigationItem{
-			{{- range .Navigation.Items}}
-			{Label: "{{.Label}}", Path: "{{.Path}}", Icon: "{{.Icon}}", Roles: []string{ {{- range .Roles}}"{{.}}",{{end}} }},
-			{{- end}}
+			{Label: "Dashboard", Path: "/", Icon: "home", Roles: []string{ }},
+			{Label: "My Tasks", Path: "/tasks", Icon: "list", Roles: []string{ }},
+			{Label: "Reviews", Path: "/reviews", Icon: "check", Roles: []string{"reviewer","admin", }},
+			{Label: "Admin", Path: "/admin", Icon: "settings", Roles: []string{"admin", }},
 		},
 	}
-	{{- end}}
 
 	// Build HTTP router
-	router := BuildRouter(app{{if .HasAccessControl}}, middleware{{end}}{{if .HasNavigation}}, navigation{{end}})
+	router := BuildRouter(app, middleware, navigation)
 
 	// Configure server
 	port := os.Getenv("PORT")
@@ -72,7 +80,7 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Starting {{.ModelName}} server on port %s", port)
+		log.Printf("Starting task-manager server on port %s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}

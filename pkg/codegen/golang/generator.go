@@ -163,6 +163,19 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, ViewTemplateNames()...)
 	}
 
+	// Include navigation template if context has navigation (Phase 14)
+	if ctx.HasNavigation() {
+		templateNames = append(templateNames, NavigationTemplateNames()...)
+	}
+
+	// Include admin template if context has admin enabled (Phase 14)
+	if ctx.HasAdmin() {
+		templateNames = append(templateNames, AdminTemplateNames()...)
+	}
+
+	// Include event replay template (Phase 14)
+	templateNames = append(templateNames, EventReplayTemplateNames()...)
+
 	// Include auth and permissions templates if context has access control
 	if ctx.HasAccessControl() && !g.opts.IncludeAuth {
 		// Access control requires auth templates for User, Middleware, etc.

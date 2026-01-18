@@ -450,6 +450,165 @@ func (s *sqliteSubscription) Close() error {
 	return nil
 }
 
+// ListInstances returns a paginated list of aggregate instances with optional filters.
+func (s *SQLiteStore) ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]Instance, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, 0, ErrStoreClosed
+	}
+
+	// Count total matching instances
+	countQuery := `
+		SELECT COUNT(DISTINCT stream_id)
+		FROM events
+		WHERE 1=1
+	`
+	var countArgs []interface{}
+
+	if from != "" {
+		countQuery += " AND timestamp >= ?"
+		countArgs = append(countArgs, from)
+	}
+	if to != "" {
+		countQuery += " AND timestamp <= ?"
+		countArgs = append(countArgs, to)
+	}
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count instances: %w", err)
+	}
+
+	// Build query for instances with filters
+	query := `
+		SELECT 
+			stream_id,
+			MAX(version) as version,
+			MAX(timestamp) as updated_at
+		FROM events
+		WHERE 1=1
+	`
+	var args []interface{}
+
+	if from != "" {
+		query += " AND timestamp >= ?"
+		args = append(args, from)
+	}
+	if to != "" {
+		query += " AND timestamp <= ?"
+		args = append(args, to)
+	}
+
+	query += " GROUP BY stream_id ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+	args = append(args, perPage, (page-1)*perPage)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query instances: %w", err)
+	}
+	defer rows.Close()
+
+	var instances []Instance
+	for rows.Next() {
+		var inst Instance
+		var updatedAtStr string
+
+		if err := rows.Scan(&inst.ID, &inst.Version, &updatedAtStr); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan instance: %w", err)
+		}
+
+		inst.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAtStr)
+
+		// Load current state by replaying events
+		events, err := s.Read(ctx, inst.ID, 0)
+		if err != nil {
+			continue // Skip instances we can't read
+		}
+
+		// Build state from events (simplified - assumes token places)
+		inst.State = make(map[string]int)
+		for _, evt := range events {
+			// Extract state from event data if available
+			var eventData map[string]interface{}
+			if err := json.Unmarshal(evt.Data, &eventData); err == nil {
+				if state, ok := eventData["state"].(map[string]interface{}); ok {
+					for k, v := range state {
+						if val, ok := v.(float64); ok {
+							inst.State[k] = int(val)
+						}
+					}
+				}
+			}
+		}
+
+		instances = append(instances, inst)
+	}
+
+	return instances, total, rows.Err()
+}
+
+// GetStats returns statistics about stored aggregates.
+func (s *SQLiteStore) GetStats(ctx context.Context) (*Stats, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	// Count total unique streams
+	var totalInstances int
+	err := s.db.QueryRowContext(ctx,
+		"SELECT COUNT(DISTINCT stream_id) FROM events",
+	).Scan(&totalInstances)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count instances: %w", err)
+	}
+
+	stats := &Stats{
+		TotalInstances: totalInstances,
+		ByPlace:        make(map[string]int),
+	}
+
+	// Get distinct stream IDs and compute their states
+	rows, err := s.db.QueryContext(ctx, "SELECT DISTINCT stream_id FROM events")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query streams: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var streamID string
+		if err := rows.Scan(&streamID); err != nil {
+			continue
+		}
+
+		// Load events for this stream
+		events, err := s.Read(ctx, streamID, 0)
+		if err != nil {
+			continue
+		}
+
+		// Find places with tokens in current state
+		for _, evt := range events {
+			var eventData map[string]interface{}
+			if err := json.Unmarshal(evt.Data, &eventData); err == nil {
+				if state, ok := eventData["state"].(map[string]interface{}); ok {
+					for place, val := range state {
+						if v, ok := val.(float64); ok && v > 0 {
+							stats.ByPlace[place]++
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return stats, rows.Err()
+}
+
 func (s *sqliteSubscription) matches(event *runtime.Event) bool {
 	if s.filter.StreamID != "" && s.filter.StreamID != event.StreamID {
 		return false

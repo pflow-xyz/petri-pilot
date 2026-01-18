@@ -51,6 +51,15 @@ const (
 
 	// Views templates (Phase 13)
 	TemplateViews = "views"
+
+	// Navigation templates (Phase 14)
+	TemplateNavigation = "navigation"
+
+	// Admin templates (Phase 14)
+	TemplateAdmin = "admin"
+
+	// Event replay templates (Phase 14)
+	TemplateAPIEvents = "api_events"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -97,6 +106,15 @@ var templateInfo = map[string]struct {
 
 	// Views templates (Phase 13)
 	TemplateViews: {File: "views.tmpl", Output: "views.go"},
+
+	// Navigation templates (Phase 14)
+	TemplateNavigation: {File: "navigation.tmpl", Output: "navigation.go"},
+
+	// Admin templates (Phase 14)
+	TemplateAdmin: {File: "admin.tmpl", Output: "admin.go"},
+
+	// Event replay templates (Phase 14)
+	TemplateAPIEvents: {File: "api_events.tmpl", Output: "api_events.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -254,4 +272,25 @@ func InfraTemplateNames() []string {
 		TemplateDockerfile,
 		TemplateDockerCompose,
 	}
+}
+
+// NavigationTemplateNames returns template names for navigation files.
+func NavigationTemplateNames() []string {
+return []string{
+TemplateNavigation,
+}
+}
+
+// AdminTemplateNames returns template names for admin dashboard files.
+func AdminTemplateNames() []string {
+return []string{
+TemplateAdmin,
+}
+}
+
+// EventReplayTemplateNames returns template names for event replay files.
+func EventReplayTemplateNames() []string {
+return []string{
+TemplateAPIEvents,
+}
 }

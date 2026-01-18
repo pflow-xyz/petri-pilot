@@ -12,8 +12,8 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 
-// BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}) http.Handler {
+// BuildRouter creates an HTTP router for the task-manager workflow.
+func BuildRouter(app *Application, middleware *Middleware, navigation *Navigation) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -25,40 +25,34 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.GET("/ready", "Readiness check", HandleReady(app))
 
 	// Create new aggregate
-	r.POST("/api/{{.PackageName}}", "Create new {{.ModelName}}", HandleCreate(app))
+	r.POST("/api/taskmanager", "Create new task-manager", HandleCreate(app))
 
 	// Get aggregate state
-	r.GET("/api/{{.PackageName}}/{id}", "Get {{.ModelName}} state", HandleGetState(app))
-{{if .HasViews}}
-	// View definitions
-	r.GET("/api/views", "Get view definitions", HandleGetViews())
-{{end}}
-{{if .HasNavigation}}
+	r.GET("/api/taskmanager/{id}", "Get task-manager state", HandleGetState(app))
+
+
 	// Navigation endpoint
 	r.GET("/api/navigation", "Get navigation menu", HandleNavigation(navigation))
-{{end}}
-{{if .HasAdmin}}
+
+
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
 	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
 	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
-{{end}}
+
 	// Event replay endpoints
-	r.GET("/api/{{.PackageName}}/{id}/events", "Get event history", HandleGetEvents(app))
-	r.GET("/api/{{.PackageName}}/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
-{{if .HasSnapshots}}
-	r.POST("/api/{{.PackageName}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
-	r.POST("/api/{{.PackageName}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
-{{end}}
+	r.GET("/api/taskmanager/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/taskmanager/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+
+	r.POST("/api/taskmanager/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
+	r.POST("/api/taskmanager/{id}/replay", "Replay from snapshot", HandleReplay(app))
+
 	// Transition endpoints
-{{- range .Routes}}
-	{{- if $.TransitionRequiresAuth .TransitionID}}
-	r.Transition("{{.TransitionID}}", "{{.Path}}", "{{.Description}}", middleware.RequirePermission("{{.TransitionID}}")({{.HandlerName}}(app)))
-	{{- else}}
-	r.Transition("{{.TransitionID}}", "{{.Path}}", "{{.Description}}", {{.HandlerName}}(app))
-	{{- end}}
-{{- end}}
+	r.Transition("start", "/api/tasks/{id}/start", "Start working on a task", middleware.RequirePermission("start")(HandleStart(app)))
+	r.Transition("submit", "/api/tasks/{id}/submit", "Submit task for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
+	r.Transition("approve", "/api/tasks/{id}/approve", "Approve completed task", middleware.RequirePermission("approve")(HandleApprove(app)))
+	r.Transition("reject", "/api/tasks/{id}/reject", "Reject task and send back", middleware.RequirePermission("reject")(HandleReject(app)))
 
 	return r.Build()
 }
@@ -146,9 +140,9 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-{{range .Transitions}}
-// {{.HandlerName}} handles the {{.ID}} transition.
-func {{.HandlerName}}(app *Application) http.HandlerFunc {
+
+// HandleStart handles the start transition.
+func HandleStart(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -163,7 +157,7 @@ func {{.HandlerName}}(app *Application) http.HandlerFunc {
 			return
 		}
 
-		agg, err := app.Execute(ctx, req.AggregateID, {{.ConstName}}, req.Data)
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionStart, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
 			return
@@ -178,24 +172,105 @@ func {{.HandlerName}}(app *Application) http.HandlerFunc {
 	}
 }
 
-{{end}}
-{{- if .HasViews}}
-// HandleGetViews returns the view definitions for the workflow.
-func HandleGetViews() http.HandlerFunc {
+
+// HandleSubmit handles the submit transition.
+func HandleSubmit(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := ViewsJSON()
-		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionSubmit, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:     true,
+			AggregateID: agg.ID(),
+			Version:     agg.Version(),
+			State:       agg.Places(),
+		})
 	}
 }
-{{- end}}
 
-{{if .HasNavigation}}
+
+// HandleApprove handles the approve transition.
+func HandleApprove(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionApprove, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:     true,
+			AggregateID: agg.ID(),
+			Version:     agg.Version(),
+			State:       agg.Places(),
+		})
+	}
+}
+
+
+// HandleReject handles the reject transition.
+func HandleReject(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionReject, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:     true,
+			AggregateID: agg.ID(),
+			Version:     agg.Version(),
+			State:       agg.Places(),
+		})
+	}
+}
+
+
+
+
 // HandleNavigation wraps the navigation handler.
 func HandleNavigation(nav *Navigation) http.HandlerFunc {
 return func(w http.ResponseWriter, r *http.Request) {
@@ -219,9 +294,9 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 })
 }
 }
-{{end}}
 
-{{if .HasAdmin}}
+
+
 // HandleAdminStats wraps the admin stats handler.
 func HandleAdminStats(app *Application) http.HandlerFunc {
 return func(w http.ResponseWriter, r *http.Request) {
@@ -317,7 +392,7 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 })
 }
 }
-{{end}}
+
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -358,15 +433,7 @@ return
 }
 
 // Create temporary aggregate and replay up to version
-agg, err := app.engine.NewAggregate(id)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "CREATE_FAILED", err.Error())
-return
-}
-
-for _, evt := range events {
-if evt.Version > version {
-break
+agg := NewAggregate(id)
 }
 if err := agg.Apply(evt); err != nil {
 api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
@@ -382,7 +449,7 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 }
 }
 
-{{if .HasSnapshots}}
+
 // HandleCreateSnapshot creates a snapshot of the current aggregate state.
 func HandleCreateSnapshot(app *Application) http.HandlerFunc {
 return func(w http.ResponseWriter, r *http.Request) {
@@ -438,25 +505,9 @@ return
 }
 
 // Load latest snapshot
-snap, err := snapshotStore.Load(ctx, id)
-fromVersion := 0
-
-agg, err := app.engine.NewAggregate(id)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "CREATE_FAILED", err.Error())
-return
-}
-
-if snap != nil {
-// Restore from snapshot
-var state map[string]int
 if err := json.Unmarshal(snap.State, &state); err != nil {
 api.Error(w, http.StatusInternalServerError, "UNMARSHAL_FAILED", err.Error())
 return
-}
-
-// This is a simplified restore - actual implementation depends on aggregate structure
-fromVersion = snap.Version
 }
 
 // Load events after snapshot
@@ -488,7 +539,7 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 })
 }
 }
-{{end}}
+
 
 // Helper functions
 

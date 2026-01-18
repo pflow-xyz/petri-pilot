@@ -42,6 +42,15 @@ type Context struct {
 	// Webhook integrations
 	Webhooks []WebhookContext
 
+	// Navigation (Phase 14)
+	Navigation *NavigationContext
+
+	// Admin Dashboard (Phase 14)
+	Admin *AdminContext
+
+	// Event Sourcing (Phase 14)
+	EventSourcing *EventSourcingContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -140,6 +149,46 @@ type WebhookContext struct {
 type WebhookRetryPolicyContext struct {
 	MaxAttempts int
 	BackoffMs   int
+}
+
+// NavigationContext provides template-friendly access to navigation configuration.
+type NavigationContext struct {
+	Brand string
+	Items []NavigationItemContext
+}
+
+// NavigationItemContext provides template-friendly access to navigation items.
+type NavigationItemContext struct {
+	Label string
+	Path  string
+	Icon  string
+	Roles []string
+}
+
+// AdminContext provides template-friendly access to admin configuration.
+type AdminContext struct {
+	Enabled  bool
+	Path     string
+	Roles    []string
+	Features []string
+}
+
+// EventSourcingContext provides template-friendly access to event sourcing configuration.
+type EventSourcingContext struct {
+	Snapshots *SnapshotConfigContext
+	Retention *RetentionConfigContext
+}
+
+// SnapshotConfigContext provides template-friendly access to snapshot configuration.
+type SnapshotConfigContext struct {
+	Enabled   bool
+	Frequency int
+}
+
+// RetentionConfigContext provides template-friendly access to retention configuration.
+type RetentionConfigContext struct {
+	Events    string
+	Snapshots string
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -361,6 +410,21 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 
 	// Build view contexts from schema
 	ctx.Views = buildViewContexts(enriched.Views)
+
+	// Build navigation context
+	if enriched.Navigation != nil {
+		ctx.Navigation = buildNavigationContext(enriched.Navigation)
+	}
+
+	// Build admin context
+	if enriched.Admin != nil {
+		ctx.Admin = buildAdminContext(enriched.Admin)
+	}
+
+	// Build event sourcing context
+	if enriched.EventSourcing != nil {
+		ctx.EventSourcing = buildEventSourcingContext(enriched.EventSourcing)
+	}
 
 	return ctx, nil
 }
@@ -882,4 +946,85 @@ func (c *Context) HasWebhooks() bool {
 // HasViews returns true if the context has any views defined.
 func (c *Context) HasViews() bool {
 	return len(c.Views) > 0
+}
+
+// buildNavigationContext converts schema.Navigation to NavigationContext.
+func buildNavigationContext(nav *schema.Navigation) *NavigationContext {
+if nav == nil {
+return nil
+}
+
+items := make([]NavigationItemContext, len(nav.Items))
+for i, item := range nav.Items {
+items[i] = NavigationItemContext{
+Label: item.Label,
+Path:  item.Path,
+Icon:  item.Icon,
+Roles: item.Roles,
+}
+}
+
+return &NavigationContext{
+Brand: nav.Brand,
+Items: items,
+}
+}
+
+// buildAdminContext converts schema.Admin to AdminContext.
+func buildAdminContext(admin *schema.Admin) *AdminContext {
+if admin == nil {
+return nil
+}
+
+return &AdminContext{
+Enabled:  admin.Enabled,
+Path:     admin.Path,
+Roles:    admin.Roles,
+Features: admin.Features,
+}
+}
+
+// buildEventSourcingContext converts schema.EventSourcing to EventSourcingContext.
+func buildEventSourcingContext(es *schema.EventSourcing) *EventSourcingContext {
+if es == nil {
+return nil
+}
+
+ctx := &EventSourcingContext{}
+
+if es.Snapshots != nil {
+ctx.Snapshots = &SnapshotConfigContext{
+Enabled:   es.Snapshots.Enabled,
+Frequency: es.Snapshots.Frequency,
+}
+}
+
+if es.Retention != nil {
+ctx.Retention = &RetentionConfigContext{
+Events:    es.Retention.Events,
+Snapshots: es.Retention.Snapshots,
+}
+}
+
+return ctx
+}
+
+// HasNavigation returns true if the model has navigation configuration.
+func (c *Context) HasNavigation() bool {
+return c.Navigation != nil
+}
+
+// HasAdmin returns true if the model has admin dashboard configuration.
+func (c *Context) HasAdmin() bool {
+return c.Admin != nil && c.Admin.Enabled
+}
+
+// HasEventSourcing returns true if the model has event sourcing configuration.
+func (c *Context) HasEventSourcing() bool {
+return c.EventSourcing != nil
+}
+
+// HasSnapshots returns true if automatic snapshots are enabled.
+func (c *Context) HasSnapshots() bool {
+return c.EventSourcing != nil && c.EventSourcing.Snapshots != nil && c.EventSourcing.Snapshots.Enabled
 }
