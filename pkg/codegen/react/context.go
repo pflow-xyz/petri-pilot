@@ -27,8 +27,24 @@ type Context struct {
 	// State fields for type generation
 	StateFields []StateFieldContext
 
+	// Pages for navigation and routing
+	Pages []PageContext
+
 	// Original model for reference
 	Model *schema.Model
+}
+
+// PageContext provides template-friendly access to page data.
+type PageContext struct {
+	ID            string
+	Title         string
+	Path          string
+	Icon          string
+	LayoutType    string   // list, detail, form, custom
+	EntityID      string   // Entity this page displays
+	RequiredRoles []string // Roles that can access this page
+	HideInNav     bool     // Hide from navigation menu
+	ComponentName string   // React component name
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -80,6 +96,7 @@ type StateFieldContext struct {
 type ContextOptions struct {
 	ProjectName string
 	APIBaseURL  string
+	Pages       []PageContext // Optional: for Application-based generation
 }
 
 // NewContext creates a Context from a model with computed template data.
@@ -120,6 +137,14 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Build state field contexts from bridge inference
 	stateFields := bridge.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
+
+	// Use provided pages or create default ones
+	if len(opts.Pages) > 0 {
+		ctx.Pages = opts.Pages
+	} else {
+		// Create default pages from model
+		ctx.Pages = createDefaultPages(enriched.Name)
+	}
 
 	return ctx, nil
 }
@@ -287,5 +312,37 @@ func goTypeToTS(goType string) string {
 			return "Record<string, any>"
 		}
 		return "any"
+	}
+}
+
+// createDefaultPages creates default page contexts when no pages are specified.
+func createDefaultPages(modelName string) []PageContext {
+	entityName := strings.ToLower(modelName)
+	return []PageContext{
+		{
+			ID:            entityName + "-list",
+			Title:         strings.Title(entityName) + " List",
+			Path:          "/" + entityName,
+			LayoutType:    "list",
+			EntityID:      entityName,
+			ComponentName: toPascalCase(entityName) + "List",
+		},
+		{
+			ID:            entityName + "-detail",
+			Title:         strings.Title(entityName) + " Detail",
+			Path:          "/" + entityName + "/:id",
+			LayoutType:    "detail",
+			EntityID:      entityName,
+			ComponentName: toPascalCase(entityName) + "Detail",
+			HideInNav:     true, // Don't show dynamic routes in nav
+		},
+		{
+			ID:            entityName + "-new",
+			Title:         "New " + strings.Title(entityName),
+			Path:          "/" + entityName + "/new",
+			LayoutType:    "form",
+			EntityID:      entityName,
+			ComponentName: toPascalCase(entityName) + "Form",
+		},
 	}
 }

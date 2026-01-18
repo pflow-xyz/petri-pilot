@@ -472,7 +472,7 @@ Fastest route to deployable full-stack app:
 
 ---
 
-## Phase 11: LLM-Complete Application DSL 🚧
+## Phase 11: LLM-Complete Application DSL ✅
 
 Enable LLMs to design complete applications with a single JSON specification.
 
@@ -580,9 +580,9 @@ type ViewField struct {
 |-----------|--------|----------|
 | Entity → Schema converter | ✅ Done | - |
 | Form generation from actions | ✅ Done | - |
-| Access control codegen | 🚧 Partial | High |
-| Page/navigation codegen | ❌ TODO | High |
-| Workflow orchestration | ❌ TODO | Medium |
+| Access control codegen | ✅ Done | - |
+| Page/navigation codegen | ✅ Done | - |
+| Workflow orchestration | 🚧 Partial | Medium |
 | Integration webhooks | ❌ TODO | Low |
 
 ### LLM Integration

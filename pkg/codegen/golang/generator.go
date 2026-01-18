@@ -178,6 +178,11 @@ func (g *Generator) Preview(model *schema.Model, templateName string) ([]byte, e
 	return g.templates.Execute(templateName, ctx)
 }
 
+// GetTemplates returns the template manager for this generator.
+func (g *Generator) GetTemplates() *Templates {
+	return g.templates
+}
+
 // ValidateModel checks if a model is suitable for Go code generation.
 func ValidateModel(model *schema.Model) []string {
 	return bridge.ValidateForCodegen(model)

@@ -16,6 +16,9 @@ const (
 	TemplateViteConfig  = "vite_config"
 	TemplateIndexHTML   = "index_html"
 	TemplateMain        = "main"
+	TemplateRouter      = "router"
+	TemplateNavigation  = "navigation"
+	TemplatePages       = "pages"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -27,6 +30,9 @@ var templateInfo = map[string]struct {
 	TemplateViteConfig:  {File: "vite_config.tmpl", Output: "vite.config.js"},
 	TemplateIndexHTML:   {File: "index_html.tmpl", Output: "index.html"},
 	TemplateMain:        {File: "main.tmpl", Output: "src/main.js"},
+	TemplateRouter:      {File: "router.tmpl", Output: "src/router.js"},
+	TemplateNavigation:  {File: "navigation.tmpl", Output: "src/navigation.js"},
+	TemplatePages:       {File: "pages.tmpl", Output: "src/pages.js"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -88,5 +94,8 @@ func AllTemplateNames() []string {
 		TemplateViteConfig,
 		TemplateIndexHTML,
 		TemplateMain,
+		TemplateRouter,
+		TemplateNavigation,
+		TemplatePages,
 	}
 }

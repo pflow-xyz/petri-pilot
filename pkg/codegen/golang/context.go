@@ -29,8 +29,27 @@ type Context struct {
 	DataArcs    []DataArcContext
 	Guards      []GuardContext
 
+	// Access control (Phase 11)
+	AccessRules []AccessRuleContext
+	Roles       []RoleContext
+
 	// Original model for reference
 	Model *schema.Model
+}
+
+// AccessRuleContext provides template-friendly access to access control rules.
+type AccessRuleContext struct {
+	TransitionID string   // Transition this rule applies to
+	Roles        []string // Required roles
+	Guard        string   // Optional guard expression
+}
+
+// RoleContext provides template-friendly access to role definitions.
+type RoleContext struct {
+	ID          string
+	Name        string
+	Description string
+	Inherits    []string // Parent role IDs
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -167,6 +186,9 @@ type GuardContext struct {
 type ContextOptions struct {
 	ModulePath  string
 	PackageName string
+	// Access control (Phase 11)
+	AccessRules []AccessRuleContext
+	Roles       []RoleContext
 }
 
 // NewContext creates a Context from a model with computed template data.
@@ -192,6 +214,8 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
 		Model:            enriched,
+		AccessRules:      opts.AccessRules,
+		Roles:            opts.Roles,
 	}
 
 	// Build place contexts
