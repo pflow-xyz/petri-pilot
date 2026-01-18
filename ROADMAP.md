@@ -210,98 +210,86 @@ petri-pilot generate -auto "order processing workflow"
 - [x] Admin dashboard backend (`/admin/stats`, `/admin/instances`)
 - [x] Event sourcing APIs (`/api/{model}/{id}/events`, `/api/{model}/{id}/at/{version}`)
 - [x] Snapshot support (`/api/{model}/{id}/snapshot`, `/api/{model}/{id}/replay`)
+- [x] CLI `--frontend` flag for codegen command
+- [x] Frontend navigation rendering (fetches from `/api/navigation`)
+- [x] Frontend views/forms rendering (fetches from `/api/views`)
+- [x] Frontend admin dashboard UI (`src/admin.js`)
+- [x] Frontend event history viewer (`src/events.js`)
 
 ---
 
-## Next Phase: Frontend Integration
+## Next Phase: Example Apps Polish
 
-The backend now generates all APIs for navigation, views, admin, and event sourcing. The frontend needs to consume these APIs.
+The code generation templates are complete, but the example models need updates to showcase all features.
 
-### 1. CLI Frontend Flag
+### 1. Update Example Models
 
-Add `--frontend` flag to CLI codegen command to generate frontend alongside backend.
+Current examples don't include configuration for navigation, event sourcing, or admin dashboard. Add these to at least one flagship example.
 
-```bash
-petri-pilot codegen model.json -o ./app/ --frontend
+**Required model additions:**
+```json
+{
+  "navigation": {
+    "brand": "Order Processing",
+    "items": [
+      {"id": "orders", "label": "Orders", "path": "/orders", "icon": "📋"},
+      {"id": "admin", "label": "Admin", "path": "/admin", "roles": ["admin"]}
+    ]
+  },
+  "eventSourcing": {
+    "snapshots": {
+      "enabled": true,
+      "interval": 100
+    }
+  },
+  "admin": {
+    "enabled": true
+  }
+}
 ```
 
-Currently frontend generation only happens via MCP `petri_application` tool.
+---
+
+### 2. Fix Generated go.mod
+
+Current issues:
+- Hardcoded `replace` directive to local path (`/Users/myork/Workspace/petri-pilot`)
+- Should use relative path or be configurable
+
+**Required changes:**
+- Use `replace github.com/pflow-xyz/petri-pilot => ../../` for generated examples
+- Or remove replace directive and publish runtime package
 
 ---
 
-### 2. Navigation Rendering
+### 3. Add Frontend to Examples
 
-Frontend should fetch and render navigation from backend.
+Generated examples only include backend code. Should optionally include frontend.
 
-**Current state:**
-- Backend: `GET /api/navigation` returns menu items filtered by user roles
-- Frontend: Hardcoded navigation component
-
-**Required changes:**
-- Fetch navigation on app load
-- Render menu items dynamically
-- Hide items based on user roles
-- Highlight active route
+**Options:**
+- Run `petri-pilot codegen --frontend` for examples
+- Or document how to generate frontend separately
 
 ---
 
-### 3. Views/Forms Rendering
+### 4. End-to-End Example
 
-Frontend should render forms and tables from view definitions.
-
-**Current state:**
-- Backend: `GET /api/views` returns view definitions (fields, types, groups)
-- Frontend: No dynamic rendering
-
-**Required changes:**
-- Fetch view definitions on page load
-- Render form fields based on `type` (text, number, select, date)
-- Handle `required`, `readonly`, `placeholder` attributes
-- Render table columns from view groups
-- Wire action buttons to transition endpoints
-
----
-
-### 4. Admin Dashboard UI
-
-Generate admin UI that consumes admin APIs.
-
-**Current state:**
-- Backend: `/admin/stats`, `/admin/instances`, `/admin/instances/{id}`, `/admin/instances/{id}/events`
-- Frontend: No admin pages
-
-**Required changes:**
-- Dashboard page with instance counts per state
-- Instance list with filters (place, date range)
-- Instance detail with state visualization
-- Event timeline component
-
----
-
-### 5. Event History Viewer
-
-Generate UI for viewing and replaying events.
-
-**Current state:**
-- Backend: Event history and replay APIs exist
-- Frontend: No event viewer
-
-**Required changes:**
-- Event timeline component
-- State-at-version viewer (time travel)
-- Replay controls
+Create a complete "getting started" example that demonstrates:
+- Full model with all features enabled
+- Backend + frontend generation
+- Running locally with docker-compose
+- Testing the workflow through the UI
 
 ---
 
 ## Implementation Order
 
-| Feature | Priority | Effort | Dependencies |
-|---------|----------|--------|--------------|
-| CLI --frontend flag | High | Small | None |
-| Navigation rendering | High | Small | CLI flag |
-| Views/Forms rendering | High | Medium | Navigation |
-| Admin Dashboard UI | Medium | Medium | Views |
-| Event History Viewer | Medium | Medium | Admin UI |
+| Task | Priority | Effort |
+|------|----------|--------|
+| Update order-processing.json with full config | High | Small |
+| Fix go.mod replace directive | High | Small |
+| Regenerate examples with frontend | Medium | Small |
+| Create getting-started guide | Medium | Medium |
 
 ---
 
