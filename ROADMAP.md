@@ -206,116 +206,90 @@ petri-pilot generate -auto "order processing workflow"
 - [x] Database migrations
 - [x] Workflow orchestration (event-triggered, multi-step)
 - [x] Webhook integrations with retry
+- [x] Navigation menu backend (`/api/navigation` with role filtering)
+- [x] Admin dashboard backend (`/admin/stats`, `/admin/instances`)
+- [x] Event sourcing APIs (`/api/{model}/{id}/events`, `/api/{model}/{id}/at/{version}`)
+- [x] Snapshot support (`/api/{model}/{id}/snapshot`, `/api/{model}/{id}/replay`)
 
 ---
 
-## Next Phase: Admin & Navigation
+## Next Phase: Frontend Integration
 
-### 1. Navigation Menu System
+The backend now generates all APIs for navigation, views, admin, and event sourcing. The frontend needs to consume these APIs.
 
-Enhance generated applications with a proper navigation structure.
+### 1. CLI Frontend Flag
 
-**Schema addition:**
-```json
-{
-  "navigation": {
-    "brand": "Order System",
-    "items": [
-      {"label": "Dashboard", "path": "/", "icon": "home"},
-      {"label": "Orders", "path": "/orders", "icon": "list"},
-      {"label": "Settings", "path": "/settings", "icon": "cog", "roles": ["admin"]}
-    ]
-  }
-}
+Add `--frontend` flag to CLI codegen command to generate frontend alongside backend.
+
+```bash
+petri-pilot codegen model.json -o ./app/ --frontend
 ```
 
-**Generated output:**
-- Sidebar/header navigation component
-- Role-based menu item visibility
-- Active state highlighting
-- Mobile-responsive menu
-
-**Files to modify:**
-- `pkg/schema/schema.go` - Add Navigation types
-- `pkg/codegen/golang/templates/` - Add navigation endpoint
-- `pkg/codegen/react/templates/` - Enhanced navigation component
+Currently frontend generation only happens via MCP `petri_application` tool.
 
 ---
 
-### 2. Admin Dashboard
+### 2. Navigation Rendering
 
-Auto-generate an admin interface for managing workflow instances.
+Frontend should fetch and render navigation from backend.
 
-**Features:**
-- List all aggregate instances with current state
-- Filter by state (place), date range, ID
-- View instance detail with full event history
-- Manual state transitions (with permission checks)
-- Bulk operations (archive, delete)
+**Current state:**
+- Backend: `GET /api/navigation` returns menu items filtered by user roles
+- Frontend: Hardcoded navigation component
 
-**Schema addition:**
-```json
-{
-  "admin": {
-    "enabled": true,
-    "path": "/admin",
-    "roles": ["admin"],
-    "features": ["list", "detail", "history", "transitions"]
-  }
-}
-```
-
-**Generated output:**
-- `/admin` - Dashboard with instance counts per state
-- `/admin/instances` - Paginated list with filters
-- `/admin/instances/:id` - Detail view with event timeline
-- `/admin/instances/:id/events` - Full event history
-
-**Files to create:**
-- `pkg/codegen/golang/templates/admin.tmpl` - Admin API handlers
-- `pkg/codegen/react/templates/admin/` - Admin UI components
+**Required changes:**
+- Fetch navigation on app load
+- Render menu items dynamically
+- Hide items based on user roles
+- Highlight active route
 
 ---
 
-### 3. Event Replay & Snapshots
+### 3. Views/Forms Rendering
 
-Add event sourcing tooling for debugging and recovery.
+Frontend should render forms and tables from view definitions.
 
-**Features:**
-- Replay events to rebuild state
-- Point-in-time snapshots
-- Time-travel debugging (view state at any version)
-- Event store compaction
+**Current state:**
+- Backend: `GET /api/views` returns view definitions (fields, types, groups)
+- Frontend: No dynamic rendering
 
-**API additions:**
-```
-GET  /api/{model}/{id}/events          # Full event history
-GET  /api/{model}/{id}/events?from=5   # Events from version
-GET  /api/{model}/{id}/at/{version}    # State at version
-POST /api/{model}/{id}/snapshot        # Create snapshot
-POST /api/{model}/{id}/replay          # Replay from snapshot
-```
+**Required changes:**
+- Fetch view definitions on page load
+- Render form fields based on `type` (text, number, select, date)
+- Handle `required`, `readonly`, `placeholder` attributes
+- Render table columns from view groups
+- Wire action buttons to transition endpoints
 
-**Schema addition:**
-```json
-{
-  "eventSourcing": {
-    "snapshots": {
-      "enabled": true,
-      "frequency": 100
-    },
-    "retention": {
-      "events": "90d",
-      "snapshots": "1y"
-    }
-  }
-}
-```
+---
 
-**Files to modify:**
-- `pkg/runtime/eventstore/` - Add snapshot support
-- `pkg/codegen/golang/templates/api.tmpl` - Event history endpoints
-- `pkg/codegen/golang/templates/aggregate.tmpl` - Snapshot loading
+### 4. Admin Dashboard UI
+
+Generate admin UI that consumes admin APIs.
+
+**Current state:**
+- Backend: `/admin/stats`, `/admin/instances`, `/admin/instances/{id}`, `/admin/instances/{id}/events`
+- Frontend: No admin pages
+
+**Required changes:**
+- Dashboard page with instance counts per state
+- Instance list with filters (place, date range)
+- Instance detail with state visualization
+- Event timeline component
+
+---
+
+### 5. Event History Viewer
+
+Generate UI for viewing and replaying events.
+
+**Current state:**
+- Backend: Event history and replay APIs exist
+- Frontend: No event viewer
+
+**Required changes:**
+- Event timeline component
+- State-at-version viewer (time travel)
+- Replay controls
 
 ---
 
@@ -323,10 +297,11 @@ POST /api/{model}/{id}/replay          # Replay from snapshot
 
 | Feature | Priority | Effort | Dependencies |
 |---------|----------|--------|--------------|
-| Navigation Menu | High | Small | None |
-| Admin Dashboard | High | Medium | Navigation |
-| Event Replay | Medium | Medium | None |
-| Snapshots | Medium | Medium | Event Replay |
+| CLI --frontend flag | High | Small | None |
+| Navigation rendering | High | Small | CLI flag |
+| Views/Forms rendering | High | Medium | Navigation |
+| Admin Dashboard UI | Medium | Medium | Views |
+| Event History Viewer | Medium | Medium | Admin UI |
 
 ---
 
