@@ -84,11 +84,21 @@ func (r *Router) DELETE(path, description string, handler http.HandlerFunc) *Rou
 }
 
 // Transition registers a route for a Petri net transition.
-func (r *Router) Transition(transitionID, path, description string, handler http.HandlerFunc) *Router {
+// Accepts either http.HandlerFunc or http.Handler (for middleware-wrapped handlers).
+func (r *Router) Transition(transitionID, path, description string, handler http.Handler) *Router {
+	// Convert http.Handler to http.HandlerFunc if needed
+	var hf http.HandlerFunc
+	if fn, ok := handler.(http.HandlerFunc); ok {
+		hf = fn
+	} else {
+		hf = func(w http.ResponseWriter, req *http.Request) {
+			handler.ServeHTTP(w, req)
+		}
+	}
 	r.routes = append(r.routes, Route{
 		Method:       "POST",
 		Path:         path,
-		Handler:      handler,
+		Handler:      hf,
 		Description:  description,
 		TransitionID: transitionID,
 	})

@@ -1,0 +1,87 @@
+{
+  "name": "access-test",
+  "version": "1.0.0",
+  "description": "Test model for access control code generation",
+  "places": [
+    {
+      "id": "draft",
+      "description": "Initial state",
+      "initial": 1
+    },
+    {
+      "id": "submitted",
+      "description": "Submitted for review"
+    },
+    {
+      "id": "approved",
+      "description": "Approved by admin"
+    },
+    {
+      "id": "rejected",
+      "description": "Rejected"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "submit",
+      "description": "Submit for review",
+      "event_type": "Submitted",
+      "http_method": "POST",
+      "http_path": "/items/{id}/submit"
+    },
+    {
+      "id": "approve",
+      "description": "Approve the submission",
+      "event_type": "Approved",
+      "http_method": "POST",
+      "http_path": "/items/{id}/approve"
+    },
+    {
+      "id": "reject",
+      "description": "Reject the submission",
+      "event_type": "Rejected",
+      "http_method": "POST",
+      "http_path": "/items/{id}/reject"
+    }
+  ],
+  "arcs": [
+    {"from": "draft", "to": "submit"},
+    {"from": "submit", "to": "submitted"},
+    {"from": "submitted", "to": "approve"},
+    {"from": "approve", "to": "approved"},
+    {"from": "submitted", "to": "reject"},
+    {"from": "reject", "to": "rejected"}
+  ],
+  "roles": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "Regular customer who can submit items"
+    },
+    {
+      "id": "reviewer",
+      "name": "Reviewer",
+      "description": "Can review and approve/reject submissions"
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Full access to all operations",
+      "inherits": ["customer", "reviewer"]
+    }
+  ],
+  "access": [
+    {
+      "transition": "submit",
+      "roles": ["customer"]
+    },
+    {
+      "transition": "approve",
+      "roles": ["reviewer"]
+    },
+    {
+      "transition": "reject",
+      "roles": ["reviewer"]
+    }
+  ]
+}

@@ -28,8 +28,9 @@ const (
 	TemplateDockerCompose = "docker-compose"
 
 	// Auth templates (Phase 9)
-	TemplateAuth       = "auth"
-	TemplateMiddleware = "middleware"
+	TemplateAuth        = "auth"
+	TemplateMiddleware  = "middleware"
+	TemplatePermissions = "permissions"
 
 	// Observability templates (Phase 10)
 	TemplateObservability = "observability"
@@ -70,8 +71,9 @@ var templateInfo = map[string]struct {
 	TemplateDockerCompose: {File: "docker-compose.tmpl", Output: "docker-compose.yaml"},
 
 	// Auth templates
-	TemplateAuth:       {File: "auth.tmpl", Output: "auth.go"},
-	TemplateMiddleware: {File: "middleware.tmpl", Output: "middleware.go"},
+	TemplateAuth:        {File: "auth.tmpl", Output: "auth.go"},
+	TemplateMiddleware:  {File: "middleware.tmpl", Output: "middleware.go"},
+	TemplatePermissions: {File: "permissions.tmpl", Output: "permissions.go"},
 
 	// Observability templates
 	TemplateObservability: {File: "observability.tmpl", Output: "observability.go"},
@@ -184,6 +186,7 @@ func AuthTemplateNames() []string {
 	return []string{
 		TemplateAuth,
 		TemplateMiddleware,
+		TemplatePermissions,
 	}
 }
 

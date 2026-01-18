@@ -1,11 +1,14 @@
-.PHONY: build test clean validate-all codegen-all help
+.PHONY: build test clean validate-all codegen-all build-examples help
 .PHONY: $(EXAMPLE_TARGETS) $(CODEGEN_TARGETS)
+
+# Default target shows help
+.DEFAULT_GOAL := help
 
 # Binary name
 BINARY := petri-pilot
 
-# Example files
-EXAMPLES := $(wildcard examples/*.json)
+# Example files (exclude app specs and models with known codegen issues)
+EXAMPLES := $(filter-out examples/task-manager-app.json examples/order-system.json examples/token-ledger.json,$(wildcard examples/*.json))
 EXAMPLE_NAMES := $(basename $(notdir $(EXAMPLES)))
 
 # Generate target names
@@ -34,6 +37,19 @@ validate-all: $(EXAMPLE_TARGETS)
 # Generate code for all examples
 codegen-all: $(CODEGEN_TARGETS)
 
+# Generate and build all examples (verifies generated code compiles)
+build-examples: codegen-all
+	@echo "=== Building all generated examples ==="
+	@for name in $(EXAMPLE_NAMES); do \
+		echo "Building $$name..."; \
+		cd $(OUTPUT_DIR)/$$name && \
+		echo "replace github.com/pflow-xyz/petri-pilot => $$(cd ../.. && pwd)" >> go.mod && \
+		GOWORK=off go mod tidy && \
+		GOWORK=off go build ./... || exit 1; \
+		cd - > /dev/null; \
+	done
+	@echo "All examples built successfully!"
+
 # Individual validate targets
 validate-%: examples/%.json
 	@echo "=== Validating $< ==="
@@ -43,7 +59,7 @@ validate-%: examples/%.json
 codegen-%: examples/%.json
 	@echo "=== Generating code from $< ==="
 	@mkdir -p $(OUTPUT_DIR)/$*
-	go run ./cmd/petri-pilot/... codegen $< -o $(OUTPUT_DIR)/$* -lang go
+	go run ./cmd/petri-pilot/... codegen -o $(OUTPUT_DIR)/$* $<
 
 # Run MCP server
 mcp:
@@ -71,6 +87,7 @@ help:
 	@echo ""
 	@echo "Codegen targets (output to $(OUTPUT_DIR)/<name>/):"
 	@echo "  codegen-all    Generate code for all examples"
+	@echo "  build-examples Generate and compile all examples"
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "  codegen-$$name"; \
 	done

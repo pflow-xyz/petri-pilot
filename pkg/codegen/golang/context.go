@@ -82,6 +82,8 @@ type AccessRuleContext struct {
 	TransitionID string   // Transition this rule applies to
 	Roles        []string // Required roles
 	Guard        string   // Optional guard expression
+	GuardGoCode  string   // Generated Go code for guard evaluation
+	HasGuard     bool     // True if guard expression is present
 }
 
 // RoleContext provides template-friendly access to role definitions.
@@ -90,6 +92,8 @@ type RoleContext struct {
 	Name        string
 	Description string
 	Inherits    []string // Parent role IDs
+	ConstName   string   // Go constant name (e.g., "RoleAdmin")
+	AllRoles    []string // Flattened inheritance (this role + all inherited)
 }
 
 // WebhookContext provides template-friendly access to webhook configuration.
@@ -318,7 +322,45 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
 	}
 
+	// Extract access control from schema if not provided in opts
+	if len(opts.AccessRules) == 0 && len(opts.Roles) == 0 {
+		accessSpec := bridge.ExtractAccessSpec(enriched)
+		ctx.Roles = buildRoleContexts(accessSpec.Roles)
+		ctx.AccessRules = buildAccessRuleContexts(accessSpec.Rules)
+	}
+
 	return ctx, nil
+}
+
+// buildRoleContexts converts bridge RoleSpecs to RoleContexts.
+func buildRoleContexts(roles []bridge.RoleSpec) []RoleContext {
+	result := make([]RoleContext, len(roles))
+	for i, r := range roles {
+		result[i] = RoleContext{
+			ID:          r.ID,
+			Name:        r.Name,
+			Description: r.Description,
+			Inherits:    r.Inherits,
+			ConstName:   ToConstName("Role", r.ID),
+			AllRoles:    r.AllRoles,
+		}
+	}
+	return result
+}
+
+// buildAccessRuleContexts converts bridge AccessRuleSpecs to AccessRuleContexts.
+func buildAccessRuleContexts(rules []bridge.AccessRuleSpec) []AccessRuleContext {
+	result := make([]AccessRuleContext, len(rules))
+	for i, r := range rules {
+		result[i] = AccessRuleContext{
+			TransitionID: r.TransitionID,
+			Roles:        r.Roles,
+			Guard:        r.Guard,
+			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
+			HasGuard:     r.HasGuard,
+		}
+	}
+	return result
 }
 
 func buildPlaceContexts(places []schema.Place) []PlaceContext {

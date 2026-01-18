@@ -24,7 +24,7 @@ func main() {
 	
 	{{- if .HasAccessControl}}
 	// Initialize sessions for authentication
-	sessions := NewMemorySessionStore()
+	sessions := NewInMemorySessionStore()
 	
 	// Configure access control rules
 	accessRules := []*AccessControl{
