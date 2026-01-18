@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/react"
+	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
@@ -32,6 +35,11 @@ func NewServer() *server.MCPServer {
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
 	s.AddTool(applicationTool(), handleApplication)
+
+	// Delegate tools for GitHub Copilot integration
+	s.AddTool(delegateAppTool(), handleDelegateApp)
+	s.AddTool(delegateStatusTool(), handleDelegateStatus)
+	s.AddTool(delegateTasksTool(), handleDelegateTasks)
 
 	return s
 }
@@ -782,4 +790,220 @@ func splitWords(s string) []string {
 	s = strings.ReplaceAll(s, "-", "_")
 	s = strings.ReplaceAll(s, " ", "_")
 	return strings.Split(s, "_")
+}
+
+// --- Delegate Tool Definitions ---
+
+func delegateAppTool() mcp.Tool {
+	return mcp.NewTool("delegate_app",
+		mcp.WithDescription("Request GitHub Copilot to generate a new application. Creates an issue and assigns it to Copilot coding agent for autonomous implementation."),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("Short name for the app (lowercase, hyphens allowed)"),
+		),
+		mcp.WithString("description",
+			mcp.Required(),
+			mcp.Description("Natural language description of what the app should do"),
+		),
+		mcp.WithString("features",
+			mcp.Description("Comma-separated features: auth,rbac,admin,events,e2e"),
+		),
+		mcp.WithString("complexity",
+			mcp.Description("Complexity level: simple, medium, complex (default: medium)"),
+		),
+		mcp.WithString("owner",
+			mcp.Description("GitHub repository owner (default: pflow-xyz)"),
+		),
+		mcp.WithString("repo",
+			mcp.Description("GitHub repository name (default: petri-pilot)"),
+		),
+	)
+}
+
+func delegateStatusTool() mcp.Tool {
+	return mcp.NewTool("delegate_status",
+		mcp.WithDescription("Check the status of GitHub Copilot coding agents. Shows active runs, open PRs, and recent app requests."),
+		mcp.WithString("owner",
+			mcp.Description("GitHub repository owner (default: pflow-xyz)"),
+		),
+		mcp.WithString("repo",
+			mcp.Description("GitHub repository name (default: petri-pilot)"),
+		),
+	)
+}
+
+func delegateTasksTool() mcp.Tool {
+	return mcp.NewTool("delegate_tasks",
+		mcp.WithDescription("Delegate multiple tasks to GitHub Copilot in parallel. Each task becomes an issue assigned to Copilot."),
+		mcp.WithString("tasks",
+			mcp.Required(),
+			mcp.Description("JSON array of tasks, each with 'title' and 'description' fields"),
+		),
+		mcp.WithString("owner",
+			mcp.Description("GitHub repository owner (default: pflow-xyz)"),
+		),
+		mcp.WithString("repo",
+			mcp.Description("GitHub repository name (default: petri-pilot)"),
+		),
+	)
+}
+
+// --- Delegate Tool Handlers ---
+
+func handleDelegateApp(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString("name")
+	if err != nil {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+
+	description, err := request.RequireString("description")
+	if err != nil {
+		return mcp.NewToolResultError("description is required"), nil
+	}
+
+	owner := request.GetString("owner", "pflow-xyz")
+	repo := request.GetString("repo", "petri-pilot")
+	features := request.GetString("features", "")
+	complexity := request.GetString("complexity", "medium")
+
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		return mcp.NewToolResultError("GITHUB_TOKEN environment variable is required"), nil
+	}
+
+	client := delegate.NewClient(owner, repo, token)
+
+	var featureList []string
+	if features != "" {
+		for _, f := range strings.Split(features, ",") {
+			featureList = append(featureList, strings.TrimSpace(f))
+		}
+	}
+
+	req := delegate.AppRequest{
+		Name:        name,
+		Description: description,
+		Features:    featureList,
+		Complexity:  complexity,
+	}
+
+	issue, err := client.CreateAppRequest(ctx, req)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create app request: %v", err)), nil
+	}
+
+	result := fmt.Sprintf(`App request created successfully!
+
+Issue: #%d
+URL: %s
+
+Copilot will work on this autonomously and create a PR when ready.
+
+To check status: delegate_status
+`, issue.Number, issue.HTMLURL)
+
+	return mcp.NewToolResultText(result), nil
+}
+
+func handleDelegateStatus(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner := request.GetString("owner", "pflow-xyz")
+	repo := request.GetString("repo", "petri-pilot")
+
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		return mcp.NewToolResultError("GITHUB_TOKEN environment variable is required"), nil
+	}
+
+	client := delegate.NewClient(owner, repo, token)
+
+	status, err := client.GetAgentStatus(ctx)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get status: %v", err)), nil
+	}
+
+	var sb strings.Builder
+
+	if len(status.ActiveRuns) > 0 {
+		sb.WriteString(fmt.Sprintf("## Active Copilot Agents: %d\n\n", len(status.ActiveRuns)))
+		for _, run := range status.ActiveRuns {
+			duration := time.Since(run.CreatedAt).Round(time.Second)
+			sb.WriteString(fmt.Sprintf("- **%s** (running %s)\n", run.HeadBranch, duration))
+			sb.WriteString(fmt.Sprintf("  %s\n", run.HTMLURL))
+		}
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString("## No active Copilot agents\n\n")
+	}
+
+	if len(status.OpenPRs) > 0 {
+		sb.WriteString(fmt.Sprintf("## Open PRs from Copilot: %d\n\n", len(status.OpenPRs)))
+		for _, pr := range status.OpenPRs {
+			draft := ""
+			if pr.Draft {
+				draft = " [DRAFT]"
+			}
+			sb.WriteString(fmt.Sprintf("- **#%d**: %s%s\n", pr.Number, pr.Title, draft))
+			sb.WriteString(fmt.Sprintf("  +%d -%d | %s\n", pr.Additions, pr.Deletions, pr.HTMLURL))
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(status.RecentIssues) > 0 {
+		sb.WriteString(fmt.Sprintf("## Recent App Requests: %d\n\n", len(status.RecentIssues)))
+		for _, issue := range status.RecentIssues {
+			sb.WriteString(fmt.Sprintf("- **#%d**: %s [%s]\n", issue.Number, issue.Title, issue.State))
+		}
+	}
+
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
+func handleDelegateTasks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tasksJSON, err := request.RequireString("tasks")
+	if err != nil {
+		return mcp.NewToolResultError("tasks is required (JSON array)"), nil
+	}
+
+	owner := request.GetString("owner", "pflow-xyz")
+	repo := request.GetString("repo", "petri-pilot")
+
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		return mcp.NewToolResultError("GITHUB_TOKEN environment variable is required"), nil
+	}
+
+	// Parse tasks JSON
+	var tasks []delegate.Task
+	if err := json.Unmarshal([]byte(tasksJSON), &tasks); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid tasks JSON: %v", err)), nil
+	}
+
+	if len(tasks) == 0 {
+		return mcp.NewToolResultError("at least one task is required"), nil
+	}
+
+	client := delegate.NewClient(owner, repo, token)
+
+	result, err := client.DelegateTasks(ctx, tasks)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to delegate tasks: %v", err)), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("## Delegated %d tasks\n\n", len(result.Succeeded)))
+
+	for _, issue := range result.Succeeded {
+		sb.WriteString(fmt.Sprintf("- **#%d**: %s\n", issue.Number, issue.Title))
+	}
+
+	if len(result.Failed) > 0 {
+		sb.WriteString(fmt.Sprintf("\n## Failed: %d tasks\n\n", len(result.Failed)))
+		for _, f := range result.Failed {
+			sb.WriteString(fmt.Sprintf("- %s: %s\n", f.Task.Title, f.Error))
+		}
+	}
+
+	sb.WriteString("\nCopilot agents will work on these autonomously.")
+
+	return mcp.NewToolResultText(sb.String()), nil
 }
