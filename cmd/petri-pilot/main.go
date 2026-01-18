@@ -61,7 +61,7 @@ Commands:
   validate    Validate an existing Petri net model
   refine      Refine a model based on validation feedback
   codegen     Generate backend application code from a validated model
-  frontend    Generate React frontend from a validated model
+  frontend    Generate vanilla JavaScript ES modules frontend from a validated model
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
 
 Options:
@@ -84,7 +84,7 @@ Examples:
   # Generate backend application code
   petri-pilot codegen model.json -o ./myworkflow/
 
-  # Generate React frontend
+  # Generate vanilla JS frontend
   petri-pilot frontend model.json -o ./myworkflow-frontend/
 
   # Generate OpenAPI spec only

@@ -172,7 +172,7 @@ Generated code uses runtime interfaces.
 | Target | Output |
 |--------|--------|
 | Go | State machine + event handlers using `runtime/` interfaces |
-| TypeScript | Event-driven handlers with storage adapters |
+| JavaScript (ES modules) | Event-driven handlers with storage adapters |
 | OpenAPI | API spec from model transitions |
 
 ### Generated Project Structure
@@ -300,13 +300,13 @@ CREATE TABLE order_state (
 
 ## Phase 8: Frontend Generation ✅
 
-Generate a vanilla JS frontend application from the same Petri net model.
+Generate a vanilla JavaScript frontend application using ES modules from the same Petri net model.
 
 | Component | Description |
 |-----------|-------------|
-| React scaffold | Vite + React + TypeScript project |
-| API client | Generated from OpenAPI spec (openapi-generator) |
-| Transition forms | One form component per transition |
+| ES modules scaffold | Vite + ES modules + plain JavaScript project |
+| API client | Generated fetch-based client with async/await |
+| Transition forms | Vanilla JavaScript form components per transition |
 | State display | Shows current place tokens / aggregate state |
 | Routing | Pages per major workflow state |
 
@@ -315,23 +315,19 @@ Generate a vanilla JS frontend application from the same Petri net model.
 ```
 generated-frontend/
 ├── package.json
-├── vite.config.ts
+├── vite.config.js
 ├── src/
-│   ├── main.tsx
-│   ├── App.tsx
+│   ├── main.js                # Main application entry point
 │   ├── api/
-│   │   └── client.ts          # Generated from OpenAPI
+│   │   └── client.js          # Fetch-based API client
 │   ├── components/
-│   │   ├── StateDisplay.tsx   # Current workflow state
-│   │   ├── TransitionForm.tsx # Generic form component
+│   │   ├── state-display.js   # Current workflow state
 │   │   └── transitions/
-│   │       ├── ValidateForm.tsx
-│   │       ├── ShipForm.tsx
+│   │       ├── validate-form.js
+│   │       ├── ship-form.js
 │   │       └── ...            # One per transition
-│   ├── hooks/
-│   │   └── useWorkflow.ts     # State + transition helpers
-│   └── types/
-│       └── index.ts           # Types from OpenAPI
+│   └── utils/
+│       └── workflow.js        # State + transition helpers
 └── index.html
 ```
 
@@ -342,9 +338,9 @@ s.AddTool(frontendTool(), handleFrontend)
 
 func frontendTool() mcp.Tool {
     return mcp.NewTool("petri_frontend",
-        mcp.WithDescription("Generate React frontend from Petri net model"),
+        mcp.WithDescription("Generate vanilla JavaScript ES modules frontend from Petri net model"),
         mcp.WithString("model", mcp.Required()),
-        mcp.WithString("framework", mcp.Description("react, vue, svelte (default: react)")),
+        mcp.WithString("project", mcp.Description("Project name (default: model name)")),
     )
 }
 ```
@@ -378,15 +374,15 @@ func RequirePermission(perm string) func(http.Handler) http.Handler
 
 ### Frontend Additions
 
-```typescript
-// hooks/useRealtimeState.ts
-export function useRealtimeState(streamId: string) {
-    // WebSocket subscription, automatic reconnect
+```javascript
+// utils/realtime.js
+export function subscribeToState(streamId, callback) {
+    // Server-Sent Events subscription, automatic reconnect
 }
 
-// context/AuthContext.tsx
-export function AuthProvider({ children }) {
-    // JWT storage, refresh, logout
+// utils/auth.js
+export function initAuth() {
+    // JWT storage, refresh, logout helpers
 }
 ```
 
@@ -471,8 +467,8 @@ func main() {
 Fastest route to deployable full-stack app:
 
 1. Add `Dockerfile.tmpl` + `docker-compose.yaml.tmpl` (Phase 7 partial)
-2. Shell out to `openapi-generator-cli` for TypeScript client
-3. Minimal React template with generated client + forms
+2. Generate vanilla JavaScript API client with fetch
+3. Minimal ES modules template with generated client + forms
 
 ---
 
@@ -601,8 +597,8 @@ The MCP server will expose:
 type ApplicationInput struct {
     Spec Application `json:"spec"`
     Options struct {
-        Backend  string `json:"backend"`  // go, typescript
-        Frontend string `json:"frontend"` // react, vue, none
+        Backend  string `json:"backend"`  // go, javascript
+        Frontend string `json:"frontend"` // esm (ES modules), none
         Database string `json:"database"` // postgres, sqlite
     } `json:"options"`
 }
@@ -623,10 +619,7 @@ type ApplicationInput struct {
 
 | Package | Purpose |
 |---------|---------|
-| `openapi-generator-cli` | Generate TypeScript client from OpenAPI |
-| `vite` | Frontend build tooling |
-| `react` / `vue` / `svelte` | UI framework |
-| `@tanstack/react-query` | Data fetching + caching |
+| `vite` | Frontend build tooling and dev server |
 | `gorilla/websocket` | WebSocket support (Phase 9) |
 | `golang-jwt/jwt` | JWT validation (Phase 9) |
 | `prometheus/client_golang` | Metrics (Phase 10) |

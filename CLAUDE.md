@@ -116,7 +116,7 @@ Options:
 petri-pilot codegen [options] model.json
 
 Options:
-  -lang string  Target language: go, typescript (default: go)
+  -lang string  Target language: go, javascript (default: go)
   -o dir        Output directory (default: ./generated)
   -api-only     Generate OpenAPI spec only
 ```
