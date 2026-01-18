@@ -725,3 +725,18 @@ func (c *Context) UsesMetamodelRuntime() bool {
 func (c *Context) HasWorkflows() bool {
 	return len(c.Workflows) > 0
 }
+
+// HasAccessControl returns true if any access rules or roles are defined.
+func (c *Context) HasAccessControl() bool {
+	return len(c.AccessRules) > 0 || len(c.Roles) > 0
+}
+
+// TransitionRequiresAuth returns true if a transition has access control rules.
+func (c *Context) TransitionRequiresAuth(transitionID string) bool {
+	for _, rule := range c.AccessRules {
+		if rule.TransitionID == transitionID {
+			return true
+		}
+	}
+	return false
+}

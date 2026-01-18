@@ -21,9 +21,28 @@ func main() {
 
 	// Create application
 	app := NewApplication(store)
+	
+	{{- if .HasAccessControl}}
+	// Initialize sessions for authentication
+	sessions := NewMemorySessionStore()
+	
+	// Configure access control rules
+	accessRules := []*AccessControl{
+		{{- range .AccessRules}}
+		{
+			TransitionID: "{{.TransitionID}}",
+			Roles:        []string{ {{- range .Roles}}"{{.}}", {{end}} },
+			Guard:        "{{.Guard}}",
+		},
+		{{- end}}
+	}
+	
+	// Initialize middleware
+	middleware := NewMiddleware(sessions, accessRules)
+	{{- end}}
 
 	// Build HTTP router
-	router := BuildRouter(app)
+	router := BuildRouter(app{{if .HasAccessControl}}, middleware{{end}})
 
 	// Configure server
 	port := os.Getenv("PORT")
