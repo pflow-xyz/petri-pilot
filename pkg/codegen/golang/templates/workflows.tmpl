@@ -59,6 +59,7 @@ type Workflow struct {
 }
 
 {{range .Workflows}}
+{{- $workflow := . -}}
 // {{.PascalName}}Workflow executes the {{.Name}} workflow.
 type {{.PascalName}}Workflow struct {
 	executor *WorkflowExecutor
@@ -84,7 +85,7 @@ func (w *{{.PascalName}}Workflow) Execute(ctx context.Context, triggerData map[s
 	{{range .Steps}}
 	// Step: {{.ID}} ({{.Type}})
 	if err := w.execute{{.PascalName}}(ctx, wfCtx); err != nil {
-		log.Printf("Workflow {{$.Name}} failed at step {{.ID}}: %v", err)
+		log.Printf("Workflow {{$workflow.Name}} failed at step {{.ID}}: %v", err)
 		{{if .OnFailure}}
 		// TODO: Execute failure handler: {{.OnFailure}}
 		{{end}}
@@ -97,7 +98,7 @@ func (w *{{.PascalName}}Workflow) Execute(ctx context.Context, triggerData map[s
 }
 
 {{range .Steps}}
-func (w *{{$.PascalName}}Workflow) execute{{.PascalName}}(ctx context.Context, wfCtx *WorkflowContext) error {
+func (w *{{$workflow.PascalName}}Workflow) execute{{.PascalName}}(ctx context.Context, wfCtx *WorkflowContext) error {
 	{{if eq .Type "action"}}
 	// Execute action: {{.Entity}}.{{.Action}}
 	handlerKey := "{{.Entity}}.{{.Action}}"
