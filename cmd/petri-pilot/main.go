@@ -37,6 +37,8 @@ func main() {
 		cmdCodegen(os.Args[2:])
 	case "frontend":
 		cmdFrontend(os.Args[2:])
+	case "delegate":
+		cmdDelegate(os.Args[2:])
 	case "mcp":
 		cmdMcp()
 	case "help", "-h", "--help":
@@ -62,6 +64,7 @@ Commands:
   refine      Refine a model based on validation feedback
   codegen     Generate backend application code from a validated model
   frontend    Generate vanilla JavaScript ES modules frontend from a validated model
+  delegate    Delegate tasks to GitHub Copilot coding agent
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
 
 Options:
