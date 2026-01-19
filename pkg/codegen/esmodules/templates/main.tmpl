@@ -748,13 +748,17 @@ window.handleActionSubmit = async function(event) {
 
   if (!currentActionId || !currentInstance) return
 
+  // Save action ID before hiding modal (which clears it)
+  const actionId = currentActionId
+  const instanceId = currentInstance.id
+
   const form = event.target
   const formData = new FormData(form)
   const data = {}
 
   for (const [key, value] of formData.entries()) {
     // Convert numeric strings to numbers for amount fields
-    const field = TRANSITION_DEFS.find(t => t.id === currentActionId)?.fields.find(f => f.name === key)
+    const field = TRANSITION_DEFS.find(t => t.id === actionId)?.fields.find(f => f.name === key)
     if (field && (field.type === 'amount' || field.type === 'number')) {
       data[key] = parseFloat(value) || 0
     } else {
@@ -765,7 +769,7 @@ window.handleActionSubmit = async function(event) {
   hideActionModal()
 
   try {
-    const result = await api.executeTransition(currentActionId, currentInstance.id, data)
+    const result = await api.executeTransition(actionId, instanceId, data)
     currentInstance = {
       ...currentInstance,
       version: result.version,
@@ -777,9 +781,9 @@ window.handleActionSubmit = async function(event) {
     // Store state for wallet balance display
     window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
-    showSuccess(`Action "${currentActionId}" completed!`)
+    showSuccess(`Action "${actionId}" completed!`)
   } catch (err) {
-    showError(`Failed to execute ${currentActionId}: ${err.message}`)
+    showError(`Failed to execute ${actionId}: ${err.message}`)
   }
 }
 
