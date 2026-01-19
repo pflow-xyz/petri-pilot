@@ -1,13 +1,14 @@
-const { BASE_URL, startServer, stopServer } = require('../lib/server');
+const { startServer, stopServer } = require('../lib/server');
 
 describe('Workflow State Machine', () => {
-  let token, server;
+  let token, server, baseUrl;
 
   beforeAll(async () => {
     server = await startServer();
+    baseUrl = server.baseUrl;
 
     // Get auth token via debug login endpoint
-    const loginRes = await fetch(`${BASE_URL}/api/debug/login`, {
+    const loginRes = await fetch(`${baseUrl}/api/debug/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login: 'testuser', roles: ['customer', 'reviewer'] }),
@@ -21,7 +22,7 @@ describe('Workflow State Machine', () => {
   });
 
   test('create new aggregate', async () => {
-    const res = await fetch(`${BASE_URL}/api/accesstest`, {
+    const res = await fetch(`${baseUrl}/api/accesstest`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -37,7 +38,7 @@ describe('Workflow State Machine', () => {
 
   test('execute submit transition', async () => {
     // Create aggregate
-    const createRes = await fetch(`${BASE_URL}/api/accesstest`, {
+    const createRes = await fetch(`${baseUrl}/api/accesstest`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}'
@@ -47,7 +48,7 @@ describe('Workflow State Machine', () => {
     console.log('Created aggregate:', JSON.stringify(createResult, null, 2));
 
     // Execute submit transition
-    const submitRes = await fetch(`${BASE_URL}/items/${aggId}/submit`, {
+    const submitRes = await fetch(`${baseUrl}/items/${aggId}/submit`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ aggregate_id: aggId })
@@ -62,7 +63,7 @@ describe('Workflow State Machine', () => {
 
   test('access control - reviewer can approve', async () => {
     // Create aggregate
-    const createRes = await fetch(`${BASE_URL}/api/accesstest`, {
+    const createRes = await fetch(`${baseUrl}/api/accesstest`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}'
@@ -71,14 +72,14 @@ describe('Workflow State Machine', () => {
     const aggId = createResult.aggregate_id;
 
     // Submit first
-    await fetch(`${BASE_URL}/items/${aggId}/submit`, {
+    await fetch(`${baseUrl}/items/${aggId}/submit`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ aggregate_id: aggId })
     });
 
     // Approve (requires reviewer role - we have it)
-    const approveRes = await fetch(`${BASE_URL}/items/${aggId}/approve`, {
+    const approveRes = await fetch(`${baseUrl}/items/${aggId}/approve`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ aggregate_id: aggId })

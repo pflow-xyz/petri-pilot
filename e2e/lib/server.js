@@ -1,7 +1,12 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-const BASE_URL = 'http://localhost:8081';
+/**
+ * Generate a random port between min and max (inclusive)
+ */
+function getRandomPort(min = 9100, max = 9999) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 /**
  * Wait for server to be healthy by polling the /health endpoint
@@ -25,16 +30,19 @@ async function waitForHealth(url, maxAttempts = 60, intervalMs = 500) {
 
 /**
  * Start the test-access server and wait for it to be healthy
+ * Returns an object with server process and baseUrl
  */
 async function startServer() {
   const buildDir = path.resolve(__dirname, '../../generated/test-access');
   const binaryPath = path.join(buildDir, 'access-test');
+  const port = getRandomPort();
+  const baseUrl = `http://localhost:${port}`;
 
-  console.log(`Starting server from ${binaryPath}`);
+  console.log(`Starting server from ${binaryPath} on port ${port}`);
 
   const server = spawn(binaryPath, [], {
     cwd: buildDir,
-    env: { ...process.env, MOCK_AUTH: 'true', PORT: '8081' },
+    env: { ...process.env, MOCK_AUTH: 'true', PORT: String(port) },
     stdio: 'pipe',
   });
 
@@ -60,7 +68,10 @@ async function startServer() {
   });
 
   // Wait for server to be healthy
-  await waitForHealth(BASE_URL);
+  await waitForHealth(baseUrl);
+
+  // Attach baseUrl to server object for easy access
+  server.baseUrl = baseUrl;
 
   return server;
 }
@@ -79,7 +90,6 @@ async function stopServer(server) {
 }
 
 module.exports = {
-  BASE_URL,
   startServer,
   stopServer,
   waitForHealth,
