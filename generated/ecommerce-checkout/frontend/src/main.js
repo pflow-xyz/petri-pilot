@@ -286,17 +286,17 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'start_checkout', name: 'Start Checkout', description: 'Begin checkout process' },
-    { id: 'enter_payment', name: 'Enter Payment', description: 'Enter payment details' },
-    { id: 'process_payment', name: 'Process Payment', description: 'Process the payment' },
-    { id: 'payment_success', name: 'Payment Success', description: 'Payment processed successfully' },
-    { id: 'payment_fail_1', name: 'Payment Fail 1', description: 'First payment attempt failed' },
-    { id: 'retry_payment_1', name: 'Retry Payment 1', description: 'Retry payment (attempt 2)' },
-    { id: 'payment_fail_2', name: 'Payment Fail 2', description: 'Second payment attempt failed' },
-    { id: 'retry_payment_2', name: 'Retry Payment 2', description: 'Retry payment (attempt 3)' },
-    { id: 'payment_fail_3', name: 'Payment Fail 3', description: 'Third payment attempt failed' },
-    { id: 'cancel_order', name: 'Cancel Order', description: 'Cancel order after max retries' },
-    { id: 'fulfill', name: 'Fulfill', description: 'Fulfill the order' },
+    { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process" },
+    { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details" },
+    { id: 'process_payment', name: 'Process Payment', description: "Process the payment" },
+    { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully" },
+    { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed" },
+    { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)" },
+    { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed" },
+    { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)" },
+    { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed" },
+    { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries" },
+    { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order" },
   ]
 
   container.innerHTML = `
@@ -1028,17 +1028,17 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start_checkout', name: 'Start Checkout', description: 'Begin checkout process' },
-      { id: 'enter_payment', name: 'Enter Payment', description: 'Enter payment details' },
-      { id: 'process_payment', name: 'Process Payment', description: 'Process the payment' },
-      { id: 'payment_success', name: 'Payment Success', description: 'Payment processed successfully' },
-      { id: 'payment_fail_1', name: 'Payment Fail 1', description: 'First payment attempt failed' },
-      { id: 'retry_payment_1', name: 'Retry Payment 1', description: 'Retry payment (attempt 2)' },
-      { id: 'payment_fail_2', name: 'Payment Fail 2', description: 'Second payment attempt failed' },
-      { id: 'retry_payment_2', name: 'Retry Payment 2', description: 'Retry payment (attempt 3)' },
-      { id: 'payment_fail_3', name: 'Payment Fail 3', description: 'Third payment attempt failed' },
-      { id: 'cancel_order', name: 'Cancel Order', description: 'Cancel order after max retries' },
-      { id: 'fulfill', name: 'Fulfill', description: 'Fulfill the order' },
+      { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process" },
+      { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details" },
+      { id: 'process_payment', name: 'Process Payment', description: "Process the payment" },
+      { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully" },
+      { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed" },
+      { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)" },
+      { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed" },
+      { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)" },
+      { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed" },
+      { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries" },
+      { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order" },
     ]
   },
 

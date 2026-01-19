@@ -287,7 +287,7 @@ function renderInstanceDetail() {
   // Transition definitions
   const transitions = [
 {{- range .Transitions}}
-    { id: '{{.ID}}', name: '{{.DisplayName}}', description: '{{.Description}}' },
+    { id: '{{.ID}}', name: '{{.DisplayName}}', description: "{{.Description}}" },
 {{- end}}
   ]
 
@@ -1021,7 +1021,7 @@ window.pilot = {
   getTransitions() {
     return [
 {{- range .Transitions}}
-      { id: '{{.ID}}', name: '{{.DisplayName}}', description: '{{.Description}}' },
+      { id: '{{.ID}}', name: '{{.DisplayName}}', description: "{{.Description}}" },
 {{- end}}
     ]
   },

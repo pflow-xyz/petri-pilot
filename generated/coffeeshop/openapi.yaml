@@ -1,0 +1,478 @@
+openapi: "3.0.3"
+info:
+  title: "coffeeshop API"
+  version: "1.0.0"
+  description: "Generated API for coffeeshop workflow"
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/coffeeshop:
+    post:
+      summary: Create new coffeeshop
+      operationId: createCoffeeshop
+      tags:
+        - coffeeshop
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/coffeeshop/{id}:
+    get:
+      summary: Get coffeeshop state
+      operationId: getCoffeeshop
+      tags:
+        - coffeeshop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Aggregate ID
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_espresso:
+    post:
+      summary: "Customer orders espresso"
+      operationId: orderEspresso
+      tags:
+        - transitions
+      x-transition-id: order_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_latte:
+    post:
+      summary: "Customer orders latte"
+      operationId: orderLatte
+      tags:
+        - transitions
+      x-transition-id: order_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_cappuccino:
+    post:
+      summary: "Customer orders cappuccino"
+      operationId: orderCappuccino
+      tags:
+        - transitions
+      x-transition-id: order_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_espresso:
+    post:
+      summary: "Barista makes espresso"
+      operationId: makeEspresso
+      tags:
+        - transitions
+      x-transition-id: make_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_latte:
+    post:
+      summary: "Barista makes latte"
+      operationId: makeLatte
+      tags:
+        - transitions
+      x-transition-id: make_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_cappuccino:
+    post:
+      summary: "Barista makes cappuccino"
+      operationId: makeCappuccino
+      tags:
+        - transitions
+      x-transition-id: make_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_espresso:
+    post:
+      summary: "Serve espresso to customer"
+      operationId: serveEspresso
+      tags:
+        - transitions
+      x-transition-id: serve_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_latte:
+    post:
+      summary: "Serve latte to customer"
+      operationId: serveLatte
+      tags:
+        - transitions
+      x-transition-id: serve_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_cappuccino:
+    post:
+      summary: "Serve cappuccino to customer"
+      operationId: serveCappuccino
+      tags:
+        - transitions
+      x-transition-id: serve_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+components:
+  schemas:
+    TransitionRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    TransitionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
+    StateResponse:
+      type: object
+      properties:
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          $ref: "#/components/schemas/CoffeeshopState"
+        places:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Current Petri net marking
+        enabled_transitions:
+          type: array
+          items:
+            type: string
+          description: Transitions that can currently fire
+
+    CoffeeshopState:
+      type: object
+      description: Aggregate state for coffeeshop
+      properties:
+        coffee_beans:
+          type: integer
+        milk:
+          type: integer
+        cups:
+          type: integer
+        orders_pending:
+          type: integer
+        espresso_ready:
+          type: integer
+        latte_ready:
+          type: integer
+        cappuccino_ready:
+          type: integer
+        orders_complete:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: system
+    description: System endpoints
+  - name: coffeeshop
+    description: coffeeshop aggregate operations
+  - name: transitions
+    description: Petri net transition endpoints

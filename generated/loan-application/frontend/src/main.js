@@ -286,18 +286,18 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'run_credit_check', name: 'Run Credit Check', description: 'Initiate automated credit check' },
-    { id: 'auto_approve', name: 'Auto Approve', description: 'Automatic approval based on credit score' },
-    { id: 'flag_for_review', name: 'Flag For Review', description: 'Flag application for manual review' },
-    { id: 'underwriter_approve', name: 'Underwriter Approve', description: 'Underwriter approves the application' },
-    { id: 'underwriter_deny', name: 'Underwriter Deny', description: 'Underwriter denies the application' },
-    { id: 'auto_deny', name: 'Auto Deny', description: 'Automatic denial based on credit score' },
-    { id: 'finalize_approval', name: 'Finalize Approval', description: 'Finalize loan approval' },
-    { id: 'disburse', name: 'Disburse', description: 'Disburse loan funds to customer' },
-    { id: 'start_repayment', name: 'Start Repayment', description: 'Begin repayment period' },
-    { id: 'make_payment', name: 'Make Payment', description: 'Customer makes a payment' },
-    { id: 'complete', name: 'Complete', description: 'Final payment received, loan complete' },
-    { id: 'mark_default', name: 'Mark Default', description: 'Mark loan as defaulted' },
+    { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check" },
+    { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score" },
+    { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review" },
+    { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application" },
+    { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application" },
+    { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score" },
+    { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval" },
+    { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer" },
+    { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period" },
+    { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment" },
+    { id: 'complete', name: 'Complete', description: "Final payment received, loan complete" },
+    { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted" },
   ]
 
   container.innerHTML = `
@@ -1029,18 +1029,18 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'run_credit_check', name: 'Run Credit Check', description: 'Initiate automated credit check' },
-      { id: 'auto_approve', name: 'Auto Approve', description: 'Automatic approval based on credit score' },
-      { id: 'flag_for_review', name: 'Flag For Review', description: 'Flag application for manual review' },
-      { id: 'underwriter_approve', name: 'Underwriter Approve', description: 'Underwriter approves the application' },
-      { id: 'underwriter_deny', name: 'Underwriter Deny', description: 'Underwriter denies the application' },
-      { id: 'auto_deny', name: 'Auto Deny', description: 'Automatic denial based on credit score' },
-      { id: 'finalize_approval', name: 'Finalize Approval', description: 'Finalize loan approval' },
-      { id: 'disburse', name: 'Disburse', description: 'Disburse loan funds to customer' },
-      { id: 'start_repayment', name: 'Start Repayment', description: 'Begin repayment period' },
-      { id: 'make_payment', name: 'Make Payment', description: 'Customer makes a payment' },
-      { id: 'complete', name: 'Complete', description: 'Final payment received, loan complete' },
-      { id: 'mark_default', name: 'Mark Default', description: 'Mark loan as defaulted' },
+      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check" },
+      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score" },
+      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review" },
+      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application" },
+      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application" },
+      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score" },
+      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval" },
+      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer" },
+      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period" },
+      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment" },
+      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete" },
+      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted" },
     ]
   },
 

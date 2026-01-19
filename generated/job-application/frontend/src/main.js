@@ -286,18 +286,18 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'start_screening', name: 'Start Screening', description: 'Begin candidate screening' },
-    { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: 'Schedule phone screen' },
-    { id: 'start_background_check', name: 'Start Background Check', description: 'Initiate background check' },
-    { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: 'Complete phone screen' },
-    { id: 'complete_background_check', name: 'Complete Background Check', description: 'Complete background check' },
-    { id: 'advance_to_interview', name: 'Advance To Interview', description: 'Both checks passed, advance to interview' },
-    { id: 'conduct_interview', name: 'Conduct Interview', description: 'Conduct interview' },
-    { id: 'extend_offer', name: 'Extend Offer', description: 'Extend job offer' },
-    { id: 'accept_offer', name: 'Accept Offer', description: 'Candidate accepts offer' },
-    { id: 'reject_after_screen', name: 'Reject After Screen', description: 'Reject after screening' },
-    { id: 'reject_after_interview', name: 'Reject After Interview', description: 'Reject after interview' },
-    { id: 'decline_offer', name: 'Decline Offer', description: 'Candidate declines offer' },
+    { id: 'start_screening', name: 'Start Screening', description: "Begin candidate screening" },
+    { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: "Schedule phone screen" },
+    { id: 'start_background_check', name: 'Start Background Check', description: "Initiate background check" },
+    { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: "Complete phone screen" },
+    { id: 'complete_background_check', name: 'Complete Background Check', description: "Complete background check" },
+    { id: 'advance_to_interview', name: 'Advance To Interview', description: "Both checks passed, advance to interview" },
+    { id: 'conduct_interview', name: 'Conduct Interview', description: "Conduct interview" },
+    { id: 'extend_offer', name: 'Extend Offer', description: "Extend job offer" },
+    { id: 'accept_offer', name: 'Accept Offer', description: "Candidate accepts offer" },
+    { id: 'reject_after_screen', name: 'Reject After Screen', description: "Reject after screening" },
+    { id: 'reject_after_interview', name: 'Reject After Interview', description: "Reject after interview" },
+    { id: 'decline_offer', name: 'Decline Offer', description: "Candidate declines offer" },
   ]
 
   container.innerHTML = `
@@ -1029,18 +1029,18 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start_screening', name: 'Start Screening', description: 'Begin candidate screening' },
-      { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: 'Schedule phone screen' },
-      { id: 'start_background_check', name: 'Start Background Check', description: 'Initiate background check' },
-      { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: 'Complete phone screen' },
-      { id: 'complete_background_check', name: 'Complete Background Check', description: 'Complete background check' },
-      { id: 'advance_to_interview', name: 'Advance To Interview', description: 'Both checks passed, advance to interview' },
-      { id: 'conduct_interview', name: 'Conduct Interview', description: 'Conduct interview' },
-      { id: 'extend_offer', name: 'Extend Offer', description: 'Extend job offer' },
-      { id: 'accept_offer', name: 'Accept Offer', description: 'Candidate accepts offer' },
-      { id: 'reject_after_screen', name: 'Reject After Screen', description: 'Reject after screening' },
-      { id: 'reject_after_interview', name: 'Reject After Interview', description: 'Reject after interview' },
-      { id: 'decline_offer', name: 'Decline Offer', description: 'Candidate declines offer' },
+      { id: 'start_screening', name: 'Start Screening', description: "Begin candidate screening" },
+      { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: "Schedule phone screen" },
+      { id: 'start_background_check', name: 'Start Background Check', description: "Initiate background check" },
+      { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: "Complete phone screen" },
+      { id: 'complete_background_check', name: 'Complete Background Check', description: "Complete background check" },
+      { id: 'advance_to_interview', name: 'Advance To Interview', description: "Both checks passed, advance to interview" },
+      { id: 'conduct_interview', name: 'Conduct Interview', description: "Conduct interview" },
+      { id: 'extend_offer', name: 'Extend Offer', description: "Extend job offer" },
+      { id: 'accept_offer', name: 'Accept Offer', description: "Candidate accepts offer" },
+      { id: 'reject_after_screen', name: 'Reject After Screen', description: "Reject after screening" },
+      { id: 'reject_after_interview', name: 'Reject After Interview', description: "Reject after interview" },
+      { id: 'decline_offer', name: 'Decline Offer', description: "Candidate declines offer" },
     ]
   },
 

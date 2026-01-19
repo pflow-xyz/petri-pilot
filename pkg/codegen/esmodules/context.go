@@ -31,6 +31,9 @@ type Context struct {
 	// Pages for navigation and routing
 	Pages []PageContext
 
+	// Available roles for login selector
+	Roles []RoleContext
+
 	// Feature flags
 	HasEventSourcing bool
 	HasSnapshots     bool
@@ -52,6 +55,12 @@ type PredictionContext struct {
 	Enabled   bool
 	TimeHours float64
 	RateScale float64
+}
+
+// RoleContext provides template-friendly access to role data for login selector.
+type RoleContext struct {
+	ID          string
+	Description string
 }
 
 // PageContext provides template-friendly access to page data.
@@ -184,6 +193,9 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	stateFields := bridge.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
 
+	// Build role contexts for login selector
+	ctx.Roles = buildRoleContexts(enriched.Roles)
+
 	// Use provided pages or create default ones
 	if len(opts.Pages) > 0 {
 		ctx.Pages = opts.Pages
@@ -251,6 +263,17 @@ func buildStateFieldContexts(stateFields []bridge.StateField) []StateFieldContex
 			CamelName:  toCamelCase(f.Name),
 			Type:       goTypeToTS(f.Type),
 			IsToken:    f.IsToken,
+		}
+	}
+	return result
+}
+
+func buildRoleContexts(roles []schema.Role) []RoleContext {
+	result := make([]RoleContext, len(roles))
+	for i, r := range roles {
+		result[i] = RoleContext{
+			ID:          r.ID,
+			Description: r.Description,
 		}
 	}
 	return result

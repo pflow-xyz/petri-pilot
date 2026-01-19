@@ -2,10 +2,18 @@
 
 /**
  * Navigation component for support-ticket application
- * Provides navigation menu with fallback defaults
+ * Provides navigation menu with fallback defaults and role-based login
  */
 
 import { navigate } from './router.js'
+
+// Available roles for login
+const availableRoles = [
+  { id: 'customer', description: "End user who submits support tickets" },
+  { id: 'agent', description: "First-line support agent who handles tickets" },
+  { id: 'supervisor', description: "Senior support who handles escalations" },
+  { id: 'admin', description: "Full access to all operations" },
+]
 
 // Default navigation when backend is unavailable
 const defaultNavigation = {
@@ -85,16 +93,211 @@ export async function createNavigation() {
       </ul>
       <div class="nav-user">
         ${user ? `
-          <span class="user-name">${user.login || user.name || 'User'}</span>
+          <span class="user-name">${user.roles ? user.roles.join(', ') : user.login || user.name || 'User'}</span>
           <button onclick="handleLogout()" class="btn btn-link" style="color: rgba(255,255,255,0.8);">Logout</button>
         ` : `
-          <a href="/auth/login" class="btn btn-primary btn-sm">Login</a>
+          <button onclick="showLoginModal()" class="btn btn-primary btn-sm">Login</button>
         `}
       </div>
     </nav>
+    ${createLoginModal()}
   `
 
   return html
+}
+
+// Create login modal HTML
+function createLoginModal() {
+  if (availableRoles.length === 0) {
+    // No roles defined, show simple login
+    return `
+      <div id="login-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop" onclick="hideLoginModal()"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Login</h3>
+            <button onclick="hideLoginModal()" class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>No roles configured. Click below to login as a guest user.</p>
+            <button onclick="handleRoleLogin(['guest'])" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+              Login as Guest
+            </button>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  const roleButtons = availableRoles.map(role => `
+    <button onclick="handleRoleLogin(['${role.id}'])" class="role-button">
+      <span class="role-name">${role.id}</span>
+      ${role.description ? `<span class="role-desc">${role.description}</span>` : ''}
+    </button>
+  `).join('')
+
+  return `
+    <div id="login-modal" class="modal" style="display: none;">
+      <div class="modal-backdrop" onclick="hideLoginModal()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Select Role</h3>
+          <button onclick="hideLoginModal()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Choose a role to login as:</p>
+          <div class="role-list">
+            ${roleButtons}
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 0;
+        min-width: 320px;
+        max-width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #eee;
+      }
+      .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        line-height: 1;
+      }
+      .modal-close:hover {
+        color: #333;
+      }
+      .modal-body {
+        padding: 1.5rem;
+      }
+      .modal-body p {
+        margin: 0 0 1rem 0;
+        color: #666;
+      }
+      .role-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .role-button {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.75rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f9f9f9;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+      }
+      .role-button:hover {
+        background: #007bff;
+        border-color: #007bff;
+        color: white;
+      }
+      .role-button:hover .role-desc {
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .role-name {
+        font-weight: 600;
+        font-size: 1rem;
+      }
+      .role-desc {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+      }
+    </style>
+  `
+}
+
+// Show login modal
+window.showLoginModal = function() {
+  const modal = document.getElementById('login-modal')
+  if (modal) {
+    modal.style.display = 'flex'
+  }
+}
+
+// Hide login modal
+window.hideLoginModal = function() {
+  const modal = document.getElementById('login-modal')
+  if (modal) {
+    modal.style.display = 'none'
+  }
+}
+
+// Handle role-based login
+window.handleRoleLogin = async function(roles) {
+  try {
+    const response = await fetch('/api/debug/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: 'pilot-user', roles: roles })
+    })
+
+    if (!response.ok) {
+      throw new Error('Login failed')
+    }
+
+    const data = await response.json()
+
+    // Save auth data
+    localStorage.setItem('auth', JSON.stringify(data))
+
+    // Hide modal
+    hideLoginModal()
+
+    // Clear navigation cache to refetch with new user context
+    navigationData = null
+
+    // Dispatch auth change event
+    window.dispatchEvent(new CustomEvent('auth-change'))
+
+    // Refresh navigation
+    await refreshNavigation()
+  } catch (e) {
+    console.error('Login error:', e)
+    alert('Login failed. Please try again.')
+  }
 }
 
 // Handle navigation clicks

@@ -286,9 +286,9 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'submit', name: 'Submit', description: 'Submit for review' },
-    { id: 'approve', name: 'Approve', description: 'Approve the submission' },
-    { id: 'reject', name: 'Reject', description: 'Reject the submission' },
+    { id: 'submit', name: 'Submit', description: "Submit for review" },
+    { id: 'approve', name: 'Approve', description: "Approve the submission" },
+    { id: 'reject', name: 'Reject', description: "Reject the submission" },
   ]
 
   container.innerHTML = `
@@ -1020,9 +1020,9 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'submit', name: 'Submit', description: 'Submit for review' },
-      { id: 'approve', name: 'Approve', description: 'Approve the submission' },
-      { id: 'reject', name: 'Reject', description: 'Reject the submission' },
+      { id: 'submit', name: 'Submit', description: "Submit for review" },
+      { id: 'approve', name: 'Approve', description: "Approve the submission" },
+      { id: 'reject', name: 'Reject', description: "Reject the submission" },
     ]
   },
 

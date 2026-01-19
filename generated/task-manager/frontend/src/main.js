@@ -286,10 +286,10 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'start', name: 'Start', description: 'Start working on a task' },
-    { id: 'submit', name: 'Submit', description: 'Submit task for review' },
-    { id: 'approve', name: 'Approve', description: 'Approve completed task' },
-    { id: 'reject', name: 'Reject', description: 'Reject task and send back' },
+    { id: 'start', name: 'Start', description: "Start working on a task" },
+    { id: 'submit', name: 'Submit', description: "Submit task for review" },
+    { id: 'approve', name: 'Approve', description: "Approve completed task" },
+    { id: 'reject', name: 'Reject', description: "Reject task and send back" },
   ]
 
   container.innerHTML = `
@@ -1021,10 +1021,10 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start', name: 'Start', description: 'Start working on a task' },
-      { id: 'submit', name: 'Submit', description: 'Submit task for review' },
-      { id: 'approve', name: 'Approve', description: 'Approve completed task' },
-      { id: 'reject', name: 'Reject', description: 'Reject task and send back' },
+      { id: 'start', name: 'Start', description: "Start working on a task" },
+      { id: 'submit', name: 'Submit', description: "Submit task for review" },
+      { id: 'approve', name: 'Approve', description: "Approve completed task" },
+      { id: 'reject', name: 'Reject', description: "Reject task and send back" },
     ]
   },
 

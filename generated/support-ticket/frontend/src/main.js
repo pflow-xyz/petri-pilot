@@ -286,15 +286,15 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'assign', name: 'Assign', description: 'Assign ticket to an agent' },
-    { id: 'start_work', name: 'Start Work', description: 'Begin working on the ticket' },
-    { id: 'escalate', name: 'Escalate', description: 'Escalate to senior support' },
-    { id: 'request_info', name: 'Request Info', description: 'Request more information from customer' },
-    { id: 'customer_reply', name: 'Customer Reply', description: 'Customer provides requested information' },
-    { id: 'resolve', name: 'Resolve', description: 'Mark issue as resolved from in_progress' },
-    { id: 'resolve_escalated', name: 'Resolve Escalated', description: 'Mark escalated issue as resolved' },
-    { id: 'close', name: 'Close', description: 'Close the ticket' },
-    { id: 'reopen', name: 'Reopen', description: 'Customer reopens a closed ticket' },
+    { id: 'assign', name: 'Assign', description: "Assign ticket to an agent" },
+    { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket" },
+    { id: 'escalate', name: 'Escalate', description: "Escalate to senior support" },
+    { id: 'request_info', name: 'Request Info', description: "Request more information from customer" },
+    { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information" },
+    { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress" },
+    { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved" },
+    { id: 'close', name: 'Close', description: "Close the ticket" },
+    { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket" },
   ]
 
   container.innerHTML = `
@@ -1026,15 +1026,15 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'assign', name: 'Assign', description: 'Assign ticket to an agent' },
-      { id: 'start_work', name: 'Start Work', description: 'Begin working on the ticket' },
-      { id: 'escalate', name: 'Escalate', description: 'Escalate to senior support' },
-      { id: 'request_info', name: 'Request Info', description: 'Request more information from customer' },
-      { id: 'customer_reply', name: 'Customer Reply', description: 'Customer provides requested information' },
-      { id: 'resolve', name: 'Resolve', description: 'Mark issue as resolved from in_progress' },
-      { id: 'resolve_escalated', name: 'Resolve Escalated', description: 'Mark escalated issue as resolved' },
-      { id: 'close', name: 'Close', description: 'Close the ticket' },
-      { id: 'reopen', name: 'Reopen', description: 'Customer reopens a closed ticket' },
+      { id: 'assign', name: 'Assign', description: "Assign ticket to an agent" },
+      { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket" },
+      { id: 'escalate', name: 'Escalate', description: "Escalate to senior support" },
+      { id: 'request_info', name: 'Request Info', description: "Request more information from customer" },
+      { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information" },
+      { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress" },
+      { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved" },
+      { id: 'close', name: 'Close', description: "Close the ticket" },
+      { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket" },
     ]
   },
 

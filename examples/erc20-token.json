@@ -1,0 +1,322 @@
+{
+  "name": "erc20-token",
+  "version": "1.0.0",
+  "description": "ERC-20 fungible token implementation using Petri net semantics",
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
+  "debug": {
+    "enabled": true
+  },
+  "eventSourcing": {
+    "snapshots": {
+      "enabled": true,
+      "frequency": 100
+    }
+  },
+  "admin": {
+    "enabled": true,
+    "path": "/admin",
+    "roles": ["admin"],
+    "features": ["list", "detail", "history"]
+  },
+  "events": [
+    {
+      "id": "transfer_event",
+      "name": "Transfer",
+      "description": "Emitted when tokens are transferred directly",
+      "fields": [
+        {"name": "from", "type": "string", "required": true, "description": "Sender address"},
+        {"name": "to", "type": "string", "required": true, "description": "Recipient address"},
+        {"name": "amount", "type": "integer", "required": true, "description": "Amount transferred"}
+      ]
+    },
+    {
+      "id": "transfer_from_event",
+      "name": "TransferFrom",
+      "description": "Emitted when tokens are transferred via allowance",
+      "fields": [
+        {"name": "from", "type": "string", "required": true, "description": "Sender address"},
+        {"name": "to", "type": "string", "required": true, "description": "Recipient address"},
+        {"name": "caller", "type": "string", "required": true, "description": "Caller who initiated the transfer"},
+        {"name": "amount", "type": "integer", "required": true, "description": "Amount transferred"}
+      ]
+    },
+    {
+      "id": "approval_event",
+      "name": "Approval",
+      "description": "Emitted when spending approval is granted",
+      "fields": [
+        {"name": "owner", "type": "string", "required": true, "description": "Token owner address"},
+        {"name": "spender", "type": "string", "required": true, "description": "Approved spender address"},
+        {"name": "amount", "type": "integer", "required": true, "description": "Approved amount"}
+      ]
+    },
+    {
+      "id": "mint_event",
+      "name": "Mint",
+      "description": "Emitted when new tokens are created",
+      "fields": [
+        {"name": "to", "type": "string", "required": true, "description": "Recipient address"},
+        {"name": "amount", "type": "integer", "required": true, "description": "Amount minted"}
+      ]
+    },
+    {
+      "id": "burn_event",
+      "name": "Burn",
+      "description": "Emitted when tokens are destroyed",
+      "fields": [
+        {"name": "from", "type": "string", "required": true, "description": "Address burning tokens"},
+        {"name": "amount", "type": "integer", "required": true, "description": "Amount burned"}
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "total_supply",
+      "description": "Total tokens in circulation",
+      "kind": "data",
+      "type": "int64",
+      "initial": 0,
+      "initial_value": 0,
+      "persisted": true,
+      "exported": false
+    },
+    {
+      "id": "balances",
+      "description": "Token balance per address",
+      "kind": "data",
+      "type": "map[string]int64",
+      "initial": 0,
+      "persisted": true,
+      "exported": true
+    },
+    {
+      "id": "allowances",
+      "description": "Spending allowances: owner:spender -> amount (composite key)",
+      "kind": "data",
+      "type": "map[string]int64",
+      "initial": 0,
+      "persisted": true,
+      "exported": true
+    }
+  ],
+  "transitions": [
+    {
+      "id": "transfer",
+      "description": "Transfer tokens from sender to recipient",
+      "event": "transfer_event",
+      "guard": "balances[from] >= amount",
+      "bindings": [
+        {"name": "from", "type": "string", "keys": ["from"], "place": "balances"},
+        {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
+        {"name": "amount", "type": "int64", "value": true}
+      ]
+    },
+    {
+      "id": "approve",
+      "description": "Approve spender to transfer tokens on owner's behalf",
+      "event": "approval_event",
+      "bindings": [
+        {"name": "owner", "type": "string", "keys": ["owner"], "place": "allowances"},
+        {"name": "spender", "type": "string", "keys": ["spender"], "place": "allowances"},
+        {"name": "amount", "type": "int64", "value": true}
+      ]
+    },
+    {
+      "id": "transfer_from",
+      "description": "Transfer tokens using allowance (delegated transfer)",
+      "event": "transfer_from_event",
+      "guard": "balances[from] >= amount && allowances[from][caller] >= amount",
+      "bindings": [
+        {"name": "from", "type": "string", "keys": ["from"], "place": "balances"},
+        {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
+        {"name": "caller", "type": "string", "keys": ["caller"], "place": "allowances"},
+        {"name": "amount", "type": "int64", "value": true}
+      ]
+    },
+    {
+      "id": "mint",
+      "description": "Create new tokens and add to recipient balance",
+      "event": "mint_event",
+      "bindings": [
+        {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
+        {"name": "amount", "type": "int64", "value": true}
+      ]
+    },
+    {
+      "id": "burn",
+      "description": "Destroy tokens from holder's balance",
+      "event": "burn_event",
+      "guard": "balances[from] >= amount",
+      "bindings": [
+        {"name": "from", "type": "string", "keys": ["from"], "place": "balances"},
+        {"name": "amount", "type": "int64", "value": true}
+      ]
+    }
+  ],
+  "arcs": [
+    {
+      "from": "balances",
+      "to": "transfer",
+      "keys": ["from"],
+      "value": "amount"
+    },
+    {
+      "from": "transfer",
+      "to": "balances",
+      "keys": ["to"],
+      "value": "amount"
+    },
+    {
+      "from": "approve",
+      "to": "allowances",
+      "keys": ["owner", "spender"],
+      "value": "amount"
+    },
+    {
+      "from": "balances",
+      "to": "transfer_from",
+      "keys": ["from"],
+      "value": "amount"
+    },
+    {
+      "from": "allowances",
+      "to": "transfer_from",
+      "keys": ["from", "caller"],
+      "value": "amount"
+    },
+    {
+      "from": "transfer_from",
+      "to": "balances",
+      "keys": ["to"],
+      "value": "amount"
+    },
+    {
+      "from": "mint",
+      "to": "balances",
+      "keys": ["to"],
+      "value": "amount"
+    },
+    {
+      "from": "mint",
+      "to": "total_supply",
+      "value": "amount"
+    },
+    {
+      "from": "balances",
+      "to": "burn",
+      "keys": ["from"],
+      "value": "amount"
+    },
+    {
+      "from": "total_supply",
+      "to": "burn",
+      "value": "amount"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "conservation",
+      "expr": "sum(balances) == total_supply"
+    }
+  ],
+  "roles": [
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Can mint and burn tokens"
+    },
+    {
+      "id": "holder",
+      "name": "Token Holder",
+      "description": "Can transfer and approve tokens"
+    }
+  ],
+  "access": [
+    {
+      "transition": "mint",
+      "roles": ["admin"]
+    },
+    {
+      "transition": "burn",
+      "roles": ["admin"]
+    },
+    {
+      "transition": "transfer",
+      "roles": ["holder", "admin"]
+    },
+    {
+      "transition": "approve",
+      "roles": ["holder", "admin"]
+    },
+    {
+      "transition": "transfer_from",
+      "roles": ["holder", "admin"]
+    }
+  ],
+  "views": [
+    {
+      "id": "token-dashboard",
+      "name": "Token Dashboard",
+      "kind": "card",
+      "description": "Overview of token state",
+      "groups": [
+        {
+          "id": "supply",
+          "name": "Token Supply",
+          "fields": [
+            {"binding": "total_supply", "label": "Total Supply", "type": "number", "readonly": true}
+          ]
+        }
+      ],
+      "actions": ["mint", "burn"]
+    },
+    {
+      "id": "transfer-form",
+      "name": "Transfer Tokens",
+      "kind": "form",
+      "description": "Transfer tokens to another address",
+      "groups": [
+        {
+          "id": "transfer-details",
+          "name": "Transfer Details",
+          "fields": [
+            {"binding": "from", "label": "From Address", "type": "text", "required": true},
+            {"binding": "to", "label": "To Address", "type": "text", "required": true},
+            {"binding": "amount", "label": "Amount", "type": "number", "required": true}
+          ]
+        }
+      ],
+      "actions": ["transfer"]
+    },
+    {
+      "id": "approve-form",
+      "name": "Approve Spending",
+      "kind": "form",
+      "description": "Approve another address to spend tokens",
+      "groups": [
+        {
+          "id": "approval-details",
+          "name": "Approval Details",
+          "fields": [
+            {"binding": "owner", "label": "Owner Address", "type": "text", "required": true},
+            {"binding": "spender", "label": "Spender Address", "type": "text", "required": true},
+            {"binding": "amount", "label": "Allowance Amount", "type": "number", "required": true}
+          ]
+        }
+      ],
+      "actions": ["approve"]
+    }
+  ],
+  "navigation": {
+    "brand": "ERC-20 Token",
+    "items": [
+      {"label": "Dashboard", "path": "/", "icon": "coins"},
+      {"label": "Transfer", "path": "/transfer", "icon": "arrow-right"},
+      {"label": "Approve", "path": "/approve", "icon": "check"},
+      {"label": "Admin", "path": "/admin", "icon": "settings", "roles": ["admin"]}
+    ]
+  }
+}

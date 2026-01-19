@@ -286,11 +286,11 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'submit', name: 'Submit', description: 'Submit draft for review' },
-    { id: 'approve', name: 'Approve', description: 'Approve and publish the post' },
-    { id: 'reject', name: 'Reject', description: 'Reject and return to draft' },
-    { id: 'unpublish', name: 'Unpublish', description: 'Take down a published post' },
-    { id: 'restore', name: 'Restore', description: 'Restore archived post to draft' },
+    { id: 'submit', name: 'Submit', description: "Submit draft for review" },
+    { id: 'approve', name: 'Approve', description: "Approve and publish the post" },
+    { id: 'reject', name: 'Reject', description: "Reject and return to draft" },
+    { id: 'unpublish', name: 'Unpublish', description: "Take down a published post" },
+    { id: 'restore', name: 'Restore', description: "Restore archived post to draft" },
   ]
 
   container.innerHTML = `
@@ -1022,11 +1022,11 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'submit', name: 'Submit', description: 'Submit draft for review' },
-      { id: 'approve', name: 'Approve', description: 'Approve and publish the post' },
-      { id: 'reject', name: 'Reject', description: 'Reject and return to draft' },
-      { id: 'unpublish', name: 'Unpublish', description: 'Take down a published post' },
-      { id: 'restore', name: 'Restore', description: 'Restore archived post to draft' },
+      { id: 'submit', name: 'Submit', description: "Submit draft for review" },
+      { id: 'approve', name: 'Approve', description: "Approve and publish the post" },
+      { id: 'reject', name: 'Reject', description: "Reject and return to draft" },
+      { id: 'unpublish', name: 'Unpublish', description: "Take down a published post" },
+      { id: 'restore', name: 'Restore', description: "Restore archived post to draft" },
     ]
   },
 

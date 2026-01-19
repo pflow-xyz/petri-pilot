@@ -286,11 +286,11 @@ function renderInstanceDetail() {
 
   // Transition definitions
   const transitions = [
-    { id: 'validate', name: 'Validate', description: 'Check order validity' },
-    { id: 'reject', name: 'Reject', description: 'Mark order as invalid' },
-    { id: 'process_payment', name: 'Process Payment', description: 'Charge customer payment' },
-    { id: 'ship', name: 'Ship', description: 'Send order to shipping' },
-    { id: 'confirm', name: 'Confirm', description: 'Mark order as complete' },
+    { id: 'validate', name: 'Validate', description: "Check order validity" },
+    { id: 'reject', name: 'Reject', description: "Mark order as invalid" },
+    { id: 'process_payment', name: 'Process Payment', description: "Charge customer payment" },
+    { id: 'ship', name: 'Ship', description: "Send order to shipping" },
+    { id: 'confirm', name: 'Confirm', description: "Mark order as complete" },
   ]
 
   container.innerHTML = `
@@ -1022,11 +1022,11 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'validate', name: 'Validate', description: 'Check order validity' },
-      { id: 'reject', name: 'Reject', description: 'Mark order as invalid' },
-      { id: 'process_payment', name: 'Process Payment', description: 'Charge customer payment' },
-      { id: 'ship', name: 'Ship', description: 'Send order to shipping' },
-      { id: 'confirm', name: 'Confirm', description: 'Mark order as complete' },
+      { id: 'validate', name: 'Validate', description: "Check order validity" },
+      { id: 'reject', name: 'Reject', description: "Mark order as invalid" },
+      { id: 'process_payment', name: 'Process Payment', description: "Charge customer payment" },
+      { id: 'ship', name: 'Ship', description: "Send order to shipping" },
+      { id: 'confirm', name: 'Confirm', description: "Mark order as complete" },
     ]
   },
 
