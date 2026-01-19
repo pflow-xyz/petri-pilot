@@ -141,6 +141,29 @@ function clearAuth() {
   window.dispatchEvent(new CustomEvent('auth-change'))
 }
 
+// Reload auth from localStorage (called when wallet module updates auth)
+function reloadAuth() {
+  const stored = localStorage.getItem('auth')
+  if (stored) {
+    try {
+      const auth = JSON.parse(stored)
+      authToken = auth.token
+      currentUser = auth.user
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+  authToken = null
+  currentUser = null
+  return false
+}
+
+// Listen for auth changes from wallet module
+window.addEventListener('auth-change', () => {
+  reloadAuth()
+})
+
 function getHeaders() {
   const headers = { 'Content-Type': 'application/json' }
   if (authToken) {
