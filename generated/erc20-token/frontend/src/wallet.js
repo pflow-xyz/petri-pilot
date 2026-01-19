@@ -614,13 +614,16 @@ export function createDebugWalletView(state, instanceId = null) {
         font-weight: 600;
         color: #555;
       }
-      .debug-wallet-table th:nth-child(1) { width: 130px; }
-      .debug-wallet-table th:nth-child(2) { width: 200px; }
-      .debug-wallet-table th:nth-child(3) { width: 90px; }
-      .debug-wallet-table th:nth-child(4) { width: 100px; }
+      .debug-wallet-table th:nth-child(1) { width: 20%; }
+      .debug-wallet-table th:nth-child(2) { width: 40%; }
+      .debug-wallet-table th:nth-child(3) { width: 18%; }
+      .debug-wallet-table th:nth-child(4) { width: 22%; }
+      .debug-wallet-address {
+        overflow: hidden;
+      }
       .debug-wallet-address code {
         display: inline-block;
-        max-width: 170px;
+        max-width: calc(100% - 30px);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
