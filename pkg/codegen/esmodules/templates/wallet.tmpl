@@ -255,19 +255,31 @@ export function createWalletModal() {
   const accountButtons = WALLET_ACCOUNTS.map((acc, idx) => {
     const isActive = idx === accountIndex
     return `
-      <button
-        onclick="window.connectWalletAccount(${idx})"
-        class="wallet-account-btn ${isActive ? 'active' : ''}"
-      >
-        <div class="wallet-account-info">
-          <span class="wallet-account-name">${acc.name || 'Account ' + idx}</span>
-          <span class="wallet-account-address">${formatAddress(acc.address)}</span>
-        </div>
-        <div class="wallet-account-roles">
-          ${acc.roles.map(r => `<span class="role-badge">${r}</span>`).join('')}
-        </div>
-        ${isActive ? '<span class="wallet-account-active">Connected</span>' : ''}
-      </button>
+      <div class="wallet-account-row">
+        <button
+          onclick="window.connectWalletAccount(${idx})"
+          class="wallet-account-btn ${isActive ? 'active' : ''}"
+        >
+          <div class="wallet-account-info">
+            <span class="wallet-account-name">${acc.name || 'Account ' + idx}</span>
+            <span class="wallet-account-address">${formatAddress(acc.address)}</span>
+          </div>
+          <div class="wallet-account-roles">
+            ${acc.roles.map(r => `<span class="role-badge">${r}</span>`).join('')}
+          </div>
+          ${isActive ? '<span class="wallet-account-active">Connected</span>' : ''}
+        </button>
+        <button
+          onclick="window.copyAddress('${acc.address}')"
+          class="copy-btn"
+          title="Copy full address"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
     `
   }).join('')
 
@@ -316,6 +328,11 @@ export function createWalletModal() {
         flex-direction: column;
         gap: 0.5rem;
       }
+      .wallet-account-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: stretch;
+      }
       .wallet-account-btn {
         display: flex;
         justify-content: space-between;
@@ -327,7 +344,7 @@ export function createWalletModal() {
         cursor: pointer;
         transition: all 0.2s;
         text-align: left;
-        width: 100%;
+        flex: 1;
       }
       .wallet-account-btn:hover {
         background: #e5e5e5;
@@ -336,6 +353,28 @@ export function createWalletModal() {
       .wallet-account-btn.active {
         background: #e3f2fd;
         border-color: #007bff;
+      }
+      .copy-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f9f9f9;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #666;
+      }
+      .copy-btn:hover {
+        background: #e5e5e5;
+        border-color: #007bff;
+        color: #007bff;
+      }
+      .copy-btn.copied {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #28a745;
       }
       .wallet-account-info {
         display: flex;
@@ -416,6 +455,28 @@ window.connectWalletAccount = async function(index) {
 window.disconnectWallet = async function() {
   await disconnect()
   window.dispatchEvent(new CustomEvent('auth-change'))
+}
+
+window.copyAddress = async function(address) {
+  try {
+    await navigator.clipboard.writeText(address)
+    // Find and highlight the button that was clicked
+    const buttons = document.querySelectorAll('.copy-btn')
+    buttons.forEach(btn => {
+      if (btn.onclick?.toString().includes(address)) {
+        btn.classList.add('copied')
+        setTimeout(() => btn.classList.remove('copied'), 1500)
+      }
+    })
+  } catch (err) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = address
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
 }
 
 // ============================================================================

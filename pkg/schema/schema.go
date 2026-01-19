@@ -286,6 +286,44 @@ func (p *Place) IsMapType() bool {
 	return len(p.Type) > 4 && p.Type[:4] == "map["
 }
 
+// TransitionField defines a user input field for a transition action.
+// These specify which fields appear in the action form and how they behave.
+type TransitionField struct {
+	// Name is the field name (must match a binding or event field name)
+	Name string `json:"name"`
+
+	// Label is the display label for the field
+	Label string `json:"label,omitempty"`
+
+	// Type is the UI input type: text, number, address, amount, select, hidden
+	Type string `json:"type,omitempty"`
+
+	// Required indicates if the field must be filled
+	Required bool `json:"required,omitempty"`
+
+	// Default is the default value for the field
+	Default string `json:"default,omitempty"`
+
+	// AutoFill specifies automatic population: "wallet" (connected wallet address),
+	// "user" (current user ID), or a state path like "balances.{wallet}"
+	AutoFill string `json:"autoFill,omitempty"`
+
+	// Placeholder is the placeholder text for the input
+	Placeholder string `json:"placeholder,omitempty"`
+
+	// Options are the choices for select-type fields
+	Options []FieldOption `json:"options,omitempty"`
+
+	// Description provides help text for the field
+	Description string `json:"description,omitempty"`
+}
+
+// FieldOption represents an option for select-type fields
+type FieldOption struct {
+	Value string `json:"value"`
+	Label string `json:"label,omitempty"`
+}
+
 // Transition represents an action/event in the model.
 type Transition struct {
 	ID          string `json:"id"`
@@ -298,6 +336,10 @@ type Transition struct {
 	// Bindings define operational data for state computation (arcnet pattern)
 	// These are used to evaluate guards and apply arc transformations
 	Bindings []Binding `json:"bindings,omitempty"`
+
+	// Fields define user input fields for this transition's action form
+	// If not specified, fields are derived from bindings or event fields
+	Fields []TransitionField `json:"fields,omitempty"`
 
 	// Extended fields for API routing
 	HTTPMethod string `json:"http_method,omitempty"` // GET, POST, etc.

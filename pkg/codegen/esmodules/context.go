@@ -126,6 +126,28 @@ type TransitionContext struct {
 	CamelName   string // e.g., "validateOrder"
 	ConstName   string // e.g., "VALIDATE_ORDER"
 	DisplayName string // e.g., "Validate Order"
+
+	// Input fields for action form
+	Fields []TransitionFieldContext
+}
+
+// TransitionFieldContext provides template-friendly access to transition field data.
+type TransitionFieldContext struct {
+	Name        string
+	Label       string
+	Type        string // text, number, address, amount, select, hidden
+	Required    bool
+	Default     string
+	AutoFill    string // wallet, user, or state path
+	Placeholder string
+	Description string
+	Options     []FieldOptionContext
+}
+
+// FieldOptionContext provides template-friendly access to select field options.
+type FieldOptionContext struct {
+	Value string
+	Label string
 }
 
 // RouteContext provides template-friendly access to API route data.
@@ -269,9 +291,69 @@ func buildTransitionContexts(transitions []schema.Transition) []TransitionContex
 			CamelName:   toCamelCase(t.ID),
 			ConstName:   toConstName(t.ID),
 			DisplayName: toDisplayName(t.ID),
+			Fields:      buildTransitionFieldContexts(t.Fields),
 		}
 	}
 	return result
+}
+
+func buildTransitionFieldContexts(fields []schema.TransitionField) []TransitionFieldContext {
+	result := make([]TransitionFieldContext, len(fields))
+	for i, f := range fields {
+		// Build options for select fields
+		options := make([]FieldOptionContext, len(f.Options))
+		for j, opt := range f.Options {
+			label := opt.Label
+			if label == "" {
+				label = opt.Value
+			}
+			options[j] = FieldOptionContext{
+				Value: opt.Value,
+				Label: label,
+			}
+		}
+
+		// Default label from name if not specified
+		label := f.Label
+		if label == "" {
+			label = toDisplayName(f.Name)
+		}
+
+		// Default type based on name patterns
+		fieldType := f.Type
+		if fieldType == "" {
+			fieldType = inferFieldType(f.Name)
+		}
+
+		result[i] = TransitionFieldContext{
+			Name:        f.Name,
+			Label:       label,
+			Type:        fieldType,
+			Required:    f.Required,
+			Default:     f.Default,
+			AutoFill:    f.AutoFill,
+			Placeholder: f.Placeholder,
+			Description: f.Description,
+			Options:     options,
+		}
+	}
+	return result
+}
+
+// inferFieldType guesses the field type based on name patterns
+func inferFieldType(name string) string {
+	nameLower := strings.ToLower(name)
+	switch {
+	case nameLower == "amount" || nameLower == "value" || nameLower == "balance" ||
+		strings.HasSuffix(nameLower, "_amount") || strings.HasSuffix(nameLower, "_value"):
+		return "amount"
+	case nameLower == "from" || nameLower == "to" || nameLower == "owner" ||
+		nameLower == "spender" || nameLower == "caller" || nameLower == "recipient" ||
+		nameLower == "address" || strings.HasSuffix(nameLower, "_address"):
+		return "address"
+	default:
+		return "text"
+	}
 }
 
 func buildRouteContexts(apiRoutes []bridge.APIRoute) []RouteContext {

@@ -146,6 +146,11 @@
         {"name": "from", "type": "string", "keys": ["from"], "place": "balances"},
         {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
         {"name": "amount", "type": "int64", "value": true}
+      ],
+      "fields": [
+        {"name": "from", "label": "From Address", "type": "address", "required": true, "autoFill": "wallet", "placeholder": "Sender address"},
+        {"name": "to", "label": "To Address", "type": "address", "required": true, "placeholder": "Recipient address"},
+        {"name": "amount", "label": "Amount", "type": "amount", "required": true, "placeholder": "Amount to transfer"}
       ]
     },
     {
@@ -156,6 +161,11 @@
         {"name": "owner", "type": "string", "keys": ["owner"], "place": "allowances"},
         {"name": "spender", "type": "string", "keys": ["spender"], "place": "allowances"},
         {"name": "amount", "type": "int64", "value": true}
+      ],
+      "fields": [
+        {"name": "owner", "label": "Owner Address", "type": "address", "required": true, "autoFill": "wallet", "placeholder": "Token owner"},
+        {"name": "spender", "label": "Spender Address", "type": "address", "required": true, "placeholder": "Address to approve"},
+        {"name": "amount", "label": "Allowance Amount", "type": "amount", "required": true, "placeholder": "Amount to approve"}
       ]
     },
     {
@@ -168,6 +178,12 @@
         {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
         {"name": "caller", "type": "string", "keys": ["caller"], "place": "allowances"},
         {"name": "amount", "type": "int64", "value": true}
+      ],
+      "fields": [
+        {"name": "from", "label": "From Address", "type": "address", "required": true, "placeholder": "Owner address"},
+        {"name": "to", "label": "To Address", "type": "address", "required": true, "placeholder": "Recipient address"},
+        {"name": "caller", "label": "Caller Address", "type": "address", "required": true, "autoFill": "wallet", "placeholder": "Your address (must have allowance)"},
+        {"name": "amount", "label": "Amount", "type": "amount", "required": true, "placeholder": "Amount to transfer"}
       ]
     },
     {
@@ -177,6 +193,10 @@
       "bindings": [
         {"name": "to", "type": "string", "keys": ["to"], "place": "balances"},
         {"name": "amount", "type": "int64", "value": true}
+      ],
+      "fields": [
+        {"name": "to", "label": "Recipient Address", "type": "address", "required": true, "placeholder": "Address to mint to"},
+        {"name": "amount", "label": "Amount", "type": "amount", "required": true, "placeholder": "Amount to mint"}
       ]
     },
     {
@@ -187,6 +207,10 @@
       "bindings": [
         {"name": "from", "type": "string", "keys": ["from"], "place": "balances"},
         {"name": "amount", "type": "int64", "value": true}
+      ],
+      "fields": [
+        {"name": "from", "label": "From Address", "type": "address", "required": true, "autoFill": "wallet", "placeholder": "Address to burn from"},
+        {"name": "amount", "label": "Amount", "type": "amount", "required": true, "placeholder": "Amount to burn"}
       ]
     }
   ],
