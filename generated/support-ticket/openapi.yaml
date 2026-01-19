@@ -247,11 +247,45 @@ paths:
 
   /api/resolve:
     post:
-      summary: "Mark issue as resolved"
+      summary: "Mark issue as resolved from in_progress"
       operationId: resolve
       tags:
         - transitions
       x-transition-id: resolve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/resolve_escalated:
+    post:
+      summary: "Mark escalated issue as resolved"
+      operationId: resolveEscalated
+      tags:
+        - transitions
+      x-transition-id: resolve_escalated
       requestBody:
         required: true
         content:

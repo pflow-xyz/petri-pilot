@@ -66,12 +66,15 @@ async function startServer() {
 }
 
 /**
- * Stop the server process
+ * Stop the server process and wait for it to exit
  */
-function stopServer(server) {
+async function stopServer(server) {
   if (server && !server.killed) {
     console.log('Stopping server...');
-    server.kill('SIGTERM');
+    return new Promise((resolve) => {
+      server.on('exit', resolve);
+      server.kill('SIGTERM');
+    });
   }
 }
 

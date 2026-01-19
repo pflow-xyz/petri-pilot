@@ -11,6 +11,7 @@ import (
 type Context struct {
 	// Project configuration
 	ProjectName string
+	PackageName string // Sanitized name for API paths (no hyphens)
 	APIBaseURL  string
 
 	// Model metadata
@@ -35,6 +36,7 @@ type Context struct {
 	HasSnapshots     bool
 	HasViews         bool
 	HasAdmin         bool
+	HasDebug         bool
 
 	// Original model for reference
 	Model *schema.Model
@@ -124,6 +126,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 
 	ctx := &Context{
 		ProjectName:      projectName,
+		PackageName:      sanitizePackageName(projectName),
 		APIBaseURL:       apiBaseURL,
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
@@ -133,6 +136,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		HasSnapshots:     true,
 		HasViews:         len(enriched.Views) > 0,
 		HasAdmin:         true, // Always generate admin dashboard
+		HasDebug:         enriched.Debug != nil && enriched.Debug.Enabled,
 	}
 
 	// Build place contexts
@@ -228,6 +232,15 @@ func sanitizeProjectName(name string) string {
 	result := strings.ToLower(name)
 	result = strings.ReplaceAll(result, "_", "-")
 	result = strings.ReplaceAll(result, " ", "-")
+	return result
+}
+
+func sanitizePackageName(name string) string {
+	// Convert to lowercase, remove special chars (Go package name style)
+	result := strings.ToLower(name)
+	result = strings.ReplaceAll(result, "-", "")
+	result = strings.ReplaceAll(result, "_", "")
+	result = strings.ReplaceAll(result, " ", "")
 	return result
 }
 

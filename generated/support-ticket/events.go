@@ -79,6 +79,18 @@ func (e ResolveedEvent) EventType() string {
 }
 
 
+// ResolveEscalatedEvent is emitted when the resolve_escalated transition fires.
+type ResolveEscalatedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e ResolveEscalatedEvent) EventType() string {
+	return "ResolveEscalated"
+}
+
+
 // CloseedEvent is emitted when the close transition fires.
 type CloseedEvent struct {
 	AggregateId string `json:"aggregate_id"`

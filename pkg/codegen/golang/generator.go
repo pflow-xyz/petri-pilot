@@ -182,6 +182,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, AuthTemplateNames()...)
 	}
 
+	// Include debug template if context has debug enabled
+	if ctx.HasDebug() {
+		templateNames = append(templateNames, DebugTemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

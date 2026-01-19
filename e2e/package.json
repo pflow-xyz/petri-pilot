@@ -2,11 +2,15 @@
   "name": "petri-pilot-e2e",
   "private": true,
   "scripts": {
-    "test": "jest",
-    "test:headed": "HEADLESS=false jest"
+    "test": "jest --runInBand",
+    "test:headed": "HEADLESS=false jest --runInBand",
+    "test:debug": "DEBUG=1 HEADLESS=false jest --runInBand",
+    "test:app": "jest --runInBand --testPathPattern",
+    "build": "cd .. && make build-examples"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "puppeteer": "^22.0.0"
+    "puppeteer": "^22.0.0",
+    "ws": "^8.0.0"
   }
 }

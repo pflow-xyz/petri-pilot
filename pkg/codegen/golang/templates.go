@@ -60,6 +60,9 @@ const (
 
 	// Event replay templates (Phase 14)
 	TemplateAPIEvents = "api_events"
+
+	// Debug templates
+	TemplateDebug = "debug"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -115,6 +118,9 @@ var templateInfo = map[string]struct {
 
 	// Event replay templates (Phase 14)
 	TemplateAPIEvents: {File: "api_events.tmpl", Output: "api_events.go"},
+
+	// Debug templates
+	TemplateDebug: {File: "debug.tmpl", Output: "debug.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -293,4 +299,11 @@ func EventReplayTemplateNames() []string {
 return []string{
 TemplateAPIEvents,
 }
+}
+
+// DebugTemplateNames returns template names for debug files.
+func DebugTemplateNames() []string {
+	return []string{
+		TemplateDebug,
+	}
 }

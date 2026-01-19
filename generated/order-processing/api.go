@@ -17,8 +17,11 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the order-processing workflow.
-func BuildRouter(app *Application, middleware *Middleware, navigation *Navigation) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, navigation *Navigation, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +59,14 @@ func BuildRouter(app *Application, middleware *Middleware, navigation *Navigatio
 
 	r.POST("/api/orderprocessing/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/orderprocessing/{id}/replay", "Replay from snapshot", HandleReplay(app))
+
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 
 	// Transition endpoints
 	r.Transition("validate", "/api/validate", "Check order validity", middleware.RequirePermission("validate")(HandleValidate(app)))

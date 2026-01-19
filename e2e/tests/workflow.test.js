@@ -6,14 +6,18 @@ describe('Workflow State Machine', () => {
   beforeAll(async () => {
     server = await startServer();
 
-    // Get auth token via mock login
-    const loginRes = await fetch(`${BASE_URL}/auth/mock/login?roles=customer,reviewer`);
+    // Get auth token via debug login endpoint
+    const loginRes = await fetch(`${BASE_URL}/api/debug/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: 'testuser', roles: ['customer', 'reviewer'] }),
+    });
     const loginData = await loginRes.json();
     token = loginData.token;
   });
 
   afterAll(async () => {
-    stopServer(server);
+    await stopServer(server);
   });
 
   test('create new aggregate', async () => {

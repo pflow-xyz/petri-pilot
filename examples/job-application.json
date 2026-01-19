@@ -1,6 +1,10 @@
 {
   "name": "job-application",
   "description": "A job application workflow: applied → phone screen AND background check (parallel) → interview → offer → hired/rejected",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "applied", "description": "Application submitted", "initial": 1},
     {"id": "screening", "description": "Initial screening in progress", "initial": 0},

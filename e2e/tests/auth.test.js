@@ -11,42 +11,54 @@ describe('Authentication', () => {
 
   afterAll(async () => {
     await browser.close();
-    stopServer(server);
+    await stopServer(server);
   });
 
   beforeEach(async () => {
     page = await browser.newPage();
+    // Navigate to the app so fetch requests work in browser context
+    await page.goto(BASE_URL);
   });
 
   afterEach(async () => {
     await page.close();
   });
 
-  test('mock login returns session token', async () => {
-    const response = await page.goto(`${BASE_URL}/auth/mock/login?user=testuser&roles=admin`);
+  test('debug login returns session token', async () => {
+    const response = await page.evaluate(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/debug/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: 'testuser', roles: ['admin'] }),
+      });
+      return res.json();
+    }, BASE_URL);
+
+    expect(response.token).toBeDefined();
+    expect(response.user.login).toBe('testuser');
+    expect(response.user.roles).toContain('admin');
+  });
+
+  test('health endpoint returns ok', async () => {
+    const response = await page.goto(`${BASE_URL}/health`);
     const body = await response.json();
-
-    expect(body.token).toBeDefined();
-    expect(body.user.login).toBe('testuser');
-    expect(body.user.roles).toContain('admin');
+    expect(body.status).toBe('ok');
   });
 
-  test('authenticated request to /auth/me returns user', async () => {
-    // Login first
-    const loginResponse = await page.goto(`${BASE_URL}/auth/mock/login?roles=customer`);
-    const { token } = await loginResponse.json();
+  test('protected transition returns 401 without auth', async () => {
+    // Try to call a protected transition without auth
+    // The server should check authentication before validating the instance
+    const response = await page.evaluate(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/items/test-id/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: {} }),
+      });
+      const body = await res.text();
+      return { status: res.status, body };
+    }, BASE_URL);
 
-    // Check /auth/me with token
-    await page.setExtraHTTPHeaders({ Authorization: `Bearer ${token}` });
-    const meResponse = await page.goto(`${BASE_URL}/auth/me`);
-    const user = await meResponse.json();
-
-    expect(user.login).toBe('testuser');
-    expect(user.roles).toContain('customer');
-  });
-
-  test('unauthenticated request to /auth/me returns 401', async () => {
-    const response = await page.goto(`${BASE_URL}/auth/me`);
-    expect(response.status()).toBe(401);
+    expect(response.status).toBe(401);
+    expect(response.body).toContain('unauthorized');
   });
 });

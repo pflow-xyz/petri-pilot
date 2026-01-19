@@ -53,8 +53,13 @@ func main() {
 	}
 	{{- end}}
 
+	{{- if .HasDebug}}
+	// Initialize debug broker
+	debugBroker := NewDebugBroker()
+	{{- end}}
+
 	// Build HTTP router
-	router := BuildRouter(app{{if .HasAccessControl}}, middleware{{end}}{{if .HasNavigation}}, navigation{{end}})
+	router := BuildRouter(app{{if .HasAccessControl}}, middleware, sessions{{end}}{{if .HasNavigation}}, navigation{{end}}{{if .HasDebug}}, debugBroker{{end}})
 
 	// Configure server
 	port := os.Getenv("PORT")

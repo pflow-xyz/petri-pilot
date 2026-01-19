@@ -25,9 +25,12 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}) http.Handler {
+func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}) http.Handler {
 	r := api.NewRouter()
-
+{{if .HasAccessControl}}
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
+{{end}}
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
 		api.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -64,6 +67,18 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{if .HasSnapshots}}
 	r.POST("/api/{{.PackageName}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/{{.PackageName}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
+{{end}}
+{{if .HasDebug}}
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+{{- if .Debug.Eval}}
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+{{- end}}
+{{- if .HasAccessControl}}
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+{{- end}}
 {{end}}
 	// Transition endpoints
 {{- range .Routes}}

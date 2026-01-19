@@ -75,7 +75,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/tasks/{id}/start:
+  /api/start:
     post:
       summary: "Start working on a task"
       operationId: start
@@ -109,7 +109,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/tasks/{id}/submit:
+  /api/submit:
     post:
       summary: "Submit task for review"
       operationId: submit
@@ -143,7 +143,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/tasks/{id}/approve:
+  /api/approve:
     post:
       summary: "Approve completed task"
       operationId: approve
@@ -177,7 +177,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/tasks/{id}/reject:
+  /api/reject:
     post:
       summary: "Reject task and send back"
       operationId: reject

@@ -2,6 +2,10 @@
   "name": "task-manager",
   "version": "1.0.0",
   "description": "Task management workflow with navigation and admin dashboard",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "pending", "initial": 1},
     {"id": "in_progress"},
@@ -9,30 +13,10 @@
     {"id": "completed"}
   ],
   "transitions": [
-    {
-      "id": "start",
-      "description": "Start working on a task",
-      "http_method": "POST",
-      "http_path": "/api/tasks/{id}/start"
-    },
-    {
-      "id": "submit",
-      "description": "Submit task for review",
-      "http_method": "POST",
-      "http_path": "/api/tasks/{id}/submit"
-    },
-    {
-      "id": "approve",
-      "description": "Approve completed task",
-      "http_method": "POST",
-      "http_path": "/api/tasks/{id}/approve"
-    },
-    {
-      "id": "reject",
-      "description": "Reject task and send back",
-      "http_method": "POST",
-      "http_path": "/api/tasks/{id}/reject"
-    }
+    {"id": "start", "description": "Start working on a task"},
+    {"id": "submit", "description": "Submit task for review"},
+    {"id": "approve", "description": "Approve completed task"},
+    {"id": "reject", "description": "Reject task and send back"}
   ],
   "arcs": [
     {"from": "pending", "to": "start"},

@@ -45,9 +45,11 @@ func main() {
 	
 	// Initialize middleware
 	middleware := NewMiddleware(sessions, accessRules)
+	// Initialize debug broker
+	debugBroker := NewDebugBroker()
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware)
+	router := BuildRouter(app, middleware, sessions, debugBroker)
 
 	// Configure server
 	port := os.Getenv("PORT")

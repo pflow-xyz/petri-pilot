@@ -64,9 +64,11 @@ func main() {
 			{Label: "Admin", Path: "/admin", Icon: "⚙️", Roles: []string{"admin", }},
 		},
 	}
+	// Initialize debug broker
+	debugBroker := NewDebugBroker()
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware, navigation)
+	router := BuildRouter(app, middleware, sessions, navigation, debugBroker)
 
 	// Configure server
 	port := os.Getenv("PORT")

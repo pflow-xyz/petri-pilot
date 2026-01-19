@@ -188,6 +188,22 @@ func CheckAccessResolve(user *User, state map[string]any) error {
 	return nil
 }
 
+// CheckAccessResolveEscalated verifies access for the resolve_escalated transition.
+func CheckAccessResolveEscalated(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements
+	requiredRoles := []string{ "supervisor" }
+	if !HasAnyRole(user, requiredRoles) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
 // CheckAccessClose verifies access for the close transition.
 func CheckAccessClose(user *User, state map[string]any) error {
 	if user == nil {

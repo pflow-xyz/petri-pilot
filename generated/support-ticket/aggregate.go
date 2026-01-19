@@ -97,8 +97,17 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionResolve,
 		EventType: EventTypeResolve,
 		Inputs: map[string]int{
-			PlaceEscalated: 1,
 			PlaceInProgress: 1,
+		},
+		Outputs: map[string]int{
+			PlaceResolved: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionResolveEscalated,
+		EventType: EventTypeResolveEscalated,
+		Inputs: map[string]int{
+			PlaceEscalated: 1,
 		},
 		Outputs: map[string]int{
 			PlaceResolved: 1,
@@ -143,6 +152,9 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeResolve, func(state *State, event *runtime.Event) error {
 		return applyResolve(state, event)
+	})
+	sm.RegisterHandler(EventTypeResolveEscalated, func(state *State, event *runtime.Event) error {
+		return applyResolveEscalated(state, event)
 	})
 	sm.RegisterHandler(EventTypeClose, func(state *State, event *runtime.Event) error {
 		return applyClose(state, event)
@@ -236,6 +248,13 @@ func applyCustomerReply(state *State, event *runtime.Event) error {
 }
 
 func applyResolve(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyResolveEscalated(state *State, event *runtime.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

@@ -1,6 +1,10 @@
 {
   "name": "order-processing",
   "description": "Simple order processing workflow with validation and shipping",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "navigation": {
     "brand": "Order Processing",
     "items": [

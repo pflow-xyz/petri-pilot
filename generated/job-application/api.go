@@ -13,8 +13,11 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the job-application workflow.
-func BuildRouter(app *Application, middleware *Middleware) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +39,14 @@ func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 
 
 
+
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 
 	// Transition endpoints
 	r.Transition("start_screening", "/api/start_screening", "Begin candidate screening", middleware.RequirePermission("start_screening")(HandleStartScreening(app)))

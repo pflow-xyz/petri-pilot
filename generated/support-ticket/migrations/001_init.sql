@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS "supportticket_places" (
 -- RequestInfoed
 -- CustomerReplyed
 -- Resolveed
+-- ResolveEscalated
 -- Closeed
 -- Reopened
 
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS "supportticket_places" (
 -- escalate: Escalate to senior support
 -- request_info: Request more information from customer
 -- customer_reply: Customer provides requested information
--- resolve: Mark issue as resolved
+-- resolve: Mark issue as resolved from in_progress
+-- resolve_escalated: Mark escalated issue as resolved
 -- close: Close the ticket
 -- reopen: Customer reopens a closed ticket

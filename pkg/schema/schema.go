@@ -37,6 +37,9 @@ type Model struct {
 
 	// Event Sourcing (Phase 14)
 	EventSourcing *EventSourcing `json:"eventSourcing,omitempty"`
+
+	// Debug configuration
+	Debug *Debug `json:"debug,omitempty"`
 }
 
 // View represents a UI view definition for presenting workflow data.
@@ -261,4 +264,10 @@ type SnapshotConfig struct {
 type RetentionConfig struct {
 	Events    string `json:"events"`    // e.g., "90d"
 	Snapshots string `json:"snapshots"` // e.g., "1y"
+}
+
+// Debug represents debug configuration for development and testing.
+type Debug struct {
+	Enabled bool `json:"enabled"`
+	Eval    bool `json:"eval,omitempty"` // Enable eval endpoint for remote code execution
 }

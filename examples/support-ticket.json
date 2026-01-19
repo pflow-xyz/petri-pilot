@@ -1,6 +1,10 @@
 {
   "name": "support-ticket",
   "description": "A support ticket system: new tickets can be assigned, worked on, escalated, resolved, or closed. Customers can reopen closed tickets.",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "new", "description": "Ticket just created, awaiting triage", "initial": 1},
     {"id": "assigned", "description": "Ticket assigned to an agent", "initial": 0},
@@ -16,7 +20,8 @@
     {"id": "escalate", "description": "Escalate to senior support"},
     {"id": "request_info", "description": "Request more information from customer"},
     {"id": "customer_reply", "description": "Customer provides requested information"},
-    {"id": "resolve", "description": "Mark issue as resolved"},
+    {"id": "resolve", "description": "Mark issue as resolved from in_progress"},
+    {"id": "resolve_escalated", "description": "Mark escalated issue as resolved"},
     {"id": "close", "description": "Close the ticket"},
     {"id": "reopen", "description": "Customer reopens a closed ticket"}
   ],
@@ -27,7 +32,8 @@
     {"from": "start_work", "to": "in_progress"},
     {"from": "in_progress", "to": "escalate"},
     {"from": "escalate", "to": "escalated"},
-    {"from": "escalated", "to": "resolve"},
+    {"from": "escalated", "to": "resolve_escalated"},
+    {"from": "resolve_escalated", "to": "resolved"},
     {"from": "in_progress", "to": "request_info"},
     {"from": "request_info", "to": "pending_customer"},
     {"from": "pending_customer", "to": "customer_reply"},
@@ -87,6 +93,10 @@
     {
       "transition": "resolve",
       "roles": ["agent"]
+    },
+    {
+      "transition": "resolve_escalated",
+      "roles": ["supervisor"]
     },
     {
       "transition": "close",

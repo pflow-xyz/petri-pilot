@@ -2,7 +2,10 @@ package eventstore
 
 import (
 	"context"
+	"encoding/json"
+	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
@@ -268,6 +271,102 @@ func (s *memorySubscription) matches(event *runtime.Event) bool {
 		}
 	}
 	return true
+}
+
+// ListInstances returns a paginated list of aggregate instances.
+// For MemoryStore, we can only list stream IDs and their event counts.
+func (s *MemoryStore) ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]Instance, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, 0, ErrStoreClosed
+	}
+
+	// Collect all stream IDs
+	var instances []Instance
+	for streamID, events := range s.streams {
+		if len(events) == 0 {
+			continue
+		}
+
+		// Build state from the last event that has state info
+		state := make(map[string]int)
+		var updatedAt time.Time
+		for _, event := range events {
+			if event.Timestamp.After(updatedAt) {
+				updatedAt = event.Timestamp
+			}
+			// Try to extract state from event data
+			var eventData map[string]interface{}
+			if err := json.Unmarshal(event.Data, &eventData); err == nil {
+				if eventState, ok := eventData["state"].(map[string]interface{}); ok {
+					for k, v := range eventState {
+						if intVal, ok := v.(float64); ok {
+							state[k] = int(intVal)
+						} else if intVal, ok := v.(int); ok {
+							state[k] = intVal
+						}
+					}
+				}
+			}
+		}
+
+		// If we have a place filter, check if the instance matches
+		if place != "" {
+			tokens, ok := state[place]
+			if !ok || tokens <= 0 {
+				continue
+			}
+		}
+
+		instances = append(instances, Instance{
+			ID:        streamID,
+			Version:   len(events) - 1,
+			State:     state,
+			UpdatedAt: updatedAt,
+		})
+	}
+
+	// Sort by ID for consistent pagination
+	sort.Slice(instances, func(i, j int) bool {
+		return instances[i].ID < instances[j].ID
+	})
+
+	total := len(instances)
+
+	// Apply pagination
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 50
+	}
+	start := (page - 1) * perPage
+	if start >= len(instances) {
+		return []Instance{}, total, nil
+	}
+	end := start + perPage
+	if end > len(instances) {
+		end = len(instances)
+	}
+
+	return instances[start:end], total, nil
+}
+
+// Stats returns aggregate statistics.
+func (s *MemoryStore) Stats(ctx context.Context) (*Stats, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	return &Stats{
+		TotalInstances: len(s.streams),
+		ByPlace:        make(map[string]int), // Not tracked in memory store
+	}, nil
 }
 
 // Ensure MemoryStore implements Store.

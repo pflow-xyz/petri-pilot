@@ -51,6 +51,9 @@ type Context struct {
 	// Event Sourcing (Phase 14)
 	EventSourcing *EventSourcingContext
 
+	// Debug configuration
+	Debug *DebugContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -189,6 +192,12 @@ type SnapshotConfigContext struct {
 type RetentionConfigContext struct {
 	Events    string
 	Snapshots string
+}
+
+// DebugContext provides template-friendly access to debug configuration.
+type DebugContext struct {
+	Enabled bool
+	Eval    bool
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -424,6 +433,11 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Build event sourcing context
 	if enriched.EventSourcing != nil {
 		ctx.EventSourcing = buildEventSourcingContext(enriched.EventSourcing)
+	}
+
+	// Build debug context
+	if enriched.Debug != nil {
+		ctx.Debug = buildDebugContext(enriched.Debug)
 	}
 
 	return ctx, nil
@@ -1009,6 +1023,18 @@ Snapshots: es.Retention.Snapshots,
 return ctx
 }
 
+// buildDebugContext converts schema.Debug to DebugContext.
+func buildDebugContext(debug *schema.Debug) *DebugContext {
+	if debug == nil {
+		return nil
+	}
+
+	return &DebugContext{
+		Enabled: debug.Enabled,
+		Eval:    debug.Eval,
+	}
+}
+
 // HasNavigation returns true if the model has navigation configuration.
 func (c *Context) HasNavigation() bool {
 return c.Navigation != nil
@@ -1027,4 +1053,9 @@ return c.EventSourcing != nil
 // HasSnapshots returns true if automatic snapshots are enabled.
 func (c *Context) HasSnapshots() bool {
 return c.EventSourcing != nil && c.EventSourcing.Snapshots != nil && c.EventSourcing.Snapshots.Enabled
+}
+
+// HasDebug returns true if debug mode is enabled.
+func (c *Context) HasDebug() bool {
+	return c.Debug != nil && c.Debug.Enabled
 }

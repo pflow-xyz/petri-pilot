@@ -91,12 +91,12 @@ const api = {
   },
 
   async getInstance(id) {
-    const response = await fetch(`${API_BASE}/api/support-ticket/${id}`, { headers: getHeaders() })
+    const response = await fetch(`${API_BASE}/api/supportticket/${id}`, { headers: getHeaders() })
     return handleResponse(response)
   },
 
   async createInstance(data = {}) {
-    const response = await fetch(`${API_BASE}/api/support-ticket`, {
+    const response = await fetch(`${API_BASE}/api/supportticket`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -105,7 +105,7 @@ const api = {
   },
 
   async executeTransition(transitionId, aggregateId, data = {}) {
-    const response = await fetch(`${API_BASE}/api/support-ticket/transitions/${transitionId}`, {
+    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data }),
@@ -116,6 +116,13 @@ const api = {
 
 // Export for global access
 window.api = api
+
+// Export auth functions for testing
+window.setAuthToken = function(token) {
+  authToken = token
+}
+window.saveAuth = saveAuth
+window.clearAuth = clearAuth
 
 // ============================================================================
 // UI Helpers
@@ -284,7 +291,8 @@ function renderInstanceDetail() {
     { id: 'escalate', name: 'Escalate', description: 'Escalate to senior support' },
     { id: 'request_info', name: 'Request Info', description: 'Request more information from customer' },
     { id: 'customer_reply', name: 'Customer Reply', description: 'Customer provides requested information' },
-    { id: 'resolve', name: 'Resolve', description: 'Mark issue as resolved' },
+    { id: 'resolve', name: 'Resolve', description: 'Mark issue as resolved from in_progress' },
+    { id: 'resolve_escalated', name: 'Resolve Escalated', description: 'Mark escalated issue as resolved' },
     { id: 'close', name: 'Close', description: 'Close the ticket' },
     { id: 'reopen', name: 'Reopen', description: 'Customer reopens a closed ticket' },
   ]
@@ -558,5 +566,94 @@ async function init() {
   handleRouteChange({ detail: { route: getCurrentRoute() } })
 }
 
+
+// ============================================================================
+// Debug WebSocket Client
+// ============================================================================
+
+let debugWs = null
+let debugSessionId = null
+
+function initDebugWebSocket() {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${wsProtocol}//${window.location.host}/ws`
+
+  debugWs = new WebSocket(wsUrl)
+
+  debugWs.onopen = () => {
+    console.log('[Debug] WebSocket connected')
+  }
+
+  debugWs.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data)
+
+      if (msg.id === 'session' && msg.type === 'session') {
+        // Data is already parsed from JSON
+        const data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data
+        debugSessionId = data.session_id
+        console.log('[Debug] Session ID:', debugSessionId)
+      } else if (msg.type === 'eval') {
+        handleDebugEval(msg)
+      }
+    } catch (e) {
+      console.error('[Debug] Failed to parse message:', e)
+    }
+  }
+
+  debugWs.onclose = () => {
+    console.log('[Debug] WebSocket disconnected, reconnecting in 3s...')
+    debugSessionId = null
+    setTimeout(initDebugWebSocket, 3000)
+  }
+
+  debugWs.onerror = (err) => {
+    console.error('[Debug] WebSocket error:', err)
+  }
+}
+
+async function handleDebugEval(msg) {
+  try {
+    // Data may be parsed object or string
+    const data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data
+    const code = data.code
+
+    // Execute the code using Function constructor
+    const fn = new Function('return (async () => { ' + code + ' })()')
+    const result = await fn()
+
+    // Send response back - data should be an object, not a string
+    const response = {
+      type: 'response',
+      id: msg.id,
+      data: {
+        result: result,
+        type: typeof result
+      }
+    }
+    debugWs.send(JSON.stringify(response))
+  } catch (e) {
+    // Send error response
+    const response = {
+      type: 'response',
+      id: msg.id,
+      data: {
+        error: e.message
+      }
+    }
+    debugWs.send(JSON.stringify(response))
+  }
+}
+
+// Export debug functions for external use
+window.debugSessionId = () => debugSessionId
+window.debugWs = () => debugWs
+
+
 // Start the app
 init()
+
+
+// Initialize debug WebSocket after app init
+initDebugWebSocket()
+

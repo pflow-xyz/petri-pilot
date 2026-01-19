@@ -84,6 +84,19 @@ generate:
 	@if [ -z "$(REQ)" ]; then echo "Usage: make generate REQ='your requirements'"; exit 1; fi
 	go run ./cmd/petri-pilot/... generate -auto "$(REQ)"
 
+# E2E tests
+e2e: build-examples
+	@echo "=== Running E2E tests ==="
+	@cd e2e && npm install && npm test
+
+e2e-headed: build-examples
+	@echo "=== Running E2E tests (headed) ==="
+	@cd e2e && npm install && npm run test:headed
+
+e2e-debug: build-examples
+	@echo "=== Running E2E tests (debug mode) ==="
+	@cd e2e && npm install && npm run test:debug
+
 # Help target
 help:
 	@echo "Petri Pilot Makefile"
@@ -110,6 +123,11 @@ help:
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "  run-$$name"; \
 	done
+	@echo ""
+	@echo "E2E test targets:"
+	@echo "  e2e            Run E2E tests (headless)"
+	@echo "  e2e-headed     Run E2E tests with browser visible"
+	@echo "  e2e-debug      Run E2E tests with debug output"
 	@echo ""
 	@echo "Other targets:"
 	@echo "  mcp            Run the MCP server"

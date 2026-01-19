@@ -17,8 +17,11 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the task-manager workflow.
-func BuildRouter(app *Application, middleware *Middleware, navigation *Navigation) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, navigation *Navigation, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -54,11 +57,19 @@ func BuildRouter(app *Application, middleware *Middleware, navigation *Navigatio
 	r.POST("/api/taskmanager/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/taskmanager/{id}/replay", "Replay from snapshot", HandleReplay(app))
 
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
 	// Transition endpoints
-	r.Transition("start", "/api/tasks/{id}/start", "Start working on a task", middleware.RequirePermission("start")(HandleStart(app)))
-	r.Transition("submit", "/api/tasks/{id}/submit", "Submit task for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
-	r.Transition("approve", "/api/tasks/{id}/approve", "Approve completed task", middleware.RequirePermission("approve")(HandleApprove(app)))
-	r.Transition("reject", "/api/tasks/{id}/reject", "Reject task and send back", middleware.RequirePermission("reject")(HandleReject(app)))
+	r.Transition("start", "/api/start", "Start working on a task", middleware.RequirePermission("start")(HandleStart(app)))
+	r.Transition("submit", "/api/submit", "Submit task for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
+	r.Transition("approve", "/api/approve", "Approve completed task", middleware.RequirePermission("approve")(HandleApprove(app)))
+	r.Transition("reject", "/api/reject", "Reject task and send back", middleware.RequirePermission("reject")(HandleReject(app)))
 
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())

@@ -119,6 +119,39 @@ func (sm *StateMachine[S]) AddTransition(t Transition) {
 	sm.transitions[t.ID] = t
 }
 
+// Apply applies an event to update the state machine, including places.
+// This overrides Base.Apply to also update token distribution.
+func (sm *StateMachine[S]) Apply(event *runtime.Event) error {
+	// First update places under our lock
+	sm.mu.Lock()
+
+	// Find the transition by event type
+	var transition *Transition
+	for _, t := range sm.transitions {
+		if t.EventType == event.Type || t.ID == event.Type {
+			transition = &t
+			break
+		}
+	}
+
+	// Update places if we found a matching transition
+	if transition != nil {
+		// Remove input tokens
+		for place, count := range transition.Inputs {
+			sm.places[place] -= count
+		}
+		// Add output tokens
+		for place, count := range transition.Outputs {
+			sm.places[place] += count
+		}
+	}
+
+	sm.mu.Unlock()
+
+	// Call base Apply for state handler and version update (it has its own lock)
+	return sm.Base.Apply(event)
+}
+
 // CanFire checks if a transition is enabled.
 func (sm *StateMachine[S]) CanFire(transitionID string) bool {
 	sm.mu.RLock()
@@ -177,11 +210,12 @@ func (sm *StateMachine[S]) canFireLocked(transitionID string) bool {
 	return true
 }
 
-// Fire executes a transition, consuming input tokens and producing output tokens.
+// Fire checks if a transition can fire and creates an event.
+// It does NOT update places - that's done by Apply when the event is applied.
 // Returns an event representing the transition, or an error if the transition cannot fire.
 func (sm *StateMachine[S]) Fire(transitionID string, data any) (*runtime.Event, error) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
 
 	t, ok := sm.transitions[transitionID]
 	if !ok {
@@ -200,17 +234,7 @@ func (sm *StateMachine[S]) Fire(transitionID string, data any) (*runtime.Event, 
 		return nil, ErrCommandRejected
 	}
 
-	// Consume input tokens
-	for place, count := range t.Inputs {
-		sm.places[place] -= count
-	}
-
-	// Produce output tokens
-	for place, count := range t.Outputs {
-		sm.places[place] += count
-	}
-
-	// Create event
+	// Create event (places are updated when Apply is called)
 	eventType := t.EventType
 	if eventType == "" {
 		eventType = transitionID

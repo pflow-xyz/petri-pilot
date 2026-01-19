@@ -1,6 +1,10 @@
 {
   "name": "ecommerce-checkout",
   "description": "An e-commerce checkout workflow: cart → payment processing → paid. Payment can fail and retry up to 3 times before cancellation.",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "cart", "description": "Items in shopping cart", "initial": 1},
     {"id": "checkout_started", "description": "Checkout process initiated", "initial": 0},

@@ -1,6 +1,10 @@
 {
   "name": "loan-application",
   "description": "A loan application workflow: submit → credit check → manual review (if needed) → approve/deny → disbursement → repayment tracking → completion or default",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "submitted", "description": "Application submitted by customer", "initial": 1},
     {"id": "credit_check", "description": "Automated credit check in progress", "initial": 0},

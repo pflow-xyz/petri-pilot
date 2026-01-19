@@ -13,8 +13,11 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the support-ticket workflow.
-func BuildRouter(app *Application, middleware *Middleware) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -37,13 +40,22 @@ func BuildRouter(app *Application, middleware *Middleware) http.Handler {
 
 
 
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
 	// Transition endpoints
 	r.Transition("assign", "/api/assign", "Assign ticket to an agent", middleware.RequirePermission("assign")(HandleAssign(app)))
 	r.Transition("start_work", "/api/start_work", "Begin working on the ticket", middleware.RequirePermission("start_work")(HandleStartWork(app)))
 	r.Transition("escalate", "/api/escalate", "Escalate to senior support", middleware.RequirePermission("escalate")(HandleEscalate(app)))
 	r.Transition("request_info", "/api/request_info", "Request more information from customer", middleware.RequirePermission("request_info")(HandleRequestInfo(app)))
 	r.Transition("customer_reply", "/api/customer_reply", "Customer provides requested information", middleware.RequirePermission("customer_reply")(HandleCustomerReply(app)))
-	r.Transition("resolve", "/api/resolve", "Mark issue as resolved", middleware.RequirePermission("resolve")(HandleResolve(app)))
+	r.Transition("resolve", "/api/resolve", "Mark issue as resolved from in_progress", middleware.RequirePermission("resolve")(HandleResolve(app)))
+	r.Transition("resolve_escalated", "/api/resolve_escalated", "Mark escalated issue as resolved", middleware.RequirePermission("resolve_escalated")(HandleResolveEscalated(app)))
 	r.Transition("close", "/api/close", "Close the ticket", middleware.RequirePermission("close")(HandleClose(app)))
 	r.Transition("reopen", "/api/reopen", "Customer reopens a closed ticket", middleware.RequirePermission("reopen")(HandleReopen(app)))
 
@@ -352,6 +364,38 @@ func HandleResolve(app *Application) http.HandlerFunc {
 		}
 
 		agg, err := app.Execute(ctx, req.AggregateID, TransitionResolve, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:     true,
+			AggregateID: agg.ID(),
+			Version:     agg.Version(),
+			State:       agg.Places(),
+		})
+	}
+}
+
+
+// HandleResolveEscalated handles the resolve_escalated transition.
+func HandleResolveEscalated(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionResolveEscalated, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
 			return

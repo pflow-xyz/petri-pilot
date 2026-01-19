@@ -21,6 +21,7 @@ const (
 	TransitionRequestInfo = "request_info"
 	TransitionCustomerReply = "customer_reply"
 	TransitionResolve = "resolve"
+	TransitionResolveEscalated = "resolve_escalated"
 	TransitionClose = "close"
 	TransitionReopen = "reopen"
 )
@@ -33,6 +34,7 @@ const (
 	EventTypeRequestInfo = "RequestInfoed"
 	EventTypeCustomerReply = "CustomerReplyed"
 	EventTypeResolve = "Resolveed"
+	EventTypeResolveEscalated = "ResolveEscalated"
 	EventTypeClose = "Closeed"
 	EventTypeReopen = "Reopened"
 )
@@ -66,6 +68,7 @@ func AllTransitions() []string {
 		TransitionRequestInfo,
 		TransitionCustomerReply,
 		TransitionResolve,
+		TransitionResolveEscalated,
 		TransitionClose,
 		TransitionReopen,
 	}

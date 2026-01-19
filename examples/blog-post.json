@@ -1,6 +1,10 @@
 {
   "name": "blog-post",
   "description": "A blog post workflow: draft → review → published, with ability to reject back to draft",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
   "places": [
     {"id": "draft", "description": "Post is being written", "initial": 1},
     {"id": "in_review", "description": "Post is awaiting editorial review", "initial": 0},

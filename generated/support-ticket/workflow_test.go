@@ -18,8 +18,8 @@ func TestWorkflowConstants(t *testing.T) {
 
 	// Verify transition constants
 	transitions := AllTransitions()
-	if len(transitions) != 8 {
-		t.Errorf("expected 8 transitions, got %d", len(transitions))
+	if len(transitions) != 9 {
+		t.Errorf("expected 9 transitions, got %d", len(transitions))
 	}
 }
 
