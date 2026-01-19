@@ -6,6 +6,7 @@
  */
 
 import { navigate } from './router.js'
+import wallet from './wallet.js'
 
 // Available roles for login
 const availableRoles = [
@@ -90,15 +91,10 @@ export async function createNavigation() {
         }).join('')}
       </ul>
       <div class="nav-user">
-        ${user ? `
-          <span class="user-name">${user.roles ? user.roles.join(', ') : user.login || user.name || 'User'}</span>
-          <button onclick="handleLogout()" class="btn btn-link" style="color: rgba(255,255,255,0.8);">Logout</button>
-        ` : `
-          <button onclick="showLoginModal()" class="btn btn-primary btn-sm">Login</button>
-        `}
+        ${wallet.createWalletStatus(window.currentInstanceState)}
       </div>
     </nav>
-    ${createLoginModal()}
+    ${wallet.createWalletModal()}
   `
 
   return html

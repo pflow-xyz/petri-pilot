@@ -4,6 +4,38 @@
   "description": "ERC-20 fungible token implementation using Petri net semantics",
   "decimals": 18,
   "unit": "ETH",
+  "wallet": {
+    "enabled": true,
+    "balanceField": "balances",
+    "showInNav": true,
+    "autoConnect": true,
+    "accounts": [
+      {
+        "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "name": "Alice (Admin)",
+        "roles": ["admin", "holder"],
+        "initialBalance": "10000"
+      },
+      {
+        "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "name": "Bob (Holder)",
+        "roles": ["holder"],
+        "initialBalance": "1000"
+      },
+      {
+        "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "name": "Charlie (Holder)",
+        "roles": ["holder"],
+        "initialBalance": "500"
+      },
+      {
+        "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+        "name": "Dave (Observer)",
+        "roles": [],
+        "initialBalance": "0"
+      }
+    ]
+  },
   "graphql": {
     "enabled": true,
     "playground": true

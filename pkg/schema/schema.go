@@ -111,6 +111,42 @@ type Model struct {
 
 	// Unit is the display symbol for token amounts (e.g., "ETH", "USDC", "tokens")
 	Unit string `json:"unit,omitempty"`
+
+	// Wallet configuration for MetaMask-like debug wallet
+	Wallet *WalletConfig `json:"wallet,omitempty"`
+}
+
+// WalletConfig configures the debug wallet mockup for testing
+type WalletConfig struct {
+	// Enabled turns on the wallet mockup feature
+	Enabled bool `json:"enabled"`
+
+	// Accounts are pre-configured test accounts (like Anvil/Hardhat accounts)
+	Accounts []WalletAccount `json:"accounts,omitempty"`
+
+	// BalanceField is the state field that holds account balances (e.g., "balances")
+	BalanceField string `json:"balanceField,omitempty"`
+
+	// ShowInNav shows wallet status and balance in the navigation bar
+	ShowInNav bool `json:"showInNav,omitempty"`
+
+	// AutoConnect automatically connects the first account on page load
+	AutoConnect bool `json:"autoConnect,omitempty"`
+}
+
+// WalletAccount represents a pre-configured test wallet account
+type WalletAccount struct {
+	// Address is the account identifier (e.g., "0x1234..." or just "alice")
+	Address string `json:"address"`
+
+	// Name is the display name for the account
+	Name string `json:"name,omitempty"`
+
+	// Roles are the roles this account has when connected
+	Roles []string `json:"roles,omitempty"`
+
+	// InitialBalance is the starting balance for this account (in display units)
+	InitialBalance string `json:"initialBalance,omitempty"`
 }
 
 // Event represents an explicit event definition with typed fields.

@@ -46,9 +46,13 @@ type Context struct {
 	HasDebug         bool
 	HasPrediction    bool
 	HasBlobstore     bool
+	HasWallet        bool
 
 	// Prediction configuration
 	Prediction *PredictionContext
+
+	// Wallet configuration
+	Wallet *WalletContext
 
 	// Original model for reference
 	Model *schema.Model
@@ -59,6 +63,24 @@ type PredictionContext struct {
 	Enabled   bool
 	TimeHours float64
 	RateScale float64
+}
+
+// WalletContext provides template-friendly access to wallet configuration.
+type WalletContext struct {
+	Enabled      bool
+	Accounts     []WalletAccountContext
+	BalanceField string
+	ShowInNav    bool
+	AutoConnect  bool
+}
+
+// WalletAccountContext provides template-friendly access to wallet account data.
+type WalletAccountContext struct {
+	Address        string
+	Name           string
+	Roles          []string
+	RolesJSON      string // JSON array for template
+	InitialBalance string
 }
 
 // RoleContext provides template-friendly access to role data for login selector.
@@ -167,6 +189,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		HasDebug:         enriched.Debug != nil && enriched.Debug.Enabled,
 		HasPrediction:    enriched.Prediction != nil && enriched.Prediction.Enabled,
 		HasBlobstore:     enriched.Blobstore != nil && enriched.Blobstore.Enabled,
+		HasWallet:        enriched.Wallet != nil && enriched.Wallet.Enabled,
 	}
 
 	// Build prediction context
@@ -184,6 +207,11 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 			TimeHours: timeHours,
 			RateScale: rateScale,
 		}
+	}
+
+	// Build wallet context
+	if enriched.Wallet != nil && enriched.Wallet.Enabled {
+		ctx.Wallet = buildWalletContext(enriched.Wallet)
 	}
 
 	// Build place contexts
@@ -284,6 +312,37 @@ func buildRoleContexts(roles []schema.Role) []RoleContext {
 		}
 	}
 	return result
+}
+
+func buildWalletContext(wallet *schema.WalletConfig) *WalletContext {
+	accounts := make([]WalletAccountContext, len(wallet.Accounts))
+	for i, acc := range wallet.Accounts {
+		// Build JSON array of roles for template
+		rolesJSON := "[]"
+		if len(acc.Roles) > 0 {
+			roles := make([]string, len(acc.Roles))
+			for j, r := range acc.Roles {
+				roles[j] = `"` + r + `"`
+			}
+			rolesJSON = "[" + strings.Join(roles, ", ") + "]"
+		}
+
+		accounts[i] = WalletAccountContext{
+			Address:        acc.Address,
+			Name:           acc.Name,
+			Roles:          acc.Roles,
+			RolesJSON:      rolesJSON,
+			InitialBalance: acc.InitialBalance,
+		}
+	}
+
+	return &WalletContext{
+		Enabled:      wallet.Enabled,
+		Accounts:     accounts,
+		BalanceField: wallet.BalanceField,
+		ShowInNav:    wallet.ShowInNav,
+		AutoConnect:  wallet.AutoConnect,
+	}
 }
 
 // Naming utilities

@@ -117,6 +117,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, TemplateBlobs)
 	}
 
+	// Include wallet template if wallet is enabled
+	if ctx.HasWallet {
+		templateNames = append(templateNames, TemplateWallet)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

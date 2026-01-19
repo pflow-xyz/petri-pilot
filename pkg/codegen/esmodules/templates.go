@@ -24,6 +24,7 @@ const (
 	TemplateAdmin       = "admin"
 	TemplateSimulation  = "simulation"
 	TemplateBlobs       = "blobs"
+	TemplateWallet      = "wallet"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -43,6 +44,7 @@ var templateInfo = map[string]struct {
 	TemplateAdmin:       {File: "admin.tmpl", Output: "src/admin.js"},
 	TemplateSimulation:  {File: "simulation.tmpl", Output: "src/simulation.js"},
 	TemplateBlobs:       {File: "blobs.tmpl", Output: "src/blobs.js"},
+	TemplateWallet:      {File: "wallet.tmpl", Output: "src/wallet.js"},
 }
 
 // Templates holds parsed templates for code generation.
