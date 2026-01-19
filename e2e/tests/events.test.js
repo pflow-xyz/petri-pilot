@@ -111,7 +111,8 @@ describe('Events First Schema', () => {
       expect(events).toBeDefined();
       expect(events.length).toBeGreaterThan(0);
       
-      // Check the event (type is based on transition ID, not event schema ID)
+      // Check the validate event
+      // Note: Event type is the transition ID ("validate") which gets capitalized as "Validateed" in the generated code
       const validateEvent = events.find(e => e.type === 'validate' || e.type === 'Validateed');
       expect(validateEvent).toBeDefined();
       expect(validateEvent.data.customer_name).toBe('Alice');

@@ -181,7 +181,7 @@ class TestHarness {
    * Get event history for an aggregate.
    */
   async getEventHistory(aggregateId, from = 0) {
-    return this.debugClient.getEventHistory(this.sessionId, aggregateId, from);
+    return this.debugClient.getEventHistory(this.sessionId, this.appName, aggregateId, from);
   }
 
   /**
