@@ -238,6 +238,11 @@ const api = {
 // Export for global access
 window.api = api
 
+// Export current instance for debug wallet view
+Object.defineProperty(window, 'currentInstance', {
+  get: function() { return currentInstance }
+})
+
 // Export auth functions for testing
 window.setAuthToken = function(token) {
   authToken = token
@@ -391,6 +396,8 @@ async function renderDetailPage() {
       places: result.places,
       enabled: result.enabled || result.enabled_transitions || [],
     }
+    // Store state for debug wallet view
+    window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
   } catch (err) {
     document.getElementById('instance-detail').innerHTML = `

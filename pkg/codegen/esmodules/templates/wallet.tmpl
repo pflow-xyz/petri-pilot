@@ -414,8 +414,9 @@ export function createWalletModal() {
 /**
  * Create debug wallet view showing all accounts and their balances
  */
-export function createDebugWalletView(state) {
+export function createDebugWalletView(state, instanceId = null) {
   const balances = state?.[BALANCE_FIELD] || {}
+  const hasInstance = instanceId !== null
 
   const rows = WALLET_ACCOUNTS.map((acc, idx) => {
     const balance = balances[acc.address] || 0
@@ -455,9 +456,10 @@ export function createDebugWalletView(state) {
   return `
     <div id="debug-wallet-view" class="debug-wallet-view">
       <div class="debug-wallet-header">
-        <h3>Debug Wallet - All Accounts</h3>
+        <h3>Debug Wallet ${hasInstance ? `<span class="debug-wallet-instance">Instance: ${instanceId.slice(0, 8)}...</span>` : '<span class="debug-wallet-no-instance">No instance selected</span>'}</h3>
         <button onclick="window.hideDebugWalletView()" class="modal-close">&times;</button>
       </div>
+      ${!hasInstance ? '<div class="debug-wallet-warning">Navigate to an instance to see balances</div>' : ''}
       <div class="debug-wallet-body">
         <table class="debug-wallet-table">
           <thead>
@@ -511,6 +513,26 @@ export function createDebugWalletView(state) {
       .debug-wallet-header h3 {
         margin: 0;
         font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .debug-wallet-instance {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #10b981;
+        font-family: monospace;
+      }
+      .debug-wallet-no-instance {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #f59e0b;
+      }
+      .debug-wallet-warning {
+        padding: 0.5rem 1rem;
+        background: #fef3cd;
+        color: #856404;
+        font-size: 0.85rem;
       }
       .debug-wallet-body {
         padding: 1rem;
@@ -654,8 +676,9 @@ window.disconnectWallet = async function() {
 }
 
 window.showDebugWalletView = function() {
-  // Get current state from window (set by main.js)
+  // Get current state and instance info from window (set by main.js)
   const state = window.currentInstanceState || {}
+  const instanceId = window.currentInstance?.id || null
 
   // Remove existing view if present
   const existing = document.getElementById('debug-wallet-container')
@@ -664,7 +687,7 @@ window.showDebugWalletView = function() {
   // Create and append the view
   const container = document.createElement('div')
   container.id = 'debug-wallet-container'
-  container.innerHTML = createDebugWalletView(state)
+  container.innerHTML = createDebugWalletView(state, instanceId)
   document.body.appendChild(container)
 }
 
