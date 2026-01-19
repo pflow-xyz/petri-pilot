@@ -85,17 +85,21 @@ Generated code imports from:
 
 ## GitHub Copilot Delegation
 
-The project includes a delegation library for programmatically assigning work to GitHub Copilot coding agents.
+The project includes a delegation library for working with GitHub Copilot coding agents.
+
+### How to Assign Issues to Copilot
+
+**Important:** Copilot assignment requires the GitHub web UI. API-based assignment does not work.
+
+1. Create issue via CLI: `gh issue create --title "..." --body "..." --label copilot`
+2. Open issue in GitHub web UI
+3. Click "Assignees" → search for "Copilot" → assign
+4. Copilot coding agent picks up the issue and creates a branch
+5. Agent makes changes and creates a PR
 
 ### CLI Commands
 
 ```bash
-# Delegate app generation to Copilot
-petri-pilot delegate app --model examples/my-app.json
-
-# Delegate all roadmap tasks to Copilot
-petri-pilot delegate roadmap
-
 # Check status of all delegated work
 petri-pilot delegate status
 
@@ -103,31 +107,40 @@ petri-pilot delegate status
 petri-pilot delegate wait
 ```
 
-### MCP Tools
+### Creating Issues for Copilot
 
-When running via MCP (Claude Desktop), these tools are available:
+Use `gh` CLI to create well-structured issues:
 
-- `delegate_app` - Create a GitHub issue to generate an app from a model
-- `delegate_status` - Get status of active Copilot agents and open PRs
-- `delegate_tasks` - Delegate multiple tasks from ROADMAP.md
+```bash
+gh issue create \
+  --title "Implement feature X" \
+  --label "copilot" \
+  --body "$(cat <<'EOF'
+## Summary
+Description of what needs to be done.
 
-### How It Works
+## Implementation
+- Step 1
+- Step 2
 
-1. CLI/MCP creates a GitHub issue with task details
-2. Issue is assigned to `@copilot` user
-3. Copilot coding agent picks up the issue and creates a branch
-4. Agent makes changes and creates a PR
-5. Use `delegate status` or `delegate wait` to monitor progress
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+EOF
+)"
+```
+
+Then assign to Copilot via the GitHub UI.
 
 ### Package Structure
 
-- `pkg/delegate/client.go` - GitHub API client for Copilot interaction
-- `pkg/delegate/batch.go` - Batch task delegation utilities
+- `pkg/delegate/client.go` - GitHub API client for status checking
+- `pkg/delegate/batch.go` - Batch task utilities
 - `cmd/petri-pilot/delegate.go` - CLI command implementations
 
 ### Environment
 
-Requires `GITHUB_TOKEN` environment variable. Get it from `gh auth token`.
+Requires `GITHUB_TOKEN` environment variable for status commands.
 
 ```bash
 export GITHUB_TOKEN=$(gh auth token)
