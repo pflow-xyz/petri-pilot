@@ -529,6 +529,9 @@ export function createDebugWalletView(state, instanceId = null) {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        background: rgba(255,255,255,0.15);
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
       }
       .debug-wallet-instance {
         font-size: 0.8rem;
@@ -595,10 +598,21 @@ export function createDebugWalletView(state, instanceId = null) {
         font-weight: 600;
         color: #555;
       }
-      .debug-wallet-table th:nth-child(1) { width: 140px; }
-      .debug-wallet-table th:nth-child(2) { width: auto; }
-      .debug-wallet-table th:nth-child(3) { width: 100px; }
-      .debug-wallet-table th:nth-child(4) { width: 120px; }
+      .debug-wallet-table th:nth-child(1) { width: 130px; }
+      .debug-wallet-table th:nth-child(2) { width: 200px; }
+      .debug-wallet-table th:nth-child(3) { width: 90px; }
+      .debug-wallet-table th:nth-child(4) { width: 100px; }
+      .debug-wallet-address code {
+        display: inline-block;
+        max-width: 170px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+        background: #f5f5f5;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+      }
       .debug-wallet-table td {
         padding: 0.5rem;
         border-bottom: 1px solid #eee;
@@ -633,11 +647,6 @@ export function createDebugWalletView(state, instanceId = null) {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-      }
-      .debug-wallet-address code {
-        background: #f5f5f5;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
       }
       .copy-btn-small {
         padding: 0.25rem;

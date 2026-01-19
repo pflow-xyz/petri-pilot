@@ -258,6 +258,7 @@ export function createWalletStatus(state) {
         ${formatAddress(connectedAccount.address)}
       </span>
       <span class="wallet-balance">${displayBalance} ETH</span>
+      <button onclick="window.toggleDebugWalletView()" class="btn btn-link btn-sm" title="Show all accounts">Debug</button>
       <button onclick="window.showWalletModal()" class="btn btn-link btn-sm">Switch</button>
       <button onclick="window.disconnectWallet()" class="btn btn-link btn-sm">Disconnect</button>
     </div>
@@ -271,19 +272,31 @@ export function createWalletModal() {
   const accountButtons = WALLET_ACCOUNTS.map((acc, idx) => {
     const isActive = idx === accountIndex
     return `
-      <button
-        onclick="window.connectWalletAccount(${idx})"
-        class="wallet-account-btn ${isActive ? 'active' : ''}"
-      >
-        <div class="wallet-account-info">
-          <span class="wallet-account-name">${acc.name || 'Account ' + idx}</span>
-          <span class="wallet-account-address">${formatAddress(acc.address)}</span>
-        </div>
-        <div class="wallet-account-roles">
-          ${acc.roles.map(r => `<span class="role-badge">${r}</span>`).join('')}
-        </div>
-        ${isActive ? '<span class="wallet-account-active">Connected</span>' : ''}
-      </button>
+      <div class="wallet-account-row">
+        <button
+          onclick="window.connectWalletAccount(${idx})"
+          class="wallet-account-btn ${isActive ? 'active' : ''}"
+        >
+          <div class="wallet-account-info">
+            <span class="wallet-account-name">${acc.name || 'Account ' + idx}</span>
+            <span class="wallet-account-address">${formatAddress(acc.address)}</span>
+          </div>
+          <div class="wallet-account-roles">
+            ${acc.roles.map(r => `<span class="role-badge">${r}</span>`).join('')}
+          </div>
+          ${isActive ? '<span class="wallet-account-active">Connected</span>' : ''}
+        </button>
+        <button
+          onclick="window.copyAddress('${acc.address}')"
+          class="copy-btn"
+          title="Copy full address"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
     `
   }).join('')
 
@@ -332,6 +345,11 @@ export function createWalletModal() {
         flex-direction: column;
         gap: 0.5rem;
       }
+      .wallet-account-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: stretch;
+      }
       .wallet-account-btn {
         display: flex;
         justify-content: space-between;
@@ -343,7 +361,7 @@ export function createWalletModal() {
         cursor: pointer;
         transition: all 0.2s;
         text-align: left;
-        width: 100%;
+        flex: 1;
       }
       .wallet-account-btn:hover {
         background: #e5e5e5;
@@ -352,6 +370,28 @@ export function createWalletModal() {
       .wallet-account-btn.active {
         background: #e3f2fd;
         border-color: #007bff;
+      }
+      .copy-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f9f9f9;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #666;
+      }
+      .copy-btn:hover {
+        background: #e5e5e5;
+        border-color: #007bff;
+        color: #007bff;
+      }
+      .copy-btn.copied {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #28a745;
       }
       .wallet-account-info {
         display: flex;
@@ -378,6 +418,276 @@ export function createWalletModal() {
       .wallet-account-active {
         color: #10b981;
         font-size: 0.8rem;
+      }
+    </style>
+  `
+}
+
+// ============================================================================
+// Debug Wallet View - Shows all accounts with balances
+// ============================================================================
+
+/**
+ * Create debug wallet view showing all accounts and their balances
+ */
+export function createDebugWalletView(state, instanceId = null) {
+  const balances = state?.[BALANCE_FIELD] || {}
+  const hasInstance = instanceId !== null
+
+  const rows = WALLET_ACCOUNTS.map((acc, idx) => {
+    const balance = balances[acc.address] || 0
+    const isConnected = idx === accountIndex
+
+    return `
+      <tr class="${isConnected ? 'debug-wallet-connected' : ''}">
+        <td>
+          <div class="debug-wallet-account">
+            <span class="debug-wallet-name">${acc.name || 'Account ' + idx}</span>
+            ${isConnected ? '<span class="debug-wallet-badge">Connected</span>' : ''}
+          </div>
+        </td>
+        <td class="debug-wallet-address">
+          <code>${acc.address}</code>
+          <button onclick="window.copyAddress('${acc.address}')" class="copy-btn-small" title="Copy">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </td>
+        <td class="debug-wallet-roles">
+          ${acc.roles.length > 0 ? acc.roles.map(r => `<span class="role-badge">${r}</span>`).join(' ') : '<span class="no-roles">none</span>'}
+        </td>
+        <td class="debug-wallet-balance">
+          <strong>${formatBalance(balance)}</strong> ETH
+        </td>
+      </tr>
+    `
+  }).join('')
+
+  // Calculate totals
+  const totalBalance = WALLET_ACCOUNTS.reduce((sum, acc) => sum + (balances[acc.address] || 0), 0)
+  const totalSupply = state?.total_supply || 0
+
+  return `
+    <div id="debug-wallet-view" class="debug-wallet-view">
+      <div class="debug-wallet-header">
+        <h3>Debug Wallet ${hasInstance ? `<span class="debug-wallet-instance">Instance: ${instanceId.slice(0, 8)}...</span>` : '<span class="debug-wallet-no-instance">No instance selected</span>'}</h3>
+        <div class="debug-wallet-controls">
+          <button onclick="window.toggleDebugWalletFullscreen()" class="debug-wallet-btn" title="Toggle fullscreen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+          <button onclick="window.hideDebugWalletView()" class="debug-wallet-btn" title="Close">&times;</button>
+        </div>
+      </div>
+      ${!hasInstance ? '<div class="debug-wallet-warning">Navigate to an instance to see balances</div>' : ''}
+      <div class="debug-wallet-body">
+        <table class="debug-wallet-table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Address</th>
+              <th>Roles</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3"><strong>Total Balances</strong></td>
+              <td class="debug-wallet-balance"><strong>${formatBalance(totalBalance)}</strong> ETH</td>
+            </tr>
+            <tr>
+              <td colspan="3"><strong>Total Supply</strong></td>
+              <td class="debug-wallet-balance"><strong>${formatBalance(totalSupply)}</strong> ETH</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <style>
+      .debug-wallet-view {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        z-index: 1000;
+        min-width: 400px;
+        min-height: 200px;
+        width: 650px;
+        max-width: 90vw;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        resize: both;
+        overflow: auto;
+      }
+      .debug-wallet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: #24292e;
+        color: white;
+        cursor: move;
+        user-select: none;
+      }
+      .debug-wallet-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255,255,255,0.15);
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+      }
+      .debug-wallet-instance {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #10b981;
+        font-family: monospace;
+      }
+      .debug-wallet-no-instance {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #f59e0b;
+      }
+      .debug-wallet-warning {
+        padding: 0.5rem 1rem;
+        background: #fef3cd;
+        color: #856404;
+        font-size: 0.85rem;
+      }
+      .debug-wallet-controls {
+        display: flex;
+        gap: 0.25rem;
+      }
+      .debug-wallet-btn {
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,0.7);
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        font-size: 1.25rem;
+        line-height: 1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .debug-wallet-btn:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+      }
+      .debug-wallet-view.fullscreen {
+        top: 1rem !important;
+        left: 1rem !important;
+        right: 1rem !important;
+        bottom: 1rem !important;
+        width: auto !important;
+        height: auto !important;
+        max-width: none;
+        max-height: none;
+      }
+      .debug-wallet-body {
+        padding: 1rem;
+        overflow: auto;
+      }
+      .debug-wallet-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        table-layout: fixed;
+      }
+      .debug-wallet-table th {
+        text-align: left;
+        padding: 0.5rem;
+        border-bottom: 2px solid #ddd;
+        font-weight: 600;
+        color: #555;
+      }
+      .debug-wallet-table th:nth-child(1) { width: 130px; }
+      .debug-wallet-table th:nth-child(2) { width: 200px; }
+      .debug-wallet-table th:nth-child(3) { width: 90px; }
+      .debug-wallet-table th:nth-child(4) { width: 100px; }
+      .debug-wallet-address code {
+        display: inline-block;
+        max-width: 170px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+        background: #f5f5f5;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+      }
+      .debug-wallet-table td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+      }
+      .debug-wallet-table tfoot td {
+        border-top: 2px solid #ddd;
+        border-bottom: none;
+        background: #f9f9f9;
+      }
+      .debug-wallet-connected {
+        background: #e8f5e9;
+      }
+      .debug-wallet-account {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .debug-wallet-name {
+        font-weight: 500;
+      }
+      .debug-wallet-badge {
+        font-size: 0.7rem;
+        padding: 0.125rem 0.375rem;
+        background: #10b981;
+        color: white;
+        border-radius: 4px;
+      }
+      .debug-wallet-address {
+        font-family: monospace;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .copy-btn-small {
+        padding: 0.25rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: #666;
+        display: flex;
+        align-items: center;
+      }
+      .copy-btn-small:hover {
+        color: #007bff;
+      }
+      .debug-wallet-roles {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+      }
+      .no-roles {
+        color: #999;
+        font-style: italic;
+      }
+      .debug-wallet-balance {
+        text-align: right;
+        font-family: monospace;
       }
     </style>
   `
@@ -434,6 +744,105 @@ window.disconnectWallet = async function() {
   window.dispatchEvent(new CustomEvent('auth-change'))
 }
 
+window.showDebugWalletView = function() {
+  // Get current state and instance info from window (set by main.js)
+  const state = window.currentInstanceState || {}
+  const instanceId = window.currentInstance?.id || null
+
+  // Remove existing view if present
+  const existing = document.getElementById('debug-wallet-container')
+  if (existing) existing.remove()
+
+  // Create and append the view
+  const container = document.createElement('div')
+  container.id = 'debug-wallet-container'
+  container.innerHTML = createDebugWalletView(state, instanceId)
+  document.body.appendChild(container)
+
+  // Make it draggable
+  initDraggable()
+}
+
+function initDraggable() {
+  const view = document.getElementById('debug-wallet-view')
+  const header = view?.querySelector('.debug-wallet-header')
+  if (!view || !header) return
+
+  let isDragging = false
+  let startX, startY, startLeft, startTop
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button')) return // Don't drag when clicking buttons
+    isDragging = true
+    startX = e.clientX
+    startY = e.clientY
+    const rect = view.getBoundingClientRect()
+    startLeft = rect.left
+    startTop = rect.top
+    // Switch from bottom/right to top/left positioning
+    view.style.bottom = 'auto'
+    view.style.right = 'auto'
+    view.style.left = startLeft + 'px'
+    view.style.top = startTop + 'px'
+    e.preventDefault()
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+    view.style.left = (startLeft + dx) + 'px'
+    view.style.top = (startTop + dy) + 'px'
+  })
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false
+  })
+}
+
+window.hideDebugWalletView = function() {
+  const container = document.getElementById('debug-wallet-container')
+  if (container) container.remove()
+}
+
+window.toggleDebugWalletFullscreen = function() {
+  const view = document.getElementById('debug-wallet-view')
+  if (view) {
+    view.classList.toggle('fullscreen')
+  }
+}
+
+window.toggleDebugWalletView = function() {
+  const existing = document.getElementById('debug-wallet-container')
+  if (existing) {
+    window.hideDebugWalletView()
+  } else {
+    window.showDebugWalletView()
+  }
+}
+
+window.copyAddress = async function(address) {
+  try {
+    await navigator.clipboard.writeText(address)
+    // Find and highlight the button that was clicked
+    const buttons = document.querySelectorAll('.copy-btn')
+    buttons.forEach(btn => {
+      if (btn.onclick?.toString().includes(address)) {
+        btn.classList.add('copied')
+        setTimeout(() => btn.classList.remove('copied'), 1500)
+      }
+    })
+  } catch (err) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = address
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
 // ============================================================================
 // Auto-initialization
 // ============================================================================
@@ -472,6 +881,7 @@ export default {
   getMyBalance,
   createWalletStatus,
   createWalletModal,
+  createDebugWalletView,
   on,
   off,
 }
