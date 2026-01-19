@@ -176,6 +176,16 @@ func TestStateMachine(t *testing.T) {
 			EventType: "OrderShipped",
 		})
 
+		// Register event handlers (required for Apply)
+		sm.RegisterHandler("OrderConfirmed", func(s *OrderState, e *runtime.Event) error {
+			s.Status = "confirmed"
+			return nil
+		})
+		sm.RegisterHandler("OrderShipped", func(s *OrderState, e *runtime.Event) error {
+			s.Status = "shipped"
+			return nil
+		})
+
 		// Check initial state
 		if !sm.CanFire("confirm") {
 			t.Error("should be able to fire 'confirm'")
@@ -191,6 +201,11 @@ func TestStateMachine(t *testing.T) {
 		}
 		if event.Type != "OrderConfirmed" {
 			t.Errorf("expected event type 'OrderConfirmed', got '%s'", event.Type)
+		}
+
+		// Apply the event to update state (Fire creates event, Apply updates places)
+		if err := sm.Apply(event); err != nil {
+			t.Fatalf("apply failed: %v", err)
 		}
 
 		// Check state after firing
