@@ -40,7 +40,7 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 			ID:            transition.ID,
 			Guard:         transition.Guard,
 			EventID:       transition.EventType,
-			EventBindings: transition.Bindings,
+			EventBindings: bindingsToMap(transition.Bindings),
 		}
 		s.AddAction(action)
 	}
@@ -105,7 +105,7 @@ func FromMetamodel(s *metamodel.Schema) *schema.Model {
 			ID:        action.ID,
 			Guard:     action.Guard,
 			EventType: action.EventID,
-			Bindings:  action.EventBindings,
+			Bindings:  mapToBindings(action.EventBindings),
 		}
 		model.Transitions = append(model.Transitions, transition)
 	}
@@ -200,6 +200,33 @@ func toUpper(c rune) rune {
 		return c - 32
 	}
 	return c
+}
+
+// bindingsToMap converts []schema.Binding to map[string]string for metamodel compatibility.
+func bindingsToMap(bindings []schema.Binding) map[string]string {
+	if len(bindings) == 0 {
+		return nil
+	}
+	result := make(map[string]string)
+	for _, b := range bindings {
+		result[b.Name] = b.Type
+	}
+	return result
+}
+
+// mapToBindings converts map[string]string to []schema.Binding from metamodel.
+func mapToBindings(m map[string]string) []schema.Binding {
+	if len(m) == 0 {
+		return nil
+	}
+	var result []schema.Binding
+	for name, typ := range m {
+		result = append(result, schema.Binding{
+			Name: name,
+			Type: typ,
+		})
+	}
+	return result
 }
 
 // ValidateForCodegen checks if a model is ready for code generation.

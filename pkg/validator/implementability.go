@@ -87,8 +87,19 @@ func (v *Validator) ValidateImplementability(model *schema.Model) *Implementabil
 func (v *Validator) checkEventReferences(model *schema.Model, result *ImplementabilityResult) {
 	// Build event lookup
 	eventIDs := make(map[string]bool)
+	eventFields := make(map[string]map[string]bool) // event ID -> field names
 	for _, e := range model.Events {
 		eventIDs[e.ID] = true
+		eventFields[e.ID] = make(map[string]bool)
+		for _, f := range e.Fields {
+			eventFields[e.ID][f.Name] = true
+		}
+	}
+
+	// Build place lookup for binding validation
+	placeIDs := make(map[string]bool)
+	for _, p := range model.Places {
+		placeIDs[p.ID] = true
 	}
 
 	// Check that all transition.Event references are valid
@@ -103,6 +114,9 @@ func (v *Validator) checkEventReferences(model *schema.Model, result *Implementa
 				})
 			}
 		}
+
+		// Validate bindings
+		v.checkBindings(t, placeIDs, eventFields, result)
 	}
 
 	// Validate event field types
@@ -122,6 +136,63 @@ func (v *Validator) checkEventReferences(model *schema.Model, result *Implementa
 			}
 		}
 	}
+}
+
+// checkBindings validates bindings on a transition.
+func (v *Validator) checkBindings(t schema.Transition, placeIDs map[string]bool, eventFields map[string]map[string]bool, result *ImplementabilityResult) {
+	validTypes := map[string]bool{
+		"string": true, "number": true, "integer": true, "boolean": true,
+		"time": true, "int": true, "int64": true, "float64": true, "bool": true,
+	}
+
+	for _, b := range t.Bindings {
+		// Check binding name is valid identifier
+		if !isValidIdentifier(b.Name) {
+			result.Errors = append(result.Errors, ImplementabilityIssue{
+				Code:    "INVALID_BINDING_NAME",
+				Message: fmt.Sprintf("Transition '%s' binding '%s' is not a valid identifier", t.ID, b.Name),
+				Element: t.ID,
+				Fix:     "Use valid identifier characters for binding names",
+			})
+		}
+
+		// Check binding type is valid (either standard type or starts with map[)
+		if !validTypes[b.Type] && !isValidIdentifier(b.Type) && !isMapType(b.Type) {
+			result.Warnings = append(result.Warnings, ImplementabilityIssue{
+				Code:    "UNKNOWN_BINDING_TYPE",
+				Message: fmt.Sprintf("Transition '%s' binding '%s' has unknown type '%s'", t.ID, b.Name, b.Type),
+				Element: t.ID,
+				Fix:     "Use standard types: string, number, integer, boolean, time, or map[K]V",
+			})
+		}
+
+		// Check place reference if specified
+		if b.Place != "" && !placeIDs[b.Place] {
+			result.Errors = append(result.Errors, ImplementabilityIssue{
+				Code:    "INVALID_BINDING_PLACE",
+				Message: fmt.Sprintf("Transition '%s' binding '%s' references undefined place '%s'", t.ID, b.Name, b.Place),
+				Element: t.ID,
+				Fix:     fmt.Sprintf("Add place definition with id '%s' or remove place reference", b.Place),
+			})
+		}
+
+		// Check binding matches event field if transition has event reference
+		if t.Event != "" && len(eventFields[t.Event]) > 0 {
+			if !eventFields[t.Event][b.Name] {
+				result.Warnings = append(result.Warnings, ImplementabilityIssue{
+					Code:    "BINDING_NOT_IN_EVENT",
+					Message: fmt.Sprintf("Transition '%s' binding '%s' is not defined in event '%s'", t.ID, b.Name, t.Event),
+					Element: t.ID,
+					Fix:     fmt.Sprintf("Add field '%s' to event '%s' or remove binding", b.Name, t.Event),
+				})
+			}
+		}
+	}
+}
+
+// isMapType checks if a type string represents a map type.
+func isMapType(typ string) bool {
+	return len(typ) > 4 && typ[:4] == "map["
 }
 
 // checkEventDerivation verifies events can be inferred from transitions.

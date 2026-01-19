@@ -246,14 +246,14 @@ func diffTool() mcp.Tool {
 
 func extendTool() mcp.Tool {
 	return mcp.NewTool("petri_extend",
-		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, add_event, add_event_field, remove_place, remove_transition, remove_arc, remove_role, remove_access, remove_event. Returns the modified model."),
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_role, remove_access, remove_event, remove_binding. Returns the modified model."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON"),
 		),
 		mcp.WithString("operations",
 			mcp.Required(),
-			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"approve\",\"event\":\"request_approved\"}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_role\",\"id\":\"admin\",\"name\":\"Administrator\"}, {\"op\":\"add_access\",\"transition\":\"approve\",\"roles\":[\"admin\"]}, {\"op\":\"add_event\",\"id\":\"request_approved\",\"fields\":[{\"name\":\"reason\",\"type\":\"string\"}]}, {\"op\":\"add_event_field\",\"event\":\"request_approved\",\"name\":\"approved_by\",\"type\":\"string\",\"required\":true}"),
+			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"transfer\",\"event\":\"transferred\",\"guard\":\"balances[from] >= amount\",\"bindings\":[{\"name\":\"from\",\"type\":\"string\",\"keys\":[\"from\"]},{\"name\":\"amount\",\"type\":\"number\",\"value\":true}]}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_event\",\"id\":\"transferred\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"number\"}]}, {\"op\":\"add_binding\",\"transition\":\"transfer\",\"name\":\"to\",\"type\":\"string\",\"keys\":[\"to\"]}"),
 		),
 	)
 }
@@ -852,10 +852,27 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		}
 		desc, _ := op["description"].(string)
 		event, _ := op["event"].(string)
+		guard, _ := op["guard"].(string)
+
+		// Parse bindings if provided
+		var bindings []schema.Binding
+		if bindingsRaw, ok := op["bindings"].([]any); ok {
+			for _, b := range bindingsRaw {
+				if bindingMap, ok := b.(map[string]any); ok {
+					binding := parseBinding(bindingMap)
+					if binding.Name != "" {
+						bindings = append(bindings, binding)
+					}
+				}
+			}
+		}
+
 		model.Transitions = append(model.Transitions, schema.Transition{
 			ID:          id,
 			Description: desc,
 			Event:       event,
+			Guard:       guard,
+			Bindings:    bindings,
 		})
 
 	case "add_arc":
@@ -1052,10 +1069,123 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		}
 		model.Events = newEvents
 
+	case "add_binding":
+		transitionID, _ := op["transition"].(string)
+		if transitionID == "" {
+			return fmt.Errorf("missing 'transition' for add_binding")
+		}
+		bindingName, _ := op["name"].(string)
+		if bindingName == "" {
+			return fmt.Errorf("missing 'name' for add_binding")
+		}
+		bindingType, _ := op["type"].(string)
+		if bindingType == "" {
+			return fmt.Errorf("missing 'type' for add_binding")
+		}
+
+		binding := schema.Binding{
+			Name:  bindingName,
+			Type:  bindingType,
+			Place: getOptString(op, "place"),
+			Value: getOptBool(op, "value"),
+			Keys:  getOptStringArray(op, "keys"),
+		}
+
+		// Find the transition and add the binding
+		found := false
+		for i := range model.Transitions {
+			if model.Transitions[i].ID == transitionID {
+				model.Transitions[i].Bindings = append(model.Transitions[i].Bindings, binding)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("transition '%s' not found for add_binding", transitionID)
+		}
+
+	case "remove_binding":
+		transitionID, _ := op["transition"].(string)
+		if transitionID == "" {
+			return fmt.Errorf("missing 'transition' for remove_binding")
+		}
+		bindingName, _ := op["name"].(string)
+		if bindingName == "" {
+			return fmt.Errorf("missing 'name' for remove_binding")
+		}
+
+		// Find the transition and remove the binding
+		found := false
+		for i := range model.Transitions {
+			if model.Transitions[i].ID == transitionID {
+				newBindings := make([]schema.Binding, 0, len(model.Transitions[i].Bindings))
+				for _, b := range model.Transitions[i].Bindings {
+					if b.Name != bindingName {
+						newBindings = append(newBindings, b)
+					}
+				}
+				model.Transitions[i].Bindings = newBindings
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("transition '%s' not found for remove_binding", transitionID)
+		}
+
 	default:
 		return fmt.Errorf("unknown operation: %s", opType)
 	}
 
+	return nil
+}
+
+// parseBinding parses a binding from a map.
+func parseBinding(m map[string]any) schema.Binding {
+	name, _ := m["name"].(string)
+	typ, _ := m["type"].(string)
+	place, _ := m["place"].(string)
+	value, _ := m["value"].(bool)
+	var keys []string
+	if keysRaw, ok := m["keys"].([]any); ok {
+		for _, k := range keysRaw {
+			if key, ok := k.(string); ok {
+				keys = append(keys, key)
+			}
+		}
+	}
+	return schema.Binding{
+		Name:  name,
+		Type:  typ,
+		Place: place,
+		Value: value,
+		Keys:  keys,
+	}
+}
+
+// getOptString extracts an optional string from a map.
+func getOptString(m map[string]any, key string) string {
+	v, _ := m[key].(string)
+	return v
+}
+
+// getOptBool extracts an optional bool from a map.
+func getOptBool(m map[string]any, key string) bool {
+	v, _ := m[key].(bool)
+	return v
+}
+
+// getOptStringArray extracts an optional string array from a map.
+func getOptStringArray(m map[string]any, key string) []string {
+	if raw, ok := m[key].([]any); ok {
+		result := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
 	return nil
 }
 

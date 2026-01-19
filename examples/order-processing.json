@@ -97,11 +97,55 @@
     {"id": "completed", "description": "Order fulfilled", "initial": 0}
   ],
   "transitions": [
-    {"id": "validate", "description": "Check order validity", "event": "order_validated"},
-    {"id": "reject", "description": "Mark order as invalid", "event": "order_rejected"},
-    {"id": "process_payment", "description": "Charge customer payment", "event": "payment_processed"},
-    {"id": "ship", "description": "Send order to shipping", "event": "order_shipped"},
-    {"id": "confirm", "description": "Mark order as complete", "event": "order_completed"}
+    {
+      "id": "validate",
+      "description": "Check order validity",
+      "event": "order_validated",
+      "bindings": [
+        {"name": "order_id", "type": "string"},
+        {"name": "customer_name", "type": "string"},
+        {"name": "customer_email", "type": "string"},
+        {"name": "shipping_address", "type": "string"},
+        {"name": "total", "type": "number", "value": true}
+      ]
+    },
+    {
+      "id": "reject",
+      "description": "Mark order as invalid",
+      "event": "order_rejected",
+      "bindings": [
+        {"name": "order_id", "type": "string"},
+        {"name": "rejection_reason", "type": "string"}
+      ]
+    },
+    {
+      "id": "process_payment",
+      "description": "Charge customer payment",
+      "event": "payment_processed",
+      "bindings": [
+        {"name": "order_id", "type": "string"},
+        {"name": "total", "type": "number", "value": true},
+        {"name": "payment_method", "type": "string"}
+      ]
+    },
+    {
+      "id": "ship",
+      "description": "Send order to shipping",
+      "event": "order_shipped",
+      "bindings": [
+        {"name": "order_id", "type": "string"},
+        {"name": "tracking_number", "type": "string"},
+        {"name": "carrier", "type": "string"}
+      ]
+    },
+    {
+      "id": "confirm",
+      "description": "Mark order as complete",
+      "event": "order_completed",
+      "bindings": [
+        {"name": "order_id", "type": "string"}
+      ]
+    }
   ],
   "arcs": [
     {"from": "received", "to": "validate"},

@@ -55,12 +55,24 @@ type Event struct {
 }
 
 // EventField represents a typed field within an event.
+// Events capture the complete record including optional fields for audit/replay.
 type EventField struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"`               // string, number, integer, boolean, array, object, time
 	Of          string `json:"of,omitempty"`       // element type for array/object
-	Required    bool   `json:"required,omitempty"`
+	Required    bool   `json:"required,omitempty"` // true if must be in event record
 	Description string `json:"description,omitempty"`
+}
+
+// Binding represents operational data needed for state computation.
+// Bindings define the data required to evaluate guards and apply arc transformations.
+// This mirrors arcnet's Arc pattern with keys for map access and value for transfers.
+type Binding struct {
+	Name  string   `json:"name"`            // binding name (e.g., "from", "to", "amount")
+	Type  string   `json:"type"`            // data type: string, number, map[string]number, etc.
+	Keys  []string `json:"keys,omitempty"`  // map access path (e.g., ["owner", "spender"] for nested maps)
+	Value bool     `json:"value,omitempty"` // true if this is the transfer value (like Arc.Value)
+	Place string   `json:"place,omitempty"` // place ID this binding reads from/writes to
 }
 
 // View represents a UI view definition for presenting workflow data.
@@ -175,11 +187,17 @@ type Transition struct {
 	// Event reference (Events First schema) - references Event.ID
 	Event string `json:"event,omitempty"`
 
-	// Extended fields for API and event binding (deprecated, use Event reference instead)
-	EventType  string            `json:"event_type,omitempty"`  // Event name to emit (deprecated)
-	HTTPMethod string            `json:"http_method,omitempty"` // GET, POST, etc.
-	HTTPPath   string            `json:"http_path,omitempty"`   // API path, e.g., "/orders/{id}/confirm"
-	Bindings   map[string]string `json:"bindings,omitempty"`    // Parameter bindings (deprecated)
+	// Bindings define operational data for state computation (arcnet pattern)
+	// These are used to evaluate guards and apply arc transformations
+	Bindings []Binding `json:"bindings,omitempty"`
+
+	// Extended fields for API routing
+	HTTPMethod string `json:"http_method,omitempty"` // GET, POST, etc.
+	HTTPPath   string `json:"http_path,omitempty"`   // API path, e.g., "/orders/{id}/confirm"
+
+	// Deprecated fields (for backward compatibility)
+	EventType      string            `json:"event_type,omitempty"`       // Use Event instead
+	LegacyBindings map[string]string `json:"legacy_bindings,omitempty"` // Use Bindings instead
 }
 
 // Arc represents a flow between place and transition.

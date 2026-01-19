@@ -224,8 +224,12 @@ type TransitionContext struct {
 	Description string
 	Guard       string
 	EventType   string
+	EventRef    string // reference to Event.ID (Events First schema)
 	HTTPMethod  string
 	HTTPPath    string
+
+	// Bindings for state computation (arcnet pattern)
+	Bindings []BindingContext
 
 	// Petri net connections (derived from arcs)
 	Inputs  []ArcContext // Places that feed into this transition
@@ -250,6 +254,18 @@ type ArcContext struct {
 	PlaceID   string // The place ID
 	ConstName string // e.g., "PlaceReceived"
 	Weight    int    // Token weight (default 1)
+}
+
+// BindingContext provides template-friendly access to transition bindings.
+// Bindings are operational data needed for state computation (arcnet pattern).
+type BindingContext struct {
+	Name      string   // binding name (e.g., "from", "to", "amount")
+	Type      string   // Go type (e.g., "string", "int64", "map[string]int64")
+	FieldName string   // Go field name (e.g., "From", "Amount")
+	JSONName  string   // JSON field name (e.g., "from", "amount")
+	Keys      []string // map access path for nested lookups
+	IsValue   bool     // true if this is the transfer value
+	Place     string   // place ID this binding reads from/writes to
 }
 
 // EventContext provides template-friendly access to event data.
@@ -577,13 +593,29 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 			eventType = ToEventTypeName(t.ID)
 		}
 
+		// Build binding contexts
+		bindings := make([]BindingContext, len(t.Bindings))
+		for j, b := range t.Bindings {
+			bindings[j] = BindingContext{
+				Name:      b.Name,
+				Type:      bindingTypeToGo(b.Type),
+				FieldName: ToPascalCase(b.Name),
+				JSONName:  b.Name,
+				Keys:      b.Keys,
+				IsValue:   b.Value,
+				Place:     b.Place,
+			}
+		}
+
 		result[i] = TransitionContext{
 			ID:          t.ID,
 			Description: t.Description,
 			Guard:       t.Guard,
 			EventType:   eventType,
+			EventRef:    t.Event,
 			HTTPMethod:  t.HTTPMethod,
 			HTTPPath:    t.HTTPPath,
+			Bindings:    bindings,
 			Inputs:      inputArcs[t.ID],
 			Outputs:     outputArcs[t.ID],
 			ConstName:   ToConstName("Transition", t.ID),
@@ -593,6 +625,25 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 		}
 	}
 	return result
+}
+
+// bindingTypeToGo converts schema binding types to Go types.
+func bindingTypeToGo(typ string) string {
+	switch typ {
+	case "string":
+		return "string"
+	case "number":
+		return "float64"
+	case "integer":
+		return "int"
+	case "boolean":
+		return "bool"
+	case "time":
+		return "time.Time"
+	default:
+		// Pass through Go types and map types as-is
+		return typ
+	}
 }
 
 func buildEventContexts(eventDefs []bridge.EventDef) []EventContext {

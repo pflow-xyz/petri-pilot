@@ -301,7 +301,7 @@ func (s *Schema) ToModel() *schema.Model {
 			ID:          action.ID,
 			Description: action.Description,
 			Guard:       action.Guard,
-			Bindings:    action.Bindings,
+			Bindings:    mapToBindings(action.Bindings),
 		}
 		model.Transitions = append(model.Transitions, transition)
 	}
@@ -330,4 +330,19 @@ func (s *Schema) ToModel() *schema.Model {
 	}
 
 	return model
+}
+
+// mapToBindings converts map[string]string to []schema.Binding.
+func mapToBindings(m map[string]string) []schema.Binding {
+	if len(m) == 0 {
+		return nil
+	}
+	var result []schema.Binding
+	for name, typ := range m {
+		result = append(result, schema.Binding{
+			Name: name,
+			Type: typ,
+		})
+	}
+	return result
 }
