@@ -29,6 +29,65 @@
     "roles": ["admin"],
     "features": ["list", "detail", "history"]
   },
+  "events": [
+    {
+      "id": "order_validated",
+      "name": "Order Validated",
+      "description": "Order has passed validation checks",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true, "description": "Unique order identifier"},
+        {"name": "customer_name", "type": "string", "required": true},
+        {"name": "customer_email", "type": "string"},
+        {"name": "shipping_address", "type": "string"},
+        {"name": "total", "type": "number", "required": true},
+        {"name": "status", "type": "string"},
+        {"name": "created_at", "type": "time"}
+      ]
+    },
+    {
+      "id": "order_rejected",
+      "name": "Order Rejected",
+      "description": "Order failed validation",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true},
+        {"name": "customer_name", "type": "string"},
+        {"name": "rejection_reason", "type": "string", "required": true},
+        {"name": "status", "type": "string"}
+      ]
+    },
+    {
+      "id": "payment_processed",
+      "name": "Payment Processed",
+      "description": "Customer payment has been charged",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true},
+        {"name": "total", "type": "number", "required": true},
+        {"name": "payment_method", "type": "string"},
+        {"name": "payment_status", "type": "string"},
+        {"name": "transaction_id", "type": "string"}
+      ]
+    },
+    {
+      "id": "order_shipped",
+      "name": "Order Shipped",
+      "description": "Order has been sent to shipping carrier",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true},
+        {"name": "tracking_number", "type": "string"},
+        {"name": "carrier", "type": "string"},
+        {"name": "shipped_at", "type": "time"}
+      ]
+    },
+    {
+      "id": "order_completed",
+      "name": "Order Completed",
+      "description": "Order fulfillment confirmed",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true},
+        {"name": "completed_at", "type": "time"}
+      ]
+    }
+  ],
   "places": [
     {"id": "received", "description": "Order received and awaiting processing", "initial": 1},
     {"id": "validated", "description": "Order passed validation", "initial": 0},
@@ -38,11 +97,11 @@
     {"id": "completed", "description": "Order fulfilled", "initial": 0}
   ],
   "transitions": [
-    {"id": "validate", "description": "Check order validity"},
-    {"id": "reject", "description": "Mark order as invalid"},
-    {"id": "process_payment", "description": "Charge customer payment"},
-    {"id": "ship", "description": "Send order to shipping"},
-    {"id": "confirm", "description": "Mark order as complete"}
+    {"id": "validate", "description": "Check order validity", "event": "order_validated"},
+    {"id": "reject", "description": "Mark order as invalid", "event": "order_rejected"},
+    {"id": "process_payment", "description": "Charge customer payment", "event": "payment_processed"},
+    {"id": "ship", "description": "Send order to shipping", "event": "order_shipped"},
+    {"id": "confirm", "description": "Mark order as complete", "event": "order_completed"}
   ],
   "arcs": [
     {"from": "received", "to": "validate"},

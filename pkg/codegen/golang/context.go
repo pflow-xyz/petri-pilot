@@ -1059,3 +1059,8 @@ return c.EventSourcing != nil && c.EventSourcing.Snapshots != nil && c.EventSour
 func (c *Context) HasDebug() bool {
 	return c.Debug != nil && c.Debug.Enabled
 }
+
+// HasExplicitEvents returns true if the model has explicit event definitions.
+func (c *Context) HasExplicitEvents() bool {
+	return c.Model != nil && len(c.Model.Events) > 0
+}

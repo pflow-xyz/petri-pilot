@@ -68,17 +68,60 @@ func (v *Validator) ValidateImplementability(model *schema.Model) *Implementabil
 	}
 
 	// Run all checks
+	v.checkEventReferences(model, result)
 	v.checkEventDerivation(model, result)
 	v.checkStateSchema(model, result)
 	v.checkAPIMappings(model, result)
 	v.checkTypeConsistency(model, result)
 	v.checkGuardParsability(model, result)
+	v.checkViewBindings(model, result)
 	v.detectPattern(model, result)
 
 	// Set implementable based on errors
 	result.Implementable = len(result.Errors) == 0
 
 	return result
+}
+
+// checkEventReferences validates that transition.Event references exist in model.Events.
+func (v *Validator) checkEventReferences(model *schema.Model, result *ImplementabilityResult) {
+	// Build event lookup
+	eventIDs := make(map[string]bool)
+	for _, e := range model.Events {
+		eventIDs[e.ID] = true
+	}
+
+	// Check that all transition.Event references are valid
+	for _, t := range model.Transitions {
+		if t.Event != "" {
+			if !eventIDs[t.Event] {
+				result.Errors = append(result.Errors, ImplementabilityIssue{
+					Code:    "INVALID_EVENT_REF",
+					Message: fmt.Sprintf("Transition '%s' references undefined event '%s'", t.ID, t.Event),
+					Element: t.ID,
+					Fix:     fmt.Sprintf("Add event definition with id '%s' or remove event reference", t.Event),
+				})
+			}
+		}
+	}
+
+	// Validate event field types
+	validTypes := map[string]bool{
+		"string": true, "number": true, "integer": true, "boolean": true,
+		"array": true, "object": true, "time": true,
+	}
+	for _, e := range model.Events {
+		for _, f := range e.Fields {
+			if !validTypes[f.Type] && !isValidIdentifier(f.Type) {
+				result.Warnings = append(result.Warnings, ImplementabilityIssue{
+					Code:    "UNKNOWN_EVENT_FIELD_TYPE",
+					Message: fmt.Sprintf("Event '%s' field '%s' has unknown type '%s'", e.ID, f.Name, f.Type),
+					Element: e.ID,
+					Fix:     "Use standard types: string, number, integer, boolean, array, object, time",
+				})
+			}
+		}
+	}
 }
 
 // checkEventDerivation verifies events can be inferred from transitions.
@@ -235,6 +278,42 @@ func (v *Validator) checkGuardParsability(model *schema.Model, result *Implement
 				Element: t.ID,
 				Fix:     "Simplify guard or implement custom guard logic in generated code",
 			})
+		}
+	}
+}
+
+// checkViewBindings validates that view field bindings reference defined event fields.
+func (v *Validator) checkViewBindings(model *schema.Model, result *ImplementabilityResult) {
+	// Skip if no explicit events are defined
+	if len(model.Events) == 0 {
+		return
+	}
+
+	// Build set of all event field names
+	eventFields := make(map[string]bool)
+	for _, e := range model.Events {
+		for _, f := range e.Fields {
+			eventFields[f.Name] = true
+		}
+	}
+
+	// Also include standard fields that are always present
+	eventFields["aggregate_id"] = true
+	eventFields["timestamp"] = true
+
+	// Check view field bindings against event fields
+	for _, view := range model.Views {
+		for _, group := range view.Groups {
+			for _, field := range group.Fields {
+				if field.Binding != "" && !eventFields[field.Binding] {
+					result.Warnings = append(result.Warnings, ImplementabilityIssue{
+						Code:    "UNBOUND_VIEW_FIELD",
+						Message: fmt.Sprintf("View '%s' field binding '%s' does not match any event field", view.ID, field.Binding),
+						Element: view.ID,
+						Fix:     fmt.Sprintf("Add field '%s' to an event definition or update binding", field.Binding),
+					})
+				}
+			}
 		}
 	}
 }

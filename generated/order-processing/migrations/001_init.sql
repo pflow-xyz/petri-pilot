@@ -56,11 +56,11 @@ CREATE TABLE IF NOT EXISTS "orderprocessing_places" (
 );
 
 -- Event type constants for reference:
--- Validateed
--- Rejected
--- ProcessPaymented
--- Shiped
--- Confirmed
+-- OrderValidated
+-- OrderRejected
+-- PaymentProcessed
+-- OrderShipped
+-- OrderCompleted
 
 -- Place constants for reference:
 -- received: Order received and awaiting processing

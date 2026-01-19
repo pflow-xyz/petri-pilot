@@ -246,14 +246,14 @@ func diffTool() mcp.Tool {
 
 func extendTool() mcp.Tool {
 	return mcp.NewTool("petri_extend",
-		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, remove_place, remove_transition, remove_arc, remove_role, remove_access. Returns the modified model."),
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, add_event, add_event_field, remove_place, remove_transition, remove_arc, remove_role, remove_access, remove_event. Returns the modified model."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON"),
 		),
 		mcp.WithString("operations",
 			mcp.Required(),
-			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"approve\",\"description\":\"Approve request\"}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_role\",\"id\":\"admin\",\"name\":\"Administrator\"}, {\"op\":\"add_access\",\"transition\":\"approve\",\"roles\":[\"admin\"]}"),
+			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"approve\",\"event\":\"request_approved\"}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_role\",\"id\":\"admin\",\"name\":\"Administrator\"}, {\"op\":\"add_access\",\"transition\":\"approve\",\"roles\":[\"admin\"]}, {\"op\":\"add_event\",\"id\":\"request_approved\",\"fields\":[{\"name\":\"reason\",\"type\":\"string\"}]}, {\"op\":\"add_event_field\",\"event\":\"request_approved\",\"name\":\"approved_by\",\"type\":\"string\",\"required\":true}"),
 		),
 	)
 }
@@ -851,9 +851,11 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 			return fmt.Errorf("missing 'id' for add_transition")
 		}
 		desc, _ := op["description"].(string)
+		event, _ := op["event"].(string)
 		model.Transitions = append(model.Transitions, schema.Transition{
 			ID:          id,
 			Description: desc,
+			Event:       event,
 		})
 
 	case "add_arc":
@@ -965,6 +967,90 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 			}
 		}
 		model.Access = newAccess
+
+	case "add_event":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for add_event")
+		}
+		name, _ := op["name"].(string)
+		desc, _ := op["description"].(string)
+		var fields []schema.EventField
+		if fieldsRaw, ok := op["fields"].([]any); ok {
+			for _, f := range fieldsRaw {
+				if fieldMap, ok := f.(map[string]any); ok {
+					fieldName, _ := fieldMap["name"].(string)
+					fieldType, _ := fieldMap["type"].(string)
+					fieldOf, _ := fieldMap["of"].(string)
+					fieldRequired, _ := fieldMap["required"].(bool)
+					fieldDesc, _ := fieldMap["description"].(string)
+					if fieldName != "" && fieldType != "" {
+						fields = append(fields, schema.EventField{
+							Name:        fieldName,
+							Type:        fieldType,
+							Of:          fieldOf,
+							Required:    fieldRequired,
+							Description: fieldDesc,
+						})
+					}
+				}
+			}
+		}
+		model.Events = append(model.Events, schema.Event{
+			ID:          id,
+			Name:        name,
+			Description: desc,
+			Fields:      fields,
+		})
+
+	case "add_event_field":
+		eventID, _ := op["event"].(string)
+		if eventID == "" {
+			return fmt.Errorf("missing 'event' for add_event_field")
+		}
+		fieldName, _ := op["name"].(string)
+		if fieldName == "" {
+			return fmt.Errorf("missing 'name' for add_event_field")
+		}
+		fieldType, _ := op["type"].(string)
+		if fieldType == "" {
+			return fmt.Errorf("missing 'type' for add_event_field")
+		}
+		fieldOf, _ := op["of"].(string)
+		fieldRequired, _ := op["required"].(bool)
+		fieldDesc, _ := op["description"].(string)
+
+		// Find the event and add the field
+		found := false
+		for i := range model.Events {
+			if model.Events[i].ID == eventID {
+				model.Events[i].Fields = append(model.Events[i].Fields, schema.EventField{
+					Name:        fieldName,
+					Type:        fieldType,
+					Of:          fieldOf,
+					Required:    fieldRequired,
+					Description: fieldDesc,
+				})
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("event '%s' not found for add_event_field", eventID)
+		}
+
+	case "remove_event":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for remove_event")
+		}
+		newEvents := make([]schema.Event, 0, len(model.Events))
+		for _, e := range model.Events {
+			if e.ID != id {
+				newEvents = append(newEvents, e)
+			}
+		}
+		model.Events = newEvents
 
 	default:
 		return fmt.Errorf("unknown operation: %s", opType)

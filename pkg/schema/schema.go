@@ -22,6 +22,9 @@ type Model struct {
 	Arcs        []Arc        `json:"arcs"`
 	Constraints []Constraint `json:"constraints,omitempty"`
 
+	// Events define the data contract for transitions (Events First schema)
+	Events []Event `json:"events,omitempty"`
+
 	// Access control (Phase 11)
 	Roles  []Role       `json:"roles,omitempty"`
 	Access []AccessRule `json:"access,omitempty"`
@@ -40,6 +43,24 @@ type Model struct {
 
 	// Debug configuration
 	Debug *Debug `json:"debug,omitempty"`
+}
+
+// Event represents an explicit event definition with typed fields.
+// Events define the data contract; the workflow constrains valid sequences.
+type Event struct {
+	ID          string       `json:"id"`
+	Name        string       `json:"name,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Fields      []EventField `json:"fields"`
+}
+
+// EventField represents a typed field within an event.
+type EventField struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`               // string, number, integer, boolean, array, object, time
+	Of          string `json:"of,omitempty"`       // element type for array/object
+	Required    bool   `json:"required,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // View represents a UI view definition for presenting workflow data.
@@ -151,11 +172,14 @@ type Transition struct {
 	Description string `json:"description,omitempty"`
 	Guard       string `json:"guard,omitempty"`
 
-	// Extended fields for API and event binding
-	EventType string            `json:"event_type,omitempty"` // Event name to emit
-	HTTPMethod string           `json:"http_method,omitempty"` // GET, POST, etc.
-	HTTPPath   string           `json:"http_path,omitempty"`   // API path, e.g., "/orders/{id}/confirm"
-	Bindings   map[string]string `json:"bindings,omitempty"`   // Parameter bindings
+	// Event reference (Events First schema) - references Event.ID
+	Event string `json:"event,omitempty"`
+
+	// Extended fields for API and event binding (deprecated, use Event reference instead)
+	EventType  string            `json:"event_type,omitempty"`  // Event name to emit (deprecated)
+	HTTPMethod string            `json:"http_method,omitempty"` // GET, POST, etc.
+	HTTPPath   string            `json:"http_path,omitempty"`   // API path, e.g., "/orders/{id}/confirm"
+	Bindings   map[string]string `json:"bindings,omitempty"`    // Parameter bindings (deprecated)
 }
 
 // Arc represents a flow between place and transition.

@@ -7,63 +7,85 @@ import (
 )
 
 
-// ValidateedEvent is emitted when the validate transition fires.
-type ValidateedEvent struct {
+// OrderValidatedEvent is emitted when the validate transition fires.
+type OrderValidatedEvent struct {
 	AggregateId string `json:"aggregate_id"`
 	Timestamp time.Time `json:"timestamp"`
+	OrderId string `json:"order_id"`
+	CustomerName string `json:"customer_name"`
+	CustomerEmail string `json:"customer_email"`
+	ShippingAddress string `json:"shipping_address"`
+	Total float64 `json:"total"`
+	Status string `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // EventType returns the event type identifier.
-func (e ValidateedEvent) EventType() string {
-	return "Validateed"
+func (e OrderValidatedEvent) EventType() string {
+	return "OrderValidated"
 }
 
 
-// RejectedEvent is emitted when the reject transition fires.
-type RejectedEvent struct {
+// OrderRejectedEvent is emitted when the reject transition fires.
+type OrderRejectedEvent struct {
 	AggregateId string `json:"aggregate_id"`
 	Timestamp time.Time `json:"timestamp"`
+	OrderId string `json:"order_id"`
+	CustomerName string `json:"customer_name"`
+	RejectionReason string `json:"rejection_reason"`
+	Status string `json:"status"`
 }
 
 // EventType returns the event type identifier.
-func (e RejectedEvent) EventType() string {
-	return "Rejected"
+func (e OrderRejectedEvent) EventType() string {
+	return "OrderRejected"
 }
 
 
-// ProcessPaymentedEvent is emitted when the process_payment transition fires.
-type ProcessPaymentedEvent struct {
+// PaymentProcessedEvent is emitted when the process_payment transition fires.
+type PaymentProcessedEvent struct {
 	AggregateId string `json:"aggregate_id"`
 	Timestamp time.Time `json:"timestamp"`
+	OrderId string `json:"order_id"`
+	Total float64 `json:"total"`
+	PaymentMethod string `json:"payment_method"`
+	PaymentStatus string `json:"payment_status"`
+	TransactionId string `json:"transaction_id"`
 }
 
 // EventType returns the event type identifier.
-func (e ProcessPaymentedEvent) EventType() string {
-	return "ProcessPaymented"
+func (e PaymentProcessedEvent) EventType() string {
+	return "PaymentProcessed"
 }
 
 
-// ShipedEvent is emitted when the ship transition fires.
-type ShipedEvent struct {
+// OrderShippedEvent is emitted when the ship transition fires.
+type OrderShippedEvent struct {
 	AggregateId string `json:"aggregate_id"`
 	Timestamp time.Time `json:"timestamp"`
+	OrderId string `json:"order_id"`
+	TrackingNumber string `json:"tracking_number"`
+	Carrier string `json:"carrier"`
+	ShippedAt time.Time `json:"shipped_at"`
 }
 
 // EventType returns the event type identifier.
-func (e ShipedEvent) EventType() string {
-	return "Shiped"
+func (e OrderShippedEvent) EventType() string {
+	return "OrderShipped"
 }
 
 
-// ConfirmedEvent is emitted when the confirm transition fires.
-type ConfirmedEvent struct {
+// OrderCompletedEvent is emitted when the confirm transition fires.
+type OrderCompletedEvent struct {
 	AggregateId string `json:"aggregate_id"`
 	Timestamp time.Time `json:"timestamp"`
+	OrderId string `json:"order_id"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 // EventType returns the event type identifier.
-func (e ConfirmedEvent) EventType() string {
-	return "Confirmed"
+func (e OrderCompletedEvent) EventType() string {
+	return "OrderCompleted"
 }
 
 

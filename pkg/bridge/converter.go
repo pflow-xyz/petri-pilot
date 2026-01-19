@@ -286,7 +286,142 @@ type APIRoute struct {
 }
 
 // InferEvents generates event definitions from transitions.
+// If the model has explicit events defined (Events First schema), those are used.
+// Otherwise, events are inferred from transitions for backward compatibility.
 func InferEvents(model *schema.Model) []EventDef {
+	// If explicit events are defined, use them
+	if len(model.Events) > 0 {
+		return buildEventsFromSchema(model)
+	}
+
+	// Fallback: infer events from transitions (backward compatibility)
+	return inferEventsFromTransitions(model)
+}
+
+// buildEventsFromSchema builds EventDefs from explicit schema.Event definitions.
+func buildEventsFromSchema(model *schema.Model) []EventDef {
+	// Build event lookup map
+	eventMap := make(map[string]*schema.Event)
+	for i := range model.Events {
+		eventMap[model.Events[i].ID] = &model.Events[i]
+	}
+
+	var events []EventDef
+
+	for _, t := range model.Transitions {
+		var event EventDef
+
+		// Check if transition references an explicit event
+		if t.Event != "" {
+			if schemaEvent, ok := eventMap[t.Event]; ok {
+				event = EventDef{
+					Type:         eventIDToType(schemaEvent.ID),
+					TransitionID: t.ID,
+					Fields:       convertEventFields(schemaEvent.Fields),
+				}
+			} else {
+				// Event reference not found, fall back to inference
+				event = EventDef{
+					Type:         toEventType(t.ID),
+					TransitionID: t.ID,
+					Fields:       inferEventFields(model, t),
+				}
+			}
+		} else if t.EventType != "" {
+			// Legacy: use explicit event_type (deprecated)
+			event = EventDef{
+				Type:         t.EventType,
+				TransitionID: t.ID,
+				Fields:       inferEventFields(model, t),
+			}
+		} else {
+			// No event reference, infer from transition ID
+			event = EventDef{
+				Type:         toEventType(t.ID),
+				TransitionID: t.ID,
+				Fields:       inferEventFields(model, t),
+			}
+		}
+
+		events = append(events, event)
+	}
+
+	return events
+}
+
+// convertEventFields converts schema.EventField to bridge.EventField.
+func convertEventFields(fields []schema.EventField) []EventField {
+	// Always include standard fields first
+	result := []EventField{
+		{Name: "aggregate_id", Type: "string"},
+		{Name: "timestamp", Type: "time.Time"},
+	}
+
+	for _, f := range fields {
+		result = append(result, EventField{
+			Name: f.Name,
+			Type: schemaTypeToGo(f.Type, f.Of),
+		})
+	}
+
+	return result
+}
+
+// schemaTypeToGo converts schema event field types to Go types.
+func schemaTypeToGo(typ, of string) string {
+	switch typ {
+	case "string":
+		return "string"
+	case "number":
+		return "float64"
+	case "integer":
+		return "int"
+	case "boolean":
+		return "bool"
+	case "time":
+		return "time.Time"
+	case "array":
+		if of != "" {
+			return "[]" + schemaTypeToGo(of, "")
+		}
+		return "[]any"
+	case "object":
+		if of != "" {
+			return "map[string]" + schemaTypeToGo(of, "")
+		}
+		return "map[string]any"
+	default:
+		return typ // pass through as-is (e.g., already a Go type)
+	}
+}
+
+// eventIDToType converts an event ID to an event type name.
+// Examples: "order_submitted" -> "OrderSubmitted"
+func eventIDToType(id string) string {
+	if len(id) == 0 {
+		return "Event"
+	}
+
+	result := ""
+	capitalizeNext := true
+	for _, c := range id {
+		if c == '_' || c == '-' {
+			capitalizeNext = true
+			continue
+		}
+		if capitalizeNext {
+			result += string(toUpper(c))
+			capitalizeNext = false
+		} else {
+			result += string(c)
+		}
+	}
+
+	return result
+}
+
+// inferEventsFromTransitions infers events from transitions (backward compatibility).
+func inferEventsFromTransitions(model *schema.Model) []EventDef {
 	var events []EventDef
 
 	for _, t := range model.Transitions {
