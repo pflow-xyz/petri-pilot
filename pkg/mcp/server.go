@@ -36,6 +36,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(simulateTool(), handleSimulate)
+	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
@@ -209,6 +210,20 @@ func simulateTool() mcp.Tool {
 		mcp.WithString("transitions",
 			mcp.Required(),
 			mcp.Description("JSON array of transition IDs to fire in order"),
+		),
+	)
+}
+
+func previewTool() mcp.Tool {
+	return mcp.NewTool("petri_preview",
+		mcp.WithDescription("Preview a single generated file without full code generation. Use this to check specific files before committing to full generation. Available templates: main, workflow, events, aggregate, api, openapi, test, config, migrations, dockerfile, docker-compose, auth, middleware, permissions, views, navigation, admin, debug"),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The Petri net model as JSON"),
+		),
+		mcp.WithString("file",
+			mcp.Required(),
+			mcp.Description("Template name to preview (e.g., 'api', 'workflow', 'events', 'aggregate', 'main')"),
 		),
 	)
 }
@@ -487,6 +502,54 @@ func handleSimulate(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		Failed:         failed,
 		IsDeadlock:     isDeadlock,
 		Enabled:        enabledTransitions,
+	}
+
+	outputJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
+func handlePreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	templateName, err := request.RequireString("file")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing file parameter: %v", err)), nil
+	}
+
+	model, err := parseModel(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	// Create generator
+	gen, err := golang.New(golang.Options{})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
+	}
+
+	// Preview the requested file
+	content, err := gen.Preview(model, templateName)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to preview %s: %v", templateName, err)), nil
+	}
+
+	// Get the output filename
+	outputName := gen.GetTemplates().OutputFileName(templateName)
+
+	// Return result with filename and content
+	result := struct {
+		File    string `json:"file"`
+		Content string `json:"content"`
+	}{
+		File:    outputName,
+		Content: string(content),
 	}
 
 	outputJSON, err := json.MarshalIndent(result, "", "  ")
