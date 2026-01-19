@@ -3,6 +3,10 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
+{{- if .HasWallet}}
+import wallet from './wallet.js'
+window.wallet = wallet
+{{- end}}
 
 // API client
 const API_BASE = ''
@@ -56,7 +60,7 @@ function scaleFormData(data) {
   if (TOKEN_DECIMALS === 0) return data
   const scaled = { ...data }
   for (const [key, value] of Object.entries(scaled)) {
-    if (isAmountField(key) && typeof value === 'number' || !isNaN(parseFloat(value))) {
+    if (isAmountField(key) && (typeof value === 'number' || !isNaN(parseFloat(value)))) {
       scaled[key] = toRawAmount(value)
     }
   }

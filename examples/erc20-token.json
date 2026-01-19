@@ -41,7 +41,8 @@
     "playground": true
   },
   "debug": {
-    "enabled": true
+    "enabled": true,
+    "eval": true
   },
   "eventSourcing": {
     "snapshots": {
