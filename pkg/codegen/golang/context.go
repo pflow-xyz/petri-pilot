@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"os"
+
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
@@ -8,8 +10,9 @@ import (
 // Context holds all data needed for code generation templates.
 type Context struct {
 	// Package configuration
-	PackageName string
-	ModulePath  string
+	PackageName      string
+	ModulePath       string
+	LocalReplacePath string // Optional: path for replace directive in go.mod
 
 	// Model metadata
 	ModelName        string
@@ -654,9 +657,13 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		modulePath = SanitizeModulePath(enriched.Name, "github.com/example")
 	}
 
+	// Check for local replace path from environment variable
+	localReplacePath := os.Getenv("PETRI_PILOT_LOCAL_PATH")
+
 	ctx := &Context{
 		PackageName:      packageName,
 		ModulePath:       modulePath,
+		LocalReplacePath: localReplacePath,
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
 		Model:            enriched,

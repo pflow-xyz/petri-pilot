@@ -10,6 +10,9 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	golang.org/x/oauth2 v0.24.0
 )
-
-// For local development, use a replace directive:
-// replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
+{{if .LocalReplacePath}}
+replace github.com/pflow-xyz/petri-pilot => {{.LocalReplacePath}}
+{{else}}
+// For local development, set PETRI_PILOT_LOCAL_PATH environment variable
+// or add: replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
+{{end}}
