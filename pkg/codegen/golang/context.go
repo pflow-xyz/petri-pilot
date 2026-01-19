@@ -57,6 +57,15 @@ type Context struct {
 	// SLA configuration
 	SLA *SLAConfigContext
 
+	// Prediction configuration
+	Prediction *PredictionContext
+
+	// GraphQL configuration
+	GraphQL *GraphQLContext
+
+	// Blobstore configuration
+	Blobstore *BlobstoreContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -213,6 +222,27 @@ type SLAConfigContext struct {
 	HasPriorities bool              // True if priority-based SLAs defined
 }
 
+// PredictionContext provides template-friendly access to prediction configuration.
+type PredictionContext struct {
+	Enabled   bool    // Enable ODE-based prediction
+	TimeHours float64 // Default simulation duration in hours
+	RateScale float64 // Rate scaling factor for numerical stability
+}
+
+// GraphQLContext provides template-friendly access to GraphQL configuration.
+type GraphQLContext struct {
+	Enabled    bool   // Enable GraphQL API
+	Path       string // GraphQL endpoint path (default: "/graphql")
+	Playground bool   // Enable GraphQL Playground
+}
+
+// BlobstoreContext provides template-friendly access to blobstore configuration.
+type BlobstoreContext struct {
+	Enabled      bool     // Enable blobstore for binary/JSON attachments
+	MaxSize      int64    // Maximum blob size in bytes
+	AllowedTypes []string // Allowed content types
+}
+
 // PlaceContext provides template-friendly access to place data.
 type PlaceContext struct {
 	ID          string
@@ -224,6 +254,10 @@ type PlaceContext struct {
 	IsData      bool
 	Persisted   bool
 	Exported    bool
+
+	// Resource tracking for prediction/simulation
+	Capacity int  // Maximum tokens (for inventory modeling)
+	Resource bool // True if this is a consumable resource
 
 	// Computed names
 	ConstName string // e.g., "PlaceReceived"
@@ -260,6 +294,9 @@ type TransitionContext struct {
 	MinDuration  string // Minimum expected duration
 	MaxDuration  string // Maximum allowed duration (SLA breach)
 	HasSLATiming bool   // True if any timing field is set
+
+	// Prediction/simulation fields
+	Rate float64 // Firing rate for ODE simulation (events/minute)
 
 	// Computed names
 	ConstName   string // e.g., "TransitionValidate"
@@ -343,18 +380,19 @@ type CollectionContext struct {
 
 // DataArcContext provides template-friendly access to data arcs.
 type DataArcContext struct {
-	TransitionID string   // Transition this arc belongs to
-	PlaceID      string   // Collection place ID
-	FieldName    string   // Go field name of collection
-	ValueType    string   // Go type of the value (e.g., "int64", "string")
-	IsSimple     bool     // True for simple types (direct assignment)
-	Keys         []string // Key binding names - empty for simple types
-	KeyFields    []string // Go field names for keys (e.g., ["From"])
-	ValueBinding string   // Value binding name (e.g., "amount" or "name")
-	ValueField   string   // Go field name for value (e.g., "Amount")
-	IsInput      bool     // True for input arcs (subtract/read)
-	IsOutput     bool     // True for output arcs (add/write)
-	IsNumeric    bool     // True if value is numeric (can use += / -=)
+	TransitionID     string   // Transition this arc belongs to
+	PlaceID          string   // Collection place ID
+	FieldName        string   // Go field name of collection
+	ValueType        string   // Go type of the value (e.g., "int64", "string")
+	IsSimple         bool     // True for simple types (direct assignment)
+	Keys             []string // Key binding names - empty for simple types
+	KeyFields        []string // Go field names for keys (e.g., ["From"])
+	ValueBinding     string   // Value binding name (e.g., "amount" or "name")
+	ValueField       string   // Go field name for value (e.g., "Amount")
+	IsInput          bool     // True for input arcs (subtract/read)
+	IsOutput         bool     // True for output arcs (add/write)
+	IsNumeric        bool     // True if value is numeric (can use += / -=)
+	UsesCompositeKey bool     // True if multiple keys are combined into a single string key
 }
 
 // GuardContext provides template-friendly access to guard conditions.
@@ -480,6 +518,21 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ctx.SLA = buildSLAContext(enriched.SLA)
 	}
 
+	// Build prediction context
+	if enriched.Prediction != nil {
+		ctx.Prediction = buildPredictionContext(enriched.Prediction)
+	}
+
+	// Build GraphQL context
+	if enriched.GraphQL != nil {
+		ctx.GraphQL = buildGraphQLContext(enriched.GraphQL)
+	}
+
+	// Build blobstore context
+	if enriched.Blobstore != nil {
+		ctx.Blobstore = buildBlobstoreContext(enriched.Blobstore)
+	}
+
 	return ctx, nil
 }
 
@@ -568,6 +621,8 @@ func buildPlaceContexts(places []schema.Place) []PlaceContext {
 			IsData:      p.IsData(),
 			Persisted:   p.Persisted,
 			Exported:    p.Exported,
+			Capacity:    p.Capacity,
+			Resource:    p.Resource,
 			ConstName:   ToConstName("Place", p.ID),
 			FieldName:   ToFieldName(p.ID),
 			VarName:     ToVarName(p.ID),
@@ -649,6 +704,7 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 			MinDuration:  t.MinDuration,
 			MaxDuration:  t.MaxDuration,
 			HasSLATiming: hasSLATiming,
+			Rate:         t.Rate,
 			ConstName:    ToConstName("Transition", t.ID),
 			HandlerName:  ToHandlerName(t.ID),
 			EventName:    ToEventStructName(eventType),
@@ -791,19 +847,23 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				valueType = TypeToGo(vt)
 			}
 
+			// Use composite key when we have 2+ keys but the type is not a nested map
+			usesCompositeKey := len(read.Keys) > 1 && !IsNestedMap(read.CollectionType)
+
 			result = append(result, DataArcContext{
-				TransitionID: op.TransitionID,
-				PlaceID:      read.Collection,
-				FieldName:    ToPascalCase(read.Collection),
-				ValueType:    valueType,
-				IsSimple:     read.IsSimple,
-				Keys:         read.Keys,
-				KeyFields:    keyFields,
-				ValueBinding: read.ValueBinding,
-				ValueField:   ToPascalCase(read.ValueBinding),
-				IsInput:      true,
-				IsOutput:     false,
-				IsNumeric:    IsNumericType(valueType),
+				TransitionID:     op.TransitionID,
+				PlaceID:          read.Collection,
+				FieldName:        ToPascalCase(read.Collection),
+				ValueType:        valueType,
+				IsSimple:         read.IsSimple,
+				Keys:             read.Keys,
+				KeyFields:        keyFields,
+				ValueBinding:     read.ValueBinding,
+				ValueField:       ToPascalCase(read.ValueBinding),
+				IsInput:          true,
+				IsOutput:         false,
+				IsNumeric:        IsNumericType(valueType),
+				UsesCompositeKey: usesCompositeKey,
 			})
 		}
 
@@ -821,19 +881,23 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				valueType = TypeToGo(vt)
 			}
 
+			// Use composite key when we have 2+ keys but the type is not a nested map
+			usesCompositeKey := len(write.Keys) > 1 && !IsNestedMap(write.CollectionType)
+
 			result = append(result, DataArcContext{
-				TransitionID: op.TransitionID,
-				PlaceID:      write.Collection,
-				FieldName:    ToPascalCase(write.Collection),
-				ValueType:    valueType,
-				IsSimple:     write.IsSimple,
-				Keys:         write.Keys,
-				KeyFields:    keyFields,
-				ValueBinding: write.ValueBinding,
-				ValueField:   ToPascalCase(write.ValueBinding),
-				IsInput:      false,
-				IsOutput:     true,
-				IsNumeric:    IsNumericType(valueType),
+				TransitionID:     op.TransitionID,
+				PlaceID:          write.Collection,
+				FieldName:        ToPascalCase(write.Collection),
+				ValueType:        valueType,
+				IsSimple:         write.IsSimple,
+				Keys:             write.Keys,
+				KeyFields:        keyFields,
+				ValueBinding:     write.ValueBinding,
+				ValueField:       ToPascalCase(write.ValueBinding),
+				IsInput:          false,
+				IsOutput:         true,
+				IsNumeric:        IsNumericType(valueType),
+				UsesCompositeKey: usesCompositeKey,
 			})
 		}
 	}
@@ -1024,6 +1088,11 @@ func (c *Context) HasAccessControl() bool {
 	return len(c.AccessRules) > 0 || len(c.Roles) > 0
 }
 
+// HasRoles returns true if any roles are defined.
+func (c *Context) HasRoles() bool {
+	return len(c.Roles) > 0
+}
+
 // TransitionRequiresAuth returns true if a transition has access control rules.
 func (c *Context) TransitionRequiresAuth(transitionID string) bool {
 	for _, rule := range c.AccessRules {
@@ -1162,6 +1231,37 @@ func (c *Context) HasTransitionSLAs() bool {
 	return false
 }
 
+// HasPrediction returns true if the model has prediction configuration enabled.
+func (c *Context) HasPrediction() bool {
+	return c.Prediction != nil && c.Prediction.Enabled
+}
+
+// HasGraphQL returns true if the model has GraphQL enabled.
+func (c *Context) HasGraphQL() bool {
+	return c.GraphQL != nil && c.GraphQL.Enabled
+}
+
+// HasPlayground returns true if GraphQL Playground is enabled.
+func (c *Context) HasPlayground() bool {
+	return c.HasGraphQL() && c.GraphQL.Playground
+}
+
+// HasBlobstore returns true if the model has blobstore enabled.
+func (c *Context) HasBlobstore() bool {
+	return c.Blobstore != nil && c.Blobstore.Enabled
+}
+
+// ResourcePlaces returns only the places marked as resources for prediction.
+func (c *Context) ResourcePlaces() []PlaceContext {
+	var result []PlaceContext
+	for _, p := range c.Places {
+		if p.Resource {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
 // buildSLAContext converts schema.SLAConfig to SLAConfigContext.
 func buildSLAContext(sla *schema.SLAConfig) *SLAConfigContext {
 	if sla == nil {
@@ -1186,6 +1286,72 @@ func buildSLAContext(sla *schema.SLAConfig) *SLAConfigContext {
 
 	// Check if priorities are defined
 	ctx.HasPriorities = len(sla.ByPriority) > 0
+
+	return ctx
+}
+
+// buildPredictionContext converts schema.PredictionConfig to PredictionContext.
+func buildPredictionContext(pred *schema.PredictionConfig) *PredictionContext {
+	if pred == nil {
+		return nil
+	}
+
+	ctx := &PredictionContext{
+		Enabled:   pred.Enabled,
+		TimeHours: pred.TimeHours,
+		RateScale: pred.RateScale,
+	}
+
+	// Set default values if not specified
+	if ctx.TimeHours == 0 {
+		ctx.TimeHours = 8.0 // Default: 8 hours
+	}
+	if ctx.RateScale == 0 {
+		ctx.RateScale = 0.0001 // Default: from go-pflow
+	}
+
+	return ctx
+}
+
+// buildGraphQLContext converts schema.GraphQL to GraphQLContext.
+func buildGraphQLContext(gql *schema.GraphQL) *GraphQLContext {
+	if gql == nil {
+		return nil
+	}
+
+	ctx := &GraphQLContext{
+		Enabled:    gql.Enabled,
+		Path:       gql.Path,
+		Playground: gql.Playground,
+	}
+
+	// Set default values if not specified
+	if ctx.Path == "" {
+		ctx.Path = "/graphql"
+	}
+
+	return ctx
+}
+
+// buildBlobstoreContext converts schema.Blobstore to BlobstoreContext.
+func buildBlobstoreContext(bs *schema.Blobstore) *BlobstoreContext {
+	if bs == nil {
+		return nil
+	}
+
+	ctx := &BlobstoreContext{
+		Enabled:      bs.Enabled,
+		MaxSize:      bs.MaxSize,
+		AllowedTypes: bs.AllowedTypes,
+	}
+
+	// Set default values if not specified
+	if ctx.MaxSize == 0 {
+		ctx.MaxSize = 10 * 1024 * 1024 // Default: 10MB
+	}
+	if len(ctx.AllowedTypes) == 0 {
+		ctx.AllowedTypes = []string{"application/json", "*/*"}
+	}
 
 	return ctx
 }

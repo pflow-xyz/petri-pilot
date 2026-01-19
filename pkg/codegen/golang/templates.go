@@ -66,6 +66,18 @@ const (
 
 	// SLA templates
 	TemplateSLA = "sla"
+
+	// Prediction templates
+	TemplatePrediction = "prediction"
+
+	// GraphQL templates
+	TemplateGraphQLSchema   = "graphql_schema"
+	TemplateGraphQLResolver = "graphql_resolver"
+	TemplateGraphQLServer   = "graphql_server"
+	TemplateGqlgenConfig    = "gqlgen_config"
+
+	// Blobstore templates
+	TemplateBlobstore = "blobstore"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -127,6 +139,18 @@ var templateInfo = map[string]struct {
 
 	// SLA templates
 	TemplateSLA: {File: "sla.tmpl", Output: "sla.go"},
+
+	// Prediction templates
+	TemplatePrediction: {File: "prediction.tmpl", Output: "prediction.go"},
+
+	// GraphQL templates
+	TemplateGraphQLSchema:   {File: "graphql_schema.tmpl", Output: "graph/schema.graphqls"},
+	TemplateGraphQLResolver: {File: "graphql_resolver.tmpl", Output: "graph/resolver.go"},
+	TemplateGraphQLServer:   {File: "graphql_server.tmpl", Output: "graphql.go"},
+	TemplateGqlgenConfig:    {File: "gqlgen_config.tmpl", Output: "gqlgen.yml"},
+
+	// Blobstore templates
+	TemplateBlobstore: {File: "blobstore.tmpl", Output: "blobstore.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -138,15 +162,16 @@ type Templates struct {
 func NewTemplates() (*Templates, error) {
 	// Define custom template functions
 	funcMap := template.FuncMap{
-		"pascal":    ToPascalCase,
-		"camel":     ToCamelCase,
-		"constName": ToConstName,
-		"handler":   ToHandlerName,
-		"eventType": ToEventTypeName,
-		"field":     ToFieldName,
-		"varName":   ToVarName,
-		"typeName":  ToTypeName,
-		"sanitize":  SanitizePackageName,
+		"pascal":      ToPascalCase,
+		"camel":       ToCamelCase,
+		"constName":   ToConstName,
+		"handler":     ToHandlerName,
+		"eventType":   ToEventTypeName,
+		"field":       ToFieldName,
+		"varName":     ToVarName,
+		"typeName":    ToTypeName,
+		"sanitize":    SanitizePackageName,
+		"graphqlType": GoTypeToGraphQL,
 	}
 
 	// Parse all templates from embedded filesystem
@@ -318,5 +343,29 @@ func DebugTemplateNames() []string {
 func SLATemplateNames() []string {
 	return []string{
 		TemplateSLA,
+	}
+}
+
+// PredictionTemplateNames returns template names for prediction/simulation files.
+func PredictionTemplateNames() []string {
+	return []string{
+		TemplatePrediction,
+	}
+}
+
+// GraphQLTemplateNames returns template names for GraphQL API files.
+func GraphQLTemplateNames() []string {
+	return []string{
+		TemplateGraphQLSchema,
+		TemplateGraphQLResolver,
+		TemplateGraphQLServer,
+		TemplateGqlgenConfig,
+	}
+}
+
+// BlobstoreTemplateNames returns template names for blobstore files.
+func BlobstoreTemplateNames() []string {
+	return []string{
+		TemplateBlobstore,
 	}
 }

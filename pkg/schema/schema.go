@@ -46,6 +46,15 @@ type Model struct {
 
 	// SLA configuration
 	SLA *SLAConfig `json:"sla,omitempty"`
+
+	// Prediction configuration for ODE-based simulation
+	Prediction *PredictionConfig `json:"prediction,omitempty"`
+
+	// GraphQL API configuration
+	GraphQL *GraphQL `json:"graphql,omitempty"`
+
+	// Blobstore configuration for event attachments
+	Blobstore *Blobstore `json:"blobstore,omitempty"`
 }
 
 // Event represents an explicit event definition with typed fields.
@@ -136,6 +145,10 @@ type Place struct {
 	// For simple types: "hello" for string, 0 for int64, true for bool
 	// For maps: {} or {"key": value}
 	InitialValue any `json:"initial_value,omitempty"`
+
+	// Resource tracking fields for prediction/simulation
+	Capacity int  `json:"capacity,omitempty"` // Maximum tokens (for inventory modeling)
+	Resource bool `json:"resource,omitempty"` // True if this is a consumable resource
 }
 
 // Supported Type values for DataKind places:
@@ -202,6 +215,9 @@ type Transition struct {
 	Duration    string `json:"duration,omitempty"`    // Expected duration (e.g., "30s", "2m")
 	MinDuration string `json:"minDuration,omitempty"` // Minimum expected duration
 	MaxDuration string `json:"maxDuration,omitempty"` // Maximum allowed duration (SLA breach)
+
+	// Prediction/simulation fields
+	Rate float64 `json:"rate,omitempty"` // Firing rate for ODE simulation (events/minute)
 
 	// Deprecated fields (for backward compatibility)
 	EventType      string            `json:"event_type,omitempty"`      // Use Event instead
@@ -329,4 +345,25 @@ type SLAConfig struct {
 	WarningAt  float64           `json:"warningAt,omitempty"`  // Percentage (0.0-1.0) for warning status (default: 0.8)
 	CriticalAt float64           `json:"criticalAt,omitempty"` // Percentage (0.0-1.0) for critical status (default: 0.95)
 	OnBreach   string            `json:"onBreach,omitempty"`   // Action on breach: "alert", "log", "webhook"
+}
+
+// PredictionConfig represents ODE-based prediction configuration.
+type PredictionConfig struct {
+	Enabled   bool    `json:"enabled"`             // Enable ODE-based prediction
+	TimeHours float64 `json:"timeHours,omitempty"` // Default simulation duration in hours (default: 8)
+	RateScale float64 `json:"rateScale,omitempty"` // Rate scaling factor for numerical stability (default: 0.0001)
+}
+
+// GraphQL represents GraphQL API configuration.
+type GraphQL struct {
+	Enabled    bool   `json:"enabled"`              // Enable GraphQL API
+	Path       string `json:"path,omitempty"`       // GraphQL endpoint path (default: "/graphql")
+	Playground bool   `json:"playground,omitempty"` // Enable GraphQL Playground (default: true)
+}
+
+// Blobstore represents blobstore configuration for event attachments.
+type Blobstore struct {
+	Enabled      bool     `json:"enabled"`                // Enable blobstore for binary/JSON attachments
+	MaxSize      int64    `json:"maxSize,omitempty"`      // Maximum blob size in bytes (default: 10MB)
+	AllowedTypes []string `json:"allowedTypes,omitempty"` // Allowed content types (default: ["application/json", "*/*"])
 }

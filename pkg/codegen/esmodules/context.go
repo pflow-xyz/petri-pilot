@@ -37,9 +37,21 @@ type Context struct {
 	HasViews         bool
 	HasAdmin         bool
 	HasDebug         bool
+	HasPrediction    bool
+	HasBlobstore     bool
+
+	// Prediction configuration
+	Prediction *PredictionContext
 
 	// Original model for reference
 	Model *schema.Model
+}
+
+// PredictionContext provides template-friendly access to prediction configuration.
+type PredictionContext struct {
+	Enabled   bool
+	TimeHours float64
+	RateScale float64
 }
 
 // PageContext provides template-friendly access to page data.
@@ -137,6 +149,25 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		HasViews:         len(enriched.Views) > 0,
 		HasAdmin:         true, // Always generate admin dashboard
 		HasDebug:         enriched.Debug != nil && enriched.Debug.Enabled,
+		HasPrediction:    enriched.Prediction != nil && enriched.Prediction.Enabled,
+		HasBlobstore:     enriched.Blobstore != nil && enriched.Blobstore.Enabled,
+	}
+
+	// Build prediction context
+	if enriched.Prediction != nil && enriched.Prediction.Enabled {
+		timeHours := enriched.Prediction.TimeHours
+		if timeHours == 0 {
+			timeHours = 8.0
+		}
+		rateScale := enriched.Prediction.RateScale
+		if rateScale == 0 {
+			rateScale = 0.0001
+		}
+		ctx.Prediction = &PredictionContext{
+			Enabled:   true,
+			TimeHours: timeHours,
+			RateScale: rateScale,
+		}
 	}
 
 	// Build place contexts

@@ -192,6 +192,21 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, SLATemplateNames()...)
 	}
 
+	// Include prediction template if context has prediction configuration
+	if ctx.HasPrediction() {
+		templateNames = append(templateNames, PredictionTemplateNames()...)
+	}
+
+	// Include GraphQL templates if context has GraphQL enabled
+	if ctx.HasGraphQL() {
+		templateNames = append(templateNames, GraphQLTemplateNames()...)
+	}
+
+	// Include blobstore template if context has blobstore enabled
+	if ctx.HasBlobstore() {
+		templateNames = append(templateNames, BlobstoreTemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

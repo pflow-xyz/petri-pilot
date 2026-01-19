@@ -5,6 +5,11 @@
     "enabled": true,
     "eval": true
   },
+  "blobstore": {
+    "enabled": true,
+    "maxSize": 52428800,
+    "allowedTypes": ["application/json", "application/pdf", "image/*"]
+  },
   "places": [
     {"id": "submitted", "description": "Application submitted by customer", "initial": 1},
     {"id": "credit_check", "description": "Automated credit check in progress", "initial": 0},

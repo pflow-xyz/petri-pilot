@@ -13,7 +13,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the loan-application workflow.
-func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker, blobStore *BlobStore) http.Handler {
 	r := api.NewRouter()
 
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -42,12 +42,23 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+
+
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
+
+	// Blob storage endpoints
+	r.POST("/api/blobs", "Upload a new blob", blobStore.HandleUpload)
+	r.GET("/api/blobs", "List user's blobs", blobStore.HandleList)
+	r.GET("/api/blobs/{id}", "Get blob data", blobStore.HandleGet)
+	r.GET("/api/blobs/{id}/meta", "Get blob metadata", blobStore.HandleGetMeta)
+	r.Handle("PATCH", "/api/blobs/{id}", "Transfer blob ownership", blobStore.HandleTransfer)
+	r.Handle("DELETE", "/api/blobs/{id}", "Delete a blob", blobStore.HandleDelete)
 
 	// Transition endpoints
 	r.Transition("run_credit_check", "/api/run_credit_check", "Initiate automated credit check", middleware.RequirePermission("run_credit_check")(HandleRunCreditCheck(app)))

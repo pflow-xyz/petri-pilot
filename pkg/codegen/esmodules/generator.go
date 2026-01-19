@@ -109,9 +109,17 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		return nil, fmt.Errorf("building context: %w", err)
 	}
 
+	// Determine which templates to generate
+	templateNames := AllTemplateNames()
+
+	// Include blobs template if blobstore is enabled
+	if ctx.HasBlobstore {
+		templateNames = append(templateNames, TemplateBlobs)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
-	for _, name := range AllTemplateNames() {
+	for _, name := range templateNames {
 		content, err := g.templates.Execute(name, ctx)
 		if err != nil {
 			return nil, fmt.Errorf("generating %s: %w", name, err)

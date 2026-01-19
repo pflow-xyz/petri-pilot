@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-{{- if or .HasAdmin .HasEventSourcing}}
+{{- if or .HasAdmin .HasEventSourcing .HasPrediction}}
 	"strconv"
 {{- end}}
 	"strings"
@@ -25,7 +25,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}) http.Handler {
+func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}{{if .HasBlobstore}}, blobStore *BlobStore{{end}}) http.Handler {
 	r := api.NewRouter()
 {{if .HasAccessControl}}
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -68,9 +68,21 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	// SLA status endpoint
 	r.GET("/api/{{.PackageName}}/{id}/sla", "Get SLA status", HandleGetSLA(app))
 {{end}}
+{{if .HasPrediction}}
+	// Prediction endpoints
+	r.GET("/api/{{.PackageName}}/predict", "Run simulation prediction", HandlePredict(app))
+	r.GET("/api/{{.PackageName}}/runout", "Get runout predictions", HandleRunout(app))
+{{end}}
 {{if .HasSnapshots}}
 	r.POST("/api/{{.PackageName}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/{{.PackageName}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
+{{end}}
+{{if .HasGraphQL}}
+	// GraphQL API
+	r.Handle("POST", "{{.GraphQL.Path}}", "GraphQL API endpoint", GraphQLHandler(app))
+{{- if .HasPlayground}}
+	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
+{{- end}}
 {{end}}
 {{if .HasDebug}}
 	// Debug WebSocket and eval endpoints
@@ -83,6 +95,15 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 {{- end}}
+{{end}}
+{{if .HasBlobstore}}
+	// Blob storage endpoints
+	r.POST("/api/blobs", "Upload a new blob", blobStore.HandleUpload)
+	r.GET("/api/blobs", "List user's blobs", blobStore.HandleList)
+	r.GET("/api/blobs/{id}", "Get blob data", blobStore.HandleGet)
+	r.GET("/api/blobs/{id}/meta", "Get blob metadata", blobStore.HandleGetMeta)
+	r.Handle("PATCH", "/api/blobs/{id}", "Transfer blob ownership", blobStore.HandleTransfer)
+	r.Handle("DELETE", "/api/blobs/{id}", "Delete a blob", blobStore.HandleDelete)
 {{end}}
 	// Transition endpoints
 {{- range .Routes}}
@@ -304,6 +325,47 @@ func HandleGetSLA(app *Application) http.HandlerFunc {
 }
 {{- end}}
 
+{{- if .HasPrediction}}
+// HandlePredict runs ODE simulation and returns predicted resource levels.
+func HandlePredict(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hoursStr := r.URL.Query().Get("hours")
+		hours := PredictionConfig.TimeHours
+		if hoursStr != "" {
+			if h, err := strconv.ParseFloat(hoursStr, 64); err == nil && h > 0 {
+				hours = h
+			}
+		}
+
+		// Get current token counts
+		currentTokens := GetCurrentInventory()
+
+		result, err := RunSimulation(currentTokens, hours)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, result)
+	}
+}
+
+// HandleRunout returns predicted runout times for resources.
+func HandleRunout(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentTokens := GetCurrentInventory()
+
+		result, err := RunSimulation(currentTokens, PredictionConfig.TimeHours)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, result.RunoutTime)
+	}
+}
+{{- end}}
+
 {{if .HasNavigation}}
 // HandleNavigation returns the navigation menu, filtered by user roles.
 func HandleNavigation(nav *Navigation) http.HandlerFunc {
@@ -331,11 +393,17 @@ func HandleNavigation(nav *Navigation) http.HandlerFunc {
 
 // getNavUserRoles extracts user roles from the request context.
 func getNavUserRoles(r *http.Request) []string {
+{{- if .HasRoles}}
 	user, ok := r.Context().Value("user").(*User)
 	if !ok || user == nil {
 		return nil
 	}
 	return user.Roles
+{{- else}}
+	// No role-based access control configured
+	_ = r // unused
+	return nil
+{{- end}}
 }
 
 // navHasAnyRole checks if user has at least one of the required roles.
@@ -617,7 +685,7 @@ func HandleReplay(app *Application) http.HandlerFunc {
 }
 {{end}}
 
-{{if or .HasAdmin .HasEventSourcing}}
+{{if or .HasAdmin .HasEventSourcing .HasPrediction}}
 // Helper functions
 
 func getIntQueryParam(r *http.Request, name string, defaultVal int) int {

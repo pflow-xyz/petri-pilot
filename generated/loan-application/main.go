@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -92,9 +94,20 @@ func main() {
 	middleware := NewMiddleware(sessions, accessRules)
 	// Initialize debug broker
 	debugBroker := NewDebugBroker()
+	// Initialize blobstore
+	blobDB, err := sql.Open("sqlite3", "blobs.db")
+	if err != nil {
+		log.Fatalf("Failed to open blob database: %v", err)
+	}
+	defer blobDB.Close()
+
+	blobStore := NewBlobStore(blobDB, 52428800, []string{"application/json", "application/pdf", "image/*",  })
+	if err := blobStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize blobstore: %v", err)
+	}
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware, sessions, debugBroker)
+	router := BuildRouter(app, middleware, sessions, debugBroker, blobStore)
 
 	// Configure server
 	port := os.Getenv("PORT")
