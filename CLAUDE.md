@@ -50,6 +50,32 @@ go test ./...           # All tests
 make build-examples     # Regenerate and build all examples
 ```
 
+## Monitoring GitHub Actions
+
+Use `gh` CLI to monitor CI runs:
+
+```bash
+# List recent CI runs on main
+gh run list --branch main --limit 5
+
+# Watch a run in real-time (opens interactive view)
+gh run watch
+
+# View details of latest run
+gh run view $(gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId')
+
+# Get failed test logs
+gh run view <run-id> --log-failed
+
+# Check job status for latest run
+gh run view --json jobs,conclusion $(gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId') \
+  --jq '{conclusion: .conclusion, jobs: [.jobs[] | {name: .name, conclusion: .conclusion, status: .status}]}'
+
+# List runs with status filtering
+gh run list --branch main --status failure --limit 5
+gh run list --branch main --status success --limit 5
+```
+
 ## Generated File Structure
 
 Each generated app contains:
