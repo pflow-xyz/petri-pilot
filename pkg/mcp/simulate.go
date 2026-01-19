@@ -1,5 +1,15 @@
 package mcp
 
+// This file implements the petri_simulate MCP tool, which allows firing transitions
+// and observing state changes without generating code. It's useful for:
+// - Verifying workflow reaches terminal state
+// - Testing guard conditions
+// - Exploring branching paths
+// - Validating model before codegen
+//
+// The tool provides detailed step-by-step state traces showing the state before
+// and after each transition, making it easy to understand the simulation execution.
+
 import (
 	"context"
 	"encoding/json"
@@ -13,12 +23,14 @@ import (
 )
 
 // SimulationStep represents a single step in a simulation.
+// It specifies which transition to fire and optional bindings for the transition.
 type SimulationStep struct {
 	Transition string         `json:"transition"`
 	Bindings   map[string]any `json:"bindings,omitempty"`
 }
 
 // SimulationResult represents the result of a simulation.
+// It includes the overall success status, final state, and detailed step-by-step trace.
 type SimulationResult struct {
 	Success    bool              `json:"success"`
 	FinalState map[string]int    `json:"final_state"`
@@ -41,6 +53,7 @@ type FailedStep struct {
 }
 
 // StepResult represents the result of executing a single step.
+// It captures the state before and after the transition, enabling detailed analysis.
 type StepResult struct {
 	Transition  string         `json:"transition"`
 	Enabled     bool           `json:"enabled"`
