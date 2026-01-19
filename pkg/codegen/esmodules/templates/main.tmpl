@@ -515,8 +515,8 @@ function formatStateValue(fieldName, value) {
 
 // Get the connected wallet address (if wallet feature is enabled)
 function getConnectedWallet() {
-  if (typeof wallet !== 'undefined' && wallet.getConnectedAccount) {
-    const account = wallet.getConnectedAccount()
+  if (typeof wallet !== 'undefined' && wallet.getAccount) {
+    const account = wallet.getAccount()
     return account?.address || null
   }
   return null
