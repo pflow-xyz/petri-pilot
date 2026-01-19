@@ -23,5 +23,4 @@ require (
 )
 
 // For local development, use a replace directive:
-// replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
-replace github.com/pflow-xyz/petri-pilot => ../..
+replace github.com/pflow-xyz/petri-pilot => /Users/myork/Workspace/petri-pilot

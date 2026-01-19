@@ -103,6 +103,14 @@ type Model struct {
 
 	// Soft delete configuration
 	SoftDelete *SoftDeleteConfig `json:"softDelete,omitempty"`
+
+	// Token/currency display configuration
+	// Decimals specifies precision for token amounts (e.g., 18 for ETH where 1 ETH = 10^18 wei)
+	// UI displays values divided by 10^decimals, backend stores raw integers
+	Decimals int `json:"decimals,omitempty"`
+
+	// Unit is the display symbol for token amounts (e.g., "ETH", "USDC", "tokens")
+	Unit string `json:"unit,omitempty"`
 }
 
 // Event represents an explicit event definition with typed fields.

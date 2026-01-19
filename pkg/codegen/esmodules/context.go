@@ -34,6 +34,10 @@ type Context struct {
 	// Available roles for login selector
 	Roles []RoleContext
 
+	// Token/currency display configuration
+	Decimals int    // Decimal places for token amounts (e.g., 18 for ETH)
+	Unit     string // Display unit symbol (e.g., "ETH", "USDC")
+
 	// Feature flags
 	HasEventSourcing bool
 	HasSnapshots     bool
@@ -152,6 +156,9 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
 		Model:            enriched,
+		// Token/currency display
+		Decimals: enriched.Decimals,
+		Unit:     enriched.Unit,
 		// Feature flags - event sourcing is always enabled in generated backends
 		HasEventSourcing: true,
 		HasSnapshots:     true,

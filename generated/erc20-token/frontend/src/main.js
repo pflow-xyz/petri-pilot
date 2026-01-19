@@ -7,6 +7,82 @@ import { loadViews, renderFormView, renderDetailView, renderTableView, getFormDa
 // API client
 const API_BASE = ''
 
+// ============================================================================
+// Token Amount Scaling
+// ============================================================================
+// Decimals: 18 (0 = no scaling)
+// Unit: "ETH"
+
+const TOKEN_DECIMALS = 18
+const TOKEN_UNIT = "ETH"
+const TOKEN_SCALE = TOKEN_DECIMALS > 0 ? Math.pow(10, TOKEN_DECIMALS) : 1
+
+// Convert from smallest unit (wei) to display unit (ETH)
+// e.g., 1000000000000000000 -> 1.0
+function toDisplayAmount(rawAmount) {
+  if (TOKEN_DECIMALS === 0) return rawAmount
+  if (rawAmount === null || rawAmount === undefined) return ''
+  const num = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount
+  return (num / TOKEN_SCALE).toString()
+}
+
+// Convert from display unit (ETH) to smallest unit (wei)
+// e.g., 1.0 -> 1000000000000000000
+function toRawAmount(displayAmount) {
+  if (TOKEN_DECIMALS === 0) return displayAmount
+  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return 0
+  const num = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
+  // Use Math.round to avoid floating point precision issues
+  return Math.round(num * TOKEN_SCALE)
+}
+
+// Format amount for display with unit
+function formatAmount(rawAmount) {
+  const display = toDisplayAmount(rawAmount)
+  if (TOKEN_UNIT) {
+    return `${display} ${TOKEN_UNIT}`
+  }
+  return display.toString()
+}
+
+// Check if a field name represents a token amount (should be scaled)
+function isAmountField(fieldName) {
+  const amountFields = ['amount', 'value', 'balance', 'total_supply', 'allowance']
+  return amountFields.some(f => fieldName.toLowerCase().includes(f))
+}
+
+// Scale form data for API submission
+function scaleFormData(data) {
+  if (TOKEN_DECIMALS === 0) return data
+  const scaled = { ...data }
+  for (const [key, value] of Object.entries(scaled)) {
+    if (isAmountField(key) && typeof value === 'number' || !isNaN(parseFloat(value))) {
+      scaled[key] = toRawAmount(value)
+    }
+  }
+  return scaled
+}
+
+// Unscale state data for display
+function unscaleStateData(state) {
+  if (TOKEN_DECIMALS === 0) return state
+  const unscaled = { ...state }
+  for (const [key, value] of Object.entries(unscaled)) {
+    if (isAmountField(key)) {
+      if (typeof value === 'number') {
+        unscaled[key] = toDisplayAmount(value)
+      } else if (typeof value === 'object' && value !== null) {
+        // Handle maps like balances: { alice: 1000000000000000000 }
+        unscaled[key] = {}
+        for (const [k, v] of Object.entries(value)) {
+          unscaled[key][k] = typeof v === 'number' ? toDisplayAmount(v) : v
+        }
+      }
+    }
+  }
+  return unscaled
+}
+
 // App state
 let currentUser = null
 let authToken = null
@@ -105,10 +181,12 @@ const api = {
   },
 
   async executeTransition(transitionId, aggregateId, data = {}) {
+    // Scale amount fields before sending to API
+    const scaledData = scaleFormData(data)
     const response = await fetch(`${API_BASE}/api/${transitionId}`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ aggregate_id: aggregateId, data }),
+      body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
     })
     return handleResponse(response)
   },
@@ -266,6 +344,7 @@ async function renderDetailPage() {
       id: result.aggregate_id || id,
       version: result.version,
       state: result.state,
+      displayState: unscaleStateData(result.state), // Unscaled for display
       places: result.places,
       enabled: result.enabled || result.enabled_transitions || [],
     }
@@ -333,17 +412,68 @@ function renderInstanceDetail() {
     </div>
 
     <div class="card">
-      <div class="card-header">Current State</div>
+      <div class="card-header">Current State${TOKEN_UNIT ? ` (${TOKEN_UNIT})` : ''}</div>
       <div class="detail-list">
-        ${Object.entries(currentInstance.places || {}).map(([place, tokens]) => `
-          <div class="detail-field">
-            <dt>${place}</dt>
-            <dd>${tokens > 0 ? `<span class="badge badge-${place}">${tokens} token${tokens > 1 ? 's' : ''}</span>` : '<span style="color: #999;">0</span>'}</dd>
-          </div>
-        `).join('')}
+        ${renderStateDisplay(currentInstance.displayState || currentInstance.state)}
       </div>
     </div>
   `
+}
+
+// Render state data for display (handles nested objects like balances map)
+function renderStateDisplay(state) {
+  if (!state || Object.keys(state).length === 0) {
+    return '<p style="color: #999;">No state data</p>'
+  }
+
+  return Object.entries(state).map(([key, value]) => {
+    if (typeof value === 'object' && value !== null) {
+      // Render nested object (like balances: { alice: 750, bob: 250 })
+      const entries = Object.entries(value)
+      if (entries.length === 0) {
+        return `
+          <div class="detail-field">
+            <dt>${formatFieldName(key)}</dt>
+            <dd><span style="color: #999;">Empty</span></dd>
+          </div>
+        `
+      }
+      return `
+        <div class="detail-field">
+          <dt>${formatFieldName(key)}</dt>
+          <dd>
+            <div class="nested-state">
+              ${entries.map(([k, v]) => `
+                <div class="state-entry">
+                  <span class="state-key">${k}</span>
+                  <span class="state-value">${formatStateValue(key, v)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </dd>
+        </div>
+      `
+    }
+    return `
+      <div class="detail-field">
+        <dt>${formatFieldName(key)}</dt>
+        <dd>${formatStateValue(key, value)}</dd>
+      </div>
+    `
+  }).join('')
+}
+
+// Format field name for display (e.g., "total_supply" -> "Total Supply")
+function formatFieldName(name) {
+  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Format state value with unit if applicable
+function formatStateValue(fieldName, value) {
+  if (isAmountField(fieldName) && TOKEN_UNIT) {
+    return `<strong>${value}</strong> ${TOKEN_UNIT}`
+  }
+  return `<strong>${value}</strong>`
 }
 
 // Form page - create new instance

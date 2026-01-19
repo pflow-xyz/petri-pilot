@@ -2,6 +2,8 @@
   "name": "erc20-token",
   "version": "1.0.0",
   "description": "ERC-20 fungible token implementation using Petri net semantics",
+  "decimals": 18,
+  "unit": "ETH",
   "graphql": {
     "enabled": true,
     "playground": true
