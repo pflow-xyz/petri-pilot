@@ -83,6 +83,11 @@ class TestHarness {
     // Get session ID
     this.sessionId = await this.debugClient.waitForSession();
 
+    // Wait for pilot API to be available
+    await this.page.waitForFunction(() => {
+      return typeof window.pilot === 'object' && window.pilot !== null;
+    }, { timeout: 10000 });
+
     return this;
   }
 
@@ -167,16 +172,31 @@ class TestHarness {
 
   /**
    * Login via debug test login endpoint and get token.
-   * Uses pilot.loginAs() which handles both server auth and browser state.
    * @param {string|string[]} roles - Single role string or array of roles
    */
   async login(roles = ['admin', 'fulfillment', 'system', 'customer']) {
     // Normalize roles to array if a single string is provided
     const rolesArray = typeof roles === 'string' ? [roles] : roles;
 
-    // Use pilot.loginAs() which handles both server login and browser auth state
-    const data = await this.pilot.loginAs(rolesArray);
+    const response = await fetch(`${this.server.baseUrl}/api/debug/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: 'test-user', roles: rolesArray }),
+    });
+    const data = await response.json();
     this.authToken = data.token;
+
+    // Set auth in the browser using the frontend's saveAuth function
+    await this.eval(`
+      const auth = ${JSON.stringify(data)};
+      localStorage.setItem('auth', JSON.stringify(auth));
+      if (window.saveAuth) {
+        window.saveAuth(auth);
+      }
+    `);
+
+    // Small delay to let the auth update propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     return data;
   }
@@ -185,7 +205,12 @@ class TestHarness {
    * Logout current user.
    */
   async logout() {
-    await this.pilot.logout();
+    await this.eval(`
+      localStorage.removeItem('auth');
+      if (window.clearAuth) {
+        window.clearAuth();
+      }
+    `);
     this.authToken = null;
   }
 
