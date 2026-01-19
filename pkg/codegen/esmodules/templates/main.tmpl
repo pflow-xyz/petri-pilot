@@ -677,8 +677,21 @@ function showActionModal(transitionId) {
         ${TOKEN_UNIT ? `<span class="field-description">Amount in ${TOKEN_UNIT}</span>` : ''}
       `
     } else if (field.type === 'address') {
-      inputHtml = `
-        <div class="address-input-wrapper">
+      // Use dropdown for address fields in demo mode
+      const accounts = getWalletAccounts()
+      if (accounts.length > 0) {
+        inputHtml = `
+          <select name="${field.name}" ${required} class="form-control">
+            <option value="">Select address...</option>
+            ${accounts.map(acc => `
+              <option value="${acc.address}" ${acc.address === value ? 'selected' : ''}>
+                ${acc.name || 'Account'} (${acc.address.slice(0, 8)}...${acc.address.slice(-6)})
+              </option>
+            `).join('')}
+          </select>
+        `
+      } else {
+        inputHtml = `
           <input
             type="text"
             name="${field.name}"
@@ -687,9 +700,8 @@ function showActionModal(transitionId) {
             ${required}
             class="form-control"
           />
-          ${hasWalletAccounts() ? `<button type="button" class="address-picker-btn" onclick="showAddressPicker('${field.name}')">Pick</button>` : ''}
-        </div>
-      `
+        `
+      }
     } else if (field.type === 'hidden') {
       inputHtml = `<input type="hidden" name="${field.name}" value="${value}" />`
     } else {
@@ -778,6 +790,14 @@ function hasWalletAccounts() {
     return accounts && accounts.length > 0
   }
   return false
+}
+
+// Get wallet accounts for dropdowns
+function getWalletAccounts() {
+  if (typeof wallet !== 'undefined' && wallet.getAccounts) {
+    return wallet.getAccounts() || []
+  }
+  return []
 }
 
 // Show address picker dropdown
