@@ -178,6 +178,13 @@ class TestHarness {
   }
 
   /**
+   * Get event history for an aggregate.
+   */
+  async getEventHistory(aggregateId, from = 0) {
+    return this.debugClient.getEventHistory(this.sessionId, aggregateId, from);
+  }
+
+  /**
    * Get the base URL of the server.
    */
   get baseUrl() {

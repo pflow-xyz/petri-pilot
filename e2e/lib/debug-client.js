@@ -184,6 +184,21 @@ class DebugClient {
       }
     `);
   }
+
+  /**
+   * Get event history for an aggregate via the browser's API client.
+   * @param {string} sessionId - The session ID
+   * @param {string} aggregateId - The aggregate ID
+   * @param {number} from - Optional starting event number (default: 0)
+   * @returns {Promise<Array>} - The event history
+   */
+  async getEventHistory(sessionId, aggregateId, from = 0) {
+    return this.eval(sessionId, `
+      const response = await fetch('/api/orderprocessing/${aggregateId}/events?from=${from}');
+      const data = await response.json();
+      return data.events || [];
+    `);
+  }
 }
 
 module.exports = { DebugClient };
