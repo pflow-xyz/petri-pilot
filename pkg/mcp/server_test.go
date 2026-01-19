@@ -180,7 +180,7 @@ func TestSimulate(t *testing.T) {
 			}
 
 			// Call handler
-			result, err := handleSimulate(context.Background(), request)
+			result, err := handleSimulateWithSteps(context.Background(), request)
 			if err != nil {
 				t.Fatalf("handleSimulate returned error: %v", err)
 			}
@@ -261,7 +261,7 @@ func TestSimulateWithBlogPostExample(t *testing.T) {
 		},
 	}
 
-	result, err := handleSimulate(context.Background(), request)
+	result, err := handleSimulateWithSteps(context.Background(), request)
 	if err != nil {
 		t.Fatalf("handleSimulate returned error: %v", err)
 	}
