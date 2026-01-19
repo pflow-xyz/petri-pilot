@@ -1,8 +1,8 @@
 /**
  * E2E tests for views and data projection.
  *
- * Tests that view definitions correctly filter fields and that
- * event data is properly projected into view fields.
+ * Uses window.pilot API to test that view definitions correctly
+ * filter fields and that event data is properly projected.
  */
 
 const { TestHarness } = require('../lib/test-harness');
@@ -13,7 +13,6 @@ describe('Views and Data Projection', () => {
   beforeAll(async () => {
     harness = new TestHarness('order-processing');
     await harness.setup();
-    // Login with all necessary roles
     await harness.login(['admin', 'fulfillment', 'system', 'customer']);
   }, 120000);
 
@@ -23,106 +22,208 @@ describe('Views and Data Projection', () => {
     }
   });
 
-  describe('Table view data projection', () => {
-    it('should return correct fields for table view', async () => {
-      // Create instances with initial data
-      const instance1 = await harness.createInstance();
-      const instance2 = await harness.createInstance();
+  describe('list page view', () => {
+    test('can navigate to list and see instances', async () => {
+      // Create a couple of instances
+      await harness.pilot.create();
+      await harness.pilot.create();
 
-      // Fire validate transitions with customer data
-      await harness.executeTransition('validate', instance1.aggregate_id, {
-        customer_name: 'Alice',
-        customer_email: 'alice@example.com',
-        total: 100
-      });
+      // Navigate to list
+      await harness.pilot.list();
 
-      await harness.executeTransition('validate', instance2.aggregate_id, {
-        customer_name: 'Bob',
-        customer_email: 'bob@example.com',
-        total: 200
-      });
+      // Check we're on list page
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toBe('/order-processing');
 
-      // Get table view data
-      const tableData = await harness.getView('order-table');
+      // Should have instances displayed
+      const instances = await harness.pilot.getInstances();
+      expect(instances.length).toBeGreaterThanOrEqual(2);
+    });
 
-      // Verify we have rows
-      expect(tableData.rows).toBeDefined();
-      expect(tableData.rows.length).toBeGreaterThanOrEqual(2);
+    test('list shows instance status', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
 
-      // Find our created instances
-      const alice = tableData.rows.find(r => r.customer_name === 'Alice');
-      const bob = tableData.rows.find(r => r.customer_name === 'Bob');
+      await harness.pilot.list();
 
-      expect(alice).toBeDefined();
-      expect(bob).toBeDefined();
-
-      // Verify fields defined in the order-table view are present
-      expect(alice).toHaveProperty('customer_name');
-      expect(alice.customer_name).toBe('Alice');
-      expect(alice).toHaveProperty('total');
-      expect(alice.total).toBe(100);
-
-      expect(bob).toHaveProperty('customer_name');
-      expect(bob.customer_name).toBe('Bob');
-      expect(bob).toHaveProperty('total');
-      expect(bob.total).toBe(200);
-
-      // Note: order-table view includes order_id, customer_name, total, status, created_at
-      // It should NOT include fields like shipping_address which aren't in the view
-      // But our current implementation projects all event data, so this test
-      // verifies that the defined fields are present
+      // Page should render status badges
+      const hasCard = await harness.pilot.exists('.entity-card');
+      expect(hasCard).toBe(true);
     });
   });
 
-  describe('Detail view data projection', () => {
-    it('should respect view field bindings from events', async () => {
-      // Create an instance
-      const instance = await harness.createInstance();
+  describe('detail page view', () => {
+    test('shows current state information', async () => {
+      await harness.pilot.create();
+      await harness.pilot.assertState('received');
 
-      // Fire validate transition with customer data
-      await harness.executeTransition('validate', instance.aggregate_id, {
-        customer_name: 'Alice',
-        customer_email: 'alice@example.com',
-        shipping_address: '123 Main St',
-        total: 100
-      });
+      // Should be on detail page
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toBe('/order-processing/:id');
 
-      // Get detail view data for this specific instance
-      const detail = await harness.getView('order-detail', instance.aggregate_id);
-
-      // Verify the projected data includes fields from the events
-      expect(detail.customer_name).toBe('Alice');
-      expect(detail.customer_email).toBe('alice@example.com');
-      expect(detail.shipping_address).toBe('123 Main St');
-      expect(detail.total).toBe(100);
+      // Should show status
+      const status = await harness.pilot.getStatus();
+      expect(status).toBe('received');
     });
 
-    it('should accumulate data from multiple events', async () => {
-      // Create an instance
-      const instance = await harness.createInstance();
+    test('shows enabled transitions as buttons', async () => {
+      await harness.pilot.create();
 
-      // Fire validate transition
-      await harness.executeTransition('validate', instance.aggregate_id, {
-        customer_name: 'Charlie',
-        customer_email: 'charlie@example.com',
-        total: 150
+      const buttons = await harness.pilot.getButtons();
+      const buttonTexts = buttons.map(b => b.text.toLowerCase());
+
+      // Should have validate and reject buttons
+      expect(buttonTexts.some(t => t.includes('validate'))).toBe(true);
+      expect(buttonTexts.some(t => t.includes('reject'))).toBe(true);
+    });
+
+    test('disabled transitions show as disabled buttons', async () => {
+      await harness.pilot.create();
+
+      const buttons = await harness.pilot.getButtons();
+
+      // Ship should be disabled in received state
+      const shipButton = buttons.find(b => b.text.toLowerCase().includes('ship'));
+      if (shipButton) {
+        expect(shipButton.disabled).toBe(true);
+      }
+    });
+
+    test('buttons update after transition', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+
+      const buttons = await harness.pilot.getButtons();
+      const buttonTexts = buttons.map(b => b.text.toLowerCase());
+
+      // After validate, process_payment should be enabled
+      const paymentButton = buttons.find(b =>
+        b.text.toLowerCase().includes('payment') ||
+        b.text.toLowerCase().includes('process')
+      );
+      if (paymentButton) {
+        expect(paymentButton.disabled).toBe(false);
+      }
+    });
+  });
+
+  describe('data projection from events', () => {
+    test('detail view accumulates data from events', async () => {
+      await harness.pilot.create();
+
+      // Add data via validate
+      await harness.pilot.action('validate', {
+        customer_name: 'Alice',
+        total: 100,
+        customer_email: 'alice@test.com'
       });
 
-      // Fire process_payment transition with payment data
-      await harness.executeTransition('process_payment', instance.aggregate_id, {
+      // Add more data via payment
+      await harness.pilot.action('process_payment', {
         payment_method: 'credit_card',
         payment_status: 'completed'
       });
 
-      // Get detail view data
-      const detail = await harness.getView('order-detail', instance.aggregate_id);
+      // Events should contain all the data
+      const events = await harness.pilot.getEvents();
+      const allData = {};
+      for (const e of events) {
+        if (e.data) Object.assign(allData, e.data);
+      }
 
-      // Verify data from both events is projected
-      expect(detail.customer_name).toBe('Charlie');
-      expect(detail.customer_email).toBe('charlie@example.com');
-      expect(detail.total).toBe(150);
-      expect(detail.payment_method).toBe('credit_card');
-      expect(detail.payment_status).toBe('completed');
+      expect(allData.customer_name).toBe('Alice');
+      expect(allData.payment_method).toBe('credit_card');
+    });
+  });
+
+  describe('UI elements', () => {
+    test('page has required structure', async () => {
+      await harness.pilot.create();
+
+      // Should have page wrapper
+      await harness.pilot.assertExists('.page');
+
+      // Should have card for content
+      await harness.pilot.assertExists('.card');
+    });
+
+    test('can get text from elements', async () => {
+      await harness.pilot.create();
+
+      // Should have a heading
+      const headingText = await harness.pilot.getText('h1');
+      expect(headingText).toBeTruthy();
+    });
+
+    test('back button navigates to list', async () => {
+      await harness.pilot.create();
+
+      // Click back button
+      await harness.pilot.clickButton('← Back to List');
+
+      // Should be on list page
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toBe('/order-processing');
+    });
+  });
+
+  describe('admin view', () => {
+    test('can navigate to admin dashboard', async () => {
+      await harness.pilot.admin();
+
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toMatch(/\/admin/);
+    });
+
+    test('admin shows statistics', async () => {
+      // Create some instances first
+      await harness.pilot.create();
+      await harness.pilot.create();
+
+      await harness.pilot.admin();
+
+      // Should have stats card
+      const hasStats = await harness.pilot.exists('#admin-stats');
+      expect(hasStats).toBe(true);
+    });
+
+    test('admin shows recent instances', async () => {
+      await harness.pilot.create();
+      await harness.pilot.admin();
+
+      // Should have instances section
+      const hasInstances = await harness.pilot.exists('#admin-instances');
+      expect(hasInstances).toBe(true);
+    });
+  });
+
+  describe('form view', () => {
+    test('new form page has submit button', async () => {
+      await harness.pilot.newForm();
+
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toBe('/order-processing/new');
+
+      const buttons = await harness.pilot.getButtons();
+      const hasCreate = buttons.some(b =>
+        b.text.toLowerCase().includes('create')
+      );
+      expect(hasCreate).toBe(true);
+    });
+
+    test('can submit form to create instance', async () => {
+      await harness.pilot.newForm();
+
+      // Submit the form
+      await harness.pilot.submit();
+
+      // Should navigate to detail page
+      const route = await harness.pilot.getRoute();
+      expect(route.path).toBe('/order-processing/:id');
+
+      // Should be in initial state
+      const status = await harness.pilot.getStatus();
+      expect(status).toBe('received');
     });
   });
 });

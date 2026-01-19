@@ -649,6 +649,474 @@ async function handleDebugEval(msg) {
 window.debugSessionId = () => debugSessionId
 window.debugWs = () => debugWs
 
+// ============================================================================
+// Pilot - Debug/Test Driving API
+// ============================================================================
+
+/**
+ * window.pilot provides a clean API for driving the app programmatically.
+ * Use this for:
+ * - Automated E2E tests via the debug WebSocket
+ * - Manual debugging from the browser console
+ * - Visual confirmation of UI behavior
+ */
+window.pilot = {
+  // --- Navigation ---
+
+  /** Navigate to the list page */
+  list() {
+    navigate('/support-ticket')
+    return this.waitForRender()
+  },
+
+  /** Navigate to create new instance form */
+  newForm() {
+    navigate('/support-ticket/new')
+    return this.waitForRender()
+  },
+
+  /** Navigate to view a specific instance */
+  async view(id) {
+    navigate(`/support-ticket/${id}`)
+    await this.waitForRender()
+    return currentInstance
+  },
+
+  /** Navigate to admin dashboard */
+  admin() {
+    navigate('/admin')
+    return this.waitForRender()
+  },
+
+  // --- Instance Operations ---
+
+  /** Create a new instance and navigate to it */
+  async create(data = {}) {
+    const result = await api.createInstance(data)
+    const id = result.aggregate_id || result.id
+    navigate(`/support-ticket/${id}`)
+    await this.waitForRender()
+    return { id, ...result }
+  },
+
+  /** Get the current instance (from detail page) */
+  getCurrentInstance() {
+    return currentInstance
+  },
+
+  /** Get all loaded instances (from list page) */
+  getInstances() {
+    return instances
+  },
+
+  /** Reload current instance state from API */
+  async refresh() {
+    if (!currentInstance) throw new Error('No current instance')
+    const result = await api.getInstance(currentInstance.id)
+    currentInstance = {
+      id: result.aggregate_id || currentInstance.id,
+      version: result.version,
+      state: result.state,
+      places: result.places,
+      enabled: result.enabled || result.enabled_transitions || [],
+    }
+    renderInstanceDetail()
+    return currentInstance
+  },
+
+  // --- Actions ---
+
+  /** Execute a transition on the current instance */
+  async action(transitionId, data = {}) {
+    if (!currentInstance) throw new Error('No current instance - navigate to detail page first')
+    const result = await api.executeTransition(transitionId, currentInstance.id, data)
+    currentInstance = {
+      ...currentInstance,
+      version: result.version,
+      state: result.state,
+      places: result.state,
+      enabled: result.enabled || [],
+    }
+    renderInstanceDetail()
+    return { success: true, state: currentInstance.places, enabled: currentInstance.enabled }
+  },
+
+  /** Check if a transition is enabled for the current instance */
+  isEnabled(transitionId) {
+    if (!currentInstance) return false
+    return (currentInstance.enabled || []).includes(transitionId)
+  },
+
+  /** Get list of enabled transitions */
+  getEnabled() {
+    return currentInstance?.enabled || []
+  },
+
+  // --- Form Operations ---
+
+  /** Fill a form field by name */
+  fill(name, value) {
+    const input = document.querySelector(`[name="${name}"]`)
+    if (!input) throw new Error(`No input found with name: ${name}`)
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    return this
+  },
+
+  /** Submit the current form */
+  async submit() {
+    const form = document.querySelector('form')
+    if (!form) throw new Error('No form found on page')
+    const event = new Event('submit', { bubbles: true, cancelable: true })
+    form.dispatchEvent(event)
+    await this.waitForRender()
+    return currentInstance
+  },
+
+  // --- UI Inspection ---
+
+  /** Get text content of an element */
+  getText(selector) {
+    const el = document.querySelector(selector)
+    return el ? el.textContent.trim() : null
+  },
+
+  /** Check if an element exists */
+  exists(selector) {
+    return document.querySelector(selector) !== null
+  },
+
+  /** Get all buttons on the page */
+  getButtons() {
+    return Array.from(document.querySelectorAll('button')).map(btn => ({
+      text: btn.textContent.trim(),
+      disabled: btn.disabled,
+      className: btn.className,
+    }))
+  },
+
+  /** Click a button by text */
+  async clickButton(text) {
+    const buttons = document.querySelectorAll('button')
+    for (const btn of buttons) {
+      if (btn.textContent.trim() === text && !btn.disabled) {
+        btn.click()
+        await this.waitForRender()
+        return true
+      }
+    }
+    throw new Error(`No enabled button found with text: ${text}`)
+  },
+
+  // --- State ---
+
+  /** Get the current Petri net state (places with token counts) */
+  getState() {
+    return currentInstance?.places || null
+  },
+
+  /** Get the current status (place with token) */
+  getStatus() {
+    if (!currentInstance?.places) return null
+    for (const [place, tokens] of Object.entries(currentInstance.places)) {
+      if (tokens > 0) return place
+    }
+    return null
+  },
+
+  /** Get the current route */
+  getRoute() {
+    return getCurrentRoute()
+  },
+
+  /** Get current authenticated user */
+  getUser() {
+    return currentUser
+  },
+
+  /** Check if user is authenticated */
+  isAuthenticated() {
+    return authToken !== null
+  },
+
+  // --- Utilities ---
+
+  /** Wait for render to complete */
+  waitForRender(ms = 50) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  },
+
+  /** Wait for an element to appear */
+  async waitFor(selector, timeout = 5000) {
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+      if (document.querySelector(selector)) {
+        return document.querySelector(selector)
+      }
+      await this.waitForRender(50)
+    }
+    throw new Error(`Timeout waiting for: ${selector}`)
+  },
+
+  /** Wait for current instance to be in a specific state */
+  async waitForState(place, timeout = 5000) {
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+      if (currentInstance?.places?.[place] > 0) {
+        return currentInstance
+      }
+      await this.waitForRender(100)
+    }
+    throw new Error(`Timeout waiting for state: ${place}`)
+  },
+
+  /** Log current state to console (for debugging) */
+  debug() {
+    console.log('=== Pilot Debug ===')
+    console.log('Route:', getCurrentRoute())
+    console.log('User:', currentUser)
+    console.log('Instance:', currentInstance)
+    console.log('Enabled:', currentInstance?.enabled)
+    console.log('State:', currentInstance?.places)
+    return {
+      route: getCurrentRoute(),
+      user: currentUser,
+      instance: currentInstance,
+    }
+  },
+
+  // --- Event Sourcing ---
+
+  /** Get event history for current instance */
+  async getEvents() {
+    if (!currentInstance) throw new Error('No current instance')
+    const response = await fetch(`${API_BASE}/api/supportticket/${currentInstance.id}/events`, {
+      headers: getHeaders()
+    })
+    const data = await handleResponse(response)
+    return data.events || []
+  },
+
+  /** Get event count for current instance */
+  async getEventCount() {
+    const events = await this.getEvents()
+    return events.length
+  },
+
+  /** Get the last event for current instance */
+  async getLastEvent() {
+    const events = await this.getEvents()
+    return events.length > 0 ? events[events.length - 1] : null
+  },
+
+  /** Replay instance to a specific version (read-only view) */
+  async replayTo(version) {
+    if (!currentInstance) throw new Error('No current instance')
+    const events = await this.getEvents()
+    const filtered = events.filter(e => (e.version || e.sequence) <= version)
+
+    // Compute state by applying events up to version
+    const places = {}
+    // Initialize with first event or empty
+    for (const event of filtered) {
+      if (event.state) {
+        Object.assign(places, event.state)
+      }
+    }
+    return { version, events: filtered, places }
+  },
+
+  // --- Role/Auth Testing ---
+
+  /** Login as a specific role (or array of roles) */
+  async loginAs(roles) {
+    const rolesArray = typeof roles === 'string' ? [roles] : roles
+    const response = await fetch(`${API_BASE}/api/debug/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: 'pilot-user', roles: rolesArray }),
+    })
+    const data = await response.json()
+    saveAuth(data)
+    await this.waitForRender(100)
+    return data
+  },
+
+  /** Logout current user */
+  logout() {
+    clearAuth()
+    return this.waitForRender()
+  },
+
+  /** Get current user's roles */
+  getRoles() {
+    return currentUser?.roles || []
+  },
+
+  /** Check if current user has a specific role */
+  hasRole(role) {
+    return this.getRoles().includes(role)
+  },
+
+  // --- Assertions (throw on failure) ---
+
+  /** Assert current instance is in expected state */
+  assertState(expectedPlace) {
+    const status = this.getStatus()
+    if (status !== expectedPlace) {
+      throw new Error(`Expected state '${expectedPlace}', got '${status}'`)
+    }
+    return this
+  },
+
+  /** Assert a transition is enabled */
+  assertEnabled(transitionId) {
+    if (!this.isEnabled(transitionId)) {
+      const enabled = this.getEnabled()
+      throw new Error(`Expected '${transitionId}' to be enabled. Enabled: [${enabled.join(', ')}]`)
+    }
+    return this
+  },
+
+  /** Assert a transition is disabled */
+  assertDisabled(transitionId) {
+    if (this.isEnabled(transitionId)) {
+      throw new Error(`Expected '${transitionId}' to be disabled, but it is enabled`)
+    }
+    return this
+  },
+
+  /** Assert element exists in DOM */
+  assertExists(selector) {
+    if (!this.exists(selector)) {
+      throw new Error(`Expected element '${selector}' to exist`)
+    }
+    return this
+  },
+
+  /** Assert element contains text */
+  assertText(selector, expected) {
+    const actual = this.getText(selector)
+    if (actual !== expected) {
+      throw new Error(`Expected '${selector}' to contain '${expected}', got '${actual}'`)
+    }
+    return this
+  },
+
+  /** Assert user is authenticated */
+  assertAuthenticated() {
+    if (!this.isAuthenticated()) {
+      throw new Error('Expected user to be authenticated')
+    }
+    return this
+  },
+
+  /** Assert user has role */
+  assertRole(role) {
+    if (!this.hasRole(role)) {
+      throw new Error(`Expected user to have role '${role}'. Has: [${this.getRoles().join(', ')}]`)
+    }
+    return this
+  },
+
+  // --- Workflow Introspection ---
+
+  /** Get all transition definitions */
+  getTransitions() {
+    return [
+      { id: 'assign', name: 'Assign', description: 'Assign ticket to an agent' },
+      { id: 'start_work', name: 'Start Work', description: 'Begin working on the ticket' },
+      { id: 'escalate', name: 'Escalate', description: 'Escalate to senior support' },
+      { id: 'request_info', name: 'Request Info', description: 'Request more information from customer' },
+      { id: 'customer_reply', name: 'Customer Reply', description: 'Customer provides requested information' },
+      { id: 'resolve', name: 'Resolve', description: 'Mark issue as resolved from in_progress' },
+      { id: 'resolve_escalated', name: 'Resolve Escalated', description: 'Mark escalated issue as resolved' },
+      { id: 'close', name: 'Close', description: 'Close the ticket' },
+      { id: 'reopen', name: 'Reopen', description: 'Customer reopens a closed ticket' },
+    ]
+  },
+
+  /** Get all place definitions */
+  getPlaces() {
+    return [
+      { id: 'new', name: 'New', initial: 1 },
+      { id: 'assigned', name: 'Assigned', initial: 0 },
+      { id: 'in_progress', name: 'InProgress', initial: 0 },
+      { id: 'escalated', name: 'Escalated', initial: 0 },
+      { id: 'pending_customer', name: 'PendingCustomer', initial: 0 },
+      { id: 'resolved', name: 'Resolved', initial: 0 },
+      { id: 'closed', name: 'Closed', initial: 0 },
+    ]
+  },
+
+  /** Get transition by ID */
+  getTransition(id) {
+    return this.getTransitions().find(t => t.id === id) || null
+  },
+
+  /** Check if transition can fire, with reason if not */
+  canFire(transitionId) {
+    const transition = this.getTransition(transitionId)
+    if (!transition) {
+      return { canFire: false, reason: `Unknown transition: ${transitionId}` }
+    }
+
+    if (!currentInstance) {
+      return { canFire: false, reason: 'No current instance' }
+    }
+
+    const enabled = this.isEnabled(transitionId)
+    if (!enabled) {
+      const status = this.getStatus()
+      return {
+        canFire: false,
+        reason: `Transition '${transitionId}' not enabled in state '${status}'`,
+        currentState: status,
+        enabledTransitions: this.getEnabled()
+      }
+    }
+
+    // Note: Role checks are enforced server-side
+    return { canFire: true }
+  },
+
+  /** Execute a sequence of transitions */
+  async sequence(transitionIds, options = {}) {
+    const results = []
+    const { stopOnError = true, data = {} } = options
+
+    for (const id of transitionIds) {
+      const check = this.canFire(id)
+      if (!check.canFire) {
+        if (stopOnError) {
+          throw new Error(`Sequence failed at '${id}': ${check.reason}`)
+        }
+        results.push({ transition: id, success: false, error: check.reason })
+        continue
+      }
+
+      try {
+        const result = await this.action(id, data[id] || {})
+        results.push({ transition: id, success: true, state: result.state })
+      } catch (e) {
+        if (stopOnError) throw e
+        results.push({ transition: id, success: false, error: e.message })
+      }
+    }
+
+    return results
+  },
+
+  /** Get workflow summary */
+  getWorkflowInfo() {
+    return {
+      places: this.getPlaces(),
+      transitions: this.getTransitions(),
+      initialPlace: this.getPlaces().find(p => p.initial > 0)?.id,
+    }
+  },
+}
+
 
 // Start the app
 init()

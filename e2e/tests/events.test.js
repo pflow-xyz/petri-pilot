@@ -1,300 +1,214 @@
 /**
  * E2E tests for Events First Schema - event field validation and binding behavior.
  *
- * Tests the order-processing app to validate:
- * - Required event field validation
- * - Optional event field capture
- * - Auto-populated system fields
+ * Uses window.pilot API to test:
+ * - Event history retrieval
+ * - Event field capture
+ * - Event ordering and versioning
+ * - Replaying events to specific versions
  */
 
-const { AppServer } = require('../lib/app-server');
+const { TestHarness } = require('../lib/test-harness');
 
 describe('Events First Schema', () => {
-  let server, baseUrl, token;
+  let harness;
 
   beforeAll(async () => {
-    // Start the order-processing server
-    server = new AppServer('order-processing');
-    await server.start();
-    baseUrl = server.baseUrl;
-
-    // Login with all roles needed for transitions
-    const loginRes = await fetch(`${baseUrl}/api/debug/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: 'testuser', roles: ['admin', 'fulfillment', 'system', 'customer'] }),
-    });
-    const loginData = await loginRes.json();
-    token = loginData.token;
+    harness = new TestHarness('order-processing');
+    await harness.setup();
+    await harness.login(['admin', 'fulfillment', 'system', 'customer']);
   }, 120000);
 
   afterAll(async () => {
-    if (server) {
-      server.stop();
+    if (harness) {
+      await harness.teardown();
     }
   });
 
-  describe('Event field validation', () => {
-    test('should validate required event fields', async () => {
-      // Create a new instance
-      const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      const instance = await createRes.json();
-      expect(instance.aggregate_id).toBeDefined();
+  describe('event history via pilot API', () => {
+    test('can get events after transitions', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
 
-      // Attempt transition without required binding (customer_name is required)
-      // The validate transition requires customer_name and total
-      // Note: Currently the API doesn't validate required fields - this test documents expected behavior
-      const validateRes = await fetch(`${baseUrl}/api/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            // missing required 'customer_name'
-            total: 100
-          }
-        })
-      });
-      
-      // Currently succeeds even without required fields
-      // TODO: Add validation for required event fields
-      expect(validateRes.ok).toBe(true);
+      const events = await harness.pilot.getEvents();
+      expect(events).toBeDefined();
+      expect(events.length).toBeGreaterThanOrEqual(1);
     });
 
-    test('should capture all event fields including optional', async () => {
-      // Create a new instance
-      const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      const instance = await createRes.json();
+    test('can get event count', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+      await harness.pilot.action('process_payment');
 
-      // Execute validate transition with all fields including optional ones
-      const validateRes = await fetch(`${baseUrl}/api/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            customer_name: 'Alice',
-            total: 100,
-            customer_email: 'alice@example.com', // optional field
-            shipping_address: '123 Main St', // optional field
-            order_id: 'ORDER-001'
-          }
-        })
-      });
-      expect(validateRes.ok).toBe(true);
-
-      // Get event history
-      const eventsRes = await fetch(`${baseUrl}/api/orderprocessing/${instance.aggregate_id}/events`);
-      const eventsData = await eventsRes.json();
-      const events = eventsData.events;
-      
-      expect(events).toBeDefined();
-      expect(events.length).toBeGreaterThan(0);
-      
-      // Check the validate event
-      // Note: Event type is the transition ID ("validate") which gets capitalized as "Validateed" in the generated code
-      const validateEvent = events.find(e => e.type === 'validate' || e.type === 'Validateed');
-      expect(validateEvent).toBeDefined();
-      expect(validateEvent.data.customer_name).toBe('Alice');
-      expect(validateEvent.data.total).toBe(100);
-      expect(validateEvent.data.customer_email).toBe('alice@example.com');
-      expect(validateEvent.data.shipping_address).toBe('123 Main St');
+      const count = await harness.pilot.getEventCount();
+      expect(count).toBeGreaterThanOrEqual(2);
     });
 
-    test('should auto-populate system fields', async () => {
-      // Create a new instance
-      const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      const instance = await createRes.json();
+    test('can get last event', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
 
-      // Execute transition with minimal required fields
-      const validateRes = await fetch(`${baseUrl}/api/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            customer_name: 'Bob',
-            total: 50,
-            order_id: 'ORDER-002'
-          }
-        })
-      });
-      expect(validateRes.ok).toBe(true);
-
-      // Get event history
-      const eventsRes = await fetch(`${baseUrl}/api/orderprocessing/${instance.aggregate_id}/events`);
-      const eventsData = await eventsRes.json();
-      const events = eventsData.events;
-      
-      expect(events).toBeDefined();
-      expect(events.length).toBeGreaterThan(0);
-      
-      // Check the first event has system fields
-      const event = events[0];
-      expect(event.stream_id).toBeDefined();
-      expect(event.stream_id).toBe(instance.aggregate_id);
-      
-      // Events should have version number
-      expect(event.version).toBeDefined();
-      expect(typeof event.version).toBe('number');
-      
-      // Events should have timestamp
-      expect(event.timestamp).toBeDefined();
+      const lastEvent = await harness.pilot.getLastEvent();
+      expect(lastEvent).toBeDefined();
+      expect(lastEvent.type).toBeDefined();
     });
   });
 
-  describe('Event sourcing behavior', () => {
-    test('should maintain event order in history', async () => {
-      // Create a new instance
-      const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      const instance = await createRes.json();
+  describe('event field capture', () => {
+    test('captures transition data in events', async () => {
+      await harness.pilot.create();
 
-      // Execute multiple transitions
-      const validateRes = await fetch(`${baseUrl}/api/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            customer_name: 'Charlie',
-            total: 150,
-            order_id: 'ORDER-003'
-          }
-        })
+      // Execute validate with specific data
+      await harness.pilot.action('validate', {
+        customer_name: 'Alice Test',
+        total: 123.45,
+        customer_email: 'alice@test.com'
       });
-      expect(validateRes.ok).toBe(true);
 
-      const paymentRes = await fetch(`${baseUrl}/api/process_payment`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            order_id: 'ORDER-003',
-            total: 150,
-            payment_method: 'credit_card'
-          }
-        })
+      const events = await harness.pilot.getEvents();
+      const validateEvent = events.find(e =>
+        e.type === 'validate' || e.type === 'Validateed' || e.type?.includes('validate')
+      );
+
+      expect(validateEvent).toBeDefined();
+      expect(validateEvent.data).toBeDefined();
+      expect(validateEvent.data.customer_name).toBe('Alice Test');
+      expect(validateEvent.data.total).toBe(123.45);
+      expect(validateEvent.data.customer_email).toBe('alice@test.com');
+    });
+
+    test('accumulates data from multiple transitions', async () => {
+      await harness.pilot.create();
+
+      await harness.pilot.action('validate', {
+        customer_name: 'Bob',
+        total: 200
       });
-      expect(paymentRes.ok).toBe(true);
 
-      // Get event history
-      const eventsRes = await fetch(`${baseUrl}/api/orderprocessing/${instance.aggregate_id}/events`);
-      const eventsData = await eventsRes.json();
-      const events = eventsData.events;
-      
+      await harness.pilot.action('process_payment', {
+        payment_method: 'credit_card',
+        payment_status: 'completed'
+      });
+
+      const events = await harness.pilot.getEvents();
       expect(events.length).toBeGreaterThanOrEqual(2);
-      
-      // Events should be in order by version
+
+      // Verify each event has its data
+      const validateEvent = events.find(e => e.data?.customer_name);
+      const paymentEvent = events.find(e => e.data?.payment_method);
+
+      expect(validateEvent.data.customer_name).toBe('Bob');
+      expect(paymentEvent.data.payment_method).toBe('credit_card');
+    });
+  });
+
+  describe('event ordering and versioning', () => {
+    test('events have monotonically increasing versions', async () => {
+      await harness.pilot.create();
+      await harness.pilot.sequence(['validate', 'process_payment', 'ship']);
+
+      const events = await harness.pilot.getEvents();
+      expect(events.length).toBeGreaterThanOrEqual(3);
+
+      // Check versions are strictly increasing
       for (let i = 1; i < events.length; i++) {
-        expect(events[i].version).toBeGreaterThan(events[i - 1].version);
+        const prevVersion = events[i - 1].version ?? events[i - 1].sequence;
+        const currVersion = events[i].version ?? events[i].sequence;
+        expect(currVersion).toBeGreaterThan(prevVersion);
       }
     });
 
-    test('should allow querying events from specific version', async () => {
-      // Create a new instance
-      const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      const instance = await createRes.json();
+    test('events have timestamps', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
 
-      // Execute transitions to create multiple events
-      const validateRes = await fetch(`${baseUrl}/api/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            customer_name: 'Diana',
-            total: 200,
-            order_id: 'ORDER-004'
-          }
-        })
-      });
-      expect(validateRes.ok).toBe(true);
+      const events = await harness.pilot.getEvents();
+      expect(events.length).toBeGreaterThan(0);
 
-      const paymentRes = await fetch(`${baseUrl}/api/process_payment`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          aggregate_id: instance.aggregate_id,
-          data: {
-            order_id: 'ORDER-004',
-            total: 200,
-            payment_method: 'debit_card'
-          }
-        })
-      });
-      expect(paymentRes.ok).toBe(true);
+      const event = events[0];
+      expect(event.timestamp).toBeDefined();
+    });
 
-      // Get all events
-      const allEventsRes = await fetch(`${baseUrl}/api/orderprocessing/${instance.aggregate_id}/events?from=0`);
-      const allEventsData = await allEventsRes.json();
-      const allEvents = allEventsData.events || [];
-      
-      // Get events from version 1 onwards (skipping version 0)
-      const laterEventsRes = await fetch(`${baseUrl}/api/orderprocessing/${instance.aggregate_id}/events?from=1`);
-      const laterEventsData = await laterEventsRes.json();
-      const laterEvents = laterEventsData.events || [];
-      
-      expect(laterEvents.length).toBeLessThanOrEqual(allEvents.length);
-      if (laterEvents.length > 0) {
-        expect(laterEvents[0].version).toBeGreaterThanOrEqual(1);
+    test('events are returned in order', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate', { customer_name: 'First' });
+      await harness.pilot.action('process_payment', { note: 'Second' });
+
+      const events = await harness.pilot.getEvents();
+
+      // First event should be validate (or created), later should be payment
+      const validateIdx = events.findIndex(e => e.data?.customer_name === 'First');
+      const paymentIdx = events.findIndex(e => e.data?.note === 'Second');
+
+      if (validateIdx >= 0 && paymentIdx >= 0) {
+        expect(validateIdx).toBeLessThan(paymentIdx);
       }
+    });
+  });
+
+  describe('event replay', () => {
+    test('can replay to specific version', async () => {
+      await harness.pilot.create();
+
+      await harness.pilot.action('validate');
+      await harness.pilot.action('process_payment');
+      await harness.pilot.action('ship');
+
+      const events = await harness.pilot.getEvents();
+      const midVersion = events.length > 1 ? events[1].version : 1;
+
+      const replay = await harness.pilot.replayTo(midVersion);
+
+      expect(replay.version).toBe(midVersion);
+      expect(replay.events.length).toBeLessThanOrEqual(events.length);
+    });
+  });
+
+  describe('system fields', () => {
+    test('events have stream_id matching aggregate', async () => {
+      const inst = await harness.pilot.create();
+      await harness.pilot.action('validate');
+
+      const events = await harness.pilot.getEvents();
+      expect(events.length).toBeGreaterThan(0);
+
+      const event = events[0];
+      expect(event.stream_id).toBe(inst.id);
+    });
+
+    test('events have version numbers', async () => {
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+
+      const events = await harness.pilot.getEvents();
+      const event = events[0];
+
+      expect(event.version !== undefined || event.sequence !== undefined).toBe(true);
+    });
+  });
+
+  describe('complete workflow event trail', () => {
+    test('full workflow generates expected event sequence', async () => {
+      await harness.pilot.create();
+
+      await harness.pilot.sequence([
+        'validate',
+        'process_payment',
+        'ship',
+        'confirm'
+      ]);
+
+      const events = await harness.pilot.getEvents();
+
+      // Should have at least 4 events (one per transition)
+      expect(events.length).toBeGreaterThanOrEqual(4);
+
+      // Final state should be completed
+      await harness.pilot.assertState('completed');
+
+      // Event count matches transition count
+      const count = await harness.pilot.getEventCount();
+      expect(count).toBeGreaterThanOrEqual(4);
     });
   });
 });

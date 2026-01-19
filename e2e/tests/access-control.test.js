@@ -1,10 +1,11 @@
 /**
  * E2E tests for Role-Based Access Control.
  *
- * Tests role-based access control including:
+ * Uses window.pilot API to test role-based access patterns:
  * - Role-based transition restrictions
  * - Role inheritance
  * - Access denial for unauthorized roles
+ * - Role switching during workflows
  */
 
 const { TestHarness } = require('../lib/test-harness');
@@ -23,190 +24,220 @@ describe('Role-Based Access Control', () => {
     }
   });
 
+  describe('role introspection', () => {
+    test('can check current roles after login', async () => {
+      await harness.login(['admin', 'fulfillment']);
+
+      const roles = await harness.pilot.getRoles();
+      expect(roles).toContain('admin');
+      expect(roles).toContain('fulfillment');
+    });
+
+    test('hasRole returns correct values', async () => {
+      await harness.login('customer');
+
+      expect(await harness.pilot.hasRole('customer')).toBe(true);
+      expect(await harness.pilot.hasRole('admin')).toBe(false);
+      expect(await harness.pilot.hasRole('fulfillment')).toBe(false);
+    });
+
+    test('assertRole throws for missing role', async () => {
+      await harness.login('customer');
+
+      await expect(
+        harness.pilot.assertRole('admin')
+      ).rejects.toThrow(/admin/);
+    });
+  });
+
   describe('unauthorized role access', () => {
-    test('should deny transition to unauthorized role', async () => {
-      // Login as customer (who doesn't have permission to validate orders)
+    test('customer cannot validate orders', async () => {
+      // Login as customer (who lacks fulfillment permission)
       await harness.login('customer');
 
-      // Create an instance
-      const instance = await harness.createInstance();
-      expect(instance.aggregate_id).toBeDefined();
+      // Create instance
+      await harness.pilot.create();
+      await harness.pilot.assertState('received');
 
-      // Try to execute validate transition (requires fulfillment role)
+      // Try to validate - should fail with permission error
       await expect(
-        harness.executeTransition('validate', instance.aggregate_id, {})
+        harness.pilot.action('validate')
+      ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
+
+      // State should remain unchanged
+      await harness.pilot.assertState('received');
+    });
+
+    test('customer cannot reject orders', async () => {
+      await harness.login('customer');
+      await harness.pilot.create();
+
+      await expect(
+        harness.pilot.action('reject')
       ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
     });
 
-    test('should deny reject transition to customer role', async () => {
-      // Login as customer
+    test('customer cannot ship orders', async () => {
       await harness.login('customer');
+      await harness.pilot.create();
 
-      // Create an instance
-      const instance = await harness.createInstance();
-      
-      // Try to reject (requires fulfillment role)
+      // Ship requires paid state AND fulfillment role
+      // Should fail on permissions before state validation
       await expect(
-        harness.executeTransition('reject', instance.aggregate_id, {})
-      ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
-    });
-
-    test('should deny ship transition to customer role', async () => {
-      // Login as customer
-      await harness.login('customer');
-
-      // Create an instance
-      const instance = await harness.createInstance();
-      
-      // Try to ship directly from received state
-      // This should fail due to permissions (fulfillment required)
-      // before any state validation occurs
-      await expect(
-        harness.executeTransition('ship', instance.aggregate_id, {})
+        harness.pilot.action('ship')
       ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
     });
   });
 
   describe('role inheritance', () => {
-    test('should allow inherited role permissions', async () => {
-      // Login as admin (admin inherits from fulfillment)
+    test('admin inherits fulfillment permissions', async () => {
+      // Admin role inherits from fulfillment
       await harness.login('admin');
 
-      // Create an instance
-      const instance = await harness.createInstance();
-      expect(instance).toHaveTokenIn('received');
+      await harness.pilot.create();
+      await harness.pilot.assertState('received');
 
-      // Execute validate transition (requires fulfillment role, which admin inherits)
-      const result = await harness.executeTransition('validate', instance.aggregate_id, {});
-      
-      // Should succeed
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('validated');
+      // Validate requires fulfillment - admin should have it via inheritance
+      await harness.pilot.action('validate');
+      await harness.pilot.assertState('validated');
     });
 
-    test('should allow admin to perform fulfillment actions', async () => {
-      // Login as admin
+    test('admin can reject orders via inherited permissions', async () => {
       await harness.login('admin');
+      await harness.pilot.create();
 
-      // Create instance
-      const instance = await harness.createInstance();
-      
-      // Validate (fulfillment action that admin has via inheritance)
-      let result = await harness.executeTransition('validate', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('validated');
-
-      // Process payment requires system role
-      // Admin does NOT inherit system role (only inherits from fulfillment)
-      // Therefore we must add system role explicitly for this step
-      await harness.login(['admin', 'system']);
-      result = await harness.executeTransition('process_payment', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('paid');
-
-      // Ship (fulfillment action - admin has this through inheritance)
-      await harness.login('admin');
-      result = await harness.executeTransition('ship', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('shipped');
-
-      // Confirm (fulfillment action)
-      result = await harness.executeTransition('confirm', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('completed');
+      // Reject requires fulfillment - admin inherits this
+      await harness.pilot.action('reject');
+      await harness.pilot.assertState('rejected');
     });
 
-    test('should allow reject transition with inherited permissions', async () => {
-      // Login as admin
+    test('admin cannot process payment without system role', async () => {
       await harness.login('admin');
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+      await harness.pilot.assertState('validated');
 
-      // Create instance
-      const instance = await harness.createInstance();
-      expect(instance).toHaveTokenIn('received');
-
-      // Reject (requires fulfillment, admin should inherit this)
-      const result = await harness.executeTransition('reject', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('rejected');
+      // process_payment requires system role - admin doesn't inherit this
+      await expect(
+        harness.pilot.action('process_payment')
+      ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
     });
   });
 
   describe('role-specific transitions', () => {
-    test('should allow fulfillment role to validate', async () => {
-      // Login as fulfillment
+    test('fulfillment role can validate orders', async () => {
       await harness.login('fulfillment');
 
-      // Create instance
-      const instance = await harness.createInstance();
-      
-      // Validate (fulfillment action)
-      const result = await harness.executeTransition('validate', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('validated');
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+      await harness.pilot.assertState('validated');
     });
 
-    test('should deny system-only transition to fulfillment role', async () => {
-      // First, setup an instance in validated state using admin role
+    test('fulfillment cannot process payment', async () => {
+      // Setup: create and validate with admin
       await harness.login('admin');
-      
-      const instance = await harness.createInstance();
-      await harness.executeTransition('validate', instance.aggregate_id, {});
-      
-      // Now switch to fulfillment-only role
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+      await harness.pilot.assertState('validated');
+
+      // Switch to fulfillment only
       await harness.login('fulfillment');
-      
-      // Try to process payment (requires system role, not inherited by fulfillment)
+
+      // process_payment requires system role
       await expect(
-        harness.executeTransition('process_payment', instance.aggregate_id, {})
+        harness.pilot.action('process_payment')
       ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
     });
 
-    test('should allow system role to process payment', async () => {
-      // Setup instance in validated state
+    test('system role can process payment', async () => {
+      // Setup: validate first
       await harness.login(['fulfillment', 'system']);
-      
-      const instance = await harness.createInstance();
-      await harness.executeTransition('validate', instance.aggregate_id, {});
-      
-      // Login as system only
+      await harness.pilot.create();
+      await harness.pilot.action('validate');
+
+      // Switch to system only
       await harness.login('system');
-      
-      // Process payment (system action)
-      const result = await harness.executeTransition('process_payment', instance.aggregate_id, {});
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('paid');
+
+      await harness.pilot.action('process_payment');
+      await harness.pilot.assertState('paid');
     });
   });
 
-  describe('fireTransition helper', () => {
-    test('should work with fireTransition shorthand', async () => {
-      // Login as admin
+  describe('multi-role workflow', () => {
+    test('complete workflow requires role switching', async () => {
+      // Start as fulfillment to create and validate
+      await harness.login('fulfillment');
+      const inst = await harness.pilot.create();
+      await harness.pilot.action('validate');
+      await harness.pilot.assertState('validated');
+
+      // Switch to system for payment
+      await harness.login('system');
+      await harness.pilot.view(inst.id);
+      await harness.pilot.action('process_payment');
+      await harness.pilot.assertState('paid');
+
+      // Switch back to fulfillment for shipping and confirmation
+      await harness.login('fulfillment');
+      await harness.pilot.view(inst.id);
+      await harness.pilot.action('ship');
+      await harness.pilot.assertState('shipped');
+
+      await harness.pilot.action('confirm');
+      await harness.pilot.assertState('completed');
+    });
+
+    test('admin + system can complete entire workflow', async () => {
+      // Admin inherits fulfillment, plus system gives payment access
+      await harness.login(['admin', 'system']);
+
+      await harness.pilot.create();
+
+      // Full workflow with both roles
+      await harness.pilot.sequence([
+        'validate',
+        'process_payment',
+        'ship',
+        'confirm'
+      ]);
+
+      await harness.pilot.assertState('completed');
+    });
+  });
+
+  describe('role persistence', () => {
+    test('roles persist across navigation', async () => {
+      await harness.login(['admin', 'fulfillment']);
+
+      await harness.pilot.list();
+      expect(await harness.pilot.hasRole('admin')).toBe(true);
+
+      await harness.pilot.create();
+      expect(await harness.pilot.hasRole('admin')).toBe(true);
+
+      await harness.pilot.list();
+      expect(await harness.pilot.hasRole('fulfillment')).toBe(true);
+    });
+
+    test('logout clears roles', async () => {
+      await harness.login(['admin', 'system']);
+      expect(await harness.pilot.isAuthenticated()).toBe(true);
+      expect(await harness.pilot.hasRole('admin')).toBe(true);
+
+      await harness.logout();
+      expect(await harness.pilot.isAuthenticated()).toBe(false);
+      expect(await harness.pilot.getRoles()).toEqual([]);
+    });
+
+    test('re-login with different roles works', async () => {
       await harness.login('admin');
+      expect(await harness.pilot.hasRole('admin')).toBe(true);
+      expect(await harness.pilot.hasRole('customer')).toBe(false);
 
-      // Use fireTransition (creates instance automatically)
-      const result = await harness.fireTransition('validate', {});
-      
-      // Should succeed
-      expect(result.success).toBe(true);
-      expect(result).toHaveTokenIn('validated');
-    });
-
-    test('should deny unauthorized access via fireTransition', async () => {
-      // Login as customer
+      // Re-login with different role
       await harness.login('customer');
-
-      // Try to validate via fireTransition
-      await expect(
-        harness.fireTransition('validate', {})
-      ).rejects.toThrow(/forbidden|unauthorized|insufficient/i);
+      expect(await harness.pilot.hasRole('customer')).toBe(true);
+      expect(await harness.pilot.hasRole('admin')).toBe(false);
     });
   });
-
-  // NOTE: Guard expression tests are not included because the order-processing
-  // example does not define any guard expressions in its schema. Guard expressions
-  // are runtime conditions that check data values (e.g., user.id == assignee_id).
-  // To test guard expressions, use an example that includes them, such as:
-  // - task-manager-app.json (has guards like "user.id == assignee_id")
-  // - order-system.json (has guards like "inventory[product_id] >= quantity")
-  // - token-ledger.json (has guards like "balances[from] >= amount")
 });

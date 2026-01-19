@@ -5,11 +5,29 @@
  * - App server management
  * - Browser via Puppeteer
  * - Debug WebSocket client for browser evaluation
+ * - Pilot API proxy for user flow testing
  */
 
 const puppeteer = require('puppeteer');
 const { AppServer } = require('./app-server');
 const { DebugClient } = require('./debug-client');
+
+/**
+ * Creates a proxy for window.pilot that allows calling pilot methods from tests.
+ * Usage: await harness.pilot.create() or await harness.pilot.action('validate')
+ */
+function createPilotProxy(harness) {
+  return new Proxy({}, {
+    get(target, prop) {
+      // Return a function that calls window.pilot[prop](...args)
+      return async (...args) => {
+        const argsJson = JSON.stringify(args);
+        const code = `return await window.pilot.${prop}(...${argsJson})`;
+        return harness.eval(code);
+      };
+    }
+  });
+}
 
 /**
  * TestHarness provides a complete E2E testing environment.
@@ -23,6 +41,7 @@ class TestHarness {
     this.page = null;
     this.debugClient = null;
     this.sessionId = null;
+    this.pilot = createPilotProxy(this);
   }
 
   /**
@@ -148,38 +167,26 @@ class TestHarness {
 
   /**
    * Login via debug test login endpoint and get token.
+   * Uses pilot.loginAs() which handles both server auth and browser state.
    * @param {string|string[]} roles - Single role string or array of roles
    */
   async login(roles = ['admin', 'fulfillment', 'system', 'customer']) {
     // Normalize roles to array if a single string is provided
     const rolesArray = typeof roles === 'string' ? [roles] : roles;
 
-    const response = await fetch(`${this.server.baseUrl}/api/debug/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: 'test-user', roles: rolesArray }),
-    });
-    const data = await response.json();
+    // Use pilot.loginAs() which handles both server login and browser auth state
+    const data = await this.pilot.loginAs(rolesArray);
     this.authToken = data.token;
 
-    // Set auth in the browser using the frontend's saveAuth function
-    // which properly sets the module-level authToken variable
-    await this.eval(`
-      const auth = ${JSON.stringify(data)};
-      localStorage.setItem('auth', JSON.stringify(auth));
-      // Trigger a reload of auth from localStorage
-      if (window.saveAuth) {
-        window.saveAuth(auth);
-      } else {
-        // Fallback: reload the page to pick up auth from localStorage
-        location.reload();
-      }
-    `);
-
-    // Small delay to let the auth update propagate
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     return data;
+  }
+
+  /**
+   * Logout current user.
+   */
+  async logout() {
+    await this.pilot.logout();
+    this.authToken = null;
   }
 
   /**
