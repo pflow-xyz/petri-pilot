@@ -50,6 +50,17 @@ go test ./...           # All tests
 make build-examples     # Regenerate and build all examples
 ```
 
+### E2E Tests
+
+E2E tests use Puppeteer with Chrome. On macOS, set the Chrome path:
+
+```bash
+cd e2e
+PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm test
+```
+
+On Linux (CI), the default `/usr/bin/chromium` is used.
+
 ## Monitoring GitHub Actions
 
 Use `gh` CLI to monitor CI runs:

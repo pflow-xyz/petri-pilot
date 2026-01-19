@@ -36,6 +36,9 @@ type TransitionResult struct {
 	// State is the new aggregate state (optional).
 	State any `json:"state,omitempty"`
 
+	// EnabledTransitions lists transitions that can now fire.
+	EnabledTransitions []string `json:"enabled,omitempty"`
+
 	// Error contains error details if the transition failed.
 	Error string `json:"error,omitempty"`
 }

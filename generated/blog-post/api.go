@@ -61,15 +61,15 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	return r.Build()
 }
 
-// StaticFileHandler returns an http.Handler that serves static files from frontend/dist.
+// StaticFileHandler returns an http.Handler that serves static files from frontend/.
 // It supports SPA routing by returning index.html for paths that don't match static files.
 func StaticFileHandler() http.HandlerFunc {
-	// Find frontend/dist directory
-	distPath := "frontend/dist"
-	if _, err := os.Stat(distPath); os.IsNotExist(err) {
+	// Find frontend directory
+	frontendPath := "frontend"
+	if _, err := os.Stat(frontendPath); os.IsNotExist(err) {
 		// Try relative to executable
 		exe, _ := os.Executable()
-		distPath = filepath.Join(filepath.Dir(exe), "frontend", "dist")
+		frontendPath = filepath.Join(filepath.Dir(exe), "frontend")
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -80,13 +80,13 @@ func StaticFileHandler() http.HandlerFunc {
 		}
 
 		// Try to serve the file
-		fullPath := filepath.Join(distPath, path)
+		fullPath := filepath.Join(frontendPath, path)
 
 		// Check if file exists
 		info, err := os.Stat(fullPath)
 		if err != nil || info.IsDir() {
 			// File doesn't exist, serve index.html for SPA routing
-			http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+			http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
 			return
 		}
 
@@ -206,10 +206,11 @@ func HandleSubmit(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
-			Success:     true,
-			AggregateID: agg.ID(),
-			Version:     agg.Version(),
-			State:       agg.Places(),
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
 		})
 	}
 }
@@ -238,10 +239,11 @@ func HandleApprove(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
-			Success:     true,
-			AggregateID: agg.ID(),
-			Version:     agg.Version(),
-			State:       agg.Places(),
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
 		})
 	}
 }
@@ -270,10 +272,11 @@ func HandleReject(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
-			Success:     true,
-			AggregateID: agg.ID(),
-			Version:     agg.Version(),
-			State:       agg.Places(),
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
 		})
 	}
 }
@@ -302,10 +305,11 @@ func HandleUnpublish(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
-			Success:     true,
-			AggregateID: agg.ID(),
-			Version:     agg.Version(),
-			State:       agg.Places(),
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
 		})
 	}
 }
@@ -334,10 +338,11 @@ func HandleRestore(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
-			Success:     true,
-			AggregateID: agg.ID(),
-			Version:     agg.Version(),
-			State:       agg.Places(),
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
 		})
 	}
 }

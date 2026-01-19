@@ -664,9 +664,11 @@ window.pilot = {
   // --- Navigation ---
 
   /** Navigate to the list page */
-  list() {
+  async list() {
     navigate('/support-ticket')
-    return this.waitForRender()
+    // Wait for instances to load
+    await this.waitFor('.entity-card, .empty-state', 5000).catch(() => {})
+    return instances
   },
 
   /** Navigate to create new instance form */
