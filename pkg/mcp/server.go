@@ -37,6 +37,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(simulateTool(), handleSimulate)
 	s.AddTool(previewTool(), handlePreview)
+	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
@@ -224,6 +225,20 @@ func previewTool() mcp.Tool {
 		mcp.WithString("file",
 			mcp.Required(),
 			mcp.Description("Template name to preview (e.g., 'api', 'workflow', 'events', 'aggregate', 'main')"),
+		),
+	)
+}
+
+func diffTool() mcp.Tool {
+	return mcp.NewTool("petri_diff",
+		mcp.WithDescription("Compare two Petri net models and show structural differences. Reports added, removed, and modified places, transitions, arcs, roles, and access rules."),
+		mcp.WithString("model_a",
+			mcp.Required(),
+			mcp.Description("First model as JSON (the 'before' or 'base' model)"),
+		),
+		mcp.WithString("model_b",
+			mcp.Required(),
+			mcp.Description("Second model as JSON (the 'after' or 'new' model)"),
 		),
 	)
 }
@@ -558,6 +573,172 @@ func handlePreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	}
 
 	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
+func handleDiff(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelAJSON, err := request.RequireString("model_a")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model_a parameter: %v", err)), nil
+	}
+
+	modelBJSON, err := request.RequireString("model_b")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model_b parameter: %v", err)), nil
+	}
+
+	modelA, err := parseModel(modelAJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model_a JSON: %v", err)), nil
+	}
+
+	modelB, err := parseModel(modelBJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model_b JSON: %v", err)), nil
+	}
+
+	// Compare models
+	diff := compareModels(modelA, modelB)
+
+	outputJSON, err := json.MarshalIndent(diff, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
+// ModelDiff represents the differences between two models.
+type ModelDiff struct {
+	PlacesAdded        []string `json:"places_added,omitempty"`
+	PlacesRemoved      []string `json:"places_removed,omitempty"`
+	TransitionsAdded   []string `json:"transitions_added,omitempty"`
+	TransitionsRemoved []string `json:"transitions_removed,omitempty"`
+	ArcsAdded          []string `json:"arcs_added,omitempty"`
+	ArcsRemoved        []string `json:"arcs_removed,omitempty"`
+	RolesAdded         []string `json:"roles_added,omitempty"`
+	RolesRemoved       []string `json:"roles_removed,omitempty"`
+	AccessAdded        []string `json:"access_added,omitempty"`
+	AccessRemoved      []string `json:"access_removed,omitempty"`
+	HasChanges         bool     `json:"has_changes"`
+}
+
+func compareModels(a, b *schema.Model) ModelDiff {
+	diff := ModelDiff{}
+
+	// Compare places
+	placesA := make(map[string]bool)
+	for _, p := range a.Places {
+		placesA[p.ID] = true
+	}
+	placesB := make(map[string]bool)
+	for _, p := range b.Places {
+		placesB[p.ID] = true
+	}
+	for id := range placesB {
+		if !placesA[id] {
+			diff.PlacesAdded = append(diff.PlacesAdded, id)
+		}
+	}
+	for id := range placesA {
+		if !placesB[id] {
+			diff.PlacesRemoved = append(diff.PlacesRemoved, id)
+		}
+	}
+
+	// Compare transitions
+	transA := make(map[string]bool)
+	for _, t := range a.Transitions {
+		transA[t.ID] = true
+	}
+	transB := make(map[string]bool)
+	for _, t := range b.Transitions {
+		transB[t.ID] = true
+	}
+	for id := range transB {
+		if !transA[id] {
+			diff.TransitionsAdded = append(diff.TransitionsAdded, id)
+		}
+	}
+	for id := range transA {
+		if !transB[id] {
+			diff.TransitionsRemoved = append(diff.TransitionsRemoved, id)
+		}
+	}
+
+	// Compare arcs
+	arcKey := func(arc schema.Arc) string {
+		return fmt.Sprintf("%s->%s", arc.From, arc.To)
+	}
+	arcsA := make(map[string]bool)
+	for _, arc := range a.Arcs {
+		arcsA[arcKey(arc)] = true
+	}
+	arcsB := make(map[string]bool)
+	for _, arc := range b.Arcs {
+		arcsB[arcKey(arc)] = true
+	}
+	for key := range arcsB {
+		if !arcsA[key] {
+			diff.ArcsAdded = append(diff.ArcsAdded, key)
+		}
+	}
+	for key := range arcsA {
+		if !arcsB[key] {
+			diff.ArcsRemoved = append(diff.ArcsRemoved, key)
+		}
+	}
+
+	// Compare roles
+	rolesA := make(map[string]bool)
+	for _, r := range a.Roles {
+		rolesA[r.ID] = true
+	}
+	rolesB := make(map[string]bool)
+	for _, r := range b.Roles {
+		rolesB[r.ID] = true
+	}
+	for id := range rolesB {
+		if !rolesA[id] {
+			diff.RolesAdded = append(diff.RolesAdded, id)
+		}
+	}
+	for id := range rolesA {
+		if !rolesB[id] {
+			diff.RolesRemoved = append(diff.RolesRemoved, id)
+		}
+	}
+
+	// Compare access rules
+	accessKey := func(acc schema.AccessRule) string {
+		return fmt.Sprintf("%s:%v", acc.Transition, acc.Roles)
+	}
+	accessA := make(map[string]bool)
+	for _, acc := range a.Access {
+		accessA[accessKey(acc)] = true
+	}
+	accessB := make(map[string]bool)
+	for _, acc := range b.Access {
+		accessB[accessKey(acc)] = true
+	}
+	for key := range accessB {
+		if !accessA[key] {
+			diff.AccessAdded = append(diff.AccessAdded, key)
+		}
+	}
+	for key := range accessA {
+		if !accessB[key] {
+			diff.AccessRemoved = append(diff.AccessRemoved, key)
+		}
+	}
+
+	// Check if there are any changes
+	diff.HasChanges = len(diff.PlacesAdded) > 0 || len(diff.PlacesRemoved) > 0 ||
+		len(diff.TransitionsAdded) > 0 || len(diff.TransitionsRemoved) > 0 ||
+		len(diff.ArcsAdded) > 0 || len(diff.ArcsRemoved) > 0 ||
+		len(diff.RolesAdded) > 0 || len(diff.RolesRemoved) > 0 ||
+		len(diff.AccessAdded) > 0 || len(diff.AccessRemoved) > 0
+
+	return diff
 }
 
 func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
