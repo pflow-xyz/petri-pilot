@@ -108,9 +108,71 @@ For architectural details, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 }
 ```
 
+### Events First Schema
+
+Petri-pilot uses an **Events First** design pattern where events define the complete data contract, while bindings define operational data for state computation.
+
+#### Events: The Complete Record
+
+Events capture the complete business record with:
+- All required and optional fields for audit and replay
+- Auto-populated system fields (timestamp, aggregate_id)
+- Full domain context for event sourcing
+
+```json
+{
+  "events": [
+    {
+      "id": "order_validated",
+      "name": "Order Validated",
+      "description": "Order has passed validation checks",
+      "fields": [
+        {"name": "order_id", "type": "string", "required": true},
+        {"name": "customer_name", "type": "string", "required": true},
+        {"name": "customer_email", "type": "string"},
+        {"name": "total", "type": "number", "required": true},
+        {"name": "status", "type": "string"}
+      ]
+    }
+  ]
+}
+```
+
+#### Bindings: Operational Data
+
+Bindings extract just the operational data needed for:
+- Guard expressions (state validation)
+- Arc transformations (state updates)
+- Map key lookups (arcnet pattern)
+
+```json
+{
+  "transitions": [
+    {
+      "id": "validate",
+      "event": "order_validated",
+      "bindings": [
+        {"name": "order_id", "type": "string"},
+        {"name": "customer_name", "type": "string"},
+        {"name": "total", "type": "number", "value": true}
+      ]
+    }
+  ]
+}
+```
+
+**Key differences:**
+- **Events** = Complete business record (what happened)
+- **Bindings** = Operational subset (what's needed for computation)
+- **`"value": true`** = Transfer value to state (for data places)
+- **`"keys": ["key"]`** = Use as map key for lookups
+
+For more details, see [`docs/events-first-pattern.md`](docs/events-first-pattern.md).
+
 ### Full-Featured Model
 
 See `examples/order-processing.json` for a complete example with:
+- Events First schema with bindings
 - Roles and access control
 - Views for forms and tables
 - Navigation configuration
@@ -159,6 +221,13 @@ petri-pilot codegen model.json -o ./app/ --frontend
 # Generate frontend only
 petri-pilot frontend model.json -o ./frontend/
 ```
+
+## Documentation
+
+- **[Events First Pattern](docs/events-first-pattern.md)** - Complete guide to Events First schema and binding patterns
+- **[MCP Prompts Guide](docs/mcp-prompts-guide.md)** - How to use design-workflow, add-access-control, and add-views prompts
+- **[E2E Testing Guide](docs/e2e-testing-guide.md)** - Writing tests for generated applications
+- **[Architecture](ARCHITECTURE.md)** - Detailed architecture and design patterns
 
 ## Development
 
