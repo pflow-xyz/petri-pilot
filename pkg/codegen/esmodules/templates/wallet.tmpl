@@ -407,6 +407,196 @@ export function createWalletModal() {
 }
 
 // ============================================================================
+// Debug Wallet View - Shows all accounts with balances
+// ============================================================================
+
+/**
+ * Create debug wallet view showing all accounts and their balances
+ */
+export function createDebugWalletView(state) {
+  const balances = state?.[BALANCE_FIELD] || {}
+
+  const rows = WALLET_ACCOUNTS.map((acc, idx) => {
+    const balance = balances[acc.address] || 0
+    const isConnected = idx === accountIndex
+
+    return `
+      <tr class="${isConnected ? 'debug-wallet-connected' : ''}">
+        <td>
+          <div class="debug-wallet-account">
+            <span class="debug-wallet-name">${acc.name || 'Account ' + idx}</span>
+            ${isConnected ? '<span class="debug-wallet-badge">Connected</span>' : ''}
+          </div>
+        </td>
+        <td class="debug-wallet-address">
+          <code>${acc.address}</code>
+          <button onclick="window.copyAddress('${acc.address}')" class="copy-btn-small" title="Copy">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </td>
+        <td class="debug-wallet-roles">
+          ${acc.roles.length > 0 ? acc.roles.map(r => `<span class="role-badge">${r}</span>`).join(' ') : '<span class="no-roles">none</span>'}
+        </td>
+        <td class="debug-wallet-balance">
+          <strong>${formatBalance(balance)}</strong>{{if .Unit}} {{.Unit}}{{end}}
+        </td>
+      </tr>
+    `
+  }).join('')
+
+  // Calculate totals
+  const totalBalance = WALLET_ACCOUNTS.reduce((sum, acc) => sum + (balances[acc.address] || 0), 0)
+  const totalSupply = state?.total_supply || 0
+
+  return `
+    <div id="debug-wallet-view" class="debug-wallet-view">
+      <div class="debug-wallet-header">
+        <h3>Debug Wallet - All Accounts</h3>
+        <button onclick="window.hideDebugWalletView()" class="modal-close">&times;</button>
+      </div>
+      <div class="debug-wallet-body">
+        <table class="debug-wallet-table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Address</th>
+              <th>Roles</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3"><strong>Total Balances</strong></td>
+              <td class="debug-wallet-balance"><strong>${formatBalance(totalBalance)}</strong>{{if .Unit}} {{.Unit}}{{end}}</td>
+            </tr>
+            <tr>
+              <td colspan="3"><strong>Total Supply</strong></td>
+              <td class="debug-wallet-balance"><strong>${formatBalance(totalSupply)}</strong>{{if .Unit}} {{.Unit}}{{end}}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <style>
+      .debug-wallet-view {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        z-index: 1000;
+        min-width: 600px;
+        max-width: 90vw;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .debug-wallet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: #24292e;
+        color: white;
+      }
+      .debug-wallet-header h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .debug-wallet-body {
+        padding: 1rem;
+        overflow: auto;
+      }
+      .debug-wallet-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+      .debug-wallet-table th {
+        text-align: left;
+        padding: 0.5rem;
+        border-bottom: 2px solid #ddd;
+        font-weight: 600;
+        color: #555;
+      }
+      .debug-wallet-table td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+      }
+      .debug-wallet-table tfoot td {
+        border-top: 2px solid #ddd;
+        border-bottom: none;
+        background: #f9f9f9;
+      }
+      .debug-wallet-connected {
+        background: #e8f5e9;
+      }
+      .debug-wallet-account {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .debug-wallet-name {
+        font-weight: 500;
+      }
+      .debug-wallet-badge {
+        font-size: 0.7rem;
+        padding: 0.125rem 0.375rem;
+        background: #10b981;
+        color: white;
+        border-radius: 4px;
+      }
+      .debug-wallet-address {
+        font-family: monospace;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .debug-wallet-address code {
+        background: #f5f5f5;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+      }
+      .copy-btn-small {
+        padding: 0.25rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: #666;
+        display: flex;
+        align-items: center;
+      }
+      .copy-btn-small:hover {
+        color: #007bff;
+      }
+      .debug-wallet-roles {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+      }
+      .no-roles {
+        color: #999;
+        font-style: italic;
+      }
+      .debug-wallet-balance {
+        text-align: right;
+        font-family: monospace;
+      }
+    </style>
+  `
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -455,6 +645,35 @@ window.connectWalletAccount = async function(index) {
 window.disconnectWallet = async function() {
   await disconnect()
   window.dispatchEvent(new CustomEvent('auth-change'))
+}
+
+window.showDebugWalletView = function() {
+  // Get current state from window (set by main.js)
+  const state = window.currentInstanceState || {}
+
+  // Remove existing view if present
+  const existing = document.getElementById('debug-wallet-container')
+  if (existing) existing.remove()
+
+  // Create and append the view
+  const container = document.createElement('div')
+  container.id = 'debug-wallet-container'
+  container.innerHTML = createDebugWalletView(state)
+  document.body.appendChild(container)
+}
+
+window.hideDebugWalletView = function() {
+  const container = document.getElementById('debug-wallet-container')
+  if (container) container.remove()
+}
+
+window.toggleDebugWalletView = function() {
+  const existing = document.getElementById('debug-wallet-container')
+  if (existing) {
+    window.hideDebugWalletView()
+  } else {
+    window.showDebugWalletView()
+  }
 }
 
 window.copyAddress = async function(address) {
@@ -517,6 +736,7 @@ export default {
   getMyBalance,
   createWalletStatus,
   createWalletModal,
+  createDebugWalletView,
   on,
   off,
 }
