@@ -148,12 +148,16 @@ class TestHarness {
 
   /**
    * Login via debug test login endpoint and get token.
+   * @param {string|string[]} roles - Single role string or array of roles
    */
   async login(roles = ['admin', 'fulfillment', 'system', 'customer']) {
+    // Normalize roles to array if a single string is provided
+    const rolesArray = typeof roles === 'string' ? [roles] : roles;
+
     const response = await fetch(`${this.server.baseUrl}/api/debug/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: 'test-user', roles }),
+      body: JSON.stringify({ login: 'test-user', roles: rolesArray }),
     });
     const data = await response.json();
     this.authToken = data.token;
@@ -180,9 +184,110 @@ class TestHarness {
 
   /**
    * Get event history for an aggregate.
+   * Uses the events API endpoint to fetch actual events.
+   * @param {string} aggregateId - The aggregate ID
+   * @returns {Promise<Array>} - Array of events with sequence numbers
    */
-  async getEventHistory(aggregateId, from = 0) {
-    return this.debugClient.getEventHistory(this.sessionId, this.appName, aggregateId, from);
+  async getEventHistory(aggregateId) {
+    // Use the events API endpoint
+    // Convert kebab-case to camelcase for API path
+    const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+    const response = await this.apiCall('GET', `/api/${apiPath}/${aggregateId}/events`, null, {
+      'Authorization': `Bearer ${this.authToken}`
+    });
+
+    // Return the events array with version as sequence
+    const events = response.events || [];
+    return events.map(e => ({
+      ...e,
+      sequence: e.version !== undefined ? e.version : e.sequence
+    }));
+  }
+
+  /**
+   * Fire a transition with error handling.
+   * @param {string} transitionId - The transition to execute
+   * @param {object} data - Additional data for the transition
+   * @param {string} aggregateId - The aggregate ID
+   * @returns {Promise<object>} - The transition result with success flag and state
+   */
+  async fireTransition(transitionId, data = {}, aggregateId) {
+    try {
+      const result = await this.executeTransition(transitionId, aggregateId, data);
+      return { success: true, state: result.places || result.state, ...result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get state of an aggregate (direct API call).
+   * @param {string} aggregateId - The aggregate ID
+   * @returns {Promise<object>} - The aggregate state with places
+   */
+  async getState(aggregateId) {
+    const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+    const result = await this.apiCall('GET', `/api/${apiPath}/${aggregateId}`, null, {
+      'Authorization': `Bearer ${this.authToken}`
+    });
+    return result.places || result.state || result;
+  }
+
+  /**
+   * Get view data for a specific view and optionally an aggregate instance.
+   * @param {string} viewId - The view ID
+   * @param {string} aggregateId - Optional aggregate ID for detail views
+   * @returns {Promise<object>} - The view data
+   */
+  async getView(viewId, aggregateId = null) {
+    if (aggregateId) {
+      return this.debugClient.getView(this.sessionId, viewId, aggregateId);
+    } else {
+      // For table views - get instances and project event data
+      const result = await this.apiCall('GET', '/admin/instances');
+      const instances = result.instances || [];
+
+      const rows = [];
+      const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+      for (const instance of instances) {
+        const instanceId = instance.id || instance.ID || instance.aggregate_id;
+        const events = await this.apiCall('GET', `/api/${apiPath}/${instanceId}/events`);
+
+        const projectedData = { aggregate_id: instanceId };
+        if (events.events) {
+          for (const evt of events.events) {
+            if (evt.data) {
+              Object.assign(projectedData, evt.data);
+            }
+          }
+        }
+        rows.push(projectedData);
+      }
+
+      return { rows };
+    }
+  }
+
+  /**
+   * Restart the server while maintaining browser session.
+   */
+  async restartServer() {
+    const port = this.server ? this.server.port : this.options.port;
+
+    if (this.server) {
+      this.server.stop();
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const { AppServer } = require('./app-server');
+    this.server = new AppServer(this.appName, { ...this.options, port });
+    await this.server.start();
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    this.sessionId = await this.debugClient.waitForSession();
+
+    return this;
   }
 
   /**
