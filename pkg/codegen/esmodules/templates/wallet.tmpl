@@ -520,6 +520,7 @@ export function createDebugWalletView(state) {
         width: 100%;
         border-collapse: collapse;
         font-size: 0.9rem;
+        table-layout: fixed;
       }
       .debug-wallet-table th {
         text-align: left;
@@ -528,6 +529,10 @@ export function createDebugWalletView(state) {
         font-weight: 600;
         color: #555;
       }
+      .debug-wallet-table th:nth-child(1) { width: 140px; }
+      .debug-wallet-table th:nth-child(2) { width: auto; }
+      .debug-wallet-table th:nth-child(3) { width: 100px; }
+      .debug-wallet-table th:nth-child(4) { width: 120px; }
       .debug-wallet-table td {
         padding: 0.5rem;
         border-bottom: 1px solid #eee;
