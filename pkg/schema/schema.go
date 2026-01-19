@@ -55,6 +55,54 @@ type Model struct {
 
 	// Blobstore configuration for event attachments
 	Blobstore *Blobstore `json:"blobstore,omitempty"`
+
+	// Timers for scheduled/delayed transitions
+	Timers []Timer `json:"timers,omitempty"`
+
+	// Notifications triggered by state changes
+	Notifications []Notification `json:"notifications,omitempty"`
+
+	// Relationships between workflow instances
+	Relationships []Relationship `json:"relationships,omitempty"`
+
+	// Computed fields derived from state
+	Computed []ComputedField `json:"computed,omitempty"`
+
+	// Indexes for search and filtering
+	Indexes []Index `json:"indexes,omitempty"`
+
+	// Approval chains for multi-step approvals
+	Approvals map[string]*ApprovalChain `json:"approvals,omitempty"`
+
+	// Templates for pre-configured starting states
+	Templates []Template `json:"templates,omitempty"`
+
+	// Batch operations configuration
+	Batch *BatchConfig `json:"batch,omitempty"`
+
+	// Inbound webhooks for external event triggers
+	InboundWebhooks []InboundWebhook `json:"inboundWebhooks,omitempty"`
+
+	// Documents for PDF/document generation
+	Documents []Document `json:"documents,omitempty"`
+
+	// Comments configuration
+	Comments *CommentsConfig `json:"comments,omitempty"`
+
+	// Tags configuration
+	Tags *TagsConfig `json:"tags,omitempty"`
+
+	// Activity feed configuration
+	Activity *ActivityConfig `json:"activity,omitempty"`
+
+	// Favorites/watchlist configuration
+	Favorites *FavoritesConfig `json:"favorites,omitempty"`
+
+	// Export configuration
+	Export *ExportConfig `json:"export,omitempty"`
+
+	// Soft delete configuration
+	SoftDelete *SoftDeleteConfig `json:"softDelete,omitempty"`
 }
 
 // Event represents an explicit event definition with typed fields.
@@ -366,4 +414,160 @@ type Blobstore struct {
 	Enabled      bool     `json:"enabled"`                // Enable blobstore for binary/JSON attachments
 	MaxSize      int64    `json:"maxSize,omitempty"`      // Maximum blob size in bytes (default: 10MB)
 	AllowedTypes []string `json:"allowedTypes,omitempty"` // Allowed content types (default: ["application/json", "*/*"])
+}
+
+// Timer represents a scheduled or delayed transition trigger.
+type Timer struct {
+	ID         string `json:"id,omitempty"`        // Optional timer ID
+	Transition string `json:"transition"`          // Transition to fire
+	After      string `json:"after,omitempty"`     // Duration after entering state (e.g., "24h", "30m")
+	Cron       string `json:"cron,omitempty"`      // Cron expression for scheduled firing
+	From       string `json:"from,omitempty"`      // Place that triggers the timer (for "after" timers)
+	Condition  string `json:"condition,omitempty"` // Optional condition expression
+	Repeat     bool   `json:"repeat,omitempty"`    // Whether to repeat (for cron timers)
+}
+
+// Notification represents a notification triggered by state changes.
+type Notification struct {
+	ID        string            `json:"id,omitempty"`        // Optional notification ID
+	On        string            `json:"on"`                  // Transition or place that triggers notification
+	Channel   string            `json:"channel"`             // email, sms, slack, webhook, in_app
+	To        string            `json:"to,omitempty"`        // Recipient expression (e.g., "{{applicant_email}}")
+	Template  string            `json:"template,omitempty"`  // Template ID or inline template
+	Subject   string            `json:"subject,omitempty"`   // Subject line (for email)
+	Webhook   string            `json:"webhook,omitempty"`   // Webhook URL (can use env vars like $SLACK_WEBHOOK)
+	Condition string            `json:"condition,omitempty"` // Optional condition expression
+	Data      map[string]string `json:"data,omitempty"`      // Additional data to include
+}
+
+// Relationship represents a link between workflow instances.
+type Relationship struct {
+	Name       string `json:"name"`                 // Relationship name (e.g., "line_items", "parent")
+	Type       string `json:"type"`                 // hasMany, hasOne, belongsTo
+	Target     string `json:"target"`               // Target model/workflow name
+	ForeignKey string `json:"foreignKey,omitempty"` // Foreign key field name
+	Cascade    string `json:"cascade,omitempty"`    // Cascade behavior: delete, nullify, restrict
+}
+
+// ComputedField represents a derived value from state.
+type ComputedField struct {
+	Name        string   `json:"name"`                  // Field name
+	Type        string   `json:"type,omitempty"`        // Result type: string, number, boolean, array
+	Expr        string   `json:"expr"`                  // Expression to compute value
+	DependsOn   []string `json:"dependsOn,omitempty"`   // Fields this depends on (for caching)
+	Persisted   bool     `json:"persisted,omitempty"`   // Whether to store computed value
+	Description string   `json:"description,omitempty"` // Description of the computed field
+}
+
+// Index represents a searchable index on workflow data.
+type Index struct {
+	Name   string   `json:"name,omitempty"` // Index name
+	Fields []string `json:"fields"`         // Fields to index
+	Type   string   `json:"type,omitempty"` // Index type: btree, fulltext, hash (default: btree)
+	Unique bool     `json:"unique,omitempty"`
+}
+
+// ApprovalChain represents a multi-step approval workflow.
+type ApprovalChain struct {
+	Levels        []ApprovalLevel `json:"levels"`                  // Approval levels in order
+	EscalateAfter string          `json:"escalateAfter,omitempty"` // Duration before escalation (e.g., "48h")
+	OnReject      string          `json:"onReject,omitempty"`      // Transition to fire on rejection
+	OnApprove     string          `json:"onApprove,omitempty"`     // Transition to fire on final approval
+	Parallel      bool            `json:"parallel,omitempty"`      // Whether levels can approve in parallel
+}
+
+// ApprovalLevel represents a single level in an approval chain.
+type ApprovalLevel struct {
+	Role       string `json:"role,omitempty"`       // Required role for this level
+	User       string `json:"user,omitempty"`       // Specific user expression
+	Condition  string `json:"condition,omitempty"`  // Condition for this level to apply
+	Required   int    `json:"required,omitempty"`   // Number of approvals required (default: 1)
+	Transition string `json:"transition,omitempty"` // Custom transition for this level
+}
+
+// Template represents a pre-configured starting state.
+type Template struct {
+	ID          string         `json:"id"`                    // Template ID
+	Name        string         `json:"name,omitempty"`        // Display name
+	Description string         `json:"description,omitempty"` // Description
+	Data        map[string]any `json:"data,omitempty"`        // Pre-filled data
+	Roles       []string       `json:"roles,omitempty"`       // Roles that can use this template
+	Default     bool           `json:"default,omitempty"`     // Whether this is the default template
+}
+
+// BatchConfig represents batch operations configuration.
+type BatchConfig struct {
+	Enabled     bool     `json:"enabled"`               // Enable batch operations
+	Transitions []string `json:"transitions,omitempty"` // Transitions allowed in batch
+	MaxSize     int      `json:"maxSize,omitempty"`     // Maximum batch size (default: 100)
+}
+
+// InboundWebhook represents an external webhook endpoint.
+type InboundWebhook struct {
+	ID         string            `json:"id,omitempty"`         // Webhook ID
+	Path       string            `json:"path"`                 // URL path (e.g., "/hooks/stripe")
+	Secret     string            `json:"secret,omitempty"`     // Secret for validation (can use env vars)
+	Transition string            `json:"transition"`           // Transition to fire
+	Map        map[string]string `json:"map,omitempty"`        // Field mapping from payload to event data
+	Condition  string            `json:"condition,omitempty"`  // Condition for processing
+	Method     string            `json:"method,omitempty"`     // HTTP method (default: POST)
+}
+
+// Document represents a document/PDF generation configuration.
+type Document struct {
+	ID          string `json:"id"`                    // Document ID
+	Name        string `json:"name,omitempty"`        // Display name
+	Template    string `json:"template"`              // Template file or inline template
+	Format      string `json:"format,omitempty"`      // Output format: pdf, html, docx (default: pdf)
+	Trigger     string `json:"trigger,omitempty"`     // Transition that triggers generation
+	StoreTo     string `json:"storeTo,omitempty"`     // Blob field to store generated document
+	Filename    string `json:"filename,omitempty"`    // Filename expression
+	Description string `json:"description,omitempty"` // Description
+}
+
+// CommentsConfig represents comments/notes configuration.
+type CommentsConfig struct {
+	Enabled    bool     `json:"enabled"`              // Enable comments
+	Roles      []string `json:"roles,omitempty"`      // Roles that can comment (empty = all authenticated)
+	Moderation bool     `json:"moderation,omitempty"` // Require moderation for comments
+	MaxLength  int      `json:"maxLength,omitempty"`  // Maximum comment length (default: 2000)
+}
+
+// TagsConfig represents tags/labels configuration.
+type TagsConfig struct {
+	Enabled    bool     `json:"enabled"`              // Enable tags
+	Predefined []string `json:"predefined,omitempty"` // Predefined tag options
+	FreeForm   bool     `json:"freeForm,omitempty"`   // Allow free-form tags (default: true)
+	MaxTags    int      `json:"maxTags,omitempty"`    // Maximum tags per instance (default: 10)
+	Colors     bool     `json:"colors,omitempty"`     // Enable tag colors
+}
+
+// ActivityConfig represents activity feed configuration.
+type ActivityConfig struct {
+	Enabled       bool     `json:"enabled"`                 // Enable activity feed
+	IncludeEvents []string `json:"includeEvents,omitempty"` // Event types to include (empty = all)
+	ExcludeEvents []string `json:"excludeEvents,omitempty"` // Event types to exclude
+	MaxItems      int      `json:"maxItems,omitempty"`      // Maximum items in feed (default: 100)
+}
+
+// FavoritesConfig represents favorites/watchlist configuration.
+type FavoritesConfig struct {
+	Enabled      bool `json:"enabled"`                // Enable favorites
+	Notify       bool `json:"notify,omitempty"`       // Notify on changes to favorited items
+	MaxFavorites int  `json:"maxFavorites,omitempty"` // Maximum favorites per user (default: 100)
+}
+
+// ExportConfig represents data export configuration.
+type ExportConfig struct {
+	Enabled bool     `json:"enabled"`              // Enable export
+	Formats []string `json:"formats,omitempty"`    // Allowed formats: csv, json, xlsx (default: ["csv", "json"])
+	MaxRows int      `json:"maxRows,omitempty"`    // Maximum rows per export (default: 10000)
+	Roles   []string `json:"roles,omitempty"`      // Roles that can export (empty = all authenticated)
+}
+
+// SoftDeleteConfig represents soft delete configuration.
+type SoftDeleteConfig struct {
+	Enabled       bool   `json:"enabled"`                 // Enable soft delete
+	RetentionDays int    `json:"retentionDays,omitempty"` // Days to retain before permanent delete (0 = forever)
+	RestoreRoles  []string `json:"restoreRoles,omitempty"`  // Roles that can restore deleted items
 }

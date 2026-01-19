@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-{{- if .HasBlobstore}}
+{{- if or .HasBlobstore .HasAnyFeatures}}
 	"database/sql"
 {{- end}}
 	"log"
@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
-{{- if .HasBlobstore}}
+{{- if or .HasBlobstore .HasAnyFeatures}}
 	_ "github.com/mattn/go-sqlite3"
 {{- end}}
 )
@@ -78,8 +78,132 @@ func main() {
 	}
 	{{- end}}
 
+	{{- if .HasAnyFeatures}}
+	// Initialize features database
+	featuresDB, err := sql.Open("sqlite3", "features.db")
+	if err != nil {
+		log.Fatalf("Failed to open features database: %v", err)
+	}
+	defer featuresDB.Close()
+	{{- end}}
+
+	{{- if .HasTimers}}
+	// Initialize timer manager
+	timerManager := NewTimerManager(featuresDB, app)
+	if err := timerManager.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize timer manager: %v", err)
+	}
+	go timerManager.Start(context.Background())
+	{{- end}}
+
+	{{- if .HasNotifications}}
+	// Initialize notification manager
+	notificationManager := NewNotificationManager(featuresDB)
+	if err := notificationManager.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize notification manager: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasComments}}
+	// Initialize comment store
+	commentStore := NewCommentStore(featuresDB)
+	if err := commentStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize comment store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasTags}}
+	// Initialize tag store
+	tagStore := NewTagStore(featuresDB)
+	if err := tagStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize tag store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasFavorites}}
+	// Initialize favorite store
+	favoriteStore := NewFavoriteStore(featuresDB)
+	if err := favoriteStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize favorite store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasActivity}}
+	// Initialize activity store
+	activityStore := NewActivityStore(featuresDB)
+	if err := activityStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize activity store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasExport}}
+	// Initialize export handler
+	exportHandler := NewExportHandler(featuresDB, app)
+	{{- end}}
+
+	{{- if .HasBatch}}
+	// Initialize batch handler
+	batchHandler := NewBatchHandler(featuresDB, app)
+	if err := batchHandler.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize batch handler: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasInboundWebhooks}}
+	// Initialize webhook handler
+	webhookHandler := NewWebhookHandler(featuresDB, app)
+	if err := webhookHandler.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize webhook handler: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasTemplates}}
+	// Initialize template store
+	templateStore := NewTemplateStore(featuresDB, app)
+	if err := templateStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize template store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasIndexes}}
+	// Initialize search handler
+	searchHandler := NewSearchHandler(featuresDB, app)
+	if err := searchHandler.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize search handler: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasApprovals}}
+	// Initialize approval store
+	approvalStore := NewApprovalStore(featuresDB, app)
+	if err := approvalStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize approval store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasRelationships}}
+	// Initialize relationship store
+	relationshipStore := NewRelationshipStore(featuresDB)
+	if err := relationshipStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize relationship store: %v", err)
+	}
+	{{- end}}
+
+	{{- if .HasDocuments}}
+	// Initialize document generator
+	documentGenerator := NewDocumentGenerator(nil)
+	{{- end}}
+
+	{{- if .HasSoftDelete}}
+	// Initialize soft delete store
+	softDeleteStore := NewSoftDeleteStore(featuresDB, {{if .SoftDelete.RetentionDays}}{{.SoftDelete.RetentionDays}}{{else}}30{{end}})
+	if err := softDeleteStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize soft delete store: %v", err)
+	}
+	{{- end}}
+
 	// Build HTTP router
-	router := BuildRouter(app{{if .HasAccessControl}}, middleware, sessions{{end}}{{if .HasNavigation}}, navigation{{end}}{{if .HasDebug}}, debugBroker{{end}}{{if .HasBlobstore}}, blobStore{{end}})
+	router := BuildRouter(app{{if .HasAccessControl}}, middleware, sessions{{end}}{{if .HasNavigation}}, navigation{{end}}{{if .HasDebug}}, debugBroker{{end}}{{if .HasBlobstore}}, blobStore{{end}}{{if .HasTimers}}, timerManager{{end}}{{if .HasNotifications}}, notificationManager{{end}}{{if .HasComments}}, commentStore{{end}}{{if .HasTags}}, tagStore{{end}}{{if .HasFavorites}}, favoriteStore{{end}}{{if .HasActivity}}, activityStore{{end}}{{if .HasExport}}, exportHandler{{end}}{{if .HasBatch}}, batchHandler{{end}}{{if .HasInboundWebhooks}}, webhookHandler{{end}}{{if .HasTemplates}}, templateStore{{end}}{{if .HasIndexes}}, searchHandler{{end}}{{if .HasApprovals}}, approvalStore{{end}}{{if .HasRelationships}}, relationshipStore{{end}}{{if .HasDocuments}}, documentGenerator{{end}}{{if .HasSoftDelete}}, softDeleteStore{{end}})
 
 	// Configure server
 	port := os.Getenv("PORT")

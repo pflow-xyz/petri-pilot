@@ -10,6 +10,24 @@
     "maxSize": 52428800,
     "allowedTypes": ["application/json", "application/pdf", "image/*"]
   },
+  "comments": {
+    "enabled": true,
+    "moderation": false,
+    "maxLength": 2000
+  },
+  "tags": {
+    "enabled": true,
+    "maxTags": 10,
+    "predefined": ["urgent", "high-value", "first-time", "returning", "flagged"]
+  },
+  "activity": {
+    "enabled": true,
+    "retention": "90d"
+  },
+  "softDelete": {
+    "enabled": true,
+    "retention": "30d"
+  },
   "places": [
     {"id": "submitted", "description": "Application submitted by customer", "initial": 1},
     {"id": "credit_check", "description": "Automated credit check in progress", "initial": 0},

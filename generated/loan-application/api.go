@@ -13,7 +13,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the loan-application workflow.
-func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker, blobStore *BlobStore) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker, blobStore *BlobStore, commentStore *CommentStore, tagStore *TagStore, activityStore *ActivityStore, softDeleteStore *SoftDeleteStore) http.Handler {
 	r := api.NewRouter()
 
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -59,6 +59,38 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.GET("/api/blobs/{id}/meta", "Get blob metadata", blobStore.HandleGetMeta)
 	r.Handle("PATCH", "/api/blobs/{id}", "Transfer blob ownership", blobStore.HandleTransfer)
 	r.Handle("DELETE", "/api/blobs/{id}", "Delete a blob", blobStore.HandleDelete)
+
+
+
+
+	// Comment endpoints
+	r.GET("/api/loanapplication/{id}/comments", "List comments", commentStore.HandleListComments)
+	r.POST("/api/loanapplication/{id}/comments", "Add comment", commentStore.HandleAddComment)
+	r.Handle("DELETE", "/api/comments/{commentId}", "Delete comment", commentStore.HandleDeleteComment)
+
+
+	// Tag endpoints
+	r.GET("/api/loanapplication/{id}/tags", "List entity tags", tagStore.HandleListTags)
+	r.POST("/api/loanapplication/{id}/tags", "Add tag", tagStore.HandleAddTag)
+	r.Handle("DELETE", "/api/loanapplication/{id}/tags/{name}", "Remove tag", tagStore.HandleRemoveTag)
+
+
+
+	// Activity feed endpoints
+	r.GET("/api/loanapplication/{id}/activity", "Get entity activity", activityStore.HandleGetActivity)
+
+
+
+
+
+
+
+
+
+
+	// Soft delete endpoints
+	r.Handle("DELETE", "/api/loanapplication/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
+	r.POST("/api/loanapplication/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
 
 	// Transition endpoints
 	r.Transition("run_credit_check", "/api/run_credit_check", "Initiate automated credit check", middleware.RequirePermission("run_credit_check")(HandleRunCreditCheck(app)))
@@ -611,6 +643,7 @@ func HandleGetViews() http.HandlerFunc {
 		w.Write(data)
 	}
 }
+
 
 
 

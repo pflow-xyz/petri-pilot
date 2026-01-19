@@ -66,6 +66,54 @@ type Context struct {
 	// Blobstore configuration
 	Blobstore *BlobstoreContext
 
+	// Timers configuration
+	Timers []TimerContext
+
+	// Notifications configuration
+	Notifications []NotificationContext
+
+	// Relationships configuration
+	Relationships []RelationshipContext
+
+	// Computed fields configuration
+	Computed []ComputedFieldContext
+
+	// Indexes configuration
+	Indexes []IndexContext
+
+	// Approvals configuration
+	Approvals map[string]*ApprovalChainContext
+
+	// Templates configuration
+	Templates []TemplateContext
+
+	// Batch operations configuration
+	Batch *BatchContext
+
+	// Inbound webhooks configuration
+	InboundWebhooks []InboundWebhookContext
+
+	// Documents configuration
+	Documents []DocumentContext
+
+	// Comments configuration
+	Comments *CommentsContext
+
+	// Tags configuration
+	Tags *TagsContext
+
+	// Activity configuration
+	Activity *ActivityContext
+
+	// Favorites configuration
+	Favorites *FavoritesContext
+
+	// Export configuration
+	Export *ExportContext
+
+	// Soft delete configuration
+	SoftDelete *SoftDeleteContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -241,6 +289,179 @@ type BlobstoreContext struct {
 	Enabled      bool     // Enable blobstore for binary/JSON attachments
 	MaxSize      int64    // Maximum blob size in bytes
 	AllowedTypes []string // Allowed content types
+}
+
+// TimerContext provides template-friendly access to timer configuration.
+type TimerContext struct {
+	ID         string // Timer ID
+	Transition string // Transition to fire
+	After      string // Duration after entering state
+	Cron       string // Cron expression
+	From       string // Place that triggers the timer
+	Condition  string // Condition expression
+	Repeat     bool   // Whether to repeat
+	PascalName string // e.g., "SendReminder"
+}
+
+// NotificationContext provides template-friendly access to notification configuration.
+type NotificationContext struct {
+	ID        string            // Notification ID
+	On        string            // Trigger (transition or place)
+	Channel   string            // email, sms, slack, webhook, in_app
+	To        string            // Recipient expression
+	Template  string            // Template ID or inline
+	Subject   string            // Subject line
+	Webhook   string            // Webhook URL
+	Condition string            // Condition expression
+	Data      map[string]string // Additional data
+	PascalName string           // e.g., "ApprovalNotification"
+}
+
+// RelationshipContext provides template-friendly access to relationship configuration.
+type RelationshipContext struct {
+	Name        string // Relationship name
+	Type        string // hasMany, hasOne, belongsTo
+	Target      string // Target model name
+	ForeignKey  string // Foreign key field
+	Cascade     string // Cascade behavior
+	PascalName  string // e.g., "LineItems"
+	TargetPascal string // e.g., "OrderItem"
+	IsHasMany   bool
+	IsHasOne    bool
+	IsBelongsTo bool
+}
+
+// ComputedFieldContext provides template-friendly access to computed field configuration.
+type ComputedFieldContext struct {
+	Name        string   // Field name
+	Type        string   // Result type
+	Expr        string   // Expression
+	GoType      string   // Go type
+	DependsOn   []string // Dependencies
+	Persisted   bool     // Whether to store
+	Description string   // Description
+	PascalName  string   // e.g., "TotalAmount"
+}
+
+// IndexContext provides template-friendly access to index configuration.
+type IndexContext struct {
+	Name       string   // Index name
+	Fields     []string // Fields to index
+	Type       string   // Index type
+	Unique     bool     // Unique index
+	PascalName string   // e.g., "ByStatusCreatedAt"
+}
+
+// ApprovalChainContext provides template-friendly access to approval chain configuration.
+type ApprovalChainContext struct {
+	ID            string                 // Approval chain ID
+	Levels        []ApprovalLevelContext // Approval levels
+	EscalateAfter string                 // Escalation duration
+	OnReject      string                 // Rejection transition
+	OnApprove     string                 // Final approval transition
+	Parallel      bool                   // Parallel approvals
+	PascalName    string                 // e.g., "PurchaseRequest"
+}
+
+// ApprovalLevelContext provides template-friendly access to approval level configuration.
+type ApprovalLevelContext struct {
+	Role       string // Required role
+	User       string // Specific user expression
+	Condition  string // Level condition
+	Required   int    // Approvals required
+	Transition string // Custom transition
+	Level      int    // Level number (1-indexed)
+}
+
+// TemplateContext provides template-friendly access to preset template configuration.
+type TemplateContext struct {
+	ID          string         // Template ID
+	Name        string         // Display name
+	Description string         // Description
+	Data        map[string]any // Pre-filled data
+	Roles       []string       // Allowed roles
+	Default     bool           // Is default
+	PascalName  string         // e.g., "StandardOrder"
+	DataJSON    string         // JSON-encoded data
+}
+
+// BatchContext provides template-friendly access to batch operations configuration.
+type BatchContext struct {
+	Enabled     bool     // Enable batch operations
+	Transitions []string // Allowed transitions
+	MaxSize     int      // Maximum batch size
+}
+
+// InboundWebhookContext provides template-friendly access to inbound webhook configuration.
+type InboundWebhookContext struct {
+	ID         string            // Webhook ID
+	Path       string            // URL path
+	Secret     string            // Validation secret
+	Transition string            // Transition to fire
+	Map        map[string]string // Field mapping
+	Condition  string            // Processing condition
+	Method     string            // HTTP method
+	PascalName string            // e.g., "StripePayment"
+}
+
+// DocumentContext provides template-friendly access to document generation configuration.
+type DocumentContext struct {
+	ID          string // Document ID
+	Name        string // Display name
+	Template    string // Template file
+	Format      string // Output format
+	Trigger     string // Trigger transition
+	StoreTo     string // Storage blob field
+	Filename    string // Filename expression
+	Description string // Description
+	PascalName  string // e.g., "Invoice"
+}
+
+// CommentsContext provides template-friendly access to comments configuration.
+type CommentsContext struct {
+	Enabled    bool     // Enable comments
+	Roles      []string // Allowed roles
+	Moderation bool     // Require moderation
+	MaxLength  int      // Maximum length
+}
+
+// TagsContext provides template-friendly access to tags configuration.
+type TagsContext struct {
+	Enabled    bool     // Enable tags
+	Predefined []string // Predefined tags
+	FreeForm   bool     // Allow free-form tags
+	MaxTags    int      // Maximum tags per instance
+	Colors     bool     // Enable colors
+}
+
+// ActivityContext provides template-friendly access to activity feed configuration.
+type ActivityContext struct {
+	Enabled       bool     // Enable activity feed
+	IncludeEvents []string // Events to include
+	ExcludeEvents []string // Events to exclude
+	MaxItems      int      // Maximum items
+}
+
+// FavoritesContext provides template-friendly access to favorites configuration.
+type FavoritesContext struct {
+	Enabled      bool // Enable favorites
+	Notify       bool // Notify on changes
+	MaxFavorites int  // Maximum favorites
+}
+
+// ExportContext provides template-friendly access to export configuration.
+type ExportContext struct {
+	Enabled bool     // Enable export
+	Formats []string // Allowed formats
+	MaxRows int      // Maximum rows
+	Roles   []string // Allowed roles
+}
+
+// SoftDeleteContext provides template-friendly access to soft delete configuration.
+type SoftDeleteContext struct {
+	Enabled       bool     // Enable soft delete
+	RetentionDays int      // Retention period
+	RestoreRoles  []string // Roles that can restore
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -532,6 +753,54 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	if enriched.Blobstore != nil {
 		ctx.Blobstore = buildBlobstoreContext(enriched.Blobstore)
 	}
+
+	// Build timers context
+	ctx.Timers = buildTimersContext(enriched.Timers)
+
+	// Build notifications context
+	ctx.Notifications = buildNotificationsContext(enriched.Notifications)
+
+	// Build relationships context
+	ctx.Relationships = buildRelationshipsContext(enriched.Relationships)
+
+	// Build computed fields context
+	ctx.Computed = buildComputedContext(enriched.Computed)
+
+	// Build indexes context
+	ctx.Indexes = buildIndexesContext(enriched.Indexes)
+
+	// Build approvals context
+	ctx.Approvals = buildApprovalsContext(enriched.Approvals)
+
+	// Build templates context
+	ctx.Templates = buildTemplatesContext(enriched.Templates)
+
+	// Build batch context
+	ctx.Batch = buildBatchContext(enriched.Batch)
+
+	// Build inbound webhooks context
+	ctx.InboundWebhooks = buildInboundWebhooksContext(enriched.InboundWebhooks)
+
+	// Build documents context
+	ctx.Documents = buildDocumentsContext(enriched.Documents)
+
+	// Build comments context
+	ctx.Comments = buildCommentsContext(enriched.Comments)
+
+	// Build tags context
+	ctx.Tags = buildTagsContext(enriched.Tags)
+
+	// Build activity context
+	ctx.Activity = buildActivityContext(enriched.Activity)
+
+	// Build favorites context
+	ctx.Favorites = buildFavoritesContext(enriched.Favorites)
+
+	// Build export context
+	ctx.Export = buildExportContext(enriched.Export)
+
+	// Build soft delete context
+	ctx.SoftDelete = buildSoftDeleteContext(enriched.SoftDelete)
 
 	return ctx, nil
 }
@@ -1251,6 +1520,95 @@ func (c *Context) HasBlobstore() bool {
 	return c.Blobstore != nil && c.Blobstore.Enabled
 }
 
+// HasTimers returns true if the model has timers configured.
+func (c *Context) HasTimers() bool {
+	return len(c.Timers) > 0
+}
+
+// HasNotifications returns true if the model has notifications configured.
+func (c *Context) HasNotifications() bool {
+	return len(c.Notifications) > 0
+}
+
+// HasRelationships returns true if the model has relationships configured.
+func (c *Context) HasRelationships() bool {
+	return len(c.Relationships) > 0
+}
+
+// HasComputed returns true if the model has computed fields configured.
+func (c *Context) HasComputed() bool {
+	return len(c.Computed) > 0
+}
+
+// HasIndexes returns true if the model has indexes configured.
+func (c *Context) HasIndexes() bool {
+	return len(c.Indexes) > 0
+}
+
+// HasApprovals returns true if the model has approval chains configured.
+func (c *Context) HasApprovals() bool {
+	return len(c.Approvals) > 0
+}
+
+// HasTemplates returns true if the model has templates configured.
+func (c *Context) HasTemplates() bool {
+	return len(c.Templates) > 0
+}
+
+// HasBatch returns true if batch operations are enabled.
+func (c *Context) HasBatch() bool {
+	return c.Batch != nil && c.Batch.Enabled
+}
+
+// HasInboundWebhooks returns true if the model has inbound webhooks configured.
+func (c *Context) HasInboundWebhooks() bool {
+	return len(c.InboundWebhooks) > 0
+}
+
+// HasDocuments returns true if the model has document generation configured.
+func (c *Context) HasDocuments() bool {
+	return len(c.Documents) > 0
+}
+
+// HasComments returns true if comments are enabled.
+func (c *Context) HasComments() bool {
+	return c.Comments != nil && c.Comments.Enabled
+}
+
+// HasTags returns true if tags are enabled.
+func (c *Context) HasTags() bool {
+	return c.Tags != nil && c.Tags.Enabled
+}
+
+// HasActivity returns true if activity feed is enabled.
+func (c *Context) HasActivity() bool {
+	return c.Activity != nil && c.Activity.Enabled
+}
+
+// HasFavorites returns true if favorites are enabled.
+func (c *Context) HasFavorites() bool {
+	return c.Favorites != nil && c.Favorites.Enabled
+}
+
+// HasExport returns true if export is enabled.
+func (c *Context) HasExport() bool {
+	return c.Export != nil && c.Export.Enabled
+}
+
+// HasSoftDelete returns true if soft delete is enabled.
+func (c *Context) HasSoftDelete() bool {
+	return c.SoftDelete != nil && c.SoftDelete.Enabled
+}
+
+// HasAnyFeatures returns true if any of the higher-level features are enabled.
+func (c *Context) HasAnyFeatures() bool {
+	return c.HasTimers() || c.HasNotifications() || c.HasRelationships() ||
+		c.HasComputed() || c.HasIndexes() || c.HasApprovals() ||
+		c.HasTemplates() || c.HasBatch() || c.HasInboundWebhooks() ||
+		c.HasDocuments() || c.HasComments() || c.HasTags() ||
+		c.HasActivity() || c.HasFavorites() || c.HasExport() || c.HasSoftDelete()
+}
+
 // ResourcePlaces returns only the places marked as resources for prediction.
 func (c *Context) ResourcePlaces() []PlaceContext {
 	var result []PlaceContext
@@ -1354,4 +1712,369 @@ func buildBlobstoreContext(bs *schema.Blobstore) *BlobstoreContext {
 	}
 
 	return ctx
+}
+
+// buildTimersContext converts schema.Timer slice to TimerContext slice.
+func buildTimersContext(timers []schema.Timer) []TimerContext {
+	if len(timers) == 0 {
+		return nil
+	}
+	result := make([]TimerContext, len(timers))
+	for i, t := range timers {
+		id := t.ID
+		if id == "" {
+			id = t.Transition
+		}
+		result[i] = TimerContext{
+			ID:         id,
+			Transition: t.Transition,
+			After:      t.After,
+			Cron:       t.Cron,
+			From:       t.From,
+			Condition:  t.Condition,
+			Repeat:     t.Repeat,
+			PascalName: ToPascalCase(t.Transition),
+		}
+	}
+	return result
+}
+
+// buildNotificationsContext converts schema.Notification slice to NotificationContext slice.
+func buildNotificationsContext(notifications []schema.Notification) []NotificationContext {
+	if len(notifications) == 0 {
+		return nil
+	}
+	result := make([]NotificationContext, len(notifications))
+	for i, n := range notifications {
+		id := n.ID
+		if id == "" {
+			id = n.On + "_" + n.Channel
+		}
+		result[i] = NotificationContext{
+			ID:         id,
+			On:         n.On,
+			Channel:    n.Channel,
+			To:         n.To,
+			Template:   n.Template,
+			Subject:    n.Subject,
+			Webhook:    n.Webhook,
+			Condition:  n.Condition,
+			Data:       n.Data,
+			PascalName: ToPascalCase(id),
+		}
+	}
+	return result
+}
+
+// buildRelationshipsContext converts schema.Relationship slice to RelationshipContext slice.
+func buildRelationshipsContext(relationships []schema.Relationship) []RelationshipContext {
+	if len(relationships) == 0 {
+		return nil
+	}
+	result := make([]RelationshipContext, len(relationships))
+	for i, r := range relationships {
+		result[i] = RelationshipContext{
+			Name:         r.Name,
+			Type:         r.Type,
+			Target:       r.Target,
+			ForeignKey:   r.ForeignKey,
+			Cascade:      r.Cascade,
+			PascalName:   ToPascalCase(r.Name),
+			TargetPascal: ToPascalCase(r.Target),
+			IsHasMany:    r.Type == "hasMany",
+			IsHasOne:     r.Type == "hasOne",
+			IsBelongsTo:  r.Type == "belongsTo",
+		}
+	}
+	return result
+}
+
+// buildComputedContext converts schema.ComputedField slice to ComputedFieldContext slice.
+func buildComputedContext(computed []schema.ComputedField) []ComputedFieldContext {
+	if len(computed) == 0 {
+		return nil
+	}
+	result := make([]ComputedFieldContext, len(computed))
+	for i, c := range computed {
+		goType := "any"
+		switch c.Type {
+		case "string":
+			goType = "string"
+		case "number":
+			goType = "float64"
+		case "boolean":
+			goType = "bool"
+		case "array":
+			goType = "[]any"
+		}
+		result[i] = ComputedFieldContext{
+			Name:        c.Name,
+			Type:        c.Type,
+			Expr:        c.Expr,
+			GoType:      goType,
+			DependsOn:   c.DependsOn,
+			Persisted:   c.Persisted,
+			Description: c.Description,
+			PascalName:  ToPascalCase(c.Name),
+		}
+	}
+	return result
+}
+
+// buildIndexesContext converts schema.Index slice to IndexContext slice.
+func buildIndexesContext(indexes []schema.Index) []IndexContext {
+	if len(indexes) == 0 {
+		return nil
+	}
+	result := make([]IndexContext, len(indexes))
+	for i, idx := range indexes {
+		name := idx.Name
+		if name == "" {
+			name = "idx_" + indexes[i].Fields[0]
+		}
+		result[i] = IndexContext{
+			Name:       name,
+			Fields:     idx.Fields,
+			Type:       idx.Type,
+			Unique:     idx.Unique,
+			PascalName: ToPascalCase(name),
+		}
+	}
+	return result
+}
+
+// buildApprovalsContext converts schema approval chains to ApprovalChainContext map.
+func buildApprovalsContext(approvals map[string]*schema.ApprovalChain) map[string]*ApprovalChainContext {
+	if len(approvals) == 0 {
+		return nil
+	}
+	result := make(map[string]*ApprovalChainContext)
+	for id, chain := range approvals {
+		levels := make([]ApprovalLevelContext, len(chain.Levels))
+		for j, lvl := range chain.Levels {
+			levels[j] = ApprovalLevelContext{
+				Role:       lvl.Role,
+				User:       lvl.User,
+				Condition:  lvl.Condition,
+				Required:   lvl.Required,
+				Transition: lvl.Transition,
+				Level:      j + 1,
+			}
+			if levels[j].Required == 0 {
+				levels[j].Required = 1
+			}
+		}
+		result[id] = &ApprovalChainContext{
+			ID:            id,
+			Levels:        levels,
+			EscalateAfter: chain.EscalateAfter,
+			OnReject:      chain.OnReject,
+			OnApprove:     chain.OnApprove,
+			Parallel:      chain.Parallel,
+			PascalName:    ToPascalCase(id),
+		}
+	}
+	return result
+}
+
+// buildTemplatesContext converts schema.Template slice to TemplateContext slice.
+func buildTemplatesContext(templates []schema.Template) []TemplateContext {
+	if len(templates) == 0 {
+		return nil
+	}
+	result := make([]TemplateContext, len(templates))
+	for i, t := range templates {
+		dataJSON := "{}"
+		if t.Data != nil {
+			// Simple JSON encoding for templates
+			dataJSON = "{}"
+		}
+		result[i] = TemplateContext{
+			ID:          t.ID,
+			Name:        t.Name,
+			Description: t.Description,
+			Data:        t.Data,
+			Roles:       t.Roles,
+			Default:     t.Default,
+			PascalName:  ToPascalCase(t.ID),
+			DataJSON:    dataJSON,
+		}
+	}
+	return result
+}
+
+// buildBatchContext converts schema.BatchConfig to BatchContext.
+func buildBatchContext(batch *schema.BatchConfig) *BatchContext {
+	if batch == nil {
+		return nil
+	}
+	maxSize := batch.MaxSize
+	if maxSize == 0 {
+		maxSize = 100
+	}
+	return &BatchContext{
+		Enabled:     batch.Enabled,
+		Transitions: batch.Transitions,
+		MaxSize:     maxSize,
+	}
+}
+
+// buildInboundWebhooksContext converts schema.InboundWebhook slice to InboundWebhookContext slice.
+func buildInboundWebhooksContext(webhooks []schema.InboundWebhook) []InboundWebhookContext {
+	if len(webhooks) == 0 {
+		return nil
+	}
+	result := make([]InboundWebhookContext, len(webhooks))
+	for i, w := range webhooks {
+		id := w.ID
+		if id == "" {
+			id = w.Transition
+		}
+		method := w.Method
+		if method == "" {
+			method = "POST"
+		}
+		result[i] = InboundWebhookContext{
+			ID:         id,
+			Path:       w.Path,
+			Secret:     w.Secret,
+			Transition: w.Transition,
+			Map:        w.Map,
+			Condition:  w.Condition,
+			Method:     method,
+			PascalName: ToPascalCase(id),
+		}
+	}
+	return result
+}
+
+// buildDocumentsContext converts schema.Document slice to DocumentContext slice.
+func buildDocumentsContext(documents []schema.Document) []DocumentContext {
+	if len(documents) == 0 {
+		return nil
+	}
+	result := make([]DocumentContext, len(documents))
+	for i, d := range documents {
+		format := d.Format
+		if format == "" {
+			format = "pdf"
+		}
+		result[i] = DocumentContext{
+			ID:          d.ID,
+			Name:        d.Name,
+			Template:    d.Template,
+			Format:      format,
+			Trigger:     d.Trigger,
+			StoreTo:     d.StoreTo,
+			Filename:    d.Filename,
+			Description: d.Description,
+			PascalName:  ToPascalCase(d.ID),
+		}
+	}
+	return result
+}
+
+// buildCommentsContext converts schema.CommentsConfig to CommentsContext.
+func buildCommentsContext(comments *schema.CommentsConfig) *CommentsContext {
+	if comments == nil {
+		return nil
+	}
+	maxLength := comments.MaxLength
+	if maxLength == 0 {
+		maxLength = 2000
+	}
+	return &CommentsContext{
+		Enabled:    comments.Enabled,
+		Roles:      comments.Roles,
+		Moderation: comments.Moderation,
+		MaxLength:  maxLength,
+	}
+}
+
+// buildTagsContext converts schema.TagsConfig to TagsContext.
+func buildTagsContext(tags *schema.TagsConfig) *TagsContext {
+	if tags == nil {
+		return nil
+	}
+	maxTags := tags.MaxTags
+	if maxTags == 0 {
+		maxTags = 10
+	}
+	freeForm := tags.FreeForm
+	if !freeForm && len(tags.Predefined) == 0 {
+		freeForm = true // Default to free-form if no predefined tags
+	}
+	return &TagsContext{
+		Enabled:    tags.Enabled,
+		Predefined: tags.Predefined,
+		FreeForm:   freeForm,
+		MaxTags:    maxTags,
+		Colors:     tags.Colors,
+	}
+}
+
+// buildActivityContext converts schema.ActivityConfig to ActivityContext.
+func buildActivityContext(activity *schema.ActivityConfig) *ActivityContext {
+	if activity == nil {
+		return nil
+	}
+	maxItems := activity.MaxItems
+	if maxItems == 0 {
+		maxItems = 100
+	}
+	return &ActivityContext{
+		Enabled:       activity.Enabled,
+		IncludeEvents: activity.IncludeEvents,
+		ExcludeEvents: activity.ExcludeEvents,
+		MaxItems:      maxItems,
+	}
+}
+
+// buildFavoritesContext converts schema.FavoritesConfig to FavoritesContext.
+func buildFavoritesContext(favorites *schema.FavoritesConfig) *FavoritesContext {
+	if favorites == nil {
+		return nil
+	}
+	maxFavorites := favorites.MaxFavorites
+	if maxFavorites == 0 {
+		maxFavorites = 100
+	}
+	return &FavoritesContext{
+		Enabled:      favorites.Enabled,
+		Notify:       favorites.Notify,
+		MaxFavorites: maxFavorites,
+	}
+}
+
+// buildExportContext converts schema.ExportConfig to ExportContext.
+func buildExportContext(export *schema.ExportConfig) *ExportContext {
+	if export == nil {
+		return nil
+	}
+	formats := export.Formats
+	if len(formats) == 0 {
+		formats = []string{"csv", "json"}
+	}
+	maxRows := export.MaxRows
+	if maxRows == 0 {
+		maxRows = 10000
+	}
+	return &ExportContext{
+		Enabled: export.Enabled,
+		Formats: formats,
+		MaxRows: maxRows,
+		Roles:   export.Roles,
+	}
+}
+
+// buildSoftDeleteContext converts schema.SoftDeleteConfig to SoftDeleteContext.
+func buildSoftDeleteContext(softDelete *schema.SoftDeleteConfig) *SoftDeleteContext {
+	if softDelete == nil {
+		return nil
+	}
+	return &SoftDeleteContext{
+		Enabled:       softDelete.Enabled,
+		RetentionDays: softDelete.RetentionDays,
+		RestoreRoles:  softDelete.RestoreRoles,
+	}
 }

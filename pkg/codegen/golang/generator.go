@@ -207,6 +207,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, BlobstoreTemplateNames()...)
 	}
 
+	// Include features template if any higher-level features are enabled
+	if ctx.HasAnyFeatures() {
+		templateNames = append(templateNames, FeaturesTemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

@@ -105,9 +105,35 @@ func main() {
 	if err := blobStore.InitSchema(); err != nil {
 		log.Fatalf("Failed to initialize blobstore: %v", err)
 	}
+	// Initialize features database
+	featuresDB, err := sql.Open("sqlite3", "features.db")
+	if err != nil {
+		log.Fatalf("Failed to open features database: %v", err)
+	}
+	defer featuresDB.Close()
+	// Initialize comment store
+	commentStore := NewCommentStore(featuresDB)
+	if err := commentStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize comment store: %v", err)
+	}
+	// Initialize tag store
+	tagStore := NewTagStore(featuresDB)
+	if err := tagStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize tag store: %v", err)
+	}
+	// Initialize activity store
+	activityStore := NewActivityStore(featuresDB)
+	if err := activityStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize activity store: %v", err)
+	}
+	// Initialize soft delete store
+	softDeleteStore := NewSoftDeleteStore(featuresDB, 30)
+	if err := softDeleteStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize soft delete store: %v", err)
+	}
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware, sessions, debugBroker, blobStore)
+	router := BuildRouter(app, middleware, sessions, debugBroker, blobStore, commentStore, tagStore, activityStore, softDeleteStore)
 
 	// Configure server
 	port := os.Getenv("PORT")

@@ -78,6 +78,9 @@ const (
 
 	// Blobstore templates
 	TemplateBlobstore = "blobstore"
+
+	// Features templates (all higher-level abstractions)
+	TemplateFeatures = "features"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -151,6 +154,9 @@ var templateInfo = map[string]struct {
 
 	// Blobstore templates
 	TemplateBlobstore: {File: "blobstore.tmpl", Output: "blobstore.go"},
+
+	// Features templates
+	TemplateFeatures: {File: "features.tmpl", Output: "features.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -367,5 +373,12 @@ func GraphQLTemplateNames() []string {
 func BlobstoreTemplateNames() []string {
 	return []string{
 		TemplateBlobstore,
+	}
+}
+
+// FeaturesTemplateNames returns template names for higher-level feature files.
+func FeaturesTemplateNames() []string {
+	return []string{
+		TemplateFeatures,
 	}
 }

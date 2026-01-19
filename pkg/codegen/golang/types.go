@@ -243,3 +243,27 @@ func GenerateMapUpdate(collection string, keys []string, valueBinding string, is
 	}
 	return access + " += " + value
 }
+
+// GoTypeToGraphQL converts a Go type to a GraphQL type.
+func GoTypeToGraphQL(goType string) string {
+	switch goType {
+	case "string":
+		return "String"
+	case "int", "int8", "int16", "int32", "int64":
+		return "Int"
+	case "uint", "uint8", "uint16", "uint32", "uint64":
+		return "Int"
+	case "float32", "float64", "number":
+		return "Float"
+	case "bool", "boolean":
+		return "Boolean"
+	case "time.Time", "time":
+		return "Time"
+	default:
+		// For complex types, use String (JSON encoded)
+		if strings.HasPrefix(goType, "map[") || strings.HasPrefix(goType, "[]") {
+			return "String"
+		}
+		return "String"
+	}
+}

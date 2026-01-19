@@ -25,7 +25,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}{{if .HasBlobstore}}, blobStore *BlobStore{{end}}) http.Handler {
+func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}{{if .HasBlobstore}}, blobStore *BlobStore{{end}}{{if .HasTimers}}, timerManager *TimerManager{{end}}{{if .HasNotifications}}, notificationManager *NotificationManager{{end}}{{if .HasComments}}, commentStore *CommentStore{{end}}{{if .HasTags}}, tagStore *TagStore{{end}}{{if .HasFavorites}}, favoriteStore *FavoriteStore{{end}}{{if .HasActivity}}, activityStore *ActivityStore{{end}}{{if .HasExport}}, exportHandler *ExportHandler{{end}}{{if .HasBatch}}, batchHandler *BatchHandler{{end}}{{if .HasInboundWebhooks}}, webhookHandler *WebhookHandler{{end}}{{if .HasTemplates}}, templateStore *TemplateStore{{end}}{{if .HasIndexes}}, searchHandler *SearchHandler{{end}}{{if .HasApprovals}}, approvalStore *ApprovalStore{{end}}{{if .HasRelationships}}, relationshipStore *RelationshipStore{{end}}{{if .HasDocuments}}, documentGenerator *DocumentGenerator{{end}}{{if .HasSoftDelete}}, softDeleteStore *SoftDeleteStore{{end}}) http.Handler {
 	r := api.NewRouter()
 {{if .HasAccessControl}}
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -104,6 +104,75 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.GET("/api/blobs/{id}/meta", "Get blob metadata", blobStore.HandleGetMeta)
 	r.Handle("PATCH", "/api/blobs/{id}", "Transfer blob ownership", blobStore.HandleTransfer)
 	r.Handle("DELETE", "/api/blobs/{id}", "Delete a blob", blobStore.HandleDelete)
+{{end}}
+{{if .HasTimers}}
+	// Timer management endpoints
+	r.GET("/api/timers", "List all timers", timerManager.HandleListTimers)
+{{end}}
+{{if .HasNotifications}}
+	// Notification endpoints
+	r.GET("/api/notifications", "List notifications", notificationManager.HandleListNotifications)
+{{end}}
+{{if .HasComments}}
+	// Comment endpoints
+	r.GET("/api/{{.PackageName}}/{id}/comments", "List comments", commentStore.HandleListComments)
+	r.POST("/api/{{.PackageName}}/{id}/comments", "Add comment", commentStore.HandleAddComment)
+	r.Handle("DELETE", "/api/comments/{commentId}", "Delete comment", commentStore.HandleDeleteComment)
+{{end}}
+{{if .HasTags}}
+	// Tag endpoints
+	r.GET("/api/{{.PackageName}}/{id}/tags", "List entity tags", tagStore.HandleListTags)
+	r.POST("/api/{{.PackageName}}/{id}/tags", "Add tag", tagStore.HandleAddTag)
+	r.Handle("DELETE", "/api/{{.PackageName}}/{id}/tags/{name}", "Remove tag", tagStore.HandleRemoveTag)
+{{end}}
+{{if .HasFavorites}}
+	// Favorites endpoints
+	r.GET("/api/favorites", "List user favorites", favoriteStore.HandleListFavorites)
+	r.POST("/api/{{.PackageName}}/{id}/favorite", "Toggle favorite", favoriteStore.HandleToggleFavorite)
+{{end}}
+{{if .HasActivity}}
+	// Activity feed endpoints
+	r.GET("/api/{{.PackageName}}/{id}/activity", "Get entity activity", activityStore.HandleGetActivity)
+{{end}}
+{{if .HasExport}}
+	// Export endpoints
+	r.GET("/api/export", "Export data", exportHandler.HandleExport)
+{{end}}
+{{if .HasBatch}}
+	// Batch operation endpoints
+	r.POST("/api/batch", "Execute batch operation", batchHandler.HandleBatch)
+{{end}}
+{{if .HasInboundWebhooks}}
+	// Inbound webhook endpoints
+	r.POST("/api/webhooks", "Inbound webhook", webhookHandler.Handle)
+{{end}}
+{{if .HasTemplates}}
+	// Template endpoints
+	r.GET("/api/templates", "List templates", templateStore.HandleListTemplates)
+	r.GET("/api/templates/{id}", "Get template", templateStore.HandleGetTemplate)
+{{end}}
+{{if .HasIndexes}}
+	// Search endpoints
+	r.GET("/api/search", "Search entities", searchHandler.HandleSearch)
+{{end}}
+{{if .HasApprovals}}
+	// Approval chain endpoints
+	r.POST("/api/approvals/{id}/vote", "Vote on approval", approvalStore.HandleVote)
+{{end}}
+{{if .HasRelationships}}
+	// Relationship endpoints
+	r.GET("/api/{{.PackageName}}/{id}/related/{name}", "Get related entities", relationshipStore.HandleGetRelated)
+	r.POST("/api/{{.PackageName}}/{id}/related/{name}", "Create link", relationshipStore.HandleLink)
+{{end}}
+{{if .HasDocuments}}
+	// Document generation endpoints
+	r.GET("/api/documents", "List documents", documentGenerator.HandleListDocuments)
+	r.POST("/api/documents/{docId}", "Generate document", documentGenerator.HandleGenerate)
+{{end}}
+{{if .HasSoftDelete}}
+	// Soft delete endpoints
+	r.Handle("DELETE", "/api/{{.PackageName}}/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
+	r.POST("/api/{{.PackageName}}/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
 {{end}}
 	// Transition endpoints
 {{- range .Routes}}
@@ -706,3 +775,4 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 {{end}}
+
