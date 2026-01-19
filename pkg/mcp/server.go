@@ -38,6 +38,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(simulateTool(), handleSimulate)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
+	s.AddTool(extendTool(), handleExtend)
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
@@ -239,6 +240,20 @@ func diffTool() mcp.Tool {
 		mcp.WithString("model_b",
 			mcp.Required(),
 			mcp.Description("Second model as JSON (the 'after' or 'new' model)"),
+		),
+	)
+}
+
+func extendTool() mcp.Tool {
+	return mcp.NewTool("petri_extend",
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, remove_place, remove_transition, remove_arc, remove_role, remove_access. Returns the modified model."),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The Petri net model as JSON"),
+		),
+		mcp.WithString("operations",
+			mcp.Required(),
+			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"approve\",\"description\":\"Approve request\"}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_role\",\"id\":\"admin\",\"name\":\"Administrator\"}, {\"op\":\"add_access\",\"transition\":\"approve\",\"roles\":[\"admin\"]}"),
 		),
 	)
 }
@@ -739,6 +754,223 @@ func compareModels(a, b *schema.Model) ModelDiff {
 		len(diff.AccessAdded) > 0 || len(diff.AccessRemoved) > 0
 
 	return diff
+}
+
+func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	opsJSON, err := request.RequireString("operations")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing operations parameter: %v", err)), nil
+	}
+
+	model, err := parseModel(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	// Parse operations
+	var operations []map[string]any
+	if err := json.Unmarshal([]byte(opsJSON), &operations); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid operations JSON: %v", err)), nil
+	}
+
+	// Apply operations
+	var applied []string
+	var errors []string
+
+	for i, op := range operations {
+		opType, ok := op["op"].(string)
+		if !ok {
+			errors = append(errors, fmt.Sprintf("operation %d: missing 'op' field", i))
+			continue
+		}
+
+		if err := applyOperation(model, opType, op); err != nil {
+			errors = append(errors, fmt.Sprintf("operation %d (%s): %v", i, opType, err))
+		} else {
+			applied = append(applied, opType)
+		}
+	}
+
+	// Validate result
+	opts := validator.DefaultOptions()
+	opts.EnableSensitivity = false
+	v := validator.New(opts)
+	validationResult, _ := v.Validate(model)
+
+	// Return result
+	modelOutput, err := json.MarshalIndent(model, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal model: %v", err)), nil
+	}
+
+	result := struct {
+		Success    bool     `json:"success"`
+		Applied    []string `json:"applied"`
+		Errors     []string `json:"errors,omitempty"`
+		Valid      bool     `json:"valid"`
+		Model      string   `json:"model"`
+	}{
+		Success:    len(errors) == 0,
+		Applied:    applied,
+		Errors:     errors,
+		Valid:      validationResult.Valid,
+		Model:      string(modelOutput),
+	}
+
+	outputJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
+func applyOperation(model *schema.Model, opType string, op map[string]any) error {
+	switch opType {
+	case "add_place":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for add_place")
+		}
+		desc, _ := op["description"].(string)
+		initial, _ := op["initial"].(float64)
+		model.Places = append(model.Places, schema.Place{
+			ID:          id,
+			Description: desc,
+			Initial:     int(initial),
+		})
+
+	case "add_transition":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for add_transition")
+		}
+		desc, _ := op["description"].(string)
+		model.Transitions = append(model.Transitions, schema.Transition{
+			ID:          id,
+			Description: desc,
+		})
+
+	case "add_arc":
+		from, _ := op["from"].(string)
+		to, _ := op["to"].(string)
+		if from == "" || to == "" {
+			return fmt.Errorf("missing 'from' or 'to' for add_arc")
+		}
+		model.Arcs = append(model.Arcs, schema.Arc{
+			From: from,
+			To:   to,
+		})
+
+	case "add_role":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for add_role")
+		}
+		name, _ := op["name"].(string)
+		desc, _ := op["description"].(string)
+		model.Roles = append(model.Roles, schema.Role{
+			ID:          id,
+			Name:        name,
+			Description: desc,
+		})
+
+	case "add_access":
+		transition, _ := op["transition"].(string)
+		if transition == "" {
+			return fmt.Errorf("missing 'transition' for add_access")
+		}
+		rolesRaw, _ := op["roles"].([]any)
+		var roles []string
+		for _, r := range rolesRaw {
+			if s, ok := r.(string); ok {
+				roles = append(roles, s)
+			}
+		}
+		if len(roles) == 0 {
+			return fmt.Errorf("missing 'roles' for add_access")
+		}
+		model.Access = append(model.Access, schema.AccessRule{
+			Transition: transition,
+			Roles:      roles,
+		})
+
+	case "remove_place":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for remove_place")
+		}
+		newPlaces := make([]schema.Place, 0, len(model.Places))
+		for _, p := range model.Places {
+			if p.ID != id {
+				newPlaces = append(newPlaces, p)
+			}
+		}
+		model.Places = newPlaces
+
+	case "remove_transition":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for remove_transition")
+		}
+		newTrans := make([]schema.Transition, 0, len(model.Transitions))
+		for _, t := range model.Transitions {
+			if t.ID != id {
+				newTrans = append(newTrans, t)
+			}
+		}
+		model.Transitions = newTrans
+
+	case "remove_arc":
+		from, _ := op["from"].(string)
+		to, _ := op["to"].(string)
+		if from == "" || to == "" {
+			return fmt.Errorf("missing 'from' or 'to' for remove_arc")
+		}
+		newArcs := make([]schema.Arc, 0, len(model.Arcs))
+		for _, a := range model.Arcs {
+			if a.From != from || a.To != to {
+				newArcs = append(newArcs, a)
+			}
+		}
+		model.Arcs = newArcs
+
+	case "remove_role":
+		id, _ := op["id"].(string)
+		if id == "" {
+			return fmt.Errorf("missing 'id' for remove_role")
+		}
+		newRoles := make([]schema.Role, 0, len(model.Roles))
+		for _, r := range model.Roles {
+			if r.ID != id {
+				newRoles = append(newRoles, r)
+			}
+		}
+		model.Roles = newRoles
+
+	case "remove_access":
+		transition, _ := op["transition"].(string)
+		if transition == "" {
+			return fmt.Errorf("missing 'transition' for remove_access")
+		}
+		newAccess := make([]schema.AccessRule, 0, len(model.Access))
+		for _, a := range model.Access {
+			if a.Transition != transition {
+				newAccess = append(newAccess, a)
+			}
+		}
+		model.Access = newAccess
+
+	default:
+		return fmt.Errorf("unknown operation: %s", opType)
+	}
+
+	return nil
 }
 
 func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
