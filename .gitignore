@@ -39,3 +39,13 @@ Thumbs.db
 # generated files
 out
 node_modules
+
+# Generated app binaries
+generated/*/blog-post
+generated/*/ecommerce-checkout
+generated/*/job-application
+generated/*/loan-application
+generated/*/order-processing
+generated/*/support-ticket
+generated/*/task-manager
+generated/*/access-test

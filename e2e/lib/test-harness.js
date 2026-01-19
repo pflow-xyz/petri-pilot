@@ -40,6 +40,7 @@ class TestHarness {
     this.browser = await puppeteer.launch({
       headless: process.env.HEADLESS !== 'false',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
     });
 
     // Create page and navigate to app
