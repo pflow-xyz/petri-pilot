@@ -63,6 +63,9 @@ const (
 
 	// Debug templates
 	TemplateDebug = "debug"
+
+	// SLA templates
+	TemplateSLA = "sla"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -121,6 +124,9 @@ var templateInfo = map[string]struct {
 
 	// Debug templates
 	TemplateDebug: {File: "debug.tmpl", Output: "debug.go"},
+
+	// SLA templates
+	TemplateSLA: {File: "sla.tmpl", Output: "sla.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -305,5 +311,12 @@ TemplateAPIEvents,
 func DebugTemplateNames() []string {
 	return []string{
 		TemplateDebug,
+	}
+}
+
+// SLATemplateNames returns template names for SLA tracking files.
+func SLATemplateNames() []string {
+	return []string{
+		TemplateSLA,
 	}
 }

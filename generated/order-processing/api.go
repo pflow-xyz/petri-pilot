@@ -57,6 +57,10 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.GET("/api/orderprocessing/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 
 
+	// SLA status endpoint
+	r.GET("/api/orderprocessing/{id}/sla", "Get SLA status", HandleGetSLA(app))
+
+
 	r.POST("/api/orderprocessing/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/orderprocessing/{id}/replay", "Replay from snapshot", HandleReplay(app))
 
@@ -379,6 +383,37 @@ func HandleGetViews() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
+	}
+}
+// HandleGetSLA returns the SLA status for an aggregate.
+func HandleGetSLA(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		if id == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate ID is required")
+			return
+		}
+
+		agg, err := app.GetState(ctx, id)
+		if err != nil {
+			api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+
+		state := agg.State().(State)
+
+		// Get priority from query param or state
+		priority := r.URL.Query().Get("priority")
+		if priority == "" {
+			priority = state.Priority
+		}
+		if priority == "" {
+			priority = "normal"
+		}
+
+		slaResponse := CalculateSLAStatus(state.StartedAt, priority)
+		api.JSON(w, http.StatusOK, slaResponse)
 	}
 }
 

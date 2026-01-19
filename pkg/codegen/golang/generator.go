@@ -187,6 +187,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, DebugTemplateNames()...)
 	}
 
+	// Include SLA template if context has SLA configuration
+	if ctx.HasSLAs() {
+		templateNames = append(templateNames, SLATemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

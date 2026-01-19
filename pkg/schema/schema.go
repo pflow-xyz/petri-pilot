@@ -43,6 +43,9 @@ type Model struct {
 
 	// Debug configuration
 	Debug *Debug `json:"debug,omitempty"`
+
+	// SLA configuration
+	SLA *SLAConfig `json:"sla,omitempty"`
 }
 
 // Event represents an explicit event definition with typed fields.
@@ -195,8 +198,13 @@ type Transition struct {
 	HTTPMethod string `json:"http_method,omitempty"` // GET, POST, etc.
 	HTTPPath   string `json:"http_path,omitempty"`   // API path, e.g., "/orders/{id}/confirm"
 
+	// SLA timing fields
+	Duration    string `json:"duration,omitempty"`    // Expected duration (e.g., "30s", "2m")
+	MinDuration string `json:"minDuration,omitempty"` // Minimum expected duration
+	MaxDuration string `json:"maxDuration,omitempty"` // Maximum allowed duration (SLA breach)
+
 	// Deprecated fields (for backward compatibility)
-	EventType      string            `json:"event_type,omitempty"`       // Use Event instead
+	EventType      string            `json:"event_type,omitempty"`      // Use Event instead
 	LegacyBindings map[string]string `json:"legacy_bindings,omitempty"` // Use Bindings instead
 }
 
@@ -312,4 +320,13 @@ type RetentionConfig struct {
 type Debug struct {
 	Enabled bool `json:"enabled"`
 	Eval    bool `json:"eval,omitempty"` // Enable eval endpoint for remote code execution
+}
+
+// SLAConfig represents workflow-level SLA configuration.
+type SLAConfig struct {
+	Default    string            `json:"default,omitempty"`    // Default SLA duration (e.g., "5m", "1h")
+	ByPriority map[string]string `json:"byPriority,omitempty"` // SLA by priority level (e.g., {"high": "2m", "normal": "5m"})
+	WarningAt  float64           `json:"warningAt,omitempty"`  // Percentage (0.0-1.0) for warning status (default: 0.8)
+	CriticalAt float64           `json:"criticalAt,omitempty"` // Percentage (0.0-1.0) for critical status (default: 0.95)
+	OnBreach   string            `json:"onBreach,omitempty"`   // Action on breach: "alert", "log", "webhook"
 }

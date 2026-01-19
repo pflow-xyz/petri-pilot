@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-{{- if .UsesMetamodelRuntime}}
+{{- if or .UsesMetamodelRuntime .HasSLAs}}
 	"time"
 {{- end}}
 
@@ -22,6 +22,10 @@ import (
 
 // State holds the aggregate state for {{.ModelName}}.
 type State struct {
+{{- if .HasSLAs}}
+	StartedAt time.Time `json:"started_at"`
+	Priority  string    `json:"priority,omitempty"`
+{{- end}}
 {{- range .StateFields}}
 {{- if .IsToken}}
 	{{.FieldName}} {{.Type}} `json:"{{.JSONName}}"`
@@ -34,6 +38,9 @@ type State struct {
 // NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
+{{- if .HasSLAs}}
+		StartedAt: time.Now(),
+{{- end}}
 {{- range .Collections}}
 		{{.FieldName}}: {{.Initializer}},
 {{- end}}

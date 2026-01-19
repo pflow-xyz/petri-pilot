@@ -54,6 +54,9 @@ type Context struct {
 	// Debug configuration
 	Debug *DebugContext
 
+	// SLA configuration
+	SLA *SLAConfigContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -200,6 +203,16 @@ type DebugContext struct {
 	Eval    bool
 }
 
+// SLAConfigContext provides template-friendly access to SLA configuration.
+type SLAConfigContext struct {
+	Default       string            // Default SLA duration string (e.g., "5m")
+	ByPriority    map[string]string // Priority -> duration string
+	WarningAt     float64           // Warning threshold (0.0-1.0), default 0.8
+	CriticalAt    float64           // Critical threshold (0.0-1.0), default 0.95
+	OnBreach      string            // Breach action: "alert", "log", "webhook"
+	HasPriorities bool              // True if priority-based SLAs defined
+}
+
 // PlaceContext provides template-friendly access to place data.
 type PlaceContext struct {
 	ID          string
@@ -241,6 +254,12 @@ type TransitionContext struct {
 
 	// Guard info (if present)
 	GuardInfo *GuardContext
+
+	// SLA timing fields
+	Duration     string // Expected duration (e.g., "30s")
+	MinDuration  string // Minimum expected duration
+	MaxDuration  string // Maximum allowed duration (SLA breach)
+	HasSLATiming bool   // True if any timing field is set
 
 	// Computed names
 	ConstName   string // e.g., "TransitionValidate"
@@ -456,6 +475,11 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 		ctx.Debug = buildDebugContext(enriched.Debug)
 	}
 
+	// Build SLA context
+	if enriched.SLA != nil {
+		ctx.SLA = buildSLAContext(enriched.SLA)
+	}
+
 	return ctx, nil
 }
 
@@ -607,21 +631,28 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 			}
 		}
 
+		// Check if transition has SLA timing
+		hasSLATiming := t.Duration != "" || t.MinDuration != "" || t.MaxDuration != ""
+
 		result[i] = TransitionContext{
-			ID:          t.ID,
-			Description: t.Description,
-			Guard:       t.Guard,
-			EventType:   eventType,
-			EventRef:    t.Event,
-			HTTPMethod:  t.HTTPMethod,
-			HTTPPath:    t.HTTPPath,
-			Bindings:    bindings,
-			Inputs:      inputArcs[t.ID],
-			Outputs:     outputArcs[t.ID],
-			ConstName:   ToConstName("Transition", t.ID),
-			HandlerName: ToHandlerName(t.ID),
-			EventName:   ToEventStructName(eventType),
-			FuncName:    ToPascalCase(t.ID),
+			ID:           t.ID,
+			Description:  t.Description,
+			Guard:        t.Guard,
+			EventType:    eventType,
+			EventRef:     t.Event,
+			HTTPMethod:   t.HTTPMethod,
+			HTTPPath:     t.HTTPPath,
+			Bindings:     bindings,
+			Inputs:       inputArcs[t.ID],
+			Outputs:      outputArcs[t.ID],
+			Duration:     t.Duration,
+			MinDuration:  t.MinDuration,
+			MaxDuration:  t.MaxDuration,
+			HasSLATiming: hasSLATiming,
+			ConstName:    ToConstName("Transition", t.ID),
+			HandlerName:  ToHandlerName(t.ID),
+			EventName:    ToEventStructName(eventType),
+			FuncName:     ToPascalCase(t.ID),
 		}
 	}
 	return result
@@ -1114,4 +1145,47 @@ func (c *Context) HasDebug() bool {
 // HasExplicitEvents returns true if the model has explicit event definitions.
 func (c *Context) HasExplicitEvents() bool {
 	return c.Model != nil && len(c.Model.Events) > 0
+}
+
+// HasSLAs returns true if the model has SLA configuration.
+func (c *Context) HasSLAs() bool {
+	return c.SLA != nil
+}
+
+// HasTransitionSLAs returns true if any transition has SLA timing.
+func (c *Context) HasTransitionSLAs() bool {
+	for _, t := range c.Transitions {
+		if t.HasSLATiming {
+			return true
+		}
+	}
+	return false
+}
+
+// buildSLAContext converts schema.SLAConfig to SLAConfigContext.
+func buildSLAContext(sla *schema.SLAConfig) *SLAConfigContext {
+	if sla == nil {
+		return nil
+	}
+
+	ctx := &SLAConfigContext{
+		Default:    sla.Default,
+		ByPriority: sla.ByPriority,
+		WarningAt:  sla.WarningAt,
+		CriticalAt: sla.CriticalAt,
+		OnBreach:   sla.OnBreach,
+	}
+
+	// Set default thresholds if not specified
+	if ctx.WarningAt == 0 {
+		ctx.WarningAt = 0.8 // Default: 80%
+	}
+	if ctx.CriticalAt == 0 {
+		ctx.CriticalAt = 0.95 // Default: 95%
+	}
+
+	// Check if priorities are defined
+	ctx.HasPriorities = len(sla.ByPriority) > 0
+
+	return ctx
 }

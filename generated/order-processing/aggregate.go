@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
@@ -15,6 +16,8 @@ import (
 
 // State holds the aggregate state for order-processing.
 type State struct {
+	StartedAt time.Time `json:"started_at"`
+	Priority  string    `json:"priority,omitempty"`
 	Received int `json:"received"`
 	Validated int `json:"validated"`
 	Rejected int `json:"rejected"`
@@ -26,6 +29,7 @@ type State struct {
 // NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
+		StartedAt: time.Now(),
 	}
 }
 

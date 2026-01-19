@@ -41,6 +41,7 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
