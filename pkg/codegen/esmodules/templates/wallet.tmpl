@@ -242,6 +242,7 @@ export function createWalletStatus(state) {
         ${formatAddress(connectedAccount.address)}
       </span>
       {{if .Unit}}<span class="wallet-balance">${displayBalance} {{.Unit}}</span>{{end}}
+      <button onclick="window.toggleDebugWalletView()" class="btn btn-link btn-sm" title="Show all accounts">Debug</button>
       <button onclick="window.showWalletModal()" class="btn btn-link btn-sm">Switch</button>
       <button onclick="window.disconnectWallet()" class="btn btn-link btn-sm">Disconnect</button>
     </div>
