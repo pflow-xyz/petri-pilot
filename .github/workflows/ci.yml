@@ -7,49 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Go dependencies
-        run: go mod download
-
-      - name: Run Go tests
-        run: go test ./...
-
-      - name: Build petri-pilot
-        run: go build -o petri-pilot ./cmd/petri-pilot
-
-      - name: Build example apps
-        run: make build-examples
-
-      - name: Install e2e dependencies
-        working-directory: e2e
-        run: npm ci
-
-      - name: Install Playwright browsers
-        working-directory: e2e
-        run: npx puppeteer browsers install chrome
-
-      - name: Run e2e tests
-        working-directory: e2e
-        run: npm test
-
   lint:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -65,3 +24,106 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code go.mod go.sum
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Run Go tests
+        run: go test ./...
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build petri-pilot
+        run: go build -o petri-pilot ./cmd/petri-pilot
+
+      - name: Build example apps
+        run: make build-examples
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            petri-pilot
+            generated/
+          retention-days: 1
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        test-group:
+          - name: app-tests-1
+            pattern: "blog-post|ecommerce-checkout|job-application"
+          - name: app-tests-2
+            pattern: "loan-application|order-processing|support-ticket"
+          - name: app-tests-3
+            pattern: "task-manager|workflow"
+          - name: feature-tests-1
+            pattern: "access-control|admin|auth"
+          - name: feature-tests-2
+            pattern: "concurrency|errors|events|views"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Make binaries executable
+        run: |
+          chmod +x petri-pilot
+          find generated -type f -executable -o -type f -name "*" ! -name "*.go" ! -name "*.mod" ! -name "*.sum" ! -name "*.js" ! -name "*.html" ! -name "*.css" ! -name "*.json" | head -20 | xargs -r chmod +x 2>/dev/null || true
+          # Make all app binaries executable
+          for dir in generated/*/; do
+            app=$(basename "$dir")
+            if [ -f "$dir$app" ]; then
+              chmod +x "$dir$app"
+            fi
+          done
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: npx puppeteer browsers install chrome
+
+      - name: Run e2e tests (${{ matrix.test-group.name }})
+        working-directory: e2e
+        run: npm test -- --testPathPattern="${{ matrix.test-group.pattern }}"
+        env:
+          HEADLESS: true
