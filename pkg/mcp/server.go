@@ -47,6 +47,13 @@ func NewServer() *server.MCPServer {
 	s.AddTool(delegateStatusTool(), handleDelegateStatus)
 	s.AddTool(delegateTasksTool(), handleDelegateTasks)
 
+	// E2E testing tools for headless browser automation
+	s.AddTool(e2eStartBrowserTool(), handleE2EStartBrowser)
+	s.AddTool(e2eListSessionsTool(), handleE2EListSessions)
+	s.AddTool(e2eEvalTool(), handleE2EEval)
+	s.AddTool(e2eStopBrowserTool(), handleE2EStopBrowser)
+	s.AddTool(e2eScreenshotTool(), handleE2EScreenshot)
+
 	// Register prompts for guided workflows
 	s.AddPrompt(
 		mcp.NewPrompt("design-workflow",
