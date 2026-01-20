@@ -65,6 +65,54 @@ func HasAnyRole(user *User, roleIDs []string) bool {
 	return false
 }
 
+// HasAnyRoleWithState checks if a user has at least one of the specified roles,
+// including roles granted dynamically based on state.
+func HasAnyRoleWithState(user *User, roleIDs []string, state map[string]any) bool {
+	if user == nil || len(roleIDs) == 0 {
+		return false
+	}
+
+	for _, roleID := range roleIDs {
+		// First check static roles
+		if HasRole(user, roleID) {
+			return true
+		}
+		// Then check dynamic grants
+		if HasDynamicRole(user, roleID, state) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// HasDynamicRole checks if a user is dynamically granted a role based on state.
+func HasDynamicRole(user *User, roleID string, state map[string]any) bool {
+	if user == nil || state == nil {
+		return false
+	}
+
+	// Build bindings for evaluation
+	bindings := map[string]any{
+		"user": map[string]any{
+			"id":    user.ID,
+			"login": user.Login,
+			"email": user.Email,
+			"roles": user.Roles,
+		},
+	}
+	// Merge state into bindings
+	for k, v := range state {
+		bindings[k] = v
+	}
+
+	// Check dynamic grant expressions for each role
+	switch roleID {
+	}
+
+	return false
+}
+
 // ErrUnauthorized is returned when a user is not authenticated.
 var ErrUnauthorized = fmt.Errorf("unauthorized: authentication required")
 
@@ -98,9 +146,9 @@ func CheckAccessStartScreening(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -114,9 +162,9 @@ func CheckAccessSchedulePhoneScreen(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -130,9 +178,9 @@ func CheckAccessStartBackgroundCheck(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -146,9 +194,9 @@ func CheckAccessCompletePhoneScreen(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -162,9 +210,9 @@ func CheckAccessCompleteBackgroundCheck(user *User, state map[string]any) error 
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -178,9 +226,9 @@ func CheckAccessAdvanceToInterview(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -194,9 +242,9 @@ func CheckAccessConductInterview(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "hiring_manager" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -210,9 +258,9 @@ func CheckAccessExtendOffer(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "hiring_manager" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -226,9 +274,9 @@ func CheckAccessAcceptOffer(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "candidate" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -242,9 +290,9 @@ func CheckAccessRejectAfterScreen(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "recruiter" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -258,9 +306,9 @@ func CheckAccessRejectAfterInterview(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "hiring_manager" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	
@@ -274,9 +322,9 @@ func CheckAccessDeclineOffer(user *User, state map[string]any) error {
 		return ErrUnauthorized
 	}
 	
-	// Check role requirements
+	// Check role requirements (including dynamic role grants based on state)
 	requiredRoles := []string{ "candidate" }
-	if !HasAnyRole(user, requiredRoles) {
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
 		return ErrForbidden
 	}
 	

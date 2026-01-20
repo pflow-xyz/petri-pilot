@@ -32,53 +32,6 @@ func NewState() State {
 	}
 }
 
-// BigAmount stores large numeric amounts as strings to avoid overflow.
-// Supports JSON unmarshal from both string and number.
-type BigAmount string
-
-func (b *BigAmount) UnmarshalJSON(data []byte) error {
-	// Try as string first
-	var s string
-	if err := json.Unmarshal(data, &s); err == nil {
-		*b = BigAmount(s)
-		return nil
-	}
-	// Try as number (json.Number preserves precision)
-	var n json.Number
-	if err := json.Unmarshal(data, &n); err == nil {
-		*b = BigAmount(n.String())
-		return nil
-	}
-	return fmt.Errorf("cannot unmarshal %s into BigAmount", string(data))
-}
-
-func (b BigAmount) MarshalJSON() ([]byte, error) {
-	// Marshal as string to preserve precision
-	return json.Marshal(string(b))
-}
-
-// Int64 returns the value as int64 (may overflow for large values).
-func (b BigAmount) Int64() int64 {
-	if b == "" {
-		return 0
-	}
-	var result int64
-	for _, c := range b {
-		if c >= '0' && c <= '9' {
-			result = result*10 + int64(c-'0')
-		}
-	}
-	return result
-}
-
-// String returns the string representation.
-func (b BigAmount) String() string {
-	if b == "" {
-		return "0"
-	}
-	return string(b)
-}
-
 // Bindings holds parameters for action execution.
 // Contains all unique fields across all event types.
 type Bindings struct {
@@ -89,11 +42,16 @@ type Bindings struct {
 	Owner       string    `json:"owner,omitempty"`
 	Spender     string    `json:"spender,omitempty"`
 	Caller      string    `json:"caller,omitempty"`
-	Amount      BigAmount `json:"amount,omitempty"`
+	Amount      U256JSON  `json:"amount,omitempty"`
 }
 
 // ToMetamodel converts Bindings to metamodel.Bindings.
 func (b *Bindings) ToMetamodel() metamodel.Bindings {
+	var amount int64
+	if b.Amount.U256 != nil {
+		// Convert to int64 for guard evaluation (may overflow for large values)
+		amount = int64(b.Amount.U256.Uint64())
+	}
 	return metamodel.Bindings{
 		"aggregate_id": b.AggregateID,
 		"from":         b.From,
@@ -101,7 +59,7 @@ func (b *Bindings) ToMetamodel() metamodel.Bindings {
 		"owner":        b.Owner,
 		"spender":      b.Spender,
 		"caller":       b.Caller,
-		"amount":       b.Amount.Int64(),
+		"amount":       amount,
 	}
 }
 

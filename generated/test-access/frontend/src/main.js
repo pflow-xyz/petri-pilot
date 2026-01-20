@@ -7,11 +7,130 @@ import { loadViews, renderFormView, renderDetailView, renderTableView, getFormDa
 // API client
 const API_BASE = ''
 
+// ============================================================================
+// Token Amount Scaling
+// ============================================================================
+// Decimals: 0 (0 = no scaling)
+// Unit: ""
+
+const TOKEN_DECIMALS = 0
+const TOKEN_UNIT = ""
+const TOKEN_SCALE = TOKEN_DECIMALS > 0 ? Math.pow(10, TOKEN_DECIMALS) : 1
+
+// Convert from smallest unit (wei) to display unit (ETH)
+// e.g., "1000000000000000000" -> "1"
+// Handles both string and number inputs
+function toDisplayAmount(rawAmount) {
+  if (TOKEN_DECIMALS === 0) return rawAmount
+  if (rawAmount === null || rawAmount === undefined) return ''
+
+  // Handle string amounts (may be very large)
+  const str = String(rawAmount)
+  if (str === '0') return '0'
+
+  // Pad with leading zeros if needed
+  const padded = str.padStart(TOKEN_DECIMALS + 1, '0')
+  const intPart = padded.slice(0, -TOKEN_DECIMALS) || '0'
+  const fracPart = padded.slice(-TOKEN_DECIMALS).replace(/0+$/, '')
+
+  return fracPart ? `${intPart}.${fracPart}` : intPart
+}
+
+// Convert from display unit (ETH) to smallest unit (wei)
+// e.g., 1.0 -> "1000000000000000000"
+// Returns a STRING to avoid JavaScript number precision issues with large values
+function toRawAmount(displayAmount) {
+  if (TOKEN_DECIMALS === 0) return displayAmount
+  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return "0"
+
+  const amount = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
+  if (isNaN(amount)) return "0"
+
+  // Use BigInt arithmetic to avoid precision loss
+  const multiplier = BigInt(10 ** TOKEN_DECIMALS)
+  const whole = BigInt(Math.floor(amount))
+  const frac = amount - Math.floor(amount)
+  const fracWei = BigInt(Math.round(frac * Number(multiplier)))
+  return String(whole * multiplier + fracWei)
+}
+
+// Format amount for display with unit
+function formatAmount(rawAmount) {
+  const display = toDisplayAmount(rawAmount)
+  if (TOKEN_UNIT) {
+    return `${display} ${TOKEN_UNIT}`
+  }
+  return display.toString()
+}
+
+// Check if a field name represents a token amount (should be scaled)
+function isAmountField(fieldName) {
+  const amountFields = ['amount', 'value', 'balance', 'total_supply', 'allowance']
+  return amountFields.some(f => fieldName.toLowerCase().includes(f))
+}
+
+// Scale form data for API submission
+function scaleFormData(data) {
+  if (TOKEN_DECIMALS === 0) return data
+  const scaled = { ...data }
+  for (const [key, value] of Object.entries(scaled)) {
+    if (isAmountField(key) && (typeof value === 'number' || !isNaN(parseFloat(value)))) {
+      scaled[key] = toRawAmount(value)
+    }
+  }
+  return scaled
+}
+
+// Unscale state data for display
+function unscaleStateData(state) {
+  if (TOKEN_DECIMALS === 0) return state
+  const unscaled = { ...state }
+  for (const [key, value] of Object.entries(unscaled)) {
+    if (isAmountField(key)) {
+      if (typeof value === 'number') {
+        unscaled[key] = toDisplayAmount(value)
+      } else if (typeof value === 'object' && value !== null) {
+        // Handle maps like balances: { alice: 1000000000000000000 }
+        unscaled[key] = {}
+        for (const [k, v] of Object.entries(value)) {
+          unscaled[key][k] = typeof v === 'number' ? toDisplayAmount(v) : v
+        }
+      }
+    }
+  }
+  return unscaled
+}
+
 // App state
 let currentUser = null
 let authToken = null
 let instances = []
 let currentInstance = null
+
+// Transition definitions with fields (populated in renderInstanceDetail)
+const TRANSITION_DEFS = [
+  {
+    id: 'submit',
+    name: 'Submit',
+    description: "Submit for review",
+    fields: [
+    ]
+  },
+  {
+    id: 'approve',
+    name: 'Approve',
+    description: "Approve the submission",
+    fields: [
+    ]
+  },
+  {
+    id: 'reject',
+    name: 'Reject',
+    description: "Reject the submission",
+    fields: [
+    ]
+  },
+]
 
 // ============================================================================
 // Auth
@@ -48,6 +167,29 @@ function clearAuth() {
   currentUser = null
   window.dispatchEvent(new CustomEvent('auth-change'))
 }
+
+// Reload auth from localStorage (called when wallet module updates auth)
+function reloadAuth() {
+  const stored = localStorage.getItem('auth')
+  if (stored) {
+    try {
+      const auth = JSON.parse(stored)
+      authToken = auth.token
+      currentUser = auth.user
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+  authToken = null
+  currentUser = null
+  return false
+}
+
+// Listen for auth changes from wallet module
+window.addEventListener('auth-change', () => {
+  reloadAuth()
+})
 
 function getHeaders() {
   const headers = { 'Content-Type': 'application/json' }
@@ -105,10 +247,12 @@ const api = {
   },
 
   async executeTransition(transitionId, aggregateId, data = {}) {
+    // Scale amount fields before sending to API
+    const scaledData = scaleFormData(data)
     const response = await fetch(`${API_BASE}/api/${transitionId}`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ aggregate_id: aggregateId, data }),
+      body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
     })
     return handleResponse(response)
   },
@@ -116,6 +260,11 @@ const api = {
 
 // Export for global access
 window.api = api
+
+// Export current instance for debug wallet view
+Object.defineProperty(window, 'currentInstance', {
+  get: function() { return currentInstance }
+})
 
 // Export auth functions for testing
 window.setAuthToken = function(token) {
@@ -266,9 +415,12 @@ async function renderDetailPage() {
       id: result.aggregate_id || id,
       version: result.version,
       state: result.state,
+      displayState: unscaleStateData(result.state), // Unscaled for display
       places: result.places,
       enabled: result.enabled || result.enabled_transitions || [],
     }
+    // Store state for debug wallet view
+    window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
   } catch (err) {
     document.getElementById('instance-detail').innerHTML = `
@@ -284,12 +436,8 @@ function renderInstanceDetail() {
   const status = getStatus(currentInstance.places)
   const enabled = currentInstance.enabled || []
 
-  // Transition definitions
-  const transitions = [
-    { id: 'submit', name: 'Submit', description: "Submit for review" },
-    { id: 'approve', name: 'Approve', description: "Approve the submission" },
-    { id: 'reject', name: 'Reject', description: "Reject the submission" },
-  ]
+  // Use global transition definitions
+  const transitions = TRANSITION_DEFS
 
   container.innerHTML = `
     <div class="card">
@@ -331,17 +479,429 @@ function renderInstanceDetail() {
     </div>
 
     <div class="card">
-      <div class="card-header">Current State</div>
+      <div class="card-header">Current State${TOKEN_UNIT ? ` (${TOKEN_UNIT})` : ''}</div>
       <div class="detail-list">
-        ${Object.entries(currentInstance.places || {}).map(([place, tokens]) => `
-          <div class="detail-field">
-            <dt>${place}</dt>
-            <dd>${tokens > 0 ? `<span class="badge badge-${place}">${tokens} token${tokens > 1 ? 's' : ''}</span>` : '<span style="color: #999;">0</span>'}</dd>
-          </div>
-        `).join('')}
+        ${renderStateDisplay(currentInstance.displayState || currentInstance.state)}
       </div>
     </div>
   `
+}
+
+// Render state data for display (handles nested objects like balances map)
+function renderStateDisplay(state) {
+  if (!state || Object.keys(state).length === 0) {
+    return '<p style="color: #999;">No state data</p>'
+  }
+
+  return Object.entries(state).map(([key, value]) => {
+    if (typeof value === 'object' && value !== null) {
+      // Render nested object (like balances: { alice: 750, bob: 250 })
+      const entries = Object.entries(value)
+      if (entries.length === 0) {
+        return `
+          <div class="detail-field">
+            <dt>${formatFieldName(key)}</dt>
+            <dd><span style="color: #999;">Empty</span></dd>
+          </div>
+        `
+      }
+      return `
+        <div class="detail-field">
+          <dt>${formatFieldName(key)}</dt>
+          <dd>
+            <div class="nested-state">
+              ${entries.map(([k, v]) => `
+                <div class="state-entry">
+                  <span class="state-key">${k}</span>
+                  <span class="state-value">${formatStateValue(key, v)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </dd>
+        </div>
+      `
+    }
+    return `
+      <div class="detail-field">
+        <dt>${formatFieldName(key)}</dt>
+        <dd>${formatStateValue(key, value)}</dd>
+      </div>
+    `
+  }).join('')
+}
+
+// Format field name for display (e.g., "total_supply" -> "Total Supply")
+function formatFieldName(name) {
+  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Format state value with unit if applicable
+function formatStateValue(fieldName, value) {
+  if (isAmountField(fieldName) && TOKEN_UNIT) {
+    return `<strong>${value}</strong> ${TOKEN_UNIT}`
+  }
+  return `<strong>${value}</strong>`
+}
+
+// ============================================================================
+// Action Form Modal
+// ============================================================================
+
+// Get the connected wallet address (if wallet feature is enabled)
+function getConnectedWallet() {
+  if (typeof wallet !== 'undefined' && wallet.getAccount) {
+    const account = wallet.getAccount()
+    return account?.address || null
+  }
+  return null
+}
+
+// Resolve auto-fill value
+function resolveAutoFill(autoFill, state) {
+  if (!autoFill) return ''
+  if (autoFill === 'wallet') {
+    return getConnectedWallet() || ''
+  }
+  if (autoFill === 'user') {
+    return currentUser?.id || currentUser?.login || ''
+  }
+  // State path like "balances.{wallet}"
+  if (autoFill.startsWith('balances.') || autoFill.includes('.')) {
+    // Could resolve from state if needed
+    return ''
+  }
+  return ''
+}
+
+// Create action form modal HTML
+function createActionModal() {
+  return `
+    <div id="action-modal" class="modal" style="display: none;">
+      <div class="modal-backdrop" onclick="hideActionModal()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="action-modal-title">Execute Action</h3>
+          <button onclick="hideActionModal()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="action-form" onsubmit="handleActionSubmit(event)">
+            <div id="action-form-fields"></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Execute</button>
+              <button type="button" class="btn btn-secondary" onclick="hideActionModal()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <style>
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 0;
+        min-width: 400px;
+        max-width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #eee;
+      }
+      .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        line-height: 1;
+      }
+      .modal-close:hover {
+        color: #333;
+      }
+      .modal-body {
+        padding: 1.5rem;
+      }
+      .address-input-wrapper {
+        position: relative;
+      }
+      .address-picker-btn {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .address-picker-btn:hover {
+        background: #e0e0e0;
+      }
+      .field-description {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+      }
+    </style>
+  `
+}
+
+// Current action being executed
+let currentActionId = null
+
+// Show action modal for a transition
+function showActionModal(transitionId) {
+  const transition = TRANSITION_DEFS.find(t => t.id === transitionId)
+  if (!transition) return
+
+  currentActionId = transitionId
+
+  // Update modal title
+  document.getElementById('action-modal-title').textContent = transition.name
+
+  // Build form fields
+  const fieldsHtml = transition.fields.map(field => {
+    const autoValue = resolveAutoFill(field.autoFill, currentInstance?.state)
+    const value = autoValue || field.defaultValue || ''
+    const required = field.required ? 'required' : ''
+
+    // Determine input type
+    let inputHtml = ''
+    if (field.type === 'amount') {
+      inputHtml = `
+        <input
+          type="number"
+          name="${field.name}"
+          value="${value}"
+          placeholder="${field.placeholder || 'Amount'}"
+          step="any"
+          ${required}
+          class="form-control"
+        />
+        ${TOKEN_UNIT ? `<span class="field-description">Amount in ${TOKEN_UNIT}</span>` : ''}
+      `
+    } else if (field.type === 'address') {
+      // Use dropdown for address fields in demo mode
+      const accounts = getWalletAccounts()
+      if (accounts.length > 0) {
+        inputHtml = `
+          <select name="${field.name}" ${required} class="form-control">
+            <option value="">Select address...</option>
+            ${accounts.map(acc => `
+              <option value="${acc.address}" ${acc.address === value ? 'selected' : ''}>
+                ${acc.name || 'Account'} (${acc.address.slice(0, 8)}...${acc.address.slice(-6)})
+              </option>
+            `).join('')}
+          </select>
+        `
+      } else {
+        inputHtml = `
+          <input
+            type="text"
+            name="${field.name}"
+            value="${value}"
+            placeholder="${field.placeholder || '0x...'}"
+            ${required}
+            class="form-control"
+          />
+        `
+      }
+    } else if (field.type === 'hidden') {
+      inputHtml = `<input type="hidden" name="${field.name}" value="${value}" />`
+    } else {
+      inputHtml = `
+        <input
+          type="${field.type === 'number' ? 'number' : 'text'}"
+          name="${field.name}"
+          value="${value}"
+          placeholder="${field.placeholder || ''}"
+          ${required}
+          class="form-control"
+        />
+      `
+    }
+
+    // Hidden fields don't need labels
+    if (field.type === 'hidden') {
+      return inputHtml
+    }
+
+    return `
+      <div class="form-field">
+        <label>${field.label}${field.required ? ' *' : ''}</label>
+        ${inputHtml}
+      </div>
+    `
+  }).join('')
+
+  document.getElementById('action-form-fields').innerHTML = fieldsHtml
+
+  // Show modal
+  document.getElementById('action-modal').style.display = 'flex'
+}
+
+// Hide action modal
+window.hideActionModal = function() {
+  document.getElementById('action-modal').style.display = 'none'
+  currentActionId = null
+}
+
+// Handle action form submission
+window.handleActionSubmit = async function(event) {
+  event.preventDefault()
+
+  if (!currentActionId || !currentInstance) return
+
+  // Save action ID before hiding modal (which clears it)
+  const actionId = currentActionId
+  const instanceId = currentInstance.id
+
+  const form = event.target
+  const formData = new FormData(form)
+  const data = {}
+
+  for (const [key, value] of formData.entries()) {
+    // Convert numeric strings to numbers for amount fields
+    const field = TRANSITION_DEFS.find(t => t.id === actionId)?.fields.find(f => f.name === key)
+    if (field && (field.type === 'amount' || field.type === 'number')) {
+      data[key] = parseFloat(value) || 0
+    } else {
+      data[key] = value
+    }
+  }
+
+  hideActionModal()
+
+  try {
+    const result = await api.executeTransition(actionId, instanceId, data)
+    currentInstance = {
+      ...currentInstance,
+      version: result.version,
+      state: result.state,
+      displayState: unscaleStateData(result.state),
+      places: result.state,
+      enabled: result.enabled || [],
+    }
+    // Store state for wallet balance display
+    window.currentInstanceState = currentInstance.state
+    renderInstanceDetail()
+    showSuccess(`Action "${actionId}" completed!`)
+  } catch (err) {
+    showError(`Failed to execute ${actionId}: ${err.message}`)
+  }
+}
+
+// Check if wallet accounts are available for address picker
+function hasWalletAccounts() {
+  if (typeof wallet !== 'undefined' && wallet.getAccounts) {
+    const accounts = wallet.getAccounts()
+    return accounts && accounts.length > 0
+  }
+  return false
+}
+
+// Get wallet accounts for dropdowns
+function getWalletAccounts() {
+  if (typeof wallet !== 'undefined' && wallet.getAccounts) {
+    return wallet.getAccounts() || []
+  }
+  return []
+}
+
+// Show address picker dropdown
+window.showAddressPicker = function(fieldName) {
+  if (typeof wallet === 'undefined' || !wallet.getAccounts) return
+
+  const accounts = wallet.getAccounts()
+  if (!accounts || accounts.length === 0) return
+
+  // Create dropdown
+  const existing = document.querySelector('.address-picker-dropdown')
+  if (existing) existing.remove()
+
+  const input = document.querySelector(`[name="${fieldName}"]`)
+  if (!input) return
+
+  const rect = input.getBoundingClientRect()
+  const dropdown = document.createElement('div')
+  dropdown.className = 'address-picker-dropdown'
+  dropdown.style.cssText = `
+    position: fixed;
+    top: ${rect.bottom + 4}px;
+    left: ${rect.left}px;
+    width: ${rect.width}px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 2000;
+    max-height: 200px;
+    overflow-y: auto;
+  `
+
+  dropdown.innerHTML = accounts.map(acc => `
+    <div class="address-picker-option" onclick="selectAddress('${fieldName}', '${acc.address}')" style="
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    ">
+      <div style="font-weight: 500;">${acc.name || 'Account'}</div>
+      <div style="font-size: 0.85rem; color: #666; font-family: monospace;">${acc.address.slice(0, 10)}...${acc.address.slice(-8)}</div>
+    </div>
+  `).join('')
+
+  document.body.appendChild(dropdown)
+
+  // Close on click outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!dropdown.contains(e.target)) {
+        dropdown.remove()
+        document.removeEventListener('click', closeDropdown)
+      }
+    })
+  }, 0)
+}
+
+// Select address from picker
+window.selectAddress = function(fieldName, address) {
+  const input = document.querySelector(`[name="${fieldName}"]`)
+  if (input) {
+    input.value = address
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+  const dropdown = document.querySelector('.address-picker-dropdown')
+  if (dropdown) dropdown.remove()
 }
 
 // Form page - create new instance
@@ -470,15 +1030,26 @@ window.handleSubmitCreate = async function(event) {
 window.handleTransition = async function(transitionId) {
   if (!currentInstance) return
 
+  // Check if transition has fields - show modal if so
+  const transition = TRANSITION_DEFS.find(t => t.id === transitionId)
+  if (transition && transition.fields && transition.fields.length > 0) {
+    showActionModal(transitionId)
+    return
+  }
+
+  // No fields - execute directly
   try {
     const result = await api.executeTransition(transitionId, currentInstance.id)
     currentInstance = {
       ...currentInstance,
       version: result.version,
       state: result.state,
+      displayState: unscaleStateData(result.state),
       places: result.state,
       enabled: result.enabled || [],
     }
+    // Store state for wallet balance display
+    window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
     showSuccess(`Action "${transitionId}" completed!`)
   } catch (err) {
@@ -551,6 +1122,11 @@ async function init() {
   // Render navigation
   const nav = document.getElementById('nav')
   nav.innerHTML = await createNavigation()
+
+  // Add action modal to body
+  const modalContainer = document.createElement('div')
+  modalContainer.innerHTML = createActionModal()
+  document.body.appendChild(modalContainer)
 
   // Setup routing
   window.addEventListener('route-change', handleRouteChange)

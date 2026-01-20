@@ -18,22 +18,40 @@ const TOKEN_UNIT = ""
 const TOKEN_SCALE = TOKEN_DECIMALS > 0 ? Math.pow(10, TOKEN_DECIMALS) : 1
 
 // Convert from smallest unit (wei) to display unit (ETH)
-// e.g., 1000000000000000000 -> 1.0
+// e.g., "1000000000000000000" -> "1"
+// Handles both string and number inputs
 function toDisplayAmount(rawAmount) {
   if (TOKEN_DECIMALS === 0) return rawAmount
   if (rawAmount === null || rawAmount === undefined) return ''
-  const num = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount
-  return (num / TOKEN_SCALE).toString()
+
+  // Handle string amounts (may be very large)
+  const str = String(rawAmount)
+  if (str === '0') return '0'
+
+  // Pad with leading zeros if needed
+  const padded = str.padStart(TOKEN_DECIMALS + 1, '0')
+  const intPart = padded.slice(0, -TOKEN_DECIMALS) || '0'
+  const fracPart = padded.slice(-TOKEN_DECIMALS).replace(/0+$/, '')
+
+  return fracPart ? `${intPart}.${fracPart}` : intPart
 }
 
 // Convert from display unit (ETH) to smallest unit (wei)
-// e.g., 1.0 -> 1000000000000000000
+// e.g., 1.0 -> "1000000000000000000"
+// Returns a STRING to avoid JavaScript number precision issues with large values
 function toRawAmount(displayAmount) {
   if (TOKEN_DECIMALS === 0) return displayAmount
-  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return 0
-  const num = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
-  // Use Math.round to avoid floating point precision issues
-  return Math.round(num * TOKEN_SCALE)
+  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return "0"
+
+  const amount = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
+  if (isNaN(amount)) return "0"
+
+  // Use BigInt arithmetic to avoid precision loss
+  const multiplier = BigInt(10 ** TOKEN_DECIMALS)
+  const whole = BigInt(Math.floor(amount))
+  const frac = amount - Math.floor(amount)
+  const fracWei = BigInt(Math.round(frac * Number(multiplier)))
+  return String(whole * multiplier + fracWei)
 }
 
 // Format amount for display with unit
@@ -56,7 +74,7 @@ function scaleFormData(data) {
   if (TOKEN_DECIMALS === 0) return data
   const scaled = { ...data }
   for (const [key, value] of Object.entries(scaled)) {
-    if (isAmountField(key) && typeof value === 'number' || !isNaN(parseFloat(value))) {
+    if (isAmountField(key) && (typeof value === 'number' || !isNaN(parseFloat(value)))) {
       scaled[key] = toRawAmount(value)
     }
   }
@@ -206,6 +224,29 @@ function clearAuth() {
   window.dispatchEvent(new CustomEvent('auth-change'))
 }
 
+// Reload auth from localStorage (called when wallet module updates auth)
+function reloadAuth() {
+  const stored = localStorage.getItem('auth')
+  if (stored) {
+    try {
+      const auth = JSON.parse(stored)
+      authToken = auth.token
+      currentUser = auth.user
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+  authToken = null
+  currentUser = null
+  return false
+}
+
+// Listen for auth changes from wallet module
+window.addEventListener('auth-change', () => {
+  reloadAuth()
+})
+
 function getHeaders() {
   const headers = { 'Content-Type': 'application/json' }
   if (authToken) {
@@ -275,6 +316,11 @@ const api = {
 
 // Export for global access
 window.api = api
+
+// Export current instance for debug wallet view
+Object.defineProperty(window, 'currentInstance', {
+  get: function() { return currentInstance }
+})
 
 // Export auth functions for testing
 window.setAuthToken = function(token) {
@@ -429,6 +475,8 @@ async function renderDetailPage() {
       places: result.places,
       enabled: result.enabled || result.enabled_transitions || [],
     }
+    // Store state for debug wallet view
+    window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
   } catch (err) {
     document.getElementById('instance-detail').innerHTML = `
@@ -557,8 +605,8 @@ function formatStateValue(fieldName, value) {
 
 // Get the connected wallet address (if wallet feature is enabled)
 function getConnectedWallet() {
-  if (typeof wallet !== 'undefined' && wallet.getConnectedAccount) {
-    const account = wallet.getConnectedAccount()
+  if (typeof wallet !== 'undefined' && wallet.getAccount) {
+    const account = wallet.getAccount()
     return account?.address || null
   }
   return null
@@ -719,8 +767,21 @@ function showActionModal(transitionId) {
         ${TOKEN_UNIT ? `<span class="field-description">Amount in ${TOKEN_UNIT}</span>` : ''}
       `
     } else if (field.type === 'address') {
-      inputHtml = `
-        <div class="address-input-wrapper">
+      // Use dropdown for address fields in demo mode
+      const accounts = getWalletAccounts()
+      if (accounts.length > 0) {
+        inputHtml = `
+          <select name="${field.name}" ${required} class="form-control">
+            <option value="">Select address...</option>
+            ${accounts.map(acc => `
+              <option value="${acc.address}" ${acc.address === value ? 'selected' : ''}>
+                ${acc.name || 'Account'} (${acc.address.slice(0, 8)}...${acc.address.slice(-6)})
+              </option>
+            `).join('')}
+          </select>
+        `
+      } else {
+        inputHtml = `
           <input
             type="text"
             name="${field.name}"
@@ -729,9 +790,8 @@ function showActionModal(transitionId) {
             ${required}
             class="form-control"
           />
-          ${hasWalletAccounts() ? `<button type="button" class="address-picker-btn" onclick="showAddressPicker('${field.name}')">Pick</button>` : ''}
-        </div>
-      `
+        `
+      }
     } else if (field.type === 'hidden') {
       inputHtml = `<input type="hidden" name="${field.name}" value="${value}" />`
     } else {
@@ -778,13 +838,17 @@ window.handleActionSubmit = async function(event) {
 
   if (!currentActionId || !currentInstance) return
 
+  // Save action ID before hiding modal (which clears it)
+  const actionId = currentActionId
+  const instanceId = currentInstance.id
+
   const form = event.target
   const formData = new FormData(form)
   const data = {}
 
   for (const [key, value] of formData.entries()) {
     // Convert numeric strings to numbers for amount fields
-    const field = TRANSITION_DEFS.find(t => t.id === currentActionId)?.fields.find(f => f.name === key)
+    const field = TRANSITION_DEFS.find(t => t.id === actionId)?.fields.find(f => f.name === key)
     if (field && (field.type === 'amount' || field.type === 'number')) {
       data[key] = parseFloat(value) || 0
     } else {
@@ -795,7 +859,7 @@ window.handleActionSubmit = async function(event) {
   hideActionModal()
 
   try {
-    const result = await api.executeTransition(currentActionId, currentInstance.id, data)
+    const result = await api.executeTransition(actionId, instanceId, data)
     currentInstance = {
       ...currentInstance,
       version: result.version,
@@ -807,9 +871,9 @@ window.handleActionSubmit = async function(event) {
     // Store state for wallet balance display
     window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
-    showSuccess(`Action "${currentActionId}" completed!`)
+    showSuccess(`Action "${actionId}" completed!`)
   } catch (err) {
-    showError(`Failed to execute ${currentActionId}: ${err.message}`)
+    showError(`Failed to execute ${actionId}: ${err.message}`)
   }
 }
 
@@ -820,6 +884,14 @@ function hasWalletAccounts() {
     return accounts && accounts.length > 0
   }
   return false
+}
+
+// Get wallet accounts for dropdowns
+function getWalletAccounts() {
+  if (typeof wallet !== 'undefined' && wallet.getAccounts) {
+    return wallet.getAccounts() || []
+  }
+  return []
 }
 
 // Show address picker dropdown

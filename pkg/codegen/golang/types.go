@@ -53,6 +53,8 @@ func GoZeroValue(typ string) string {
 		return `""`
 	case "bool":
 		return "false"
+	case "*U256", "U256":
+		return "U256Zero()"
 	default:
 		if strings.HasPrefix(typ, "map[") {
 			return "nil"
@@ -79,8 +81,8 @@ func GoMapInitializer(typ string) string {
 // TypeToGo converts a schema type to a proper Go type.
 // Handles common type mappings used in smart contracts and ORMs:
 //   - "address" -> "string"
-//   - "uint256" -> "int64" (simplified; use *big.Int for full precision)
-//   - "int256" -> "int64"
+//   - "uint256" -> "*U256" (full 256-bit precision)
+//   - "int256" -> "*U256" (treated as unsigned for now)
 //   - "tokenId" -> "string"
 //   - "bytes32" -> "string"
 func TypeToGo(schemaType string) string {
@@ -101,9 +103,9 @@ func TypeToGo(schemaType string) string {
 	case "address":
 		return "string"
 	case "uint256", "int256":
-		return "int64" // Simplified; use *big.Int for full precision
+		return "*U256" // Full 256-bit precision using holiman/uint256
 	case "uint128", "int128":
-		return "int64"
+		return "*U256" // Use U256 for large integers
 	case "uint64":
 		return "uint64"
 	case "uint32":
@@ -125,6 +127,16 @@ func TypeToGo(schemaType string) string {
 	}
 }
 
+// IsU256Type returns true if the type uses U256 (256-bit unsigned integer).
+func IsU256Type(typ string) bool {
+	switch typ {
+	case "*U256", "U256", "uint256", "int256", "uint128", "int128":
+		return true
+	default:
+		return false
+	}
+}
+
 // IsMapType returns true if the type is a map type.
 func IsMapType(typ string) bool {
 	return strings.HasPrefix(typ, "map[")
@@ -140,12 +152,13 @@ func IsPointerType(typ string) bool {
 	return strings.HasPrefix(typ, "*")
 }
 
-// IsNumericType returns true if the type is a numeric type.
+// IsNumericType returns true if the type is a numeric type (including U256).
 func IsNumericType(typ string) bool {
 	switch typ {
 	case "int", "int8", "int16", "int32", "int64",
 		"uint", "uint8", "uint16", "uint32", "uint64",
-		"float32", "float64":
+		"float32", "float64",
+		"*U256", "U256":
 		return true
 	default:
 		return false

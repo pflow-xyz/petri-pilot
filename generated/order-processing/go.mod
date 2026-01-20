@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pflow-xyz/petri-pilot v0.1.0
-	golang.org/x/oauth2 v0.24.0
+	golang.org/x/oauth2 v0.34.0
 )
 
 require (
@@ -22,6 +22,7 @@ require (
 	modernc.org/sqlite v1.44.1 // indirect
 )
 
-// For local development, use a replace directive:
-// replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
+// For local development, set PETRI_PILOT_LOCAL_PATH environment variable
+// or add: replace github.com/pflow-xyz/petri-pilot => /path/to/petri-pilot
+
 replace github.com/pflow-xyz/petri-pilot => ../..

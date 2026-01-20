@@ -25,7 +25,6 @@ func TestWorkflowConstants(t *testing.T) {
 
 func TestInitialPlaces(t *testing.T) {
 	initial := InitialPlaces()
-	_ = initial // Use the variable
 }
 
 func TestNewAggregate(t *testing.T) {
@@ -49,7 +48,6 @@ func TestAggregateWithID(t *testing.T) {
 func TestInitialState(t *testing.T) {
 	agg := NewAggregate("")
 	places := agg.Places()
-	_ = places // Use the variable
 }
 
 func TestEnabledTransitions(t *testing.T) {

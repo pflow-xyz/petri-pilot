@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -88,7 +89,7 @@ func (b *DebugBroker) GenerateSessionID() string {
 	b.sessionsLock.Lock()
 	defer b.sessionsLock.Unlock()
 	b.counter++
-	return "session-" + string(rune('0'+b.counter))
+	return fmt.Sprintf("session-%d", b.counter)
 }
 
 var upgrader = websocket.Upgrader{

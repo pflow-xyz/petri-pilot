@@ -81,6 +81,9 @@ const (
 
 	// Features templates (all higher-level abstractions)
 	TemplateFeatures = "features"
+
+	// Safemath templates (uint256 arithmetic)
+	TemplateSafemath = "safemath"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -157,6 +160,9 @@ var templateInfo = map[string]struct {
 
 	// Features templates
 	TemplateFeatures: {File: "features.tmpl", Output: "features.go"},
+
+	// Safemath templates
+	TemplateSafemath: {File: "safemath.tmpl", Output: "safemath.go"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -380,5 +386,12 @@ func BlobstoreTemplateNames() []string {
 func FeaturesTemplateNames() []string {
 	return []string{
 		TemplateFeatures,
+	}
+}
+
+// SafemathTemplateNames returns template names for uint256 arithmetic files.
+func SafemathTemplateNames() []string {
+	return []string{
+		TemplateSafemath,
 	}
 }

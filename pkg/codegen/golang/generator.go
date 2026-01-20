@@ -219,6 +219,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, FeaturesTemplateNames()...)
 	}
 
+	// Include safemath template if using metamodel runtime (for U256 support)
+	if ctx.UsesMetamodelRuntime() {
+		templateNames = append(templateNames, SafemathTemplateNames()...)
+	}
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {
