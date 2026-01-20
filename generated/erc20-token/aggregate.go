@@ -18,17 +18,17 @@ import (
 
 // State holds the aggregate state for erc20-token.
 type State struct {
-	TotalSupply int64 `json:"total_supply,omitempty"`
-	Balances map[string]int64 `json:"balances,omitempty"`
-	Allowances map[string]map[string]int64 `json:"allowances,omitempty"`
+	TotalSupply *U256 `json:"total_supply,omitempty"`
+	Balances map[string]*U256 `json:"balances,omitempty"`
+	Allowances map[string]map[string]*U256 `json:"allowances,omitempty"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
-		TotalSupply: 0,
-		Balances: make(map[string]int64),
-		Allowances: make(map[string]map[string]int64),
+		TotalSupply: U256Zero(),
+		Balances: make(map[string]*U256),
+		Allowances: make(map[string]map[string]*U256),
 	}
 }
 
@@ -264,9 +264,19 @@ func applyTransfer(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount.Int64()
+	fromBal := U256OrZero(state.Balances[bindings.From])
+	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("transfer: %w", err)
+	}
+	state.Balances[bindings.From] = newFromBal
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount.Int64()
+	toBal := U256OrZero(state.Balances[bindings.To])
+	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("transfer: %w", err)
+	}
+	state.Balances[bindings.To] = newToBal
 	return nil
 }
 
@@ -278,9 +288,9 @@ func applyApprove(state *State, event *runtime.Event) error {
 	}
 	// Set Allowances at key from binding (non-numeric map)
 	if state.Allowances[bindings.Owner] == nil {
-		state.Allowances[bindings.Owner] = make(map[string]int64)
+		state.Allowances[bindings.Owner] = make(map[string]*U256)
 	}
-	state.Allowances[bindings.Owner][bindings.Spender] = bindings.Amount.Int64()
+	state.Allowances[bindings.Owner][bindings.Spender] = U256Clone(bindings.Amount.U256)
 	return nil
 }
 
@@ -291,9 +301,28 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount.Int64()
+	fromBal := U256OrZero(state.Balances[bindings.From])
+	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("transfer_from: %w", err)
+	}
+	state.Balances[bindings.From] = newFromBal
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount.Int64()
+	toBal := U256OrZero(state.Balances[bindings.To])
+	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("transfer_from: %w", err)
+	}
+	state.Balances[bindings.To] = newToBal
+	// Also subtract from allowance
+	if state.Allowances[bindings.From] != nil {
+		allowance := U256OrZero(state.Allowances[bindings.From][bindings.Caller])
+		newAllowance, err := SafeSub(allowance, U256OrZero(bindings.Amount.U256))
+		if err != nil {
+			return fmt.Errorf("transfer_from allowance: %w", err)
+		}
+		state.Allowances[bindings.From][bindings.Caller] = newAllowance
+	}
 	return nil
 }
 
@@ -304,9 +333,18 @@ func applyMint(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount.Int64()
-	// Set TotalSupply (simple type) from binding
-	state.TotalSupply = bindings.Amount.Int64()
+	toBal := U256OrZero(state.Balances[bindings.To])
+	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("mint: %w", err)
+	}
+	state.Balances[bindings.To] = newToBal
+	// Add to TotalSupply
+	newSupply, err := SafeAdd(U256OrZero(state.TotalSupply), U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("mint total supply: %w", err)
+	}
+	state.TotalSupply = newSupply
 	return nil
 }
 
@@ -317,8 +355,18 @@ func applyBurn(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount.Int64()
-	// Read TotalSupply (simple type) - no state change for input arcs on simple types
+	fromBal := U256OrZero(state.Balances[bindings.From])
+	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("burn: %w", err)
+	}
+	state.Balances[bindings.From] = newFromBal
+	// Subtract from TotalSupply
+	newSupply, err := SafeSub(U256OrZero(state.TotalSupply), U256OrZero(bindings.Amount.U256))
+	if err != nil {
+		return fmt.Errorf("burn total supply: %w", err)
+	}
+	state.TotalSupply = newSupply
 	return nil
 }
 

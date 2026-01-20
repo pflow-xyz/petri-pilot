@@ -85,19 +85,37 @@ function scaleFormData(data) {
   return scaled
 }
 
+// Check if value is a numeric amount (number or numeric string)
+function isNumericAmount(value) {
+  if (typeof value === 'number') return true
+  if (typeof value === 'string' && /^\d+$/.test(value)) return true
+  return false
+}
+
 // Unscale state data for display
 function unscaleStateData(state) {
   if (TOKEN_DECIMALS === 0) return state
   const unscaled = { ...state }
   for (const [key, value] of Object.entries(unscaled)) {
     if (isAmountField(key)) {
-      if (typeof value === 'number') {
+      if (isNumericAmount(value)) {
         unscaled[key] = toDisplayAmount(value)
       } else if (typeof value === 'object' && value !== null) {
         // Handle maps like balances: { alice: 1000000000000000000 }
+        // and nested maps like allowances: { owner: { spender: amount } }
         unscaled[key] = {}
         for (const [k, v] of Object.entries(value)) {
-          unscaled[key][k] = typeof v === 'number' ? toDisplayAmount(v) : v
+          if (isNumericAmount(v)) {
+            unscaled[key][k] = toDisplayAmount(v)
+          } else if (typeof v === 'object' && v !== null) {
+            // Handle nested map (2 levels deep)
+            unscaled[key][k] = {}
+            for (const [k2, v2] of Object.entries(v)) {
+              unscaled[key][k][k2] = isNumericAmount(v2) ? toDisplayAmount(v2) : v2
+            }
+          } else {
+            unscaled[key][k] = v
+          }
         }
       }
     }
@@ -491,6 +509,7 @@ function renderStateDisplay(state) {
   return Object.entries(state).map(([key, value]) => {
     if (typeof value === 'object' && value !== null) {
       // Render nested object (like balances: { alice: 750, bob: 250 })
+      // or doubly nested (like allowances: { owner: { spender: amount } })
       const entries = Object.entries(value)
       if (entries.length === 0) {
         return `
@@ -505,12 +524,39 @@ function renderStateDisplay(state) {
           <dt>${formatFieldName(key)}</dt>
           <dd>
             <div class="nested-state">
-              ${entries.map(([k, v]) => `
-                <div class="state-entry">
-                  <span class="state-key">${k}</span>
-                  <span class="state-value">${formatStateValue(key, v)}</span>
-                </div>
-              `).join('')}
+              ${entries.map(([k, v]) => {
+                if (typeof v === 'object' && v !== null) {
+                  // Handle nested map (2 levels deep, like allowances)
+                  const innerEntries = Object.entries(v)
+                  if (innerEntries.length === 0) {
+                    return `
+                      <div class="state-entry">
+                        <span class="state-key">${k}</span>
+                        <span class="state-value" style="color: #999;">Empty</span>
+                      </div>
+                    `
+                  }
+                  return `
+                    <div class="state-entry nested-group">
+                      <span class="state-key">${k}</span>
+                      <div class="nested-state" style="margin-left: 1rem;">
+                        ${innerEntries.map(([k2, v2]) => `
+                          <div class="state-entry">
+                            <span class="state-key">${k2}</span>
+                            <span class="state-value">${formatStateValue(key, v2)}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  `
+                }
+                return `
+                  <div class="state-entry">
+                    <span class="state-key">${k}</span>
+                    <span class="state-value">${formatStateValue(key, v)}</span>
+                  </div>
+                `
+              }).join('')}
             </div>
           </dd>
         </div>

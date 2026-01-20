@@ -59,10 +59,7 @@ func main() {
 	navigation := &Navigation{
 		Brand: "ERC-20 Token",
 		Items: []NavigationItem{
-			{Label: "Dashboard", Path: "/", Icon: "coins", Roles: []string{ }},
-			{Label: "Transfer", Path: "/transfer", Icon: "arrow-right", Roles: []string{ }},
-			{Label: "Approve", Path: "/approve", Icon: "check", Roles: []string{ }},
-			{Label: "Admin", Path: "/admin", Icon: "settings", Roles: []string{"admin", }},
+			{Label: "Admin", Path: "/admin", Icon: "⚙️", Roles: []string{"admin", }},
 		},
 	}
 	// Initialize debug broker

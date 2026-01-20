@@ -373,10 +373,7 @@
   "navigation": {
     "brand": "ERC-20 Token",
     "items": [
-      {"label": "Dashboard", "path": "/", "icon": "coins"},
-      {"label": "Transfer", "path": "/transfer", "icon": "arrow-right"},
-      {"label": "Approve", "path": "/approve", "icon": "check"},
-      {"label": "Admin", "path": "/admin", "icon": "settings", "roles": ["admin"]}
+      {"label": "Admin", "path": "/admin", "icon": "⚙️", "roles": ["admin"]}
     ]
   }
 }

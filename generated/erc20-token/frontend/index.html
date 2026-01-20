@@ -367,6 +367,37 @@
       .hidden {
         display: none !important;
       }
+
+      /* Nested state display (for maps like balances/allowances) */
+      .nested-state {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .state-entry {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        font-family: monospace;
+        font-size: 0.9rem;
+      }
+      .state-entry.nested-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+      .state-key {
+        color: #666;
+        word-break: break-all;
+      }
+      .state-value {
+        color: #333;
+      }
+      .nested-group > .nested-state {
+        margin-left: 1.5rem;
+        padding-left: 0.75rem;
+        border-left: 2px solid #e0e0e0;
+      }
     </style>
   </head>
   <body>
