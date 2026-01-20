@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -88,7 +89,7 @@ func (b *DebugBroker) GenerateSessionID() string {
 	b.sessionsLock.Lock()
 	defer b.sessionsLock.Unlock()
 	b.counter++
-	return "session-" + string(rune('0'+b.counter))
+	return fmt.Sprintf("session-%d", b.counter)
 }
 
 var upgrader = websocket.Upgrader{
@@ -284,4 +285,55 @@ func HandleTestLogin(sessions SessionStore) http.HandlerFunc {
 }
 
 
+
+// HandleSessionEval sends code to a browser session for evaluation.
+func HandleSessionEval(broker *DebugBroker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sessionID := r.PathValue("id")
+		if sessionID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_SESSION_ID", "session ID is required")
+			return
+		}
+
+		session := broker.GetSession(sessionID)
+		if session == nil {
+			api.Error(w, http.StatusNotFound, "SESSION_NOT_FOUND", "session not found")
+			return
+		}
+
+		var req struct {
+			Code string `json:"code"`
+		}
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.Code == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_CODE", "code is required")
+			return
+		}
+
+		// Generate unique request ID
+		requestID := time.Now().Format("20060102150405.000000")
+
+		response, err := session.SendEval(requestID, req.Code)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "EVAL_FAILED", err.Error())
+			return
+		}
+
+		if response == nil {
+			api.Error(w, http.StatusGatewayTimeout, "EVAL_TIMEOUT", "evaluation timed out")
+			return
+		}
+
+		var result map[string]interface{}
+		if err := json.Unmarshal(response.Data, &result); err != nil {
+			result = map[string]interface{}{"raw": string(response.Data)}
+		}
+
+		api.JSON(w, http.StatusOK, result)
+	}
+}
 

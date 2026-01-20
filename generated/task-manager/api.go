@@ -55,8 +55,10 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+
 	r.POST("/api/taskmanager/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/taskmanager/{id}/replay", "Replay from snapshot", HandleReplay(app))
+
 
 
 	// Debug WebSocket and eval endpoints
@@ -65,6 +67,22 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Transition endpoints
 	r.Transition("start", "/api/start", "Start working on a task", middleware.RequirePermission("start")(HandleStart(app)))
@@ -666,4 +684,5 @@ func getInt(s string, defaultVal int) int {
 
 	return intVal
 }
+
 

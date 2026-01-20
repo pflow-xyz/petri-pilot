@@ -61,6 +61,116 @@ PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google
 
 On Linux (CI), the default `/usr/bin/chromium` is used.
 
+### MCP Testing Tools
+
+The MCP server provides tools for testing generated services interactively during development. These tools allow you to start services, launch headless browsers, and execute JavaScript in the browser context.
+
+#### Service Management
+
+```
+# Start a generated service
+mcp__petri-pilot__service_start(directory="/path/to/generated/service", port=8080)
+
+# Check service health
+mcp__petri-pilot__service_health(service_id="svc-1")
+
+# View service logs
+mcp__petri-pilot__service_logs(service_id="svc-1", lines=50)
+
+# Stop a service
+mcp__petri-pilot__service_stop(service_id="svc-1")
+
+# List all running services
+mcp__petri-pilot__service_list()
+```
+
+#### Browser Testing
+
+```
+# Start a headless browser session
+mcp__petri-pilot__e2e_start_browser(url="http://localhost:8080")
+
+# Take a screenshot
+mcp__petri-pilot__e2e_screenshot(session_id="browser-1")
+
+# Execute JavaScript in browser (use 'return' for results)
+mcp__petri-pilot__e2e_eval(session_id="browser-1", code="return document.title")
+
+# Stop browser session
+mcp__petri-pilot__e2e_stop_browser(session_id="browser-1")
+```
+
+#### Using the Pilot API
+
+Generated frontends include a `window.pilot` API for testing:
+
+```javascript
+// Authentication
+await window.pilot.loginAs(['admin', 'editor'])
+await window.pilot.logout()
+
+// Instance management
+await window.pilot.create()
+await window.pilot.view(instanceId)
+await window.pilot.refresh()
+
+// Execute transitions
+await window.pilot.action('submit', { field: 'value' })
+
+// Query state
+window.pilot.getCurrentInstance()
+window.pilot.getEnabled()
+window.pilot.getEvents()
+
+// Assertions
+window.pilot.assertState({ place: 1 })
+window.pilot.assertEnabled(['transition1', 'transition2'])
+```
+
+#### Example: Testing a Service
+
+```javascript
+// 1. Start service and browser
+service_start(directory="/path/to/generated/blog-post", port=8080)
+e2e_start_browser(url="http://localhost:8080")
+
+// 2. Login and create instance
+e2e_eval(code=`
+  await window.pilot.loginAs(['admin', 'author']);
+  const resp = await fetch('/api/blogpost', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  });
+  return await resp.json();
+`)
+
+// 3. Execute workflow transitions
+e2e_eval(code=`
+  const token = JSON.parse(localStorage.getItem('auth')).token;
+  const resp = await fetch('/api/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ aggregate_id: 'xxx', data: {} })
+  });
+  return await resp.json();
+`)
+
+// 4. Take screenshot to verify UI
+e2e_screenshot(session_id="browser-1")
+
+// 5. Cleanup
+e2e_stop_browser(session_id="browser-1")
+service_stop(service_id="svc-1")
+```
+
+#### Notes
+
+- Browser session IDs are managed by the MCP server and increment globally
+- Service debug session IDs reset when services restart
+- Use `return` in eval code to get results back
+- The pilot API methods are async - use `await`
+
 ## Monitoring GitHub Actions
 
 Use `gh` CLI to monitor CI runs:

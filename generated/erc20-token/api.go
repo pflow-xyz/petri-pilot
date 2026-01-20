@@ -71,6 +71,7 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 
@@ -241,6 +242,26 @@ func HandleTransfer(app *Application) http.HandlerFunc {
 			return
 		}
 
+		// Check dynamic role grants based on current state
+		user := UserFromContext(ctx)
+		currentAgg, loadErr := app.Load(ctx, req.AggregateID)
+		if loadErr == nil && currentAgg != nil {
+			state := make(map[string]any)
+			for k, v := range currentAgg.Places() {
+				state[k] = v
+			}
+			// Include full state for dynamic role evaluation
+			if typedState, ok := currentAgg.State().(State); ok {
+				state["total_supply"] = typedState.TotalSupply
+				state["balances"] = typedState.Balances
+				state["allowances"] = typedState.Allowances
+			}
+			if accessErr := CheckAccessTransfer(user, state); accessErr != nil {
+				api.Error(w, http.StatusForbidden, "FORBIDDEN", accessErr.Error())
+				return
+			}
+		}
+
 		agg, err := app.Execute(ctx, req.AggregateID, TransitionTransfer, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
@@ -274,6 +295,26 @@ func HandleApprove(app *Application) http.HandlerFunc {
 			return
 		}
 
+		// Check dynamic role grants based on current state
+		user := UserFromContext(ctx)
+		currentAgg, loadErr := app.Load(ctx, req.AggregateID)
+		if loadErr == nil && currentAgg != nil {
+			state := make(map[string]any)
+			for k, v := range currentAgg.Places() {
+				state[k] = v
+			}
+			// Include full state for dynamic role evaluation
+			if typedState, ok := currentAgg.State().(State); ok {
+				state["total_supply"] = typedState.TotalSupply
+				state["balances"] = typedState.Balances
+				state["allowances"] = typedState.Allowances
+			}
+			if accessErr := CheckAccessApprove(user, state); accessErr != nil {
+				api.Error(w, http.StatusForbidden, "FORBIDDEN", accessErr.Error())
+				return
+			}
+		}
+
 		agg, err := app.Execute(ctx, req.AggregateID, TransitionApprove, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
@@ -305,6 +346,26 @@ func HandleTransferFrom(app *Application) http.HandlerFunc {
 		if req.AggregateID == "" {
 			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
 			return
+		}
+
+		// Check dynamic role grants based on current state
+		user := UserFromContext(ctx)
+		currentAgg, loadErr := app.Load(ctx, req.AggregateID)
+		if loadErr == nil && currentAgg != nil {
+			state := make(map[string]any)
+			for k, v := range currentAgg.Places() {
+				state[k] = v
+			}
+			// Include full state for dynamic role evaluation
+			if typedState, ok := currentAgg.State().(State); ok {
+				state["total_supply"] = typedState.TotalSupply
+				state["balances"] = typedState.Balances
+				state["allowances"] = typedState.Allowances
+			}
+			if accessErr := CheckAccessTransferFrom(user, state); accessErr != nil {
+				api.Error(w, http.StatusForbidden, "FORBIDDEN", accessErr.Error())
+				return
+			}
 		}
 
 		agg, err := app.Execute(ctx, req.AggregateID, TransitionTransferFrom, req.Data)

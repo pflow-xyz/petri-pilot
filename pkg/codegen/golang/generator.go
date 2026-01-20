@@ -40,6 +40,9 @@ type Options struct {
 
 	// IncludeRealtime generates SSE and WebSocket handlers if true.
 	IncludeRealtime bool
+
+	// AsSubmodule skips go.mod generation, treating output as part of parent module.
+	AsSubmodule bool
 }
 
 // GeneratedFile represents a generated file's content.
@@ -128,7 +131,11 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 	}
 
 	// Determine which templates to generate
-	templateNames := append([]string{TemplateGoMod}, CodeTemplateNames()...)
+	templateNames := CodeTemplateNames()
+	if !g.opts.AsSubmodule {
+		// Include go.mod only for standalone modules
+		templateNames = append([]string{TemplateGoMod}, templateNames...)
+	}
 	if g.opts.IncludeTests {
 		templateNames = append(templateNames, TestTemplateNames()...)
 	}

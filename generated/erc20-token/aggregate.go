@@ -20,7 +20,7 @@ import (
 type State struct {
 	TotalSupply int64 `json:"total_supply,omitempty"`
 	Balances map[string]int64 `json:"balances,omitempty"`
-	Allowances map[string]int64 `json:"allowances,omitempty"`
+	Allowances map[string]map[string]int64 `json:"allowances,omitempty"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -28,8 +28,55 @@ func NewState() State {
 	return State{
 		TotalSupply: 0,
 		Balances: make(map[string]int64),
-		Allowances: make(map[string]int64),
+		Allowances: make(map[string]map[string]int64),
 	}
+}
+
+// BigAmount stores large numeric amounts as strings to avoid overflow.
+// Supports JSON unmarshal from both string and number.
+type BigAmount string
+
+func (b *BigAmount) UnmarshalJSON(data []byte) error {
+	// Try as string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*b = BigAmount(s)
+		return nil
+	}
+	// Try as number (json.Number preserves precision)
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err == nil {
+		*b = BigAmount(n.String())
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into BigAmount", string(data))
+}
+
+func (b BigAmount) MarshalJSON() ([]byte, error) {
+	// Marshal as string to preserve precision
+	return json.Marshal(string(b))
+}
+
+// Int64 returns the value as int64 (may overflow for large values).
+func (b BigAmount) Int64() int64 {
+	if b == "" {
+		return 0
+	}
+	var result int64
+	for _, c := range b {
+		if c >= '0' && c <= '9' {
+			result = result*10 + int64(c-'0')
+		}
+	}
+	return result
+}
+
+// String returns the string representation.
+func (b BigAmount) String() string {
+	if b == "" {
+		return "0"
+	}
+	return string(b)
 }
 
 // Bindings holds parameters for action execution.
@@ -42,7 +89,7 @@ type Bindings struct {
 	Owner       string    `json:"owner,omitempty"`
 	Spender     string    `json:"spender,omitempty"`
 	Caller      string    `json:"caller,omitempty"`
-	Amount      int64     `json:"amount,omitempty"`
+	Amount      BigAmount `json:"amount,omitempty"`
 }
 
 // ToMetamodel converts Bindings to metamodel.Bindings.
@@ -54,7 +101,7 @@ func (b *Bindings) ToMetamodel() metamodel.Bindings {
 		"owner":        b.Owner,
 		"spender":      b.Spender,
 		"caller":       b.Caller,
-		"amount":       b.Amount,
+		"amount":       b.Amount.Int64(),
 	}
 }
 
@@ -259,9 +306,9 @@ func applyTransfer(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount
+	state.Balances[bindings.To] += bindings.Amount.Int64()
 	return nil
 }
 
@@ -271,9 +318,11 @@ func applyApprove(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	// Add to Allowances
-	allowancesKey := bindings.Owner + ":" + bindings.Spender
-	state.Allowances[allowancesKey] += bindings.Amount
+	// Set Allowances at key from binding (non-numeric map)
+	if state.Allowances[bindings.Owner] == nil {
+		state.Allowances[bindings.Owner] = make(map[string]int64)
+	}
+	state.Allowances[bindings.Owner][bindings.Spender] = bindings.Amount.Int64()
 	return nil
 }
 
@@ -284,12 +333,9 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount
-	// Subtract from Allowances
-	allowancesKey := bindings.From + ":" + bindings.Caller
-	state.Allowances[allowancesKey] -= bindings.Amount
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount
+	state.Balances[bindings.To] += bindings.Amount.Int64()
 	return nil
 }
 
@@ -300,9 +346,9 @@ func applyMint(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Add to Balances
-	state.Balances[bindings.To] += bindings.Amount
+	state.Balances[bindings.To] += bindings.Amount.Int64()
 	// Set TotalSupply (simple type) from binding
-	state.TotalSupply = bindings.Amount
+	state.TotalSupply = bindings.Amount.Int64()
 	return nil
 }
 
@@ -313,7 +359,7 @@ func applyBurn(state *State, event *runtime.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 	// Subtract from Balances
-	state.Balances[bindings.From] -= bindings.Amount
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
 	// Read TotalSupply (simple type) - no state change for input arcs on simple types
 	return nil
 }
@@ -325,7 +371,7 @@ func buildSchema() *metamodel.Schema {
 	// Add states (places)
 	s.AddDataState("total_supply", "int64", nil, false)
 	s.AddDataState("balances", "map[string]int64", nil, true)
-	s.AddDataState("allowances", "map[string]int64", nil, true)
+	s.AddDataState("allowances", "map[string]map[string]int64", nil, true)
 
 	// Add actions (transitions)
 	s.AddAction(metamodel.Action{

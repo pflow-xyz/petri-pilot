@@ -29,7 +29,7 @@ resolver:
 
 # Use existing types instead of generating new ones
 autobind:
-  - "github.com/example/erc20-token/graph"
+  - "github.com/pflow-xyz/petri-pilot/generated/erc20-token/graph"
 
 models:
   ID:

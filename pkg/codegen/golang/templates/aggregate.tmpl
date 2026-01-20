@@ -49,6 +49,53 @@ func NewState() State {
 
 {{- if .UsesMetamodelRuntime}}
 
+// BigAmount stores large numeric amounts as strings to avoid overflow.
+// Supports JSON unmarshal from both string and number.
+type BigAmount string
+
+func (b *BigAmount) UnmarshalJSON(data []byte) error {
+	// Try as string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*b = BigAmount(s)
+		return nil
+	}
+	// Try as number (json.Number preserves precision)
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err == nil {
+		*b = BigAmount(n.String())
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into BigAmount", string(data))
+}
+
+func (b BigAmount) MarshalJSON() ([]byte, error) {
+	// Marshal as string to preserve precision
+	return json.Marshal(string(b))
+}
+
+// Int64 returns the value as int64 (may overflow for large values).
+func (b BigAmount) Int64() int64 {
+	if b == "" {
+		return 0
+	}
+	var result int64
+	for _, c := range b {
+		if c >= '0' && c <= '9' {
+			result = result*10 + int64(c-'0')
+		}
+	}
+	return result
+}
+
+// String returns the string representation.
+func (b BigAmount) String() string {
+	if b == "" {
+		return "0"
+	}
+	return string(b)
+}
+
 // Bindings holds parameters for action execution.
 // Contains all unique fields across all event types.
 type Bindings struct {
@@ -58,7 +105,8 @@ type Bindings struct {
 	To          string    `json:"to,omitempty"`
 	Owner       string    `json:"owner,omitempty"`
 	Spender     string    `json:"spender,omitempty"`
-	Amount      int64     `json:"amount,omitempty"`
+	Caller      string    `json:"caller,omitempty"`
+	Amount      BigAmount `json:"amount,omitempty"`
 }
 
 // ToMetamodel converts Bindings to metamodel.Bindings.
@@ -69,7 +117,8 @@ func (b *Bindings) ToMetamodel() metamodel.Bindings {
 		"to":           b.To,
 		"owner":        b.Owner,
 		"spender":      b.Spender,
-		"amount":       b.Amount,
+		"caller":       b.Caller,
+		"amount":       b.Amount.Int64(),
 	}
 }
 {{- end}}
@@ -175,7 +224,7 @@ func (a *Aggregate) CheckGuard(transitionID string, bindings *Bindings) (bool, e
 
 func (a *Aggregate) evaluateGuard{{pascal .TransitionID}}(bindings *Bindings) (bool, error) {
 	// Guard: {{.Expression}}
-	state := a.sm.State()
+	state := a.sm.TypedState()
 	mb := bindings.ToMetamodel()
 
 	// Add state data to bindings for evaluation
@@ -229,6 +278,9 @@ func apply{{.FuncName}}(state *State, event *runtime.Event) error {
 	// Subtract from {{.FieldName}}
 {{- if eq (len .Keys) 1}}
 	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] -= bindings.{{.ValueField}}
+{{- else if .UsesCompositeKey}}
+	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] -= bindings.{{.ValueField}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
 		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make(map[string]int64)
@@ -246,6 +298,9 @@ func apply{{.FuncName}}(state *State, event *runtime.Event) error {
 	// Add to {{.FieldName}}
 {{- if eq (len .Keys) 1}}
 	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] += bindings.{{.ValueField}}
+{{- else if .UsesCompositeKey}}
+	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] += bindings.{{.ValueField}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
 		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make(map[string]int64)
@@ -256,9 +311,12 @@ func apply{{.FuncName}}(state *State, event *runtime.Event) error {
 	// Set {{.FieldName}} at key from binding (non-numeric map)
 {{- if eq (len .Keys) 1}}
 	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = bindings.{{.ValueField}}
+{{- else if .UsesCompositeKey}}
+	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] = bindings.{{.ValueField}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
-		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make(map[string]{{.ValueType}})
+		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make({{.ValueType}})
 	}
 	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] = bindings.{{.ValueField}}
 {{- end}}

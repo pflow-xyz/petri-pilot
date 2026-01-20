@@ -208,10 +208,11 @@ type ViewField struct {
 
 // Role defines a named role for access control.
 type Role struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Inherits    []string `json:"inherits,omitempty"` // Parent role IDs for inheritance
+	ID           string   `json:"id"`
+	Name         string   `json:"name,omitempty"`
+	Description  string   `json:"description,omitempty"`
+	Inherits     []string `json:"inherits,omitempty"`      // Parent role IDs for inheritance
+	DynamicGrant string   `json:"dynamicGrant,omitempty"` // Expression to dynamically grant role (e.g., "balances[user.login] > 0")
 }
 
 // AccessRule defines who can execute a transition.

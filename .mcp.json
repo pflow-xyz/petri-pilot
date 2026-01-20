@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "type": "stdio",
+      "command": "/Users/myork/Workspace/petri-pilot/petri-pilot",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}

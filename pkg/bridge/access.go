@@ -37,6 +37,10 @@ type RoleSpec struct {
 
 	// AllRoles includes this role and all inherited roles (flattened).
 	AllRoles []string
+
+	// DynamicGrant is an expression to dynamically grant this role based on state.
+	// Example: "balances[user.login] > 0" grants the role if user has a balance.
+	DynamicGrant string
 }
 
 // AccessRuleSpec describes a single access rule extracted from the model.
@@ -79,11 +83,12 @@ func ExtractAccessSpec(model *schema.Model) *AccessSpec {
 		}
 
 		roleSpec := RoleSpec{
-			ID:          role.ID,
-			Name:        name,
-			Description: role.Description,
-			Inherits:    role.Inherits,
-			AllRoles:    spec.RoleHierarchy[role.ID],
+			ID:           role.ID,
+			Name:         name,
+			Description:  role.Description,
+			Inherits:     role.Inherits,
+			AllRoles:     spec.RoleHierarchy[role.ID],
+			DynamicGrant: role.DynamicGrant,
 		}
 		spec.Roles = append(spec.Roles, roleSpec)
 	}

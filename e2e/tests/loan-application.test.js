@@ -111,6 +111,32 @@ describe('loan-application', () => {
       result = await harness.executeTransition('complete', instance.aggregate_id);
       expect(result).toHaveTokenIn('paid_off');
     });
+
+    test('auto_deny workflow - automatic denial based on credit score', async () => {
+      const instance = await harness.createInstance();
+
+      // Credit check
+      await harness.executeTransition('run_credit_check', instance.aggregate_id);
+
+      // Auto deny (for applicants with poor credit)
+      const result = await harness.executeTransition('auto_deny', instance.aggregate_id);
+      expect(result).toHaveTokenIn('denied');
+    });
+
+    test('mark_default workflow - loan defaults during repayment', async () => {
+      const instance = await harness.createInstance();
+
+      // Get through to repaying state
+      await harness.executeTransition('run_credit_check', instance.aggregate_id);
+      await harness.executeTransition('auto_approve', instance.aggregate_id);
+      await harness.executeTransition('finalize_approval', instance.aggregate_id);
+      await harness.executeTransition('disburse', instance.aggregate_id);
+      await harness.executeTransition('start_repayment', instance.aggregate_id);
+
+      // Mark as defaulted
+      const result = await harness.executeTransition('mark_default', instance.aggregate_id);
+      expect(result).toHaveTokenIn('defaulted');
+    });
   });
 
   describe('API health', () => {

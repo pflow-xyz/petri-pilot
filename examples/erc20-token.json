@@ -129,9 +129,9 @@
     },
     {
       "id": "allowances",
-      "description": "Spending allowances: owner:spender -> amount (composite key)",
+      "description": "Spending allowances: owner -> spender -> amount (nested map)",
       "kind": "data",
-      "type": "map[string]int64",
+      "type": "map[string]map[string]int64",
       "initial": 0,
       "persisted": true,
       "exported": true
@@ -290,7 +290,8 @@
     {
       "id": "holder",
       "name": "Token Holder",
-      "description": "Can transfer and approve tokens"
+      "description": "Can transfer and approve tokens",
+      "dynamicGrant": "balances[user.login] > 0"
     }
   ],
   "access": [

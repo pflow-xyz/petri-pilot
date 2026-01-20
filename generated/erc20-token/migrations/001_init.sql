@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS "erc20token_places" (
 -- Place constants for reference:
 -- total_supply: Total tokens in circulation
 -- balances: Token balance per address
--- allowances: Spending allowances: owner:spender -> amount (composite key)
+-- allowances: Spending allowances: owner -> spender -> amount (nested map)
 
 -- Transition constants for reference:
 -- transfer: Transfer tokens from sender to recipient

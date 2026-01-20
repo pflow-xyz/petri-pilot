@@ -61,8 +61,14 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.GET("/api/orderprocessing/{id}/sla", "Get SLA status", HandleGetSLA(app))
 
 
+
 	r.POST("/api/orderprocessing/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/orderprocessing/{id}/replay", "Replay from snapshot", HandleReplay(app))
+
+
+	// GraphQL API
+	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
+	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
 
 
 	// Debug WebSocket and eval endpoints
@@ -71,6 +77,22 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Transition endpoints
 	r.Transition("validate", "/api/validate", "Check order validity", middleware.RequirePermission("validate")(HandleValidate(app)))
@@ -750,4 +772,5 @@ func getInt(s string, defaultVal int) int {
 
 	return intVal
 }
+
 

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/example/erc20-token/graph"
+	"github.com/pflow-xyz/petri-pilot/generated/erc20-token/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 

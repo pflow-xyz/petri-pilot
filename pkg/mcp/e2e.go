@@ -10,9 +10,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/network"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -24,6 +27,15 @@ type E2EManager struct {
 	counter  int
 }
 
+// CDPEvent represents a Chrome DevTools Protocol event captured from the browser.
+type CDPEvent struct {
+	Type      string    `json:"type"`                // console, request, response, exception
+	Subtype   string    `json:"subtype,omitempty"`   // log, warn, error, info (for console)
+	Message   string    `json:"message"`             // Main content
+	Detail    string    `json:"detail,omitempty"`    // Additional detail (URL, status, etc.)
+	Timestamp time.Time `json:"timestamp"`
+}
+
 // BrowserSession represents a headless browser session.
 type BrowserSession struct {
 	ID           string
@@ -32,6 +44,11 @@ type BrowserSession struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	allocCancel  context.CancelFunc
+
+	// CDP event capture
+	events   []CDPEvent
+	eventsMu sync.RWMutex
+	maxEvents int
 }
 
 var e2eManager = &E2EManager{
@@ -89,6 +106,25 @@ func e2eScreenshotTool() mcp.Tool {
 		mcp.WithString("session_id",
 			mcp.Required(),
 			mcp.Description("The browser session ID"),
+		),
+	)
+}
+
+func e2eEventsTool() mcp.Tool {
+	return mcp.NewTool("e2e_events",
+		mcp.WithDescription("Get captured CDP events (console logs, network requests, exceptions) from a browser session."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("types",
+			mcp.Description("Comma-separated event types to filter: console,request,response,exception (default: all)"),
+		),
+		mcp.WithBoolean("clear",
+			mcp.Description("Clear events after retrieving (default: false)"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Maximum number of events to return (default: 100, 0 for all)"),
 		),
 	)
 }
@@ -191,6 +227,39 @@ func handleE2EScreenshot(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	}, nil
 }
 
+func handleE2EEvents(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id parameter: %v", err)), nil
+	}
+
+	typesStr := request.GetString("types", "")
+	clear := request.GetBool("clear", false)
+	limit := request.GetInt("limit", 100)
+
+	var typeFilter []string
+	if typesStr != "" {
+		typeFilter = strings.Split(typesStr, ",")
+		for i := range typeFilter {
+			typeFilter[i] = strings.TrimSpace(typeFilter[i])
+		}
+	}
+
+	events, err := e2eManager.GetEvents(sessionID, typeFilter, clear, limit)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get events: %v", err)), nil
+	}
+
+	result := map[string]any{
+		"session_id": sessionID,
+		"count":      len(events),
+		"events":     events,
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
 // --- E2EManager Methods ---
 
 // StartBrowser launches a headless browser and navigates to the given URL.
@@ -218,6 +287,64 @@ func (m *E2EManager) StartBrowser(ctx context.Context, url string, timeout time.
 	sessionID := fmt.Sprintf("browser-%d", m.counter)
 	m.mu.Unlock()
 
+	// Create session early so we can attach event listeners
+	session := &BrowserSession{
+		ID:          sessionID,
+		URL:         url,
+		ctx:         browserCtx,
+		cancel:      browserCancel,
+		allocCancel: allocCancel,
+		events:      make([]CDPEvent, 0, 100),
+		maxEvents:   1000,
+	}
+
+	// Set up CDP event listeners for console, network, and exceptions
+	chromedp.ListenTarget(browserCtx, func(ev interface{}) {
+		switch e := ev.(type) {
+		case *runtime.EventConsoleAPICalled:
+			// Capture console.log, console.warn, console.error, etc.
+			var textParts []string
+			for _, arg := range e.Args {
+				if arg.Value != nil {
+					// Remove quotes from JSON string values
+					val := string(arg.Value)
+					if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
+						val = val[1 : len(val)-1]
+					}
+					textParts = append(textParts, val)
+				} else if arg.Description != "" {
+					textParts = append(textParts, arg.Description)
+				}
+			}
+			session.addEvent("console", e.Type.String(), strings.Join(textParts, " "), "")
+
+		case *runtime.EventExceptionThrown:
+			// Capture uncaught exceptions
+			msg := ""
+			detail := ""
+			if e.ExceptionDetails != nil {
+				if e.ExceptionDetails.Exception != nil && e.ExceptionDetails.Exception.Description != "" {
+					msg = e.ExceptionDetails.Exception.Description
+				} else if e.ExceptionDetails.Text != "" {
+					msg = e.ExceptionDetails.Text
+				}
+				if e.ExceptionDetails.URL != "" {
+					detail = fmt.Sprintf("%s:%d:%d", e.ExceptionDetails.URL, e.ExceptionDetails.LineNumber, e.ExceptionDetails.ColumnNumber)
+				}
+			}
+			session.addEvent("exception", "error", msg, detail)
+
+		case *network.EventRequestWillBeSent:
+			// Capture outgoing network requests
+			session.addEvent("request", e.Request.Method, e.Request.URL, "")
+
+		case *network.EventResponseReceived:
+			// Capture network responses
+			status := fmt.Sprintf("%d", e.Response.Status)
+			session.addEvent("response", status, e.Response.URL, e.Response.MimeType)
+		}
+	})
+
 	// Navigate to URL with timeout - use chromedp.WithTimeout action instead of context
 	err := chromedp.Run(browserCtx,
 		chromedp.Navigate(url),
@@ -243,20 +370,34 @@ func (m *E2EManager) StartBrowser(ctx context.Context, url string, timeout time.
 		debugSessionID, _ = m.fetchDebugSession(url)
 	}
 
-	session := &BrowserSession{
-		ID:           sessionID,
-		URL:          url,
-		DebugSession: debugSessionID,
-		ctx:          browserCtx,
-		cancel:       browserCancel,
-		allocCancel:  allocCancel,
-	}
+	session.DebugSession = debugSessionID
 
 	m.mu.Lock()
 	m.sessions[sessionID] = session
 	m.mu.Unlock()
 
 	return session, nil
+}
+
+// addEvent adds a CDP event to the session's event buffer.
+func (s *BrowserSession) addEvent(eventType, subtype, message, detail string) {
+	s.eventsMu.Lock()
+	defer s.eventsMu.Unlock()
+
+	event := CDPEvent{
+		Type:      eventType,
+		Subtype:   subtype,
+		Message:   message,
+		Detail:    detail,
+		Timestamp: time.Now(),
+	}
+
+	s.events = append(s.events, event)
+
+	// Trim if over max capacity
+	if len(s.events) > s.maxEvents {
+		s.events = s.events[len(s.events)-s.maxEvents:]
+	}
 }
 
 // fetchDebugSession tries to get the latest debug session from the app's API.
@@ -373,6 +514,50 @@ func (m *E2EManager) StopBrowser(sessionID string) error {
 	}
 
 	return nil
+}
+
+// GetEvents returns captured CDP events from a browser session.
+func (m *E2EManager) GetEvents(sessionID string, typeFilter []string, clear bool, limit int) ([]CDPEvent, error) {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	session.eventsMu.Lock()
+	defer session.eventsMu.Unlock()
+
+	// Filter by type if specified
+	var filtered []CDPEvent
+	if len(typeFilter) == 0 {
+		filtered = make([]CDPEvent, len(session.events))
+		copy(filtered, session.events)
+	} else {
+		typeSet := make(map[string]bool)
+		for _, t := range typeFilter {
+			typeSet[t] = true
+		}
+		for _, ev := range session.events {
+			if typeSet[ev.Type] {
+				filtered = append(filtered, ev)
+			}
+		}
+	}
+
+	// Apply limit (0 means no limit)
+	if limit > 0 && len(filtered) > limit {
+		// Return most recent events
+		filtered = filtered[len(filtered)-limit:]
+	}
+
+	// Clear events if requested
+	if clear {
+		session.events = make([]CDPEvent, 0, 100)
+	}
+
+	return filtered, nil
 }
 
 // Screenshot takes a screenshot of the current browser state.

@@ -326,7 +326,27 @@ func {{.HandlerName}}(app *Application) http.HandlerFunc {
 			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
 			return
 		}
-
+{{if $.TransitionHasDynamicRoles .ID}}
+		// Check dynamic role grants based on current state
+		user := UserFromContext(ctx)
+		currentAgg, loadErr := app.Load(ctx, req.AggregateID)
+		if loadErr == nil && currentAgg != nil {
+			state := make(map[string]any)
+			for k, v := range currentAgg.Places() {
+				state[k] = v
+			}
+			// Include full state for dynamic role evaluation
+			if typedState, ok := currentAgg.State().(State); ok {
+				{{- range $.StateFields}}
+				state["{{.Name}}"] = typedState.{{.FieldName}}
+				{{- end}}
+			}
+			if accessErr := CheckAccess{{pascal .ID}}(user, state); accessErr != nil {
+				api.Error(w, http.StatusForbidden, "FORBIDDEN", accessErr.Error())
+				return
+			}
+		}
+{{end}}
 		agg, err := app.Execute(ctx, req.AggregateID, {{.ConstName}}, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())

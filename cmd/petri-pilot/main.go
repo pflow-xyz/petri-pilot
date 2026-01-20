@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
@@ -433,6 +434,7 @@ func cmdCodegen(args []string) {
 	includeRealtime := fs.Bool("realtime", false, "Include SSE and WebSocket handlers")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 	includeFrontend := fs.Bool("frontend", false, "Generate ES modules frontend in frontend/ subdirectory")
+	asSubmodule := fs.Bool("submodule", false, "Skip go.mod generation (treat output as part of parent module)")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -521,9 +523,31 @@ func cmdCodegen(args []string) {
 		os.Exit(1)
 	}
 
+	// Determine module path for submodule mode
+	var modulePath string
+	if *asSubmodule {
+		parentModule := detectParentModule()
+		if parentModule != "" {
+			// Clean up output path to get relative path
+			relPath := *output
+			// Remove leading ./ if present
+			for len(relPath) > 0 && (relPath[0] == '.' || relPath[0] == '/') {
+				if len(relPath) > 1 && relPath[0] == '.' && relPath[1] == '/' {
+					relPath = relPath[2:]
+				} else if relPath[0] == '/' {
+					relPath = relPath[1:]
+				} else {
+					break
+				}
+			}
+			modulePath = parentModule + "/" + relPath
+		}
+	}
+
 	// Create generator
 	gen, err := golang.New(golang.Options{
 		OutputDir:            *output,
+		ModulePath:           modulePath,
 		PackageName:          pkgName,
 		IncludeTests:         *includeTests,
 		IncludeInfra:         *includeInfra,
@@ -531,6 +555,7 @@ func cmdCodegen(args []string) {
 		IncludeObservability: *includeObs,
 		IncludeDeploy:        *includeDeploy,
 		IncludeRealtime:      *includeRealtime,
+		AsSubmodule:          *asSubmodule,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
@@ -654,6 +679,24 @@ func cmdFrontend(args []string) {
 	fmt.Printf("  cd %s\n", *output)
 	fmt.Printf("  npm install\n")
 	fmt.Printf("  npm run dev\n")
+}
+
+// detectParentModule reads the go.mod file in the current directory and returns the module path.
+func detectParentModule() string {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return ""
+	}
+
+	// Parse module line: "module github.com/example/project"
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
+		}
+	}
+	return ""
 }
 
 func cmdMcp() {

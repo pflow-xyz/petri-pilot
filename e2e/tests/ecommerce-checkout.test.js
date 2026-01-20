@@ -99,5 +99,79 @@ describe('ecommerce-checkout', () => {
       const result = await harness.executeTransition('fulfill', instance.aggregate_id);
       expect(result).toHaveTokenIn('fulfilled');
     });
+
+    test('payment_fail_2 and retry_payment_2 - second payment retry', async () => {
+      const instance = await harness.createInstance();
+
+      // Go through checkout to first failure
+      await harness.executeTransition('start_checkout', instance.aggregate_id);
+      await harness.executeTransition('enter_payment', instance.aggregate_id);
+      await harness.executeTransition('process_payment', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_1', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_1', instance.aggregate_id);
+
+      // Second payment failure
+      let result = await harness.executeTransition('payment_fail_2', instance.aggregate_id);
+      expect(result).toHaveTokenIn('retry_2');
+
+      // Second retry
+      result = await harness.executeTransition('retry_payment_2', instance.aggregate_id);
+      expect(result).toHaveTokenIn('payment_processing');
+    });
+
+    test('payment_fail_3 - third payment failure', async () => {
+      const instance = await harness.createInstance();
+
+      // Go through checkout to second failure
+      await harness.executeTransition('start_checkout', instance.aggregate_id);
+      await harness.executeTransition('enter_payment', instance.aggregate_id);
+      await harness.executeTransition('process_payment', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_1', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_1', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_2', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_2', instance.aggregate_id);
+
+      // Third payment failure
+      const result = await harness.executeTransition('payment_fail_3', instance.aggregate_id);
+      expect(result).toHaveTokenIn('retry_3');
+    });
+
+    test('cancel_order - order cancelled after max payment retries', async () => {
+      const instance = await harness.createInstance();
+
+      // Go through all payment failures
+      await harness.executeTransition('start_checkout', instance.aggregate_id);
+      await harness.executeTransition('enter_payment', instance.aggregate_id);
+      await harness.executeTransition('process_payment', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_1', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_1', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_2', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_2', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_3', instance.aggregate_id);
+
+      // Cancel order
+      const result = await harness.executeTransition('cancel_order', instance.aggregate_id);
+      expect(result).toHaveTokenIn('cancelled');
+    });
+
+    test('complete payment failure cascade with cancellation', async () => {
+      const instance = await harness.createInstance();
+
+      // Full failure workflow
+      await harness.executeTransition('start_checkout', instance.aggregate_id);
+      await harness.executeTransition('enter_payment', instance.aggregate_id);
+      await harness.executeTransition('process_payment', instance.aggregate_id);
+
+      // Three failures with retries
+      await harness.executeTransition('payment_fail_1', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_1', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_2', instance.aggregate_id);
+      await harness.executeTransition('retry_payment_2', instance.aggregate_id);
+      await harness.executeTransition('payment_fail_3', instance.aggregate_id);
+
+      // Final cancellation
+      const result = await harness.executeTransition('cancel_order', instance.aggregate_id);
+      expect(result).toHaveTokenIn('cancelled');
+    });
   });
 });

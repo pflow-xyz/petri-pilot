@@ -193,12 +193,14 @@ type AccessRuleContext struct {
 
 // RoleContext provides template-friendly access to role definitions.
 type RoleContext struct {
-	ID          string
-	Name        string
-	Description string
-	Inherits    []string // Parent role IDs
-	ConstName   string   // Go constant name (e.g., "RoleAdmin")
-	AllRoles    []string // Flattened inheritance (this role + all inherited)
+	ID              string
+	Name            string
+	Description     string
+	Inherits        []string // Parent role IDs
+	ConstName       string   // Go constant name (e.g., "RoleAdmin")
+	AllRoles        []string // Flattened inheritance (this role + all inherited)
+	DynamicGrant    string   // Expression to dynamically grant role (e.g., "balances[user.login] > 0")
+	HasDynamicGrant bool     // True if DynamicGrant is set
 }
 
 // WebhookContext provides template-friendly access to webhook configuration.
@@ -817,12 +819,14 @@ func buildRoleContexts(roles []bridge.RoleSpec) []RoleContext {
 	result := make([]RoleContext, len(roles))
 	for i, r := range roles {
 		result[i] = RoleContext{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Inherits:    r.Inherits,
-			ConstName:   ToConstName("Role", r.ID),
-			AllRoles:    r.AllRoles,
+			ID:              r.ID,
+			Name:            r.Name,
+			Description:     r.Description,
+			Inherits:        r.Inherits,
+			ConstName:       ToConstName("Role", r.ID),
+			AllRoles:        r.AllRoles,
+			DynamicGrant:    r.DynamicGrant,
+			HasDynamicGrant: r.DynamicGrant != "",
 		}
 	}
 	return result
@@ -1374,6 +1378,35 @@ func (c *Context) TransitionRequiresAuth(transitionID string) bool {
 	for _, rule := range c.AccessRules {
 		if rule.TransitionID == transitionID {
 			return true
+		}
+	}
+	return false
+}
+
+// TransitionHasDynamicRoles returns true if a transition's access control involves roles with dynamic grants.
+func (c *Context) TransitionHasDynamicRoles(transitionID string) bool {
+	// Find the access rule for this transition
+	for _, rule := range c.AccessRules {
+		if rule.TransitionID == transitionID {
+			// Check if any of the required roles have dynamic grants
+			for _, roleID := range rule.Roles {
+				for _, role := range c.Roles {
+					if role.ID == roleID && role.HasDynamicGrant {
+						return true
+					}
+				}
+			}
+		}
+	}
+	// Also check if any role has dynamic grants (for transitions with empty role lists that use dynamic checking)
+	for _, role := range c.Roles {
+		if role.HasDynamicGrant {
+			// If there's an access rule for this transition, it might use dynamic role checking
+			for _, rule := range c.AccessRules {
+				if rule.TransitionID == transitionID && len(rule.Roles) == 0 {
+					return true
+				}
+			}
 		}
 	}
 	return false

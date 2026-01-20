@@ -1,6 +1,10 @@
 {
   "name": "order-processing",
   "description": "Simple order processing workflow with validation and shipping",
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
   "debug": {
     "enabled": true,
     "eval": true

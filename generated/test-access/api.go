@@ -42,12 +42,30 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+
+
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Transition endpoints
 	r.Transition("submit", "/items/{id}/submit", "Submit for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
@@ -294,6 +312,7 @@ func HandleGetViews() http.HandlerFunc {
 		w.Write(data)
 	}
 }
+
 
 
 
