@@ -18,17 +18,17 @@ import (
 
 // State holds the aggregate state for erc20-token.
 type State struct {
-	TotalSupply *U256 `json:"total_supply,omitempty"`
-	Balances map[string]*U256 `json:"balances,omitempty"`
-	Allowances map[string]map[string]*U256 `json:"allowances,omitempty"`
+	TotalSupply int64 `json:"total_supply,omitempty"`
+	Balances map[string]int64 `json:"balances,omitempty"`
+	Allowances map[string]map[string]int64 `json:"allowances,omitempty"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
-		TotalSupply: U256Zero(),
-		Balances: make(map[string]*U256),
-		Allowances: make(map[string]map[string]*U256),
+		TotalSupply: 0,
+		Balances: make(map[string]int64),
+		Allowances: make(map[string]map[string]int64),
 	}
 }
 
@@ -263,28 +263,10 @@ func applyTransfer(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	amount := bindings.Amount.U256
-	if amount == nil {
-		amount = U256Zero()
-	}
 	// Subtract from Balances
-	if state.Balances[bindings.From] == nil {
-		state.Balances[bindings.From] = U256Zero()
-	}
-	newFromBalance, err := SafeSub(state.Balances[bindings.From], amount)
-	if err != nil {
-		return fmt.Errorf("subtracting from balance: %w", err)
-	}
-	state.Balances[bindings.From] = newFromBalance
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
 	// Add to Balances
-	if state.Balances[bindings.To] == nil {
-		state.Balances[bindings.To] = U256Zero()
-	}
-	newToBalance, err := SafeAdd(state.Balances[bindings.To], amount)
-	if err != nil {
-		return fmt.Errorf("adding to balance: %w", err)
-	}
-	state.Balances[bindings.To] = newToBalance
+	state.Balances[bindings.To] += bindings.Amount.Int64()
 	return nil
 }
 
@@ -294,15 +276,11 @@ func applyApprove(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	amount := bindings.Amount.U256
-	if amount == nil {
-		amount = U256Zero()
-	}
 	// Set Allowances at key from binding (non-numeric map)
 	if state.Allowances[bindings.Owner] == nil {
-		state.Allowances[bindings.Owner] = make(map[string]*U256)
+		state.Allowances[bindings.Owner] = make(map[string]int64)
 	}
-	state.Allowances[bindings.Owner][bindings.Spender] = amount.Clone()
+	state.Allowances[bindings.Owner][bindings.Spender] = bindings.Amount.Int64()
 	return nil
 }
 
@@ -312,36 +290,10 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	amount := bindings.Amount.U256
-	if amount == nil {
-		amount = U256Zero()
-	}
 	// Subtract from Balances
-	if state.Balances[bindings.From] == nil {
-		state.Balances[bindings.From] = U256Zero()
-	}
-	newFromBalance, err := SafeSub(state.Balances[bindings.From], amount)
-	if err != nil {
-		return fmt.Errorf("subtracting from balance: %w", err)
-	}
-	state.Balances[bindings.From] = newFromBalance
-	// Subtract from Allowances
-	if state.Allowances[bindings.From] != nil && state.Allowances[bindings.From][bindings.Caller] != nil {
-		newAllowance, err := SafeSub(state.Allowances[bindings.From][bindings.Caller], amount)
-		if err != nil {
-			return fmt.Errorf("subtracting from allowance: %w", err)
-		}
-		state.Allowances[bindings.From][bindings.Caller] = newAllowance
-	}
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
 	// Add to Balances
-	if state.Balances[bindings.To] == nil {
-		state.Balances[bindings.To] = U256Zero()
-	}
-	newToBalance, err := SafeAdd(state.Balances[bindings.To], amount)
-	if err != nil {
-		return fmt.Errorf("adding to balance: %w", err)
-	}
-	state.Balances[bindings.To] = newToBalance
+	state.Balances[bindings.To] += bindings.Amount.Int64()
 	return nil
 }
 
@@ -351,28 +303,10 @@ func applyMint(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	amount := bindings.Amount.U256
-	if amount == nil {
-		amount = U256Zero()
-	}
 	// Add to Balances
-	if state.Balances[bindings.To] == nil {
-		state.Balances[bindings.To] = U256Zero()
-	}
-	newBalance, err := SafeAdd(state.Balances[bindings.To], amount)
-	if err != nil {
-		return fmt.Errorf("adding to balance: %w", err)
-	}
-	state.Balances[bindings.To] = newBalance
-	// Add to TotalSupply
-	if state.TotalSupply == nil {
-		state.TotalSupply = U256Zero()
-	}
-	newSupply, err := SafeAdd(state.TotalSupply, amount)
-	if err != nil {
-		return fmt.Errorf("adding to total supply: %w", err)
-	}
-	state.TotalSupply = newSupply
+	state.Balances[bindings.To] += bindings.Amount.Int64()
+	// Set TotalSupply (simple type) from binding
+	state.TotalSupply = bindings.Amount.Int64()
 	return nil
 }
 
@@ -382,28 +316,9 @@ func applyBurn(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	amount := bindings.Amount.U256
-	if amount == nil {
-		amount = U256Zero()
-	}
 	// Subtract from Balances
-	if state.Balances[bindings.From] == nil {
-		state.Balances[bindings.From] = U256Zero()
-	}
-	newBalance, err := SafeSub(state.Balances[bindings.From], amount)
-	if err != nil {
-		return fmt.Errorf("subtracting from balance: %w", err)
-	}
-	state.Balances[bindings.From] = newBalance
-	// Subtract from TotalSupply
-	if state.TotalSupply == nil {
-		state.TotalSupply = U256Zero()
-	}
-	newSupply, err := SafeSub(state.TotalSupply, amount)
-	if err != nil {
-		return fmt.Errorf("subtracting from total supply: %w", err)
-	}
-	state.TotalSupply = newSupply
+	state.Balances[bindings.From] -= bindings.Amount.Int64()
+	// Read TotalSupply (simple type) - no state change for input arcs on simple types
 	return nil
 }
 
