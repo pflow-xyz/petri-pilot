@@ -702,12 +702,14 @@ type MarkdownPreviewResult struct {
 
 // PreviewMarkdown renders markdown with GitHub-like styling and takes a screenshot.
 func (m *E2EManager) PreviewMarkdown(markdown string) (*MarkdownPreviewResult, error) {
-	// Create a temporary browser context
+	// Create a temporary browser context with file access enabled
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("allow-file-access-from-files", true),
+		chromedp.Flag("disable-web-security", true),
 		chromedp.WindowSize(1200, 800),
 	)
 
@@ -726,8 +728,15 @@ func (m *E2EManager) PreviewMarkdown(markdown string) (*MarkdownPreviewResult, e
 	ctx, cancelTimeout := context.WithTimeout(ctx, 30*time.Second)
 	defer cancelTimeout()
 
+	// Escape markdown for embedding in JavaScript - convert to JSON string for safety
+	markdownJSON, err := json.Marshal(markdown)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode markdown: %w", err)
+	}
+
 	// HTML template with GitHub-like markdown styling
-	htmlTemplate := `<!DOCTYPE html>
+	// Uses JSON-encoded markdown to safely embed content
+	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -754,7 +763,7 @@ h3 { font-size: 1.25em; }
 code {
 	padding: .2em .4em;
 	margin: 0;
-	font-size: 85%;
+	font-size: 85%%;
 	background-color: rgba(175, 184, 193, 0.2);
 	border-radius: 6px;
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -762,7 +771,7 @@ code {
 pre {
 	padding: 16px;
 	overflow: auto;
-	font-size: 85%;
+	font-size: 85%%;
 	line-height: 1.45;
 	background-color: #f6f8fa;
 	border-radius: 6px;
@@ -832,70 +841,99 @@ hr {
 <body>
 <div id="content"></div>
 <script>
-// Track errors
+// Track errors and render state
 window.renderErrors = [];
 window.renderWarnings = [];
+window.renderComplete = false;
 
-// Custom renderer for mermaid blocks
-const renderer = new marked.Renderer();
-const originalCodeRenderer = renderer.code.bind(renderer);
-renderer.code = function(code, language) {
-	if (language === 'mermaid') {
-		return '<pre class="mermaid">' + code + '</pre>';
-	}
-	return originalCodeRenderer(code, language);
-};
-
-marked.setOptions({
-	renderer: renderer,
-	gfm: true,
-	breaks: false,
-	sanitize: false,
-});
-
-// Initialize mermaid with error handling
-mermaid.initialize({
-	startOnLoad: false,
-	theme: 'default',
-	securityLevel: 'loose',
-});
-
-// Render markdown
-const markdown = ` + "`" + `MARKDOWN_CONTENT` + "`" + `;
-document.getElementById('content').innerHTML = marked.parse(markdown);
-
-// Render mermaid diagrams with error handling
-document.querySelectorAll('.mermaid').forEach(async (el, i) => {
+async function renderMarkdown() {
 	try {
-		const { svg } = await mermaid.render('mermaid-' + i, el.textContent);
-		el.innerHTML = svg;
+		// Parse markdown from JSON-encoded string
+		const markdown = %s;
+
+		// Custom renderer for mermaid blocks (works with both old and new marked.js API)
+		const renderer = new marked.Renderer();
+		const originalCodeRenderer = renderer.code.bind(renderer);
+		renderer.code = function(codeOrObj, language) {
+			// Handle both old API (code, language) and new API ({text, lang})
+			let code, lang;
+			if (typeof codeOrObj === 'object') {
+				code = codeOrObj.text;
+				lang = codeOrObj.lang;
+			} else {
+				code = codeOrObj;
+				lang = language;
+			}
+			if (lang === 'mermaid') {
+				return '<pre class="mermaid">' + code + '</pre>';
+			}
+			return originalCodeRenderer(codeOrObj, language);
+		};
+
+		marked.setOptions({
+			renderer: renderer,
+			gfm: true,
+			breaks: false,
+		});
+
+		// Initialize mermaid with error handling
+		mermaid.initialize({
+			startOnLoad: false,
+			theme: 'default',
+			securityLevel: 'loose',
+		});
+
+		// Render markdown
+		document.getElementById('content').innerHTML = marked.parse(markdown);
+
+		// Render mermaid diagrams with error handling
+		const mermaidBlocks = document.querySelectorAll('.mermaid');
+		for (let i = 0; i < mermaidBlocks.length; i++) {
+			const el = mermaidBlocks[i];
+			try {
+				const { svg } = await mermaid.render('mermaid-' + i, el.textContent);
+				el.innerHTML = svg;
+			} catch (err) {
+				window.renderErrors.push('Mermaid error in diagram ' + i + ': ' + err.message);
+				el.className = 'mermaid-error';
+				el.textContent = 'Mermaid rendering error: ' + err.message;
+			}
+		}
 	} catch (err) {
-		window.renderErrors.push('Mermaid error in diagram ' + i + ': ' + err.message);
-		el.className = 'mermaid-error';
-		el.textContent = 'Mermaid rendering error: ' + err.message;
+		window.renderErrors.push('Markdown parse error: ' + err.message);
+		document.getElementById('content').innerHTML = '<div class="mermaid-error">Render error: ' + err.message + '</div>';
 	}
-});
+	window.renderComplete = true;
+}
+
+renderMarkdown();
 </script>
 </body>
-</html>`
+</html>`, string(markdownJSON))
 
-	// Escape backticks and backslashes in markdown for JavaScript
-	escapedMarkdown := strings.ReplaceAll(markdown, "\\", "\\\\")
-	escapedMarkdown = strings.ReplaceAll(escapedMarkdown, "`", "\\`")
-	escapedMarkdown = strings.ReplaceAll(escapedMarkdown, "${", "\\${")
+	// Write HTML to temp file - data URLs can't load external scripts
+	tmpFile, err := os.CreateTemp("", "markdown-preview-*.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
 
-	html := strings.Replace(htmlTemplate, "MARKDOWN_CONTENT", escapedMarkdown, 1)
-
-	// Navigate to data URL with the HTML
-	dataURL := "data:text/html;charset=utf-8," + html
+	if _, err := tmpFile.WriteString(html); err != nil {
+		tmpFile.Close()
+		return nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	tmpFile.Close()
 
 	var screenshot []byte
 	var errors, warnings []string
 
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(dataURL),
-		// Wait for mermaid to render
-		chromedp.Sleep(2*time.Second),
+	err = chromedp.Run(ctx,
+		chromedp.Navigate("file://"+tmpPath),
+		// Wait for render to complete (polls for renderComplete flag)
+		chromedp.Poll(`window.renderComplete === true`, nil, chromedp.WithPollingInterval(100*time.Millisecond)),
+		// Small additional delay for mermaid SVG rendering
+		chromedp.Sleep(500*time.Millisecond),
 		// Get any render errors
 		chromedp.Evaluate(`window.renderErrors || []`, &errors),
 		chromedp.Evaluate(`window.renderWarnings || []`, &warnings),
