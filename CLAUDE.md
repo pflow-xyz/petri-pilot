@@ -4,6 +4,119 @@
 
 Petri-pilot generates complete applications from Petri net models. An LLM designs the model via MCP tools, then deterministic code generation produces Go backends and ES modules frontends.
 
+## Generating New Applications
+
+The primary workflow is: **Design → Validate → Generate → Test → Iterate**
+
+### 1. Design the Model
+
+Start by designing a Petri net model. Use `petri_validate` to check structure:
+
+```
+petri_validate(model='{"name":"order","places":[{"id":"pending"},{"id":"shipped"}],"transitions":[{"id":"ship"}],"arcs":[{"from":"pending","to":"ship"},{"from":"ship","to":"shipped"}]}')
+```
+
+Use `petri_simulate` to verify workflow behavior before generating code:
+
+```
+petri_simulate(model='...', transitions='["ship"]')
+```
+
+Use `petri_analyze` for deeper analysis (reachability, deadlocks, liveness).
+
+### 2. Generate Code
+
+For a complete full-stack application with entities, roles, and pages:
+
+```
+petri_application(spec='{"name":"order-tracker","entities":[...],"roles":[...],"pages":[...],"workflows":[...]}')
+```
+
+For just a backend from a Petri net model:
+
+```
+petri_codegen(model='...', language='go', package='ordertracker')
+```
+
+For just a frontend:
+
+```
+petri_frontend(model='...', api_url='http://localhost:8080')
+```
+
+Preview individual files before full generation:
+
+```
+petri_preview(model='...', file='api')  # Preview API handlers
+petri_preview(model='...', file='workflow')  # Preview Petri net definition
+```
+
+### 3. Start and Test the Service
+
+Start the generated service:
+
+```
+service_start(directory='/path/to/generated/app', port=8080)
+```
+
+Launch a browser session to test the UI:
+
+```
+e2e_start_browser(url='http://localhost:8080')
+```
+
+Take screenshots to verify the UI:
+
+```
+e2e_screenshot(session_id='browser-1')
+```
+
+Execute JavaScript to interact with the app:
+
+```
+e2e_eval(session_id='browser-1', code='await window.pilot.loginAs(["admin"]); return window.pilot.getEnabled();')
+```
+
+Check for errors in console/network:
+
+```
+e2e_events(session_id='browser-1', types='console,exception')
+```
+
+### 4. Iterate
+
+If something isn't working:
+
+1. Check service logs: `service_logs(service_id='svc-1')`
+2. Check browser events: `e2e_events(session_id='browser-1')`
+3. Modify the model using `petri_extend`:
+   ```
+   petri_extend(model='...', operations='[{"op":"add_place","id":"cancelled"},{"op":"add_transition","id":"cancel"},{"op":"add_arc","from":"pending","to":"cancel"},{"op":"add_arc","from":"cancel","to":"cancelled"}]')
+   ```
+4. Regenerate and restart:
+   ```
+   service_stop(service_id='svc-1')
+   petri_application(spec='...')  # or petri_codegen
+   service_start(directory='...', port=8080)
+   ```
+5. Refresh browser and retest
+
+### 5. Cleanup
+
+When done testing:
+
+```
+e2e_stop_browser(session_id='browser-1')
+service_stop(service_id='svc-1')
+```
+
+List running services/sessions:
+
+```
+service_list()
+e2e_list_sessions()
+```
+
 ## Architecture
 
 ```
