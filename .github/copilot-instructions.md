@@ -73,6 +73,69 @@ make build-examples  # Regenerates all examples and builds them
 go test ./...        # Runs all tests
 ```
 
+## Interactive Testing with MCP Tools
+
+Use the petri-pilot MCP tools to manually test generated apps before committing.
+
+### 1. Start the Service
+
+```
+service_start(directory="/absolute/path/to/generated/app", port=8080)
+```
+
+Check health and logs if needed:
+```
+service_health(service_id="svc-1")
+service_logs(service_id="svc-1", lines=50)
+```
+
+### 2. Test with Headless Browser
+
+Launch browser and take screenshots to verify UI:
+```
+e2e_start_browser(url="http://localhost:8080")
+e2e_screenshot(session_id="browser-1")
+```
+
+Execute JavaScript to test workflows:
+```
+e2e_eval(session_id="browser-1", code=`
+  await window.pilot.loginAs(['admin']);
+  await window.pilot.create();
+  return window.pilot.getEnabled();
+`)
+```
+
+Check for console errors or failed requests:
+```
+e2e_events(session_id="browser-1", types="console,exception")
+```
+
+### 3. Validate README
+
+Preview the generated README to ensure it renders correctly:
+```
+markdown_preview(file_path="/absolute/path/to/generated/app/README.md")
+```
+
+### 4. Cleanup
+
+Always stop services and browsers when done:
+```
+e2e_stop_browser(session_id="browser-1")
+service_stop(service_id="svc-1")
+```
+
+### Testing Checklist
+
+Before marking a PR ready:
+- [ ] Service starts without errors
+- [ ] UI loads and displays correctly (screenshot)
+- [ ] Can login and execute transitions
+- [ ] No console errors or exceptions
+- [ ] README renders correctly with Mermaid diagrams
+- [ ] `go build` and `go test` pass
+
 ## File Locations
 
 | What | Where |
