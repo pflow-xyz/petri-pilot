@@ -135,6 +135,18 @@ func e2eEventsTool() mcp.Tool {
 	)
 }
 
+func markdownPreviewTool() mcp.Tool {
+	return mcp.NewTool("markdown_preview",
+		mcp.WithDescription("Render markdown like GitHub and take a screenshot. Useful for validating generated README files. Returns base64-encoded PNG and any rendering errors."),
+		mcp.WithString("markdown",
+			mcp.Description("Raw markdown content to render"),
+		),
+		mcp.WithString("file_path",
+			mcp.Description("Path to a markdown file to render (alternative to markdown parameter)"),
+		),
+	)
+}
+
 // --- Tool Handlers ---
 
 func handleE2EStartBrowser(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -294,6 +306,54 @@ func handleE2EEvents(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 
 	output, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleMarkdownPreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	markdown := request.GetString("markdown", "")
+	filePath := request.GetString("file_path", "")
+
+	// Either markdown content or file path is required
+	if markdown == "" && filePath == "" {
+		return mcp.NewToolResultError("either 'markdown' or 'file_path' parameter is required"), nil
+	}
+
+	// If file path is provided, read the file
+	if filePath != "" {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to read file: %v", err)), nil
+		}
+		markdown = string(content)
+	}
+
+	// Preview the markdown
+	result, err := e2eManager.PreviewMarkdown(markdown)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("preview failed: %v", err)), nil
+	}
+
+	// Build response
+	var contents []mcp.Content
+
+	// Add any errors as text
+	if len(result.Errors) > 0 {
+		errorText := "Rendering Errors:\n"
+		for _, e := range result.Errors {
+			errorText += "  - " + e + "\n"
+		}
+		contents = append(contents, mcp.NewTextContent(errorText))
+	}
+
+	// Add the screenshot
+	b64 := base64.StdEncoding.EncodeToString(result.Screenshot)
+	contents = append(contents, mcp.NewImageContent(b64, "image/png"))
+
+	// Add summary
+	summary := fmt.Sprintf("Markdown preview complete. Errors: %d, Warnings: %d",
+		len(result.Errors), len(result.Warnings))
+	contents = append(contents, mcp.NewTextContent(summary))
+
+	return &mcp.CallToolResult{Content: contents}, nil
 }
 
 // --- E2EManager Methods ---
@@ -631,4 +691,224 @@ func (m *E2EManager) StopAllBrowsers() {
 		}
 	}
 	m.sessions = make(map[string]*BrowserSession)
+}
+
+// MarkdownPreviewResult contains the result of markdown preview.
+type MarkdownPreviewResult struct {
+	Screenshot []byte   `json:"screenshot"`
+	Errors     []string `json:"errors,omitempty"`
+	Warnings   []string `json:"warnings,omitempty"`
+}
+
+// PreviewMarkdown renders markdown with GitHub-like styling and takes a screenshot.
+func (m *E2EManager) PreviewMarkdown(markdown string) (*MarkdownPreviewResult, error) {
+	// Create a temporary browser context
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.WindowSize(1200, 800),
+	)
+
+	// Check for custom Chrome path
+	if chromePath := os.Getenv("PUPPETEER_EXECUTABLE_PATH"); chromePath != "" {
+		opts = append(opts, chromedp.ExecPath(chromePath))
+	}
+
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	// Set timeout
+	ctx, cancelTimeout := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelTimeout()
+
+	// HTML template with GitHub-like markdown styling
+	htmlTemplate := `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	line-height: 1.5;
+	color: #24292f;
+	background-color: #ffffff;
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 45px;
+}
+h1, h2, h3, h4, h5, h6 {
+	margin-top: 24px;
+	margin-bottom: 16px;
+	font-weight: 600;
+	line-height: 1.25;
+}
+h1 { font-size: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: .3em; }
+h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: .3em; }
+h3 { font-size: 1.25em; }
+code {
+	padding: .2em .4em;
+	margin: 0;
+	font-size: 85%;
+	background-color: rgba(175, 184, 193, 0.2);
+	border-radius: 6px;
+	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+pre {
+	padding: 16px;
+	overflow: auto;
+	font-size: 85%;
+	line-height: 1.45;
+	background-color: #f6f8fa;
+	border-radius: 6px;
+}
+pre code {
+	padding: 0;
+	margin: 0;
+	background-color: transparent;
+	border: 0;
+}
+table {
+	border-spacing: 0;
+	border-collapse: collapse;
+	margin-top: 0;
+	margin-bottom: 16px;
+}
+table th, table td {
+	padding: 6px 13px;
+	border: 1px solid #d0d7de;
+}
+table tr {
+	background-color: #ffffff;
+	border-top: 1px solid #d0d7de;
+}
+table tr:nth-child(2n) {
+	background-color: #f6f8fa;
+}
+blockquote {
+	padding: 0 1em;
+	color: #656d76;
+	border-left: .25em solid #d0d7de;
+	margin: 0 0 16px 0;
+}
+ul, ol {
+	padding-left: 2em;
+	margin-top: 0;
+	margin-bottom: 16px;
+}
+a {
+	color: #0969da;
+	text-decoration: none;
+}
+a:hover {
+	text-decoration: underline;
+}
+hr {
+	height: .25em;
+	padding: 0;
+	margin: 24px 0;
+	background-color: #d0d7de;
+	border: 0;
+}
+/* Mermaid error styling */
+.mermaid-error {
+	background-color: #ffebe9;
+	border: 1px solid #ff8182;
+	border-radius: 6px;
+	padding: 16px;
+	margin: 16px 0;
+	color: #cf222e;
+	font-family: monospace;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+<div id="content"></div>
+<script>
+// Track errors
+window.renderErrors = [];
+window.renderWarnings = [];
+
+// Custom renderer for mermaid blocks
+const renderer = new marked.Renderer();
+const originalCodeRenderer = renderer.code.bind(renderer);
+renderer.code = function(code, language) {
+	if (language === 'mermaid') {
+		return '<pre class="mermaid">' + code + '</pre>';
+	}
+	return originalCodeRenderer(code, language);
+};
+
+marked.setOptions({
+	renderer: renderer,
+	gfm: true,
+	breaks: false,
+	sanitize: false,
+});
+
+// Initialize mermaid with error handling
+mermaid.initialize({
+	startOnLoad: false,
+	theme: 'default',
+	securityLevel: 'loose',
+});
+
+// Render markdown
+const markdown = ` + "`" + `MARKDOWN_CONTENT` + "`" + `;
+document.getElementById('content').innerHTML = marked.parse(markdown);
+
+// Render mermaid diagrams with error handling
+document.querySelectorAll('.mermaid').forEach(async (el, i) => {
+	try {
+		const { svg } = await mermaid.render('mermaid-' + i, el.textContent);
+		el.innerHTML = svg;
+	} catch (err) {
+		window.renderErrors.push('Mermaid error in diagram ' + i + ': ' + err.message);
+		el.className = 'mermaid-error';
+		el.textContent = 'Mermaid rendering error: ' + err.message;
+	}
+});
+</script>
+</body>
+</html>`
+
+	// Escape backticks and backslashes in markdown for JavaScript
+	escapedMarkdown := strings.ReplaceAll(markdown, "\\", "\\\\")
+	escapedMarkdown = strings.ReplaceAll(escapedMarkdown, "`", "\\`")
+	escapedMarkdown = strings.ReplaceAll(escapedMarkdown, "${", "\\${")
+
+	html := strings.Replace(htmlTemplate, "MARKDOWN_CONTENT", escapedMarkdown, 1)
+
+	// Navigate to data URL with the HTML
+	dataURL := "data:text/html;charset=utf-8," + html
+
+	var screenshot []byte
+	var errors, warnings []string
+
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(dataURL),
+		// Wait for mermaid to render
+		chromedp.Sleep(2*time.Second),
+		// Get any render errors
+		chromedp.Evaluate(`window.renderErrors || []`, &errors),
+		chromedp.Evaluate(`window.renderWarnings || []`, &warnings),
+		// Take screenshot
+		chromedp.FullScreenshot(&screenshot, 90),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("preview failed: %w", err)
+	}
+
+	return &MarkdownPreviewResult{
+		Screenshot: screenshot,
+		Errors:     errors,
+		Warnings:   warnings,
+	}, nil
 }

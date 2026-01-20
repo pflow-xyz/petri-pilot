@@ -54,6 +54,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(e2eStopBrowserTool(), handleE2EStopBrowser)
 	s.AddTool(e2eScreenshotTool(), handleE2EScreenshot)
 	s.AddTool(e2eEventsTool(), handleE2EEvents)
+	s.AddTool(markdownPreviewTool(), handleMarkdownPreview)
 
 	// Service management tools for controlling generated services
 	for _, st := range ServiceTools() {
