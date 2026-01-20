@@ -218,6 +218,84 @@ func addBuiltins(ctx *Context) {
 			return strings.HasSuffix(str, suffix), nil
 		}
 	}
+
+	// includes(array, value) - checks if array contains value
+	if _, exists := ctx.Funcs["includes"]; !exists {
+		ctx.Funcs["includes"] = func(args ...any) (any, error) {
+			if len(args) != 2 {
+				return nil, fmt.Errorf("includes() requires exactly 2 arguments")
+			}
+			// Handle different array types
+			switch arr := args[0].(type) {
+			case []string:
+				val, ok := args[1].(string)
+				if !ok {
+					return false, nil
+				}
+				for _, item := range arr {
+					if item == val {
+						return true, nil
+					}
+				}
+				return false, nil
+			case []any:
+				for _, item := range arr {
+					if item == args[1] {
+						return true, nil
+					}
+				}
+				return false, nil
+			default:
+				return nil, fmt.Errorf("includes() first argument must be an array, got %T", args[0])
+			}
+		}
+	}
+
+	// hasRole(roleName) - checks if current user has a specific role
+	// Looks for user.roles in bindings (set by middleware)
+	if _, exists := ctx.Funcs["hasRole"]; !exists {
+		ctx.Funcs["hasRole"] = func(args ...any) (any, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("hasRole() requires exactly 1 argument")
+			}
+			roleName, ok := args[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("hasRole() argument must be a string")
+			}
+
+			// Get user from bindings
+			userVal, ok := ctx.Bindings["user"]
+			if !ok {
+				return false, nil // No user in context
+			}
+
+			// User can be a map or a struct-like object
+			var roles []string
+			switch user := userVal.(type) {
+			case map[string]any:
+				if rolesVal, ok := user["roles"]; ok {
+					switch r := rolesVal.(type) {
+					case []string:
+						roles = r
+					case []any:
+						for _, item := range r {
+							if s, ok := item.(string); ok {
+								roles = append(roles, s)
+							}
+						}
+					}
+				}
+			}
+
+			// Check if role is in the list
+			for _, r := range roles {
+				if r == roleName {
+					return true, nil
+				}
+			}
+			return false, nil
+		}
+	}
 }
 
 // Marking is a type alias for token state values.
