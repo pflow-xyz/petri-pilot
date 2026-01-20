@@ -54,6 +54,11 @@ func NewServer() *server.MCPServer {
 	s.AddTool(e2eStopBrowserTool(), handleE2EStopBrowser)
 	s.AddTool(e2eScreenshotTool(), handleE2EScreenshot)
 
+	// Service management tools for controlling generated services
+	for _, st := range ServiceTools() {
+		s.AddTool(st.Tool, st.Handler)
+	}
+
 	// Register prompts for guided workflows
 	s.AddPrompt(
 		mcp.NewPrompt("design-workflow",
