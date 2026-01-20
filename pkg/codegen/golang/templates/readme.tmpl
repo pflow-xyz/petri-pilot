@@ -245,7 +245,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 | Name | Type | Fields |
 |------|------|--------|
 {{range .Indexes -}}
-| `{{.ID}}` | {{.Type}} | {{range $i, $f := .Fields}}{{if $i}}, {{end}}`{{$f}}`{{end}} |
+| `{{.Name}}` | {{.Type}} | {{range $i, $f := .Fields}}{{if $i}}, {{end}}`{{$f}}`{{end}} |
 {{end}}
 {{end}}
 
