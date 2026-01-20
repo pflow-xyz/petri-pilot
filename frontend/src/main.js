@@ -20,22 +20,40 @@ const TOKEN_UNIT = "ETH"
 const TOKEN_SCALE = TOKEN_DECIMALS > 0 ? Math.pow(10, TOKEN_DECIMALS) : 1
 
 // Convert from smallest unit (wei) to display unit (ETH)
-// e.g., 1000000000000000000 -> 1.0
+// e.g., "1000000000000000000" -> "1"
+// Handles both string and number inputs
 function toDisplayAmount(rawAmount) {
   if (TOKEN_DECIMALS === 0) return rawAmount
   if (rawAmount === null || rawAmount === undefined) return ''
-  const num = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount
-  return (num / TOKEN_SCALE).toString()
+
+  // Handle string amounts (may be very large)
+  const str = String(rawAmount)
+  if (str === '0') return '0'
+
+  // Pad with leading zeros if needed
+  const padded = str.padStart(TOKEN_DECIMALS + 1, '0')
+  const intPart = padded.slice(0, -TOKEN_DECIMALS) || '0'
+  const fracPart = padded.slice(-TOKEN_DECIMALS).replace(/0+$/, '')
+
+  return fracPart ? `${intPart}.${fracPart}` : intPart
 }
 
 // Convert from display unit (ETH) to smallest unit (wei)
-// e.g., 1.0 -> 1000000000000000000
+// e.g., 1.0 -> "1000000000000000000"
+// Returns a STRING to avoid JavaScript number precision issues with large values
 function toRawAmount(displayAmount) {
   if (TOKEN_DECIMALS === 0) return displayAmount
-  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return 0
-  const num = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
-  // Use Math.round to avoid floating point precision issues
-  return Math.round(num * TOKEN_SCALE)
+  if (displayAmount === null || displayAmount === undefined || displayAmount === '') return "0"
+
+  const amount = typeof displayAmount === 'string' ? parseFloat(displayAmount) : displayAmount
+  if (isNaN(amount)) return "0"
+
+  // Use BigInt arithmetic to avoid precision loss
+  const multiplier = BigInt(10 ** TOKEN_DECIMALS)
+  const whole = BigInt(Math.floor(amount))
+  const frac = amount - Math.floor(amount)
+  const fracWei = BigInt(Math.round(frac * Number(multiplier)))
+  return String(whole * multiplier + fracWei)
 }
 
 // Format amount for display with unit

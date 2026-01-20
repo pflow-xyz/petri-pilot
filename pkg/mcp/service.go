@@ -165,17 +165,6 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 	// Determine service name from directory
 	name := filepath.Base(directory)
 
-	// Find the executable
-	execPath := filepath.Join(directory, name)
-	if _, err := os.Stat(execPath); os.IsNotExist(err) {
-		// Try building it
-		buildCmd := exec.CommandContext(ctx, "go", "build", "-o", name, ".")
-		buildCmd.Dir = directory
-		if output, err := buildCmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("failed to build service: %v\n%s", err, output)
-		}
-	}
-
 	// Create log directory
 	logDir := filepath.Join(stateDir(), "logs", name)
 	os.MkdirAll(logDir, 0755)
@@ -191,8 +180,21 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 		return nil, fmt.Errorf("failed to create stderr log: %w", err)
 	}
 
-	// Build command - start in new process group so it survives parent exit
-	cmd := exec.Command(execPath)
+	// Build the binary first
+	binaryPath := filepath.Join(directory, name)
+	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	buildCmd.Dir = directory
+	// Disable Go workspace mode so it uses the local go.mod instead of parent
+	buildCmd.Env = append(os.Environ(), "GOWORK=off")
+	buildOutput, buildErr := buildCmd.CombinedOutput()
+	if buildErr != nil {
+		stdoutFile.Close()
+		stderrFile.Close()
+		return nil, fmt.Errorf("failed to build service: %v\n%s", buildErr, string(buildOutput))
+	}
+
+	// Run the built binary - start in new process group so it survives parent exit
+	cmd := exec.Command(binaryPath)
 	cmd.Dir = directory
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
@@ -211,6 +213,7 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 	if err := cmd.Start(); err != nil {
 		stdoutFile.Close()
 		stderrFile.Close()
+		os.Remove(binaryPath) // Clean up binary on failure
 		return nil, fmt.Errorf("failed to start service: %v", err)
 	}
 
