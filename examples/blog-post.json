@@ -82,7 +82,7 @@
   ],
   "transitions": [
     {
-      "id": "create",
+      "id": "create_post",
       "description": "Create a new blog post",
       "event": "post_created",
       "fields": [
@@ -119,7 +119,7 @@
     {"id": "restore", "description": "Restore archived post to draft", "event": "post_restored"}
   ],
   "arcs": [
-    {"from": "create", "to": "draft"},
+    {"from": "create_post", "to": "draft"},
     {"from": "draft", "to": "update"},
     {"from": "update", "to": "draft"},
     {"from": "draft", "to": "submit"},
@@ -152,7 +152,7 @@
     }
   ],
   "access": [
-    {"transition": "create", "roles": ["author"]},
+    {"transition": "create_post", "roles": ["author"]},
     {"transition": "update", "roles": ["author"]},
     {"transition": "submit", "roles": ["author"]},
     {"transition": "approve", "roles": ["editor"]},
