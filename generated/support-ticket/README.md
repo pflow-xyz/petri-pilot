@@ -67,43 +67,43 @@ stateDiagram-v2
     state "closed" as PlaceClosed
 
 
-    state "assign" as t_TransitionAssign <<choice>>
-    state "start_work" as t_TransitionStartWork <<choice>>
-    state "escalate" as t_TransitionEscalate <<choice>>
-    state "request_info" as t_TransitionRequestInfo <<choice>>
-    state "customer_reply" as t_TransitionCustomerReply <<choice>>
-    state "resolve" as t_TransitionResolve <<choice>>
-    state "resolve_escalated" as t_TransitionResolveEscalated <<choice>>
-    state "close" as t_TransitionClose <<choice>>
-    state "reopen" as t_TransitionReopen <<choice>>
+    state "assign" as t_TransitionAssign
+    state "start_work" as t_TransitionStartWork
+    state "escalate" as t_TransitionEscalate
+    state "request_info" as t_TransitionRequestInfo
+    state "customer_reply" as t_TransitionCustomerReply
+    state "resolve" as t_TransitionResolve
+    state "resolve_escalated" as t_TransitionResolveEscalated
+    state "close" as t_TransitionClose
+    state "reopen" as t_TransitionReopen
 
 
-    PlaceNew --> t_TransitionAssign: 
-    t_TransitionAssign --> PlaceAssigned: 
+    PlaceNew --> t_TransitionAssign
+    t_TransitionAssign --> PlaceAssigned
 
-    PlaceAssigned --> t_TransitionStartWork: 
-    t_TransitionStartWork --> PlaceInProgress: 
+    PlaceAssigned --> t_TransitionStartWork
+    t_TransitionStartWork --> PlaceInProgress
 
-    PlaceInProgress --> t_TransitionEscalate: 
-    t_TransitionEscalate --> PlaceEscalated: 
+    PlaceInProgress --> t_TransitionEscalate
+    t_TransitionEscalate --> PlaceEscalated
 
-    PlaceInProgress --> t_TransitionRequestInfo: 
-    t_TransitionRequestInfo --> PlacePendingCustomer: 
+    PlaceInProgress --> t_TransitionRequestInfo
+    t_TransitionRequestInfo --> PlacePendingCustomer
 
-    PlacePendingCustomer --> t_TransitionCustomerReply: 
-    t_TransitionCustomerReply --> PlaceInProgress: 
+    PlacePendingCustomer --> t_TransitionCustomerReply
+    t_TransitionCustomerReply --> PlaceInProgress
 
-    PlaceInProgress --> t_TransitionResolve: 
-    t_TransitionResolve --> PlaceResolved: 
+    PlaceInProgress --> t_TransitionResolve
+    t_TransitionResolve --> PlaceResolved
 
-    PlaceEscalated --> t_TransitionResolveEscalated: 
-    t_TransitionResolveEscalated --> PlaceResolved: 
+    PlaceEscalated --> t_TransitionResolveEscalated
+    t_TransitionResolveEscalated --> PlaceResolved
 
-    PlaceResolved --> t_TransitionClose: 
-    t_TransitionClose --> PlaceClosed: 
+    PlaceResolved --> t_TransitionClose
+    t_TransitionClose --> PlaceClosed
 
-    PlaceClosed --> t_TransitionReopen: 
-    t_TransitionReopen --> PlaceNew: 
+    PlaceClosed --> t_TransitionReopen
+    t_TransitionReopen --> PlaceNew
 
 ```
 
@@ -134,32 +134,32 @@ flowchart TD
     end
 
 
-    PlaceNew -->|| t_TransitionAssign
-    t_TransitionAssign -->|| PlaceAssigned
+    PlaceNew --> t_TransitionAssign
+    t_TransitionAssign --> PlaceAssigned
 
-    PlaceAssigned -->|| t_TransitionStartWork
-    t_TransitionStartWork -->|| PlaceInProgress
+    PlaceAssigned --> t_TransitionStartWork
+    t_TransitionStartWork --> PlaceInProgress
 
-    PlaceInProgress -->|| t_TransitionEscalate
-    t_TransitionEscalate -->|| PlaceEscalated
+    PlaceInProgress --> t_TransitionEscalate
+    t_TransitionEscalate --> PlaceEscalated
 
-    PlaceInProgress -->|| t_TransitionRequestInfo
-    t_TransitionRequestInfo -->|| PlacePendingCustomer
+    PlaceInProgress --> t_TransitionRequestInfo
+    t_TransitionRequestInfo --> PlacePendingCustomer
 
-    PlacePendingCustomer -->|| t_TransitionCustomerReply
-    t_TransitionCustomerReply -->|| PlaceInProgress
+    PlacePendingCustomer --> t_TransitionCustomerReply
+    t_TransitionCustomerReply --> PlaceInProgress
 
-    PlaceInProgress -->|| t_TransitionResolve
-    t_TransitionResolve -->|| PlaceResolved
+    PlaceInProgress --> t_TransitionResolve
+    t_TransitionResolve --> PlaceResolved
 
-    PlaceEscalated -->|| t_TransitionResolveEscalated
-    t_TransitionResolveEscalated -->|| PlaceResolved
+    PlaceEscalated --> t_TransitionResolveEscalated
+    t_TransitionResolveEscalated --> PlaceResolved
 
-    PlaceResolved -->|| t_TransitionClose
-    t_TransitionClose -->|| PlaceClosed
+    PlaceResolved --> t_TransitionClose
+    t_TransitionClose --> PlaceClosed
 
-    PlaceClosed -->|| t_TransitionReopen
-    t_TransitionReopen -->|| PlaceNew
+    PlaceClosed --> t_TransitionReopen
+    t_TransitionReopen --> PlaceNew
 
 
     style Places fill:#e1f5fe

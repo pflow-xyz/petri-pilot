@@ -78,56 +78,56 @@ stateDiagram-v2
     state "rejected" as PlaceRejected
 
 
-    state "start_screening" as t_TransitionStartScreening <<choice>>
-    state "schedule_phone_screen" as t_TransitionSchedulePhoneScreen <<choice>>
-    state "start_background_check" as t_TransitionStartBackgroundCheck <<choice>>
-    state "complete_phone_screen" as t_TransitionCompletePhoneScreen <<choice>>
-    state "complete_background_check" as t_TransitionCompleteBackgroundCheck <<choice>>
-    state "advance_to_interview" as t_TransitionAdvanceToInterview <<choice>>
-    state "conduct_interview" as t_TransitionConductInterview <<choice>>
-    state "extend_offer" as t_TransitionExtendOffer <<choice>>
-    state "accept_offer" as t_TransitionAcceptOffer <<choice>>
-    state "reject_after_screen" as t_TransitionRejectAfterScreen <<choice>>
-    state "reject_after_interview" as t_TransitionRejectAfterInterview <<choice>>
-    state "decline_offer" as t_TransitionDeclineOffer <<choice>>
+    state "start_screening" as t_TransitionStartScreening
+    state "schedule_phone_screen" as t_TransitionSchedulePhoneScreen
+    state "start_background_check" as t_TransitionStartBackgroundCheck
+    state "complete_phone_screen" as t_TransitionCompletePhoneScreen
+    state "complete_background_check" as t_TransitionCompleteBackgroundCheck
+    state "advance_to_interview" as t_TransitionAdvanceToInterview
+    state "conduct_interview" as t_TransitionConductInterview
+    state "extend_offer" as t_TransitionExtendOffer
+    state "accept_offer" as t_TransitionAcceptOffer
+    state "reject_after_screen" as t_TransitionRejectAfterScreen
+    state "reject_after_interview" as t_TransitionRejectAfterInterview
+    state "decline_offer" as t_TransitionDeclineOffer
 
 
-    PlaceApplied --> t_TransitionStartScreening: 
-    t_TransitionStartScreening --> PlaceScreening: 
+    PlaceApplied --> t_TransitionStartScreening
+    t_TransitionStartScreening --> PlaceScreening
 
-    PlaceScreening --> t_TransitionSchedulePhoneScreen: 
-    t_TransitionSchedulePhoneScreen --> PlacePhoneScreenPending: 
+    PlaceScreening --> t_TransitionSchedulePhoneScreen
+    t_TransitionSchedulePhoneScreen --> PlacePhoneScreenPending
 
-    PlaceScreening --> t_TransitionStartBackgroundCheck: 
-    t_TransitionStartBackgroundCheck --> PlaceBackgroundCheckPending: 
+    PlaceScreening --> t_TransitionStartBackgroundCheck
+    t_TransitionStartBackgroundCheck --> PlaceBackgroundCheckPending
 
-    PlacePhoneScreenPending --> t_TransitionCompletePhoneScreen: 
-    t_TransitionCompletePhoneScreen --> PlacePhoneScreenComplete: 
+    PlacePhoneScreenPending --> t_TransitionCompletePhoneScreen
+    t_TransitionCompletePhoneScreen --> PlacePhoneScreenComplete
 
-    PlaceBackgroundCheckPending --> t_TransitionCompleteBackgroundCheck: 
-    t_TransitionCompleteBackgroundCheck --> PlaceBackgroundCheckComplete: 
+    PlaceBackgroundCheckPending --> t_TransitionCompleteBackgroundCheck
+    t_TransitionCompleteBackgroundCheck --> PlaceBackgroundCheckComplete
 
-    PlacePhoneScreenComplete --> t_TransitionAdvanceToInterview: 
-    PlaceBackgroundCheckComplete --> t_TransitionAdvanceToInterview: 
-    t_TransitionAdvanceToInterview --> PlaceReadyForInterview: 
+    PlacePhoneScreenComplete --> t_TransitionAdvanceToInterview
+    PlaceBackgroundCheckComplete --> t_TransitionAdvanceToInterview
+    t_TransitionAdvanceToInterview --> PlaceReadyForInterview
 
-    PlaceReadyForInterview --> t_TransitionConductInterview: 
-    t_TransitionConductInterview --> PlaceInterviewing: 
+    PlaceReadyForInterview --> t_TransitionConductInterview
+    t_TransitionConductInterview --> PlaceInterviewing
 
-    PlaceInterviewing --> t_TransitionExtendOffer: 
-    t_TransitionExtendOffer --> PlaceOfferExtended: 
+    PlaceInterviewing --> t_TransitionExtendOffer
+    t_TransitionExtendOffer --> PlaceOfferExtended
 
-    PlaceOfferExtended --> t_TransitionAcceptOffer: 
-    t_TransitionAcceptOffer --> PlaceHired: 
+    PlaceOfferExtended --> t_TransitionAcceptOffer
+    t_TransitionAcceptOffer --> PlaceHired
 
-    PlaceScreening --> t_TransitionRejectAfterScreen: 
-    t_TransitionRejectAfterScreen --> PlaceRejected: 
+    PlaceScreening --> t_TransitionRejectAfterScreen
+    t_TransitionRejectAfterScreen --> PlaceRejected
 
-    PlaceInterviewing --> t_TransitionRejectAfterInterview: 
-    t_TransitionRejectAfterInterview --> PlaceRejected: 
+    PlaceInterviewing --> t_TransitionRejectAfterInterview
+    t_TransitionRejectAfterInterview --> PlaceRejected
 
-    PlaceOfferExtended --> t_TransitionDeclineOffer: 
-    t_TransitionDeclineOffer --> PlaceRejected: 
+    PlaceOfferExtended --> t_TransitionDeclineOffer
+    t_TransitionDeclineOffer --> PlaceRejected
 
 ```
 
@@ -165,42 +165,42 @@ flowchart TD
     end
 
 
-    PlaceApplied -->|| t_TransitionStartScreening
-    t_TransitionStartScreening -->|| PlaceScreening
+    PlaceApplied --> t_TransitionStartScreening
+    t_TransitionStartScreening --> PlaceScreening
 
-    PlaceScreening -->|| t_TransitionSchedulePhoneScreen
-    t_TransitionSchedulePhoneScreen -->|| PlacePhoneScreenPending
+    PlaceScreening --> t_TransitionSchedulePhoneScreen
+    t_TransitionSchedulePhoneScreen --> PlacePhoneScreenPending
 
-    PlaceScreening -->|| t_TransitionStartBackgroundCheck
-    t_TransitionStartBackgroundCheck -->|| PlaceBackgroundCheckPending
+    PlaceScreening --> t_TransitionStartBackgroundCheck
+    t_TransitionStartBackgroundCheck --> PlaceBackgroundCheckPending
 
-    PlacePhoneScreenPending -->|| t_TransitionCompletePhoneScreen
-    t_TransitionCompletePhoneScreen -->|| PlacePhoneScreenComplete
+    PlacePhoneScreenPending --> t_TransitionCompletePhoneScreen
+    t_TransitionCompletePhoneScreen --> PlacePhoneScreenComplete
 
-    PlaceBackgroundCheckPending -->|| t_TransitionCompleteBackgroundCheck
-    t_TransitionCompleteBackgroundCheck -->|| PlaceBackgroundCheckComplete
+    PlaceBackgroundCheckPending --> t_TransitionCompleteBackgroundCheck
+    t_TransitionCompleteBackgroundCheck --> PlaceBackgroundCheckComplete
 
-    PlacePhoneScreenComplete -->|| t_TransitionAdvanceToInterview
-    PlaceBackgroundCheckComplete -->|| t_TransitionAdvanceToInterview
-    t_TransitionAdvanceToInterview -->|| PlaceReadyForInterview
+    PlacePhoneScreenComplete --> t_TransitionAdvanceToInterview
+    PlaceBackgroundCheckComplete --> t_TransitionAdvanceToInterview
+    t_TransitionAdvanceToInterview --> PlaceReadyForInterview
 
-    PlaceReadyForInterview -->|| t_TransitionConductInterview
-    t_TransitionConductInterview -->|| PlaceInterviewing
+    PlaceReadyForInterview --> t_TransitionConductInterview
+    t_TransitionConductInterview --> PlaceInterviewing
 
-    PlaceInterviewing -->|| t_TransitionExtendOffer
-    t_TransitionExtendOffer -->|| PlaceOfferExtended
+    PlaceInterviewing --> t_TransitionExtendOffer
+    t_TransitionExtendOffer --> PlaceOfferExtended
 
-    PlaceOfferExtended -->|| t_TransitionAcceptOffer
-    t_TransitionAcceptOffer -->|| PlaceHired
+    PlaceOfferExtended --> t_TransitionAcceptOffer
+    t_TransitionAcceptOffer --> PlaceHired
 
-    PlaceScreening -->|| t_TransitionRejectAfterScreen
-    t_TransitionRejectAfterScreen -->|| PlaceRejected
+    PlaceScreening --> t_TransitionRejectAfterScreen
+    t_TransitionRejectAfterScreen --> PlaceRejected
 
-    PlaceInterviewing -->|| t_TransitionRejectAfterInterview
-    t_TransitionRejectAfterInterview -->|| PlaceRejected
+    PlaceInterviewing --> t_TransitionRejectAfterInterview
+    t_TransitionRejectAfterInterview --> PlaceRejected
 
-    PlaceOfferExtended -->|| t_TransitionDeclineOffer
-    t_TransitionDeclineOffer -->|| PlaceRejected
+    PlaceOfferExtended --> t_TransitionDeclineOffer
+    t_TransitionDeclineOffer --> PlaceRejected
 
 
     style Places fill:#e1f5fe

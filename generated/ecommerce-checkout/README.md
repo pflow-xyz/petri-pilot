@@ -75,51 +75,51 @@ stateDiagram-v2
     state "fulfilled" as PlaceFulfilled
 
 
-    state "start_checkout" as t_TransitionStartCheckout <<choice>>
-    state "enter_payment" as t_TransitionEnterPayment <<choice>>
-    state "process_payment" as t_TransitionProcessPayment <<choice>>
-    state "payment_success" as t_TransitionPaymentSuccess <<choice>>
-    state "payment_fail_1" as t_TransitionPaymentFail1 <<choice>>
-    state "retry_payment_1" as t_TransitionRetryPayment1 <<choice>>
-    state "payment_fail_2" as t_TransitionPaymentFail2 <<choice>>
-    state "retry_payment_2" as t_TransitionRetryPayment2 <<choice>>
-    state "payment_fail_3" as t_TransitionPaymentFail3 <<choice>>
-    state "cancel_order" as t_TransitionCancelOrder <<choice>>
-    state "fulfill" as t_TransitionFulfill <<choice>>
+    state "start_checkout" as t_TransitionStartCheckout
+    state "enter_payment" as t_TransitionEnterPayment
+    state "process_payment" as t_TransitionProcessPayment
+    state "payment_success" as t_TransitionPaymentSuccess
+    state "payment_fail_1" as t_TransitionPaymentFail1
+    state "retry_payment_1" as t_TransitionRetryPayment1
+    state "payment_fail_2" as t_TransitionPaymentFail2
+    state "retry_payment_2" as t_TransitionRetryPayment2
+    state "payment_fail_3" as t_TransitionPaymentFail3
+    state "cancel_order" as t_TransitionCancelOrder
+    state "fulfill" as t_TransitionFulfill
 
 
-    PlaceCart --> t_TransitionStartCheckout: 
-    t_TransitionStartCheckout --> PlaceCheckoutStarted: 
+    PlaceCart --> t_TransitionStartCheckout
+    t_TransitionStartCheckout --> PlaceCheckoutStarted
 
-    PlaceCheckoutStarted --> t_TransitionEnterPayment: 
-    t_TransitionEnterPayment --> PlacePaymentPending: 
+    PlaceCheckoutStarted --> t_TransitionEnterPayment
+    t_TransitionEnterPayment --> PlacePaymentPending
 
-    PlacePaymentPending --> t_TransitionProcessPayment: 
-    t_TransitionProcessPayment --> PlacePaymentProcessing: 
+    PlacePaymentPending --> t_TransitionProcessPayment
+    t_TransitionProcessPayment --> PlacePaymentProcessing
 
-    PlacePaymentProcessing --> t_TransitionPaymentSuccess: 
-    t_TransitionPaymentSuccess --> PlacePaid: 
+    PlacePaymentProcessing --> t_TransitionPaymentSuccess
+    t_TransitionPaymentSuccess --> PlacePaid
 
-    PlacePaymentProcessing --> t_TransitionPaymentFail1: 
-    t_TransitionPaymentFail1 --> PlaceRetry1: 
+    PlacePaymentProcessing --> t_TransitionPaymentFail1
+    t_TransitionPaymentFail1 --> PlaceRetry1
 
-    PlaceRetry1 --> t_TransitionRetryPayment1: 
-    t_TransitionRetryPayment1 --> PlacePaymentProcessing: 
+    PlaceRetry1 --> t_TransitionRetryPayment1
+    t_TransitionRetryPayment1 --> PlacePaymentProcessing
 
-    PlacePaymentProcessing --> t_TransitionPaymentFail2: 
-    t_TransitionPaymentFail2 --> PlaceRetry2: 
+    PlacePaymentProcessing --> t_TransitionPaymentFail2
+    t_TransitionPaymentFail2 --> PlaceRetry2
 
-    PlaceRetry2 --> t_TransitionRetryPayment2: 
-    t_TransitionRetryPayment2 --> PlacePaymentProcessing: 
+    PlaceRetry2 --> t_TransitionRetryPayment2
+    t_TransitionRetryPayment2 --> PlacePaymentProcessing
 
-    PlacePaymentProcessing --> t_TransitionPaymentFail3: 
-    t_TransitionPaymentFail3 --> PlaceRetry3: 
+    PlacePaymentProcessing --> t_TransitionPaymentFail3
+    t_TransitionPaymentFail3 --> PlaceRetry3
 
-    PlaceRetry3 --> t_TransitionCancelOrder: 
-    t_TransitionCancelOrder --> PlaceCancelled: 
+    PlaceRetry3 --> t_TransitionCancelOrder
+    t_TransitionCancelOrder --> PlaceCancelled
 
-    PlacePaid --> t_TransitionFulfill: 
-    t_TransitionFulfill --> PlaceFulfilled: 
+    PlacePaid --> t_TransitionFulfill
+    t_TransitionFulfill --> PlaceFulfilled
 
 ```
 
@@ -155,38 +155,38 @@ flowchart TD
     end
 
 
-    PlaceCart -->|| t_TransitionStartCheckout
-    t_TransitionStartCheckout -->|| PlaceCheckoutStarted
+    PlaceCart --> t_TransitionStartCheckout
+    t_TransitionStartCheckout --> PlaceCheckoutStarted
 
-    PlaceCheckoutStarted -->|| t_TransitionEnterPayment
-    t_TransitionEnterPayment -->|| PlacePaymentPending
+    PlaceCheckoutStarted --> t_TransitionEnterPayment
+    t_TransitionEnterPayment --> PlacePaymentPending
 
-    PlacePaymentPending -->|| t_TransitionProcessPayment
-    t_TransitionProcessPayment -->|| PlacePaymentProcessing
+    PlacePaymentPending --> t_TransitionProcessPayment
+    t_TransitionProcessPayment --> PlacePaymentProcessing
 
-    PlacePaymentProcessing -->|| t_TransitionPaymentSuccess
-    t_TransitionPaymentSuccess -->|| PlacePaid
+    PlacePaymentProcessing --> t_TransitionPaymentSuccess
+    t_TransitionPaymentSuccess --> PlacePaid
 
-    PlacePaymentProcessing -->|| t_TransitionPaymentFail1
-    t_TransitionPaymentFail1 -->|| PlaceRetry1
+    PlacePaymentProcessing --> t_TransitionPaymentFail1
+    t_TransitionPaymentFail1 --> PlaceRetry1
 
-    PlaceRetry1 -->|| t_TransitionRetryPayment1
-    t_TransitionRetryPayment1 -->|| PlacePaymentProcessing
+    PlaceRetry1 --> t_TransitionRetryPayment1
+    t_TransitionRetryPayment1 --> PlacePaymentProcessing
 
-    PlacePaymentProcessing -->|| t_TransitionPaymentFail2
-    t_TransitionPaymentFail2 -->|| PlaceRetry2
+    PlacePaymentProcessing --> t_TransitionPaymentFail2
+    t_TransitionPaymentFail2 --> PlaceRetry2
 
-    PlaceRetry2 -->|| t_TransitionRetryPayment2
-    t_TransitionRetryPayment2 -->|| PlacePaymentProcessing
+    PlaceRetry2 --> t_TransitionRetryPayment2
+    t_TransitionRetryPayment2 --> PlacePaymentProcessing
 
-    PlacePaymentProcessing -->|| t_TransitionPaymentFail3
-    t_TransitionPaymentFail3 -->|| PlaceRetry3
+    PlacePaymentProcessing --> t_TransitionPaymentFail3
+    t_TransitionPaymentFail3 --> PlaceRetry3
 
-    PlaceRetry3 -->|| t_TransitionCancelOrder
-    t_TransitionCancelOrder -->|| PlaceCancelled
+    PlaceRetry3 --> t_TransitionCancelOrder
+    t_TransitionCancelOrder --> PlaceCancelled
 
-    PlacePaid -->|| t_TransitionFulfill
-    t_TransitionFulfill -->|| PlaceFulfilled
+    PlacePaid --> t_TransitionFulfill
+    t_TransitionFulfill --> PlaceFulfilled
 
 
     style Places fill:#e1f5fe

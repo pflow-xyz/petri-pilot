@@ -76,55 +76,55 @@ stateDiagram-v2
     state "defaulted" as PlaceDefaulted
 
 
-    state "run_credit_check" as t_TransitionRunCreditCheck <<choice>>
-    state "auto_approve" as t_TransitionAutoApprove <<choice>>
-    state "flag_for_review" as t_TransitionFlagForReview <<choice>>
-    state "underwriter_approve" as t_TransitionUnderwriterApprove <<choice>>
-    state "underwriter_deny" as t_TransitionUnderwriterDeny <<choice>>
-    state "auto_deny" as t_TransitionAutoDeny <<choice>>
-    state "finalize_approval" as t_TransitionFinalizeApproval <<choice>>
-    state "disburse" as t_TransitionDisburse <<choice>>
-    state "start_repayment" as t_TransitionStartRepayment <<choice>>
-    state "make_payment" as t_TransitionMakePayment <<choice>>
-    state "complete" as t_TransitionComplete <<choice>>
-    state "mark_default" as t_TransitionMarkDefault <<choice>>
+    state "run_credit_check" as t_TransitionRunCreditCheck
+    state "auto_approve" as t_TransitionAutoApprove
+    state "flag_for_review" as t_TransitionFlagForReview
+    state "underwriter_approve" as t_TransitionUnderwriterApprove
+    state "underwriter_deny" as t_TransitionUnderwriterDeny
+    state "auto_deny" as t_TransitionAutoDeny
+    state "finalize_approval" as t_TransitionFinalizeApproval
+    state "disburse" as t_TransitionDisburse
+    state "start_repayment" as t_TransitionStartRepayment
+    state "make_payment" as t_TransitionMakePayment
+    state "complete" as t_TransitionComplete
+    state "mark_default" as t_TransitionMarkDefault
 
 
-    PlaceSubmitted --> t_TransitionRunCreditCheck: 
-    t_TransitionRunCreditCheck --> PlaceCreditCheck: 
+    PlaceSubmitted --> t_TransitionRunCreditCheck
+    t_TransitionRunCreditCheck --> PlaceCreditCheck
 
-    PlaceCreditCheck --> t_TransitionAutoApprove: 
-    t_TransitionAutoApprove --> PlaceAutoApproved: 
+    PlaceCreditCheck --> t_TransitionAutoApprove
+    t_TransitionAutoApprove --> PlaceAutoApproved
 
-    PlaceCreditCheck --> t_TransitionFlagForReview: 
-    t_TransitionFlagForReview --> PlaceManualReview: 
+    PlaceCreditCheck --> t_TransitionFlagForReview
+    t_TransitionFlagForReview --> PlaceManualReview
 
-    PlaceManualReview --> t_TransitionUnderwriterApprove: 
-    t_TransitionUnderwriterApprove --> PlaceApproved: 
+    PlaceManualReview --> t_TransitionUnderwriterApprove
+    t_TransitionUnderwriterApprove --> PlaceApproved
 
-    PlaceManualReview --> t_TransitionUnderwriterDeny: 
-    t_TransitionUnderwriterDeny --> PlaceDenied: 
+    PlaceManualReview --> t_TransitionUnderwriterDeny
+    t_TransitionUnderwriterDeny --> PlaceDenied
 
-    PlaceCreditCheck --> t_TransitionAutoDeny: 
-    t_TransitionAutoDeny --> PlaceDenied: 
+    PlaceCreditCheck --> t_TransitionAutoDeny
+    t_TransitionAutoDeny --> PlaceDenied
 
-    PlaceAutoApproved --> t_TransitionFinalizeApproval: 
-    t_TransitionFinalizeApproval --> PlaceApproved: 
+    PlaceAutoApproved --> t_TransitionFinalizeApproval
+    t_TransitionFinalizeApproval --> PlaceApproved
 
-    PlaceApproved --> t_TransitionDisburse: 
-    t_TransitionDisburse --> PlaceDisbursed: 
+    PlaceApproved --> t_TransitionDisburse
+    t_TransitionDisburse --> PlaceDisbursed
 
-    PlaceDisbursed --> t_TransitionStartRepayment: 
-    t_TransitionStartRepayment --> PlaceRepaying: 
+    PlaceDisbursed --> t_TransitionStartRepayment
+    t_TransitionStartRepayment --> PlaceRepaying
 
-    PlaceRepaying --> t_TransitionMakePayment: 
-    t_TransitionMakePayment --> PlaceRepaying: 
+    PlaceRepaying --> t_TransitionMakePayment
+    t_TransitionMakePayment --> PlaceRepaying
 
-    PlaceRepaying --> t_TransitionComplete: 
-    t_TransitionComplete --> PlacePaidOff: 
+    PlaceRepaying --> t_TransitionComplete
+    t_TransitionComplete --> PlacePaidOff
 
-    PlaceRepaying --> t_TransitionMarkDefault: 
-    t_TransitionMarkDefault --> PlaceDefaulted: 
+    PlaceRepaying --> t_TransitionMarkDefault
+    t_TransitionMarkDefault --> PlaceDefaulted
 
 ```
 
@@ -161,41 +161,41 @@ flowchart TD
     end
 
 
-    PlaceSubmitted -->|| t_TransitionRunCreditCheck
-    t_TransitionRunCreditCheck -->|| PlaceCreditCheck
+    PlaceSubmitted --> t_TransitionRunCreditCheck
+    t_TransitionRunCreditCheck --> PlaceCreditCheck
 
-    PlaceCreditCheck -->|| t_TransitionAutoApprove
-    t_TransitionAutoApprove -->|| PlaceAutoApproved
+    PlaceCreditCheck --> t_TransitionAutoApprove
+    t_TransitionAutoApprove --> PlaceAutoApproved
 
-    PlaceCreditCheck -->|| t_TransitionFlagForReview
-    t_TransitionFlagForReview -->|| PlaceManualReview
+    PlaceCreditCheck --> t_TransitionFlagForReview
+    t_TransitionFlagForReview --> PlaceManualReview
 
-    PlaceManualReview -->|| t_TransitionUnderwriterApprove
-    t_TransitionUnderwriterApprove -->|| PlaceApproved
+    PlaceManualReview --> t_TransitionUnderwriterApprove
+    t_TransitionUnderwriterApprove --> PlaceApproved
 
-    PlaceManualReview -->|| t_TransitionUnderwriterDeny
-    t_TransitionUnderwriterDeny -->|| PlaceDenied
+    PlaceManualReview --> t_TransitionUnderwriterDeny
+    t_TransitionUnderwriterDeny --> PlaceDenied
 
-    PlaceCreditCheck -->|| t_TransitionAutoDeny
-    t_TransitionAutoDeny -->|| PlaceDenied
+    PlaceCreditCheck --> t_TransitionAutoDeny
+    t_TransitionAutoDeny --> PlaceDenied
 
-    PlaceAutoApproved -->|| t_TransitionFinalizeApproval
-    t_TransitionFinalizeApproval -->|| PlaceApproved
+    PlaceAutoApproved --> t_TransitionFinalizeApproval
+    t_TransitionFinalizeApproval --> PlaceApproved
 
-    PlaceApproved -->|| t_TransitionDisburse
-    t_TransitionDisburse -->|| PlaceDisbursed
+    PlaceApproved --> t_TransitionDisburse
+    t_TransitionDisburse --> PlaceDisbursed
 
-    PlaceDisbursed -->|| t_TransitionStartRepayment
-    t_TransitionStartRepayment -->|| PlaceRepaying
+    PlaceDisbursed --> t_TransitionStartRepayment
+    t_TransitionStartRepayment --> PlaceRepaying
 
-    PlaceRepaying -->|| t_TransitionMakePayment
-    t_TransitionMakePayment -->|| PlaceRepaying
+    PlaceRepaying --> t_TransitionMakePayment
+    t_TransitionMakePayment --> PlaceRepaying
 
-    PlaceRepaying -->|| t_TransitionComplete
-    t_TransitionComplete -->|| PlacePaidOff
+    PlaceRepaying --> t_TransitionComplete
+    t_TransitionComplete --> PlacePaidOff
 
-    PlaceRepaying -->|| t_TransitionMarkDefault
-    t_TransitionMarkDefault -->|| PlaceDefaulted
+    PlaceRepaying --> t_TransitionMarkDefault
+    t_TransitionMarkDefault --> PlaceDefaulted
 
 
     style Places fill:#e1f5fe

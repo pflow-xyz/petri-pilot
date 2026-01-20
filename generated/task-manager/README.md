@@ -56,23 +56,23 @@ stateDiagram-v2
     state "completed" as PlaceCompleted
 
 
-    state "start" as t_TransitionStart <<choice>>
-    state "submit" as t_TransitionSubmit <<choice>>
-    state "approve" as t_TransitionApprove <<choice>>
-    state "reject" as t_TransitionReject <<choice>>
+    state "start" as t_TransitionStart
+    state "submit" as t_TransitionSubmit
+    state "approve" as t_TransitionApprove
+    state "reject" as t_TransitionReject
 
 
-    PlacePending --> t_TransitionStart: 
-    t_TransitionStart --> PlaceInProgress: 
+    PlacePending --> t_TransitionStart
+    t_TransitionStart --> PlaceInProgress
 
-    PlaceInProgress --> t_TransitionSubmit: 
-    t_TransitionSubmit --> PlaceReview: 
+    PlaceInProgress --> t_TransitionSubmit
+    t_TransitionSubmit --> PlaceReview
 
-    PlaceReview --> t_TransitionApprove: 
-    t_TransitionApprove --> PlaceCompleted: 
+    PlaceReview --> t_TransitionApprove
+    t_TransitionApprove --> PlaceCompleted
 
-    PlaceReview --> t_TransitionReject: 
-    t_TransitionReject --> PlacePending: 
+    PlaceReview --> t_TransitionReject
+    t_TransitionReject --> PlacePending
 
 ```
 
@@ -95,17 +95,17 @@ flowchart TD
     end
 
 
-    PlacePending -->|| t_TransitionStart
-    t_TransitionStart -->|| PlaceInProgress
+    PlacePending --> t_TransitionStart
+    t_TransitionStart --> PlaceInProgress
 
-    PlaceInProgress -->|| t_TransitionSubmit
-    t_TransitionSubmit -->|| PlaceReview
+    PlaceInProgress --> t_TransitionSubmit
+    t_TransitionSubmit --> PlaceReview
 
-    PlaceReview -->|| t_TransitionApprove
-    t_TransitionApprove -->|| PlaceCompleted
+    PlaceReview --> t_TransitionApprove
+    t_TransitionApprove --> PlaceCompleted
 
-    PlaceReview -->|| t_TransitionReject
-    t_TransitionReject -->|| PlacePending
+    PlaceReview --> t_TransitionReject
+    t_TransitionReject --> PlacePending
 
 
     style Places fill:#e1f5fe

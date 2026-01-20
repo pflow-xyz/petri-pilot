@@ -50,15 +50,15 @@ stateDiagram-v2
 {{- end}}
 
 {{range .Transitions}}
-    state "{{.ID}}" as t_{{.ConstName}} <<choice>>
+    state "{{.ID}}" as t_{{.ConstName}}
 {{- end}}
 
 {{range $t := .Transitions}}
 {{- range $t.Inputs}}
-    {{.ConstName}} --> t_{{$t.ConstName}}: {{if gt .Weight 1}}{{.Weight}}{{end}}
+    {{.ConstName}} --> t_{{$t.ConstName}}{{if gt .Weight 1}}: {{.Weight}}{{end}}
 {{- end}}
 {{- range $t.Outputs}}
-    t_{{$t.ConstName}} --> {{.ConstName}}: {{if gt .Weight 1}}{{.Weight}}{{end}}
+    t_{{$t.ConstName}} --> {{.ConstName}}{{if gt .Weight 1}}: {{.Weight}}{{end}}
 {{- end}}
 {{end}}
 ```
@@ -81,10 +81,10 @@ flowchart TD
 
 {{range $t := .Transitions}}
 {{- range $t.Inputs}}
-    {{.ConstName}} -->|{{if gt .Weight 1}}{{.Weight}}{{end}}| t_{{$t.ConstName}}
+    {{.ConstName}} -->{{if gt .Weight 1}}|{{.Weight}}|{{end}} t_{{$t.ConstName}}
 {{- end}}
 {{- range $t.Outputs}}
-    t_{{$t.ConstName}} -->|{{if gt .Weight 1}}{{.Weight}}{{end}}| {{.ConstName}}
+    t_{{$t.ConstName}} -->{{if gt .Weight 1}}|{{.Weight}}|{{end}} {{.ConstName}}
 {{- end}}
 {{end}}
 

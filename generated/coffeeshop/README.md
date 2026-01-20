@@ -69,48 +69,48 @@ stateDiagram-v2
     state "orders_complete" as PlaceOrdersComplete
 
 
-    state "order_espresso" as t_TransitionOrderEspresso <<choice>>
-    state "order_latte" as t_TransitionOrderLatte <<choice>>
-    state "order_cappuccino" as t_TransitionOrderCappuccino <<choice>>
-    state "make_espresso" as t_TransitionMakeEspresso <<choice>>
-    state "make_latte" as t_TransitionMakeLatte <<choice>>
-    state "make_cappuccino" as t_TransitionMakeCappuccino <<choice>>
-    state "serve_espresso" as t_TransitionServeEspresso <<choice>>
-    state "serve_latte" as t_TransitionServeLatte <<choice>>
-    state "serve_cappuccino" as t_TransitionServeCappuccino <<choice>>
+    state "order_espresso" as t_TransitionOrderEspresso
+    state "order_latte" as t_TransitionOrderLatte
+    state "order_cappuccino" as t_TransitionOrderCappuccino
+    state "make_espresso" as t_TransitionMakeEspresso
+    state "make_latte" as t_TransitionMakeLatte
+    state "make_cappuccino" as t_TransitionMakeCappuccino
+    state "serve_espresso" as t_TransitionServeEspresso
+    state "serve_latte" as t_TransitionServeLatte
+    state "serve_cappuccino" as t_TransitionServeCappuccino
 
 
-    t_TransitionOrderEspresso --> PlaceOrdersPending: 
+    t_TransitionOrderEspresso --> PlaceOrdersPending
 
-    t_TransitionOrderLatte --> PlaceOrdersPending: 
+    t_TransitionOrderLatte --> PlaceOrdersPending
 
-    t_TransitionOrderCappuccino --> PlaceOrdersPending: 
+    t_TransitionOrderCappuccino --> PlaceOrdersPending
 
-    PlaceOrdersPending --> t_TransitionMakeEspresso: 
+    PlaceOrdersPending --> t_TransitionMakeEspresso
     PlaceCoffeeBeans --> t_TransitionMakeEspresso: 20
-    PlaceCups --> t_TransitionMakeEspresso: 
-    t_TransitionMakeEspresso --> PlaceEspressoReady: 
+    PlaceCups --> t_TransitionMakeEspresso
+    t_TransitionMakeEspresso --> PlaceEspressoReady
 
-    PlaceOrdersPending --> t_TransitionMakeLatte: 
+    PlaceOrdersPending --> t_TransitionMakeLatte
     PlaceCoffeeBeans --> t_TransitionMakeLatte: 15
     PlaceMilk --> t_TransitionMakeLatte: 50
-    PlaceCups --> t_TransitionMakeLatte: 
-    t_TransitionMakeLatte --> PlaceLatteReady: 
+    PlaceCups --> t_TransitionMakeLatte
+    t_TransitionMakeLatte --> PlaceLatteReady
 
-    PlaceOrdersPending --> t_TransitionMakeCappuccino: 
+    PlaceOrdersPending --> t_TransitionMakeCappuccino
     PlaceCoffeeBeans --> t_TransitionMakeCappuccino: 15
     PlaceMilk --> t_TransitionMakeCappuccino: 30
-    PlaceCups --> t_TransitionMakeCappuccino: 
-    t_TransitionMakeCappuccino --> PlaceCappuccinoReady: 
+    PlaceCups --> t_TransitionMakeCappuccino
+    t_TransitionMakeCappuccino --> PlaceCappuccinoReady
 
-    PlaceEspressoReady --> t_TransitionServeEspresso: 
-    t_TransitionServeEspresso --> PlaceOrdersComplete: 
+    PlaceEspressoReady --> t_TransitionServeEspresso
+    t_TransitionServeEspresso --> PlaceOrdersComplete
 
-    PlaceLatteReady --> t_TransitionServeLatte: 
-    t_TransitionServeLatte --> PlaceOrdersComplete: 
+    PlaceLatteReady --> t_TransitionServeLatte
+    t_TransitionServeLatte --> PlaceOrdersComplete
 
-    PlaceCappuccinoReady --> t_TransitionServeCappuccino: 
-    t_TransitionServeCappuccino --> PlaceOrdersComplete: 
+    PlaceCappuccinoReady --> t_TransitionServeCappuccino
+    t_TransitionServeCappuccino --> PlaceOrdersComplete
 
 ```
 
@@ -142,37 +142,37 @@ flowchart TD
     end
 
 
-    t_TransitionOrderEspresso -->|| PlaceOrdersPending
+    t_TransitionOrderEspresso --> PlaceOrdersPending
 
-    t_TransitionOrderLatte -->|| PlaceOrdersPending
+    t_TransitionOrderLatte --> PlaceOrdersPending
 
-    t_TransitionOrderCappuccino -->|| PlaceOrdersPending
+    t_TransitionOrderCappuccino --> PlaceOrdersPending
 
-    PlaceOrdersPending -->|| t_TransitionMakeEspresso
+    PlaceOrdersPending --> t_TransitionMakeEspresso
     PlaceCoffeeBeans -->|20| t_TransitionMakeEspresso
-    PlaceCups -->|| t_TransitionMakeEspresso
-    t_TransitionMakeEspresso -->|| PlaceEspressoReady
+    PlaceCups --> t_TransitionMakeEspresso
+    t_TransitionMakeEspresso --> PlaceEspressoReady
 
-    PlaceOrdersPending -->|| t_TransitionMakeLatte
+    PlaceOrdersPending --> t_TransitionMakeLatte
     PlaceCoffeeBeans -->|15| t_TransitionMakeLatte
     PlaceMilk -->|50| t_TransitionMakeLatte
-    PlaceCups -->|| t_TransitionMakeLatte
-    t_TransitionMakeLatte -->|| PlaceLatteReady
+    PlaceCups --> t_TransitionMakeLatte
+    t_TransitionMakeLatte --> PlaceLatteReady
 
-    PlaceOrdersPending -->|| t_TransitionMakeCappuccino
+    PlaceOrdersPending --> t_TransitionMakeCappuccino
     PlaceCoffeeBeans -->|15| t_TransitionMakeCappuccino
     PlaceMilk -->|30| t_TransitionMakeCappuccino
-    PlaceCups -->|| t_TransitionMakeCappuccino
-    t_TransitionMakeCappuccino -->|| PlaceCappuccinoReady
+    PlaceCups --> t_TransitionMakeCappuccino
+    t_TransitionMakeCappuccino --> PlaceCappuccinoReady
 
-    PlaceEspressoReady -->|| t_TransitionServeEspresso
-    t_TransitionServeEspresso -->|| PlaceOrdersComplete
+    PlaceEspressoReady --> t_TransitionServeEspresso
+    t_TransitionServeEspresso --> PlaceOrdersComplete
 
-    PlaceLatteReady -->|| t_TransitionServeLatte
-    t_TransitionServeLatte -->|| PlaceOrdersComplete
+    PlaceLatteReady --> t_TransitionServeLatte
+    t_TransitionServeLatte --> PlaceOrdersComplete
 
-    PlaceCappuccinoReady -->|| t_TransitionServeCappuccino
-    t_TransitionServeCappuccino -->|| PlaceOrdersComplete
+    PlaceCappuccinoReady --> t_TransitionServeCappuccino
+    t_TransitionServeCappuccino --> PlaceOrdersComplete
 
 
     style Places fill:#e1f5fe

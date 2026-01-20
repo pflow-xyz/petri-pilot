@@ -55,19 +55,19 @@ stateDiagram-v2
     state "rejected" as PlaceRejected
 
 
-    state "submit" as t_TransitionSubmit <<choice>>
-    state "approve" as t_TransitionApprove <<choice>>
-    state "reject" as t_TransitionReject <<choice>>
+    state "submit" as t_TransitionSubmit
+    state "approve" as t_TransitionApprove
+    state "reject" as t_TransitionReject
 
 
-    PlaceDraft --> t_TransitionSubmit: 
-    t_TransitionSubmit --> PlaceSubmitted: 
+    PlaceDraft --> t_TransitionSubmit
+    t_TransitionSubmit --> PlaceSubmitted
 
-    PlaceSubmitted --> t_TransitionApprove: 
-    t_TransitionApprove --> PlaceApproved: 
+    PlaceSubmitted --> t_TransitionApprove
+    t_TransitionApprove --> PlaceApproved
 
-    PlaceSubmitted --> t_TransitionReject: 
-    t_TransitionReject --> PlaceRejected: 
+    PlaceSubmitted --> t_TransitionReject
+    t_TransitionReject --> PlaceRejected
 
 ```
 
@@ -89,14 +89,14 @@ flowchart TD
     end
 
 
-    PlaceDraft -->|| t_TransitionSubmit
-    t_TransitionSubmit -->|| PlaceSubmitted
+    PlaceDraft --> t_TransitionSubmit
+    t_TransitionSubmit --> PlaceSubmitted
 
-    PlaceSubmitted -->|| t_TransitionApprove
-    t_TransitionApprove -->|| PlaceApproved
+    PlaceSubmitted --> t_TransitionApprove
+    t_TransitionApprove --> PlaceApproved
 
-    PlaceSubmitted -->|| t_TransitionReject
-    t_TransitionReject -->|| PlaceRejected
+    PlaceSubmitted --> t_TransitionReject
+    t_TransitionReject --> PlaceRejected
 
 
     style Places fill:#e1f5fe

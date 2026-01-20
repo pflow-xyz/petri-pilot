@@ -61,27 +61,27 @@ stateDiagram-v2
     state "completed" as PlaceCompleted
 
 
-    state "validate" as t_TransitionValidate <<choice>>
-    state "reject" as t_TransitionReject <<choice>>
-    state "process_payment" as t_TransitionProcessPayment <<choice>>
-    state "ship" as t_TransitionShip <<choice>>
-    state "confirm" as t_TransitionConfirm <<choice>>
+    state "validate" as t_TransitionValidate
+    state "reject" as t_TransitionReject
+    state "process_payment" as t_TransitionProcessPayment
+    state "ship" as t_TransitionShip
+    state "confirm" as t_TransitionConfirm
 
 
-    PlaceReceived --> t_TransitionValidate: 
-    t_TransitionValidate --> PlaceValidated: 
+    PlaceReceived --> t_TransitionValidate
+    t_TransitionValidate --> PlaceValidated
 
-    PlaceReceived --> t_TransitionReject: 
-    t_TransitionReject --> PlaceRejected: 
+    PlaceReceived --> t_TransitionReject
+    t_TransitionReject --> PlaceRejected
 
-    PlaceValidated --> t_TransitionProcessPayment: 
-    t_TransitionProcessPayment --> PlacePaid: 
+    PlaceValidated --> t_TransitionProcessPayment
+    t_TransitionProcessPayment --> PlacePaid
 
-    PlacePaid --> t_TransitionShip: 
-    t_TransitionShip --> PlaceShipped: 
+    PlacePaid --> t_TransitionShip
+    t_TransitionShip --> PlaceShipped
 
-    PlaceShipped --> t_TransitionConfirm: 
-    t_TransitionConfirm --> PlaceCompleted: 
+    PlaceShipped --> t_TransitionConfirm
+    t_TransitionConfirm --> PlaceCompleted
 
 ```
 
@@ -107,20 +107,20 @@ flowchart TD
     end
 
 
-    PlaceReceived -->|| t_TransitionValidate
-    t_TransitionValidate -->|| PlaceValidated
+    PlaceReceived --> t_TransitionValidate
+    t_TransitionValidate --> PlaceValidated
 
-    PlaceReceived -->|| t_TransitionReject
-    t_TransitionReject -->|| PlaceRejected
+    PlaceReceived --> t_TransitionReject
+    t_TransitionReject --> PlaceRejected
 
-    PlaceValidated -->|| t_TransitionProcessPayment
-    t_TransitionProcessPayment -->|| PlacePaid
+    PlaceValidated --> t_TransitionProcessPayment
+    t_TransitionProcessPayment --> PlacePaid
 
-    PlacePaid -->|| t_TransitionShip
-    t_TransitionShip -->|| PlaceShipped
+    PlacePaid --> t_TransitionShip
+    t_TransitionShip --> PlaceShipped
 
-    PlaceShipped -->|| t_TransitionConfirm
-    t_TransitionConfirm -->|| PlaceCompleted
+    PlaceShipped --> t_TransitionConfirm
+    t_TransitionConfirm --> PlaceCompleted
 
 
     style Places fill:#e1f5fe

@@ -55,27 +55,27 @@ stateDiagram-v2
     state "allowances" as PlaceAllowances
 
 
-    state "transfer" as t_TransitionTransfer <<choice>>
-    state "approve" as t_TransitionApprove <<choice>>
-    state "transfer_from" as t_TransitionTransferFrom <<choice>>
-    state "mint" as t_TransitionMint <<choice>>
-    state "burn" as t_TransitionBurn <<choice>>
+    state "transfer" as t_TransitionTransfer
+    state "approve" as t_TransitionApprove
+    state "transfer_from" as t_TransitionTransferFrom
+    state "mint" as t_TransitionMint
+    state "burn" as t_TransitionBurn
 
 
-    PlaceBalances --> t_TransitionTransfer: 
-    t_TransitionTransfer --> PlaceBalances: 
+    PlaceBalances --> t_TransitionTransfer
+    t_TransitionTransfer --> PlaceBalances
 
-    t_TransitionApprove --> PlaceAllowances: 
+    t_TransitionApprove --> PlaceAllowances
 
-    PlaceBalances --> t_TransitionTransferFrom: 
-    PlaceAllowances --> t_TransitionTransferFrom: 
-    t_TransitionTransferFrom --> PlaceBalances: 
+    PlaceBalances --> t_TransitionTransferFrom
+    PlaceAllowances --> t_TransitionTransferFrom
+    t_TransitionTransferFrom --> PlaceBalances
 
-    t_TransitionMint --> PlaceBalances: 
-    t_TransitionMint --> PlaceTotalSupply: 
+    t_TransitionMint --> PlaceBalances
+    t_TransitionMint --> PlaceTotalSupply
 
-    PlaceBalances --> t_TransitionBurn: 
-    PlaceTotalSupply --> t_TransitionBurn: 
+    PlaceBalances --> t_TransitionBurn
+    PlaceTotalSupply --> t_TransitionBurn
 
 ```
 
@@ -98,20 +98,20 @@ flowchart TD
     end
 
 
-    PlaceBalances -->|| t_TransitionTransfer
-    t_TransitionTransfer -->|| PlaceBalances
+    PlaceBalances --> t_TransitionTransfer
+    t_TransitionTransfer --> PlaceBalances
 
-    t_TransitionApprove -->|| PlaceAllowances
+    t_TransitionApprove --> PlaceAllowances
 
-    PlaceBalances -->|| t_TransitionTransferFrom
-    PlaceAllowances -->|| t_TransitionTransferFrom
-    t_TransitionTransferFrom -->|| PlaceBalances
+    PlaceBalances --> t_TransitionTransferFrom
+    PlaceAllowances --> t_TransitionTransferFrom
+    t_TransitionTransferFrom --> PlaceBalances
 
-    t_TransitionMint -->|| PlaceBalances
-    t_TransitionMint -->|| PlaceTotalSupply
+    t_TransitionMint --> PlaceBalances
+    t_TransitionMint --> PlaceTotalSupply
 
-    PlaceBalances -->|| t_TransitionBurn
-    PlaceTotalSupply -->|| t_TransitionBurn
+    PlaceBalances --> t_TransitionBurn
+    PlaceTotalSupply --> t_TransitionBurn
 
 
     style Places fill:#e1f5fe
