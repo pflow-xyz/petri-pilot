@@ -6,8 +6,13 @@ import (
 )
 
 func TestMarkdownPreview(t *testing.T) {
-	// Skip if no Chrome available
-	if os.Getenv("CI") == "" && os.Getenv("PUPPETEER_EXECUTABLE_PATH") == "" {
+	// Skip in CI environment (no Chrome available)
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping markdown preview test in CI - no Chrome available")
+	}
+
+	// Skip if no Chrome available locally
+	if os.Getenv("PUPPETEER_EXECUTABLE_PATH") == "" {
 		// Try to find Chrome on macOS
 		if _, err := os.Stat("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"); err != nil {
 			t.Skip("Chrome not found, skipping test")
@@ -57,8 +62,13 @@ echo "hello"
 }
 
 func TestMarkdownPreviewWithMermaid(t *testing.T) {
-	// Skip if no Chrome available
-	if os.Getenv("CI") == "" && os.Getenv("PUPPETEER_EXECUTABLE_PATH") == "" {
+	// Skip in CI environment (no Chrome available)
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping markdown preview test in CI - no Chrome available")
+	}
+
+	// Skip if no Chrome available locally
+	if os.Getenv("PUPPETEER_EXECUTABLE_PATH") == "" {
 		// Try to find Chrome on macOS
 		if _, err := os.Stat("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"); err != nil {
 			t.Skip("Chrome not found, skipping test")

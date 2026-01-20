@@ -78,27 +78,7 @@
     {"id": "draft", "description": "Post is being written", "initial": 1},
     {"id": "in_review", "description": "Post is awaiting editorial review", "initial": 0},
     {"id": "published", "description": "Post is live on the site", "initial": 0},
-    {"id": "archived", "description": "Post has been taken down", "initial": 0},
-    {
-      "id": "post_data",
-      "description": "Blog post content and metadata",
-      "kind": "data",
-      "type": "struct",
-      "fields": [
-        {"name": "title", "type": "string"},
-        {"name": "content", "type": "string"},
-        {"name": "author_id", "type": "string"},
-        {"name": "author_name", "type": "string"},
-        {"name": "tags", "type": "[]string"},
-        {"name": "approved_by", "type": "string"},
-        {"name": "rejected_reason", "type": "string"},
-        {"name": "created_at", "type": "time"},
-        {"name": "updated_at", "type": "time"},
-        {"name": "published_at", "type": "time"}
-      ],
-      "persisted": true,
-      "exported": true
-    }
+    {"id": "archived", "description": "Post has been taken down", "initial": 0}
   ],
   "transitions": [
     {
@@ -140,9 +120,8 @@
   ],
   "arcs": [
     {"from": "create", "to": "draft"},
-    {"from": "create", "to": "post_data"},
-    {"from": "post_data", "to": "update"},
-    {"from": "update", "to": "post_data"},
+    {"from": "draft", "to": "update"},
+    {"from": "update", "to": "draft"},
     {"from": "draft", "to": "submit"},
     {"from": "submit", "to": "in_review"},
     {"from": "in_review", "to": "approve"},
@@ -176,36 +155,12 @@
   ],
   "access": [
     {"transition": "create", "roles": ["author"]},
-    {"transition": "update", "roles": ["author"], "guard": "hasRole('admin') || user.id == post_data.author_id"},
-    {"transition": "submit", "roles": ["author"], "guard": "hasRole('admin') || user.id == post_data.author_id"},
+    {"transition": "update", "roles": ["author"]},
+    {"transition": "submit", "roles": ["author"]},
     {"transition": "approve", "roles": ["editor"]},
     {"transition": "reject", "roles": ["editor"]},
     {"transition": "unpublish", "roles": ["editor"]},
     {"transition": "restore", "roles": ["admin"]}
-  ],
-  "indexes": [
-    {
-      "id": "posts_by_status",
-      "description": "Find posts by workflow status",
-      "fields": ["status"]
-    },
-    {
-      "id": "posts_by_author",
-      "description": "Find posts by author",
-      "fields": ["post_data.author_id"]
-    },
-    {
-      "id": "posts_search",
-      "description": "Full-text search on title and content",
-      "fields": ["post_data.title", "post_data.content"],
-      "type": "fulltext"
-    },
-    {
-      "id": "posts_by_tag",
-      "description": "Find posts by tag",
-      "fields": ["post_data.tags"],
-      "type": "array"
-    }
   ],
   "views": [
     {
@@ -217,10 +172,7 @@
         {
           "id": "columns",
           "fields": [
-            {"binding": "post_data.title", "label": "Title", "type": "text"},
-            {"binding": "post_data.author_name", "label": "Author", "type": "text"},
-            {"binding": "status", "label": "Status", "type": "badge", "readonly": true},
-            {"binding": "post_data.updated_at", "label": "Updated", "type": "date", "readonly": true}
+            {"binding": "status", "label": "Status", "type": "badge", "readonly": true}
           ]
         }
       ],
@@ -233,22 +185,10 @@
       "description": "Full detail view of a blog post",
       "groups": [
         {
-          "id": "content",
-          "name": "Content",
+          "id": "workflow",
+          "name": "Workflow",
           "fields": [
-            {"binding": "post_data.title", "label": "Title", "type": "text"},
-            {"binding": "post_data.content", "label": "Content", "type": "textarea"},
-            {"binding": "post_data.tags", "label": "Tags", "type": "text"}
-          ]
-        },
-        {
-          "id": "metadata",
-          "name": "Metadata",
-          "fields": [
-            {"binding": "post_data.author_name", "label": "Author", "type": "text", "readonly": true},
-            {"binding": "status", "label": "Status", "type": "badge", "readonly": true},
-            {"binding": "post_data.created_at", "label": "Created", "type": "date", "readonly": true},
-            {"binding": "post_data.published_at", "label": "Published", "type": "date", "readonly": true}
+            {"binding": "status", "label": "Status", "type": "badge", "readonly": true}
           ]
         }
       ],
