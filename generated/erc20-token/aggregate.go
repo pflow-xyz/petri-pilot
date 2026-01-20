@@ -263,20 +263,28 @@ func applyTransfer(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
+	amount := bindings.Amount.U256
+	if amount == nil {
+		amount = U256Zero()
+	}
 	// Subtract from Balances
-	fromBal := U256OrZero(state.Balances[bindings.From])
-	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
-	if err != nil {
-		return fmt.Errorf("transfer: %w", err)
+	if state.Balances[bindings.From] == nil {
+		state.Balances[bindings.From] = U256Zero()
 	}
-	state.Balances[bindings.From] = newFromBal
+	newFromBalance, err := SafeSub(state.Balances[bindings.From], amount)
+	if err != nil {
+		return fmt.Errorf("subtracting from balance: %w", err)
+	}
+	state.Balances[bindings.From] = newFromBalance
 	// Add to Balances
-	toBal := U256OrZero(state.Balances[bindings.To])
-	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
-	if err != nil {
-		return fmt.Errorf("transfer: %w", err)
+	if state.Balances[bindings.To] == nil {
+		state.Balances[bindings.To] = U256Zero()
 	}
-	state.Balances[bindings.To] = newToBal
+	newToBalance, err := SafeAdd(state.Balances[bindings.To], amount)
+	if err != nil {
+		return fmt.Errorf("adding to balance: %w", err)
+	}
+	state.Balances[bindings.To] = newToBalance
 	return nil
 }
 
@@ -286,11 +294,15 @@ func applyApprove(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
+	amount := bindings.Amount.U256
+	if amount == nil {
+		amount = U256Zero()
+	}
 	// Set Allowances at key from binding (non-numeric map)
 	if state.Allowances[bindings.Owner] == nil {
 		state.Allowances[bindings.Owner] = make(map[string]*U256)
 	}
-	state.Allowances[bindings.Owner][bindings.Spender] = U256Clone(bindings.Amount.U256)
+	state.Allowances[bindings.Owner][bindings.Spender] = amount.Clone()
 	return nil
 }
 
@@ -300,29 +312,36 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
+	amount := bindings.Amount.U256
+	if amount == nil {
+		amount = U256Zero()
+	}
 	// Subtract from Balances
-	fromBal := U256OrZero(state.Balances[bindings.From])
-	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
-	if err != nil {
-		return fmt.Errorf("transfer_from: %w", err)
+	if state.Balances[bindings.From] == nil {
+		state.Balances[bindings.From] = U256Zero()
 	}
-	state.Balances[bindings.From] = newFromBal
-	// Add to Balances
-	toBal := U256OrZero(state.Balances[bindings.To])
-	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
+	newFromBalance, err := SafeSub(state.Balances[bindings.From], amount)
 	if err != nil {
-		return fmt.Errorf("transfer_from: %w", err)
+		return fmt.Errorf("subtracting from balance: %w", err)
 	}
-	state.Balances[bindings.To] = newToBal
-	// Also subtract from allowance
-	if state.Allowances[bindings.From] != nil {
-		allowance := U256OrZero(state.Allowances[bindings.From][bindings.Caller])
-		newAllowance, err := SafeSub(allowance, U256OrZero(bindings.Amount.U256))
+	state.Balances[bindings.From] = newFromBalance
+	// Subtract from Allowances
+	if state.Allowances[bindings.From] != nil && state.Allowances[bindings.From][bindings.Caller] != nil {
+		newAllowance, err := SafeSub(state.Allowances[bindings.From][bindings.Caller], amount)
 		if err != nil {
-			return fmt.Errorf("transfer_from allowance: %w", err)
+			return fmt.Errorf("subtracting from allowance: %w", err)
 		}
 		state.Allowances[bindings.From][bindings.Caller] = newAllowance
 	}
+	// Add to Balances
+	if state.Balances[bindings.To] == nil {
+		state.Balances[bindings.To] = U256Zero()
+	}
+	newToBalance, err := SafeAdd(state.Balances[bindings.To], amount)
+	if err != nil {
+		return fmt.Errorf("adding to balance: %w", err)
+	}
+	state.Balances[bindings.To] = newToBalance
 	return nil
 }
 
@@ -332,17 +351,26 @@ func applyMint(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	// Add to Balances
-	toBal := U256OrZero(state.Balances[bindings.To])
-	newToBal, err := SafeAdd(toBal, U256OrZero(bindings.Amount.U256))
-	if err != nil {
-		return fmt.Errorf("mint: %w", err)
+	amount := bindings.Amount.U256
+	if amount == nil {
+		amount = U256Zero()
 	}
-	state.Balances[bindings.To] = newToBal
-	// Add to TotalSupply
-	newSupply, err := SafeAdd(U256OrZero(state.TotalSupply), U256OrZero(bindings.Amount.U256))
+	// Add to Balances
+	if state.Balances[bindings.To] == nil {
+		state.Balances[bindings.To] = U256Zero()
+	}
+	newBalance, err := SafeAdd(state.Balances[bindings.To], amount)
 	if err != nil {
-		return fmt.Errorf("mint total supply: %w", err)
+		return fmt.Errorf("adding to balance: %w", err)
+	}
+	state.Balances[bindings.To] = newBalance
+	// Add to TotalSupply
+	if state.TotalSupply == nil {
+		state.TotalSupply = U256Zero()
+	}
+	newSupply, err := SafeAdd(state.TotalSupply, amount)
+	if err != nil {
+		return fmt.Errorf("adding to total supply: %w", err)
 	}
 	state.TotalSupply = newSupply
 	return nil
@@ -354,17 +382,26 @@ func applyBurn(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	// Subtract from Balances
-	fromBal := U256OrZero(state.Balances[bindings.From])
-	newFromBal, err := SafeSub(fromBal, U256OrZero(bindings.Amount.U256))
-	if err != nil {
-		return fmt.Errorf("burn: %w", err)
+	amount := bindings.Amount.U256
+	if amount == nil {
+		amount = U256Zero()
 	}
-	state.Balances[bindings.From] = newFromBal
-	// Subtract from TotalSupply
-	newSupply, err := SafeSub(U256OrZero(state.TotalSupply), U256OrZero(bindings.Amount.U256))
+	// Subtract from Balances
+	if state.Balances[bindings.From] == nil {
+		state.Balances[bindings.From] = U256Zero()
+	}
+	newBalance, err := SafeSub(state.Balances[bindings.From], amount)
 	if err != nil {
-		return fmt.Errorf("burn total supply: %w", err)
+		return fmt.Errorf("subtracting from balance: %w", err)
+	}
+	state.Balances[bindings.From] = newBalance
+	// Subtract from TotalSupply
+	if state.TotalSupply == nil {
+		state.TotalSupply = U256Zero()
+	}
+	newSupply, err := SafeSub(state.TotalSupply, amount)
+	if err != nil {
+		return fmt.Errorf("subtracting from total supply: %w", err)
 	}
 	state.TotalSupply = newSupply
 	return nil
