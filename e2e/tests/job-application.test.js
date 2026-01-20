@@ -94,12 +94,16 @@ describe('job-application', () => {
       // Screen
       await harness.executeTransition('start_screening', instance.aggregate_id);
 
-      // Complete both phone screen and background check paths
+      // Complete both phone screen AND background check (parallel paths)
+      // Phone screen path
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
 
-      // From phone_screen_complete, we need to also do background check
-      // But since model may require both, let's test advance_to_interview directly if available
+      // Background check path
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
+
+      // Now both paths are complete, advance_to_interview can fire
       const result = await harness.executeTransition('advance_to_interview', instance.aggregate_id);
       expect(result).toHaveTokenIn('ready_for_interview');
     });
@@ -107,10 +111,12 @@ describe('job-application', () => {
     test('conduct_interview event - interview the candidate', async () => {
       const instance = await harness.createInstance();
 
-      // Get to ready_for_interview state
+      // Get to ready_for_interview state (requires both phone screen and background check)
       await harness.executeTransition('start_screening', instance.aggregate_id);
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
       await harness.executeTransition('advance_to_interview', instance.aggregate_id);
 
       // Conduct interview
@@ -121,10 +127,12 @@ describe('job-application', () => {
     test('extend_offer event - extend job offer to candidate', async () => {
       const instance = await harness.createInstance();
 
-      // Get to interviewing state
+      // Get to interviewing state (requires both phone screen and background check)
       await harness.executeTransition('start_screening', instance.aggregate_id);
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
       await harness.executeTransition('advance_to_interview', instance.aggregate_id);
       await harness.executeTransition('conduct_interview', instance.aggregate_id);
 
@@ -136,10 +144,12 @@ describe('job-application', () => {
     test('accept_offer event - candidate accepts offer and is hired', async () => {
       const instance = await harness.createInstance();
 
-      // Get to offer_extended state
+      // Get to offer_extended state (requires both phone screen and background check)
       await harness.executeTransition('start_screening', instance.aggregate_id);
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
       await harness.executeTransition('advance_to_interview', instance.aggregate_id);
       await harness.executeTransition('conduct_interview', instance.aggregate_id);
       await harness.executeTransition('extend_offer', instance.aggregate_id);
@@ -152,10 +162,12 @@ describe('job-application', () => {
     test('reject_after_interview event - reject candidate after interview', async () => {
       const instance = await harness.createInstance();
 
-      // Get to interviewing state
+      // Get to interviewing state (requires both phone screen and background check)
       await harness.executeTransition('start_screening', instance.aggregate_id);
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
       await harness.executeTransition('advance_to_interview', instance.aggregate_id);
       await harness.executeTransition('conduct_interview', instance.aggregate_id);
 
@@ -167,10 +179,12 @@ describe('job-application', () => {
     test('decline_offer event - candidate declines offer', async () => {
       const instance = await harness.createInstance();
 
-      // Get to offer_extended state
+      // Get to offer_extended state (requires both phone screen and background check)
       await harness.executeTransition('start_screening', instance.aggregate_id);
       await harness.executeTransition('schedule_phone_screen', instance.aggregate_id);
       await harness.executeTransition('complete_phone_screen', instance.aggregate_id);
+      await harness.executeTransition('start_background_check', instance.aggregate_id);
+      await harness.executeTransition('complete_background_check', instance.aggregate_id);
       await harness.executeTransition('advance_to_interview', instance.aggregate_id);
       await harness.executeTransition('conduct_interview', instance.aggregate_id);
       await harness.executeTransition('extend_offer', instance.aggregate_id);
