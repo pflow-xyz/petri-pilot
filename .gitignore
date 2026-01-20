@@ -6,9 +6,11 @@
 *.so
 *.dylib
 
-# Generated app binaries
+# Generated app binaries (all binaries matching directory or model name)
 /generated/*/blog-post
+/generated/*/coffeeshop
 /generated/*/ecommerce-checkout
+/generated/*/erc20-token
 /generated/*/job-application
 /generated/*/loan-application
 /generated/*/order-processing
@@ -40,9 +42,11 @@ Thumbs.db
 out
 node_modules
 
-# Generated app binaries
+# Generated app binaries (without leading slash)
 generated/*/blog-post
+generated/*/coffeeshop
 generated/*/ecommerce-checkout
+generated/*/erc20-token
 generated/*/job-application
 generated/*/loan-application
 generated/*/order-processing

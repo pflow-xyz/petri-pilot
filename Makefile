@@ -39,14 +39,18 @@ validate-all: $(EXAMPLE_TARGETS)
 codegen-all: $(CODEGEN_TARGETS)
 
 # Generate and build all examples (verifies generated code compiles)
+# Produces named binaries for each app (binary name matches model name from JSON)
 build-examples: codegen-all
 	@echo "=== Building all generated examples ==="
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "Building $$name..."; \
+		model_name=$$(grep -o '"name": *"[^"]*"' examples/$$name.json 2>/dev/null | head -1 | sed 's/"name": *"//;s/"//') && \
+		if [ -z "$$model_name" ]; then model_name=$$name; fi && \
 		cd $(OUTPUT_DIR)/$$name && \
 		echo "replace github.com/pflow-xyz/petri-pilot => ../.." >> go.mod && \
 		GOWORK=off go mod tidy && \
-		GOWORK=off go build ./... || exit 1; \
+		echo "  -> Binary: $$model_name" && \
+		GOWORK=off go build -o "$$model_name" . || exit 1; \
 		cd - > /dev/null; \
 	done
 	@echo "All examples built successfully!"
