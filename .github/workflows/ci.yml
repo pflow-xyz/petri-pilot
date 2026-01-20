@@ -105,20 +105,8 @@ jobs:
       - name: Make binaries executable
         run: |
           chmod +x petri-pilot
-          # Make all app binaries executable (binary names come from model's "name" field)
-          for dir in generated/*/; do
-            dir_name=$(basename "$dir")
-            # Get model name from JSON file (may differ from directory name)
-            model_name=$(grep -o '"name": *"[^"]*"' "examples/${dir_name}.json" 2>/dev/null | head -1 | sed 's/"name": *"//;s/"//') || true
-            if [ -z "$model_name" ]; then
-              model_name=$dir_name
-            fi
-            # Make binary executable if it exists
-            if [ -f "$dir$model_name" ]; then
-              chmod +x "$dir$model_name"
-              echo "Made executable: $dir$model_name"
-            fi
-          done
+          # Make all binaries executable - find files without extensions in generated subdirs
+          find generated -maxdepth 2 -type f ! -name '*.*' -exec chmod +x {} \; -exec echo "Made executable: {}" \;
 
       - name: Install e2e dependencies
         working-directory: e2e
