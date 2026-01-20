@@ -131,9 +131,7 @@
     {"from": "published", "to": "unpublish"},
     {"from": "unpublish", "to": "archived"},
     {"from": "archived", "to": "restore"},
-    {"from": "restore", "to": "draft"},
-    {"from": "draft", "to": "update"},
-    {"from": "update", "to": "draft"}
+    {"from": "restore", "to": "draft"}
   ],
   "roles": [
     {
