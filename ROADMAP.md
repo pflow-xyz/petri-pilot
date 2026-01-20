@@ -57,8 +57,6 @@ From a single JSON model, petri-pilot generates:
 | File | Description |
 |------|-------------|
 | `migrations/001_init.sql` | Event store schema |
-| `Dockerfile` | Multi-stage build |
-| `docker-compose.yaml` | Local development setup |
 | `k8s/deployment.yaml` | Kubernetes deployment |
 | `k8s/service.yaml` | Kubernetes service |
 | `.github/workflows/ci.yaml` | GitHub Actions CI |

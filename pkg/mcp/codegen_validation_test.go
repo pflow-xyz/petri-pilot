@@ -410,8 +410,6 @@ func TestAllTemplatesGenerate(t *testing.T) {
 		golang.TemplateTest,
 		golang.TemplateConfig,
 		golang.TemplateMigrations,
-		golang.TemplateDockerfile,
-		golang.TemplateDockerCompose,
 		golang.TemplateAuth,
 		golang.TemplateMiddleware,
 		golang.TemplateWorkflows,

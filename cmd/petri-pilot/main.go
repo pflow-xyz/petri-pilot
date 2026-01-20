@@ -427,7 +427,7 @@ func cmdCodegen(args []string) {
 	lang := fs.String("lang", "go", "Target language (go)")
 	pkg := fs.String("pkg", "", "Package name (default: model name)")
 	includeTests := fs.Bool("tests", true, "Include test files")
-	includeInfra := fs.Bool("infra", true, "Include infrastructure files (Dockerfile, docker-compose, migrations)")
+	includeInfra := fs.Bool("infra", true, "Include infrastructure files (migrations)")
 	includeAuth := fs.Bool("auth", false, "Include GitHub OAuth authentication")
 	includeObs := fs.Bool("observability", false, "Include logging and Prometheus metrics")
 	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")

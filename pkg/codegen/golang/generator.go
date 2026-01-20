@@ -26,7 +26,7 @@ type Options struct {
 	// IncludeTests generates workflow_test.go if true.
 	IncludeTests bool
 
-	// IncludeInfra generates Dockerfile, docker-compose.yaml, and migrations if true.
+	// IncludeInfra generates migrations if true.
 	IncludeInfra bool
 
 	// IncludeAuth generates GitHub OAuth authentication files if true.

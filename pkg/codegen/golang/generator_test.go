@@ -169,8 +169,9 @@ func TestGenerateFiles(t *testing.T) {
 	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
 	// Plus auth.go, middleware.go, permissions.go (when access control is present), views.go (when views are present),
 	// api_events.go (always generated), navigation.go (when navigation is configured), admin.go (when admin is enabled),
-	// debug.go (when debug is enabled), sla.go (when SLA is configured), GraphQL files (when graphql is enabled)
-	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go", "api_events.go", "navigation.go", "admin.go", "debug.go", "sla.go", "graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml"}
+	// debug.go (when debug is enabled), sla.go (when SLA is configured), GraphQL files (when graphql is enabled),
+	// README.md (always generated)
+	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go", "api_events.go", "navigation.go", "admin.go", "debug.go", "sla.go", "graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml", "README.md"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 		for _, f := range files {

@@ -54,8 +54,6 @@ Each generated app includes:
 - `navigation.go` - Navigation menu (if configured)
 - `admin.go` - Admin dashboard handlers (if configured)
 - `openapi.yaml` - OpenAPI 3.0 specification
-- `Dockerfile` - Production container
-- `docker-compose.yaml` - Local development
 
 **Frontend (ES Modules)**
 - `src/main.js` - Application entry

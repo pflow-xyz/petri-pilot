@@ -23,10 +23,8 @@ const (
 	TemplateTest      = "test"
 
 	// Infrastructure templates (Phase 7)
-	TemplateConfig        = "config"
-	TemplateMigrations    = "migrations"
-	TemplateDockerfile    = "dockerfile"
-	TemplateDockerCompose = "docker-compose"
+	TemplateConfig     = "config"
+	TemplateMigrations = "migrations"
 
 	// Auth templates (Phase 9)
 	TemplateAuth        = "auth"
@@ -105,10 +103,8 @@ var templateInfo = map[string]struct {
 	TemplateTest:      {File: "test.tmpl", Output: "workflow_test.go"},
 
 	// Infrastructure templates
-	TemplateConfig:        {File: "config.tmpl", Output: "config.go"},
-	TemplateMigrations:    {File: "migrations.tmpl", Output: "migrations/001_init.sql"},
-	TemplateDockerfile:    {File: "dockerfile.tmpl", Output: "Dockerfile"},
-	TemplateDockerCompose: {File: "docker-compose.tmpl", Output: "docker-compose.yaml"},
+	TemplateConfig:     {File: "config.tmpl", Output: "config.go"},
+	TemplateMigrations: {File: "migrations.tmpl", Output: "migrations/001_init.sql"},
 
 	// Auth templates
 	TemplateAuth:        {File: "auth.tmpl", Output: "auth.go"},
@@ -245,8 +241,6 @@ func AllTemplateNames() []string {
 		TemplateTest,
 		TemplateConfig,
 		TemplateMigrations,
-		TemplateDockerfile,
-		TemplateDockerCompose,
 	}
 }
 
@@ -327,8 +321,6 @@ func TestTemplateNames() []string {
 func InfraTemplateNames() []string {
 	return []string{
 		TemplateMigrations,
-		TemplateDockerfile,
-		TemplateDockerCompose,
 	}
 }
 

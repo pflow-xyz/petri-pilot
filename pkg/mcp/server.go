@@ -232,7 +232,7 @@ func simulateTool() mcp.Tool {
 
 func previewTool() mcp.Tool {
 	return mcp.NewTool("petri_preview",
-		mcp.WithDescription("Preview a single generated file without full code generation. Use this to check specific files before committing to full generation. Available templates: main, workflow, events, aggregate, api, openapi, test, config, migrations, dockerfile, docker-compose, auth, middleware, permissions, views, navigation, admin, debug"),
+		mcp.WithDescription("Preview a single generated file without full code generation. Use this to check specific files before committing to full generation. Available templates: main, workflow, events, aggregate, api, openapi, test, config, migrations, auth, middleware, permissions, views, navigation, admin, debug"),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON"),
@@ -1550,8 +1550,6 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model
 		golang.TemplateOpenAPI,
 		golang.TemplateTest,
 		golang.TemplateMigrations,
-		golang.TemplateDockerfile,
-		golang.TemplateDockerCompose,
 	}
 	
 	// Add auth templates if we have access rules or roles

@@ -120,8 +120,6 @@ func TestCompleteApplicationGeneration(t *testing.T) {
 		"openapi.yaml",
 		"workflow_test.go",
 		"migrations/001_init.sql",
-		"Dockerfile",
-		"docker-compose.yaml",
 		"auth.go",
 		"middleware.go",
 		"workflows.go", // Should be generated because we have workflows
