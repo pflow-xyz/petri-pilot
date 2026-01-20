@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -84,6 +85,9 @@ const (
 
 	// Safemath templates (uint256 arithmetic)
 	TemplateSafemath = "safemath"
+
+	// Documentation templates
+	TemplateReadme = "readme"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -163,6 +167,9 @@ var templateInfo = map[string]struct {
 
 	// Safemath templates
 	TemplateSafemath: {File: "safemath.tmpl", Output: "safemath.go"},
+
+	// Documentation templates
+	TemplateReadme: {File: "readme.tmpl", Output: "README.md"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -184,6 +191,8 @@ func NewTemplates() (*Templates, error) {
 		"typeName":    ToTypeName,
 		"sanitize":    SanitizePackageName,
 		"graphqlType": GoTypeToGraphQL,
+		"lower":       strings.ToLower,
+		"upper":       strings.ToUpper,
 	}
 
 	// Parse all templates from embedded filesystem
@@ -393,5 +402,12 @@ func FeaturesTemplateNames() []string {
 func SafemathTemplateNames() []string {
 	return []string{
 		TemplateSafemath,
+	}
+}
+
+// DocTemplateNames returns template names for documentation files.
+func DocTemplateNames() []string {
+	return []string{
+		TemplateReadme,
 	}
 }

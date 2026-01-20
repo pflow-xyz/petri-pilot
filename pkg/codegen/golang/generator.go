@@ -224,6 +224,9 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		templateNames = append(templateNames, SafemathTemplateNames()...)
 	}
 
+	// Always include documentation templates (README.md)
+	templateNames = append(templateNames, DocTemplateNames()...)
+
 	// Generate each file
 	var files []GeneratedFile
 	for _, name := range templateNames {

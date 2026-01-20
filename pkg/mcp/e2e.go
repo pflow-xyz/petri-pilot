@@ -78,7 +78,7 @@ func e2eListSessionsTool() mcp.Tool {
 
 func e2eEvalTool() mcp.Tool {
 	return mcp.NewTool("e2e_eval",
-		mcp.WithDescription("Evaluate JavaScript code in a browser session via the app's debug endpoint. Returns the result."),
+		mcp.WithDescription("Evaluate JavaScript code in a browser session via the app's debug endpoint. Returns the result. Optionally takes a screenshot after execution."),
 		mcp.WithString("session_id",
 			mcp.Required(),
 			mcp.Description("The browser session ID (from e2e_start_browser)"),
@@ -86,6 +86,12 @@ func e2eEvalTool() mcp.Tool {
 		mcp.WithString("code",
 			mcp.Required(),
 			mcp.Description("JavaScript code to evaluate in the browser context"),
+		),
+		mcp.WithBoolean("screenshot",
+			mcp.Description("Take a screenshot after eval (default: false)"),
+		),
+		mcp.WithNumber("wait_ms",
+			mcp.Description("Wait this many milliseconds before taking screenshot (default: 0)"),
 		),
 	)
 }
@@ -179,9 +185,39 @@ func handleE2EEval(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("missing code parameter: %v", err)), nil
 	}
 
+	takeScreenshot := request.GetBool("screenshot", false)
+	waitMs := request.GetInt("wait_ms", 0)
+
 	result, err := e2eManager.Eval(ctx, sessionID, code)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("eval failed: %v", err)), nil
+	}
+
+	// If screenshot requested, wait and take it
+	if takeScreenshot {
+		if waitMs > 0 {
+			time.Sleep(time.Duration(waitMs) * time.Millisecond)
+		}
+
+		screenshot, err := e2eManager.Screenshot(sessionID)
+		if err != nil {
+			// Return result with screenshot error
+			output, _ := json.MarshalIndent(map[string]any{
+				"result":           result,
+				"screenshot_error": err.Error(),
+			}, "", "  ")
+			return mcp.NewToolResultText(string(output)), nil
+		}
+
+		// Return both result and screenshot
+		output, _ := json.MarshalIndent(result, "", "  ")
+		b64 := base64.StdEncoding.EncodeToString(screenshot)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.NewTextContent(string(output)),
+				mcp.NewImageContent(b64, "image/png"),
+			},
+		}, nil
 	}
 
 	output, _ := json.MarshalIndent(result, "", "  ")

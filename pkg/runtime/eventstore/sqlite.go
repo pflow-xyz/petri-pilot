@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -72,9 +73,36 @@ func (s *SQLiteStore) migrate() error {
 			state BLOB NOT NULL,
 			created_at TEXT NOT NULL
 		);
+
+		-- Search index table for queryable fields
+		CREATE TABLE IF NOT EXISTS search_index (
+			stream_id TEXT NOT NULL,
+			field TEXT NOT NULL,
+			value TEXT NOT NULL,
+			event_type TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY (stream_id, field)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_search_field ON search_index(field, value);
+		CREATE INDEX IF NOT EXISTS idx_search_value ON search_index(value);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Create FTS5 virtual table for full-text search (ignore error if already exists)
+	fts := `CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts5(
+		stream_id,
+		title,
+		content,
+		tags,
+		content='',
+		contentless_delete=1
+	)`
+	s.db.Exec(fts) // Ignore error - FTS5 may not be available in all builds
+
+	return nil
 }
 
 // Append adds events to a stream with optimistic concurrency control.
@@ -626,6 +654,220 @@ func (s *sqliteSubscription) matches(event *runtime.Event) bool {
 		}
 	}
 	return true
+}
+
+// SearchResult represents a search hit.
+type SearchResult struct {
+	StreamID  string                 `json:"stream_id"`
+	EventType string                 `json:"event_type"`
+	Fields    map[string]interface{} `json:"fields"`
+	UpdatedAt time.Time              `json:"updated_at"`
+}
+
+// IndexEvent indexes searchable fields from an event.
+// fields is a map of field names to extract from the event data.
+func (s *SQLiteStore) IndexEvent(ctx context.Context, event *runtime.Event, fields []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return ErrStoreClosed
+	}
+
+	var eventData map[string]interface{}
+	if err := json.Unmarshal(event.Data, &eventData); err != nil {
+		return nil // Skip events with non-JSON data
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+
+	// Index specified fields
+	for _, field := range fields {
+		if val, ok := eventData[field]; ok {
+			var strVal string
+			switch v := val.(type) {
+			case string:
+				strVal = v
+			case []interface{}:
+				// Join array values
+				parts := make([]string, 0, len(v))
+				for _, item := range v {
+					if s, ok := item.(string); ok {
+						parts = append(parts, s)
+					}
+				}
+				strVal = strings.Join(parts, " ")
+			default:
+				data, _ := json.Marshal(v)
+				strVal = string(data)
+			}
+
+			_, err := tx.ExecContext(ctx,
+				`INSERT OR REPLACE INTO search_index (stream_id, field, value, event_type, updated_at)
+				 VALUES (?, ?, ?, ?, ?)`,
+				event.StreamID, field, strVal, event.Type, now,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to index field %s: %w", field, err)
+			}
+		}
+	}
+
+	// Try to update FTS index (ignore errors if FTS5 not available)
+	title, _ := eventData["title"].(string)
+	content, _ := eventData["content"].(string)
+	var tags string
+	if t, ok := eventData["tags"].([]interface{}); ok {
+		parts := make([]string, 0, len(t))
+		for _, item := range t {
+			if s, ok := item.(string); ok {
+				parts = append(parts, s)
+			}
+		}
+		tags = strings.Join(parts, " ")
+	}
+
+	if title != "" || content != "" || tags != "" {
+		// Delete existing entry first
+		tx.ExecContext(ctx, "DELETE FROM search_fts WHERE stream_id = ?", event.StreamID)
+		// Insert new entry
+		tx.ExecContext(ctx,
+			"INSERT INTO search_fts (stream_id, title, content, tags) VALUES (?, ?, ?, ?)",
+			event.StreamID, title, content, tags,
+		)
+	}
+
+	return tx.Commit()
+}
+
+// Search performs a search across indexed fields.
+// query is the search term, field optionally limits to a specific field.
+func (s *SQLiteStore) Search(ctx context.Context, query string, field string, limit int) ([]SearchResult, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, ErrStoreClosed
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+
+	var results []SearchResult
+
+	// Try FTS5 search first for better relevance
+	if field == "" || field == "title" || field == "content" || field == "tags" {
+		ftsQuery := `
+			SELECT stream_id FROM search_fts
+			WHERE search_fts MATCH ?
+			ORDER BY rank
+			LIMIT ?
+		`
+		rows, err := s.db.QueryContext(ctx, ftsQuery, query, limit)
+		if err == nil {
+			defer rows.Close()
+			streamIDs := make(map[string]bool)
+			for rows.Next() {
+				var streamID string
+				if err := rows.Scan(&streamID); err == nil {
+					streamIDs[streamID] = true
+				}
+			}
+
+			// Get full results for matched streams
+			for streamID := range streamIDs {
+				result := SearchResult{
+					StreamID: streamID,
+					Fields:   make(map[string]interface{}),
+				}
+
+				// Load indexed fields
+				fieldRows, err := s.db.QueryContext(ctx,
+					"SELECT field, value, event_type, updated_at FROM search_index WHERE stream_id = ?",
+					streamID,
+				)
+				if err == nil {
+					for fieldRows.Next() {
+						var f, v, et, ua string
+						if err := fieldRows.Scan(&f, &v, &et, &ua); err == nil {
+							result.Fields[f] = v
+							result.EventType = et
+							result.UpdatedAt, _ = time.Parse(time.RFC3339Nano, ua)
+						}
+					}
+					fieldRows.Close()
+				}
+
+				results = append(results, result)
+			}
+
+			if len(results) > 0 {
+				return results, nil
+			}
+		}
+	}
+
+	// Fallback to LIKE search on search_index
+	var sqlQuery string
+	var args []interface{}
+
+	if field != "" {
+		sqlQuery = `
+			SELECT DISTINCT stream_id, field, value, event_type, updated_at
+			FROM search_index
+			WHERE field = ? AND value LIKE ?
+			ORDER BY updated_at DESC
+			LIMIT ?
+		`
+		args = []interface{}{field, "%" + query + "%", limit}
+	} else {
+		sqlQuery = `
+			SELECT DISTINCT stream_id, field, value, event_type, updated_at
+			FROM search_index
+			WHERE value LIKE ?
+			ORDER BY updated_at DESC
+			LIMIT ?
+		`
+		args = []interface{}{"%" + query + "%", limit}
+	}
+
+	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("search failed: %w", err)
+	}
+	defer rows.Close()
+
+	// Group by stream_id
+	resultMap := make(map[string]*SearchResult)
+	for rows.Next() {
+		var streamID, f, v, et, ua string
+		if err := rows.Scan(&streamID, &f, &v, &et, &ua); err != nil {
+			continue
+		}
+
+		if _, exists := resultMap[streamID]; !exists {
+			resultMap[streamID] = &SearchResult{
+				StreamID:  streamID,
+				EventType: et,
+				Fields:    make(map[string]interface{}),
+			}
+			resultMap[streamID].UpdatedAt, _ = time.Parse(time.RFC3339Nano, ua)
+		}
+		resultMap[streamID].Fields[f] = v
+	}
+
+	for _, r := range resultMap {
+		results = append(results, *r)
+	}
+
+	return results, nil
 }
 
 // Ensure SQLiteStore implements Store.
