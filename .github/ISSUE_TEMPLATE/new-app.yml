@@ -16,11 +16,24 @@ body:
       label: Application Description
       description: Describe what your app should do in plain English
       placeholder: |
-        A task management app where:
-        - Users can create tasks with title and description
-        - Tasks can be assigned to team members
-        - Tasks move through states: todo → in_progress → review → done
-        - Only admins can delete tasks
+        A content publishing workflow where:
+
+        **States:** draft → pending_review → approved/rejected → published
+
+        **Roles:**
+        - author: can create drafts, submit for review
+        - editor: can approve or reject submissions
+        - admin: can publish approved content, unpublish
+
+        **Data fields:**
+        - title (string, required)
+        - body (text, required)
+        - category (dropdown: news, blog, announcement)
+
+        **Rules:**
+        - Rejected content returns to draft with feedback
+        - Only approved content can be published
+        - Authors can only edit their own drafts
     validations:
       required: true
 
@@ -29,7 +42,7 @@ body:
     attributes:
       label: App Name
       description: Short name for the app (lowercase, hyphens ok)
-      placeholder: task-manager
+      placeholder: content-publisher
     validations:
       required: true
 
