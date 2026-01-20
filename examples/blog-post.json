@@ -139,6 +139,10 @@
     {"id": "restore", "description": "Restore archived post to draft", "event": "post_restored"}
   ],
   "arcs": [
+    {"from": "create", "to": "draft"},
+    {"from": "create", "to": "post_data"},
+    {"from": "post_data", "to": "update"},
+    {"from": "update", "to": "post_data"},
     {"from": "draft", "to": "submit"},
     {"from": "submit", "to": "in_review"},
     {"from": "in_review", "to": "approve"},
