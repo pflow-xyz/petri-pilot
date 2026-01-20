@@ -1,5 +1,7 @@
 # Copilot Instructions for Petri-Pilot
 
+> **Note:** Also read `CLAUDE.md` in the repo root for detailed MCP tooling, testing workflows, and codebase architecture.
+
 ## App Generation Workflow
 
 When assigned an issue with the `app-request` label:
@@ -25,7 +27,7 @@ When assigned an issue with the `app-request` label:
 
 ## Quick Reference
 
-- **Language**: Go 1.21+ for backend, vanilla ES modules for frontend
+- **Language**: Go 1.25+ for backend, vanilla ES modules for frontend
 - **Database**: SQLite only (no Postgres, MySQL, etc.)
 - **Frontend**: No React/Vue/Angular - ES modules only
 - **Templates**: Go text/template in `pkg/codegen/golang/templates/`
