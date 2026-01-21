@@ -29,19 +29,31 @@ async function waitForHealth(url, maxAttempts = 60, intervalMs = 500) {
 }
 
 /**
- * Start the test-access server and wait for it to be healthy
- * Returns an object with server process and baseUrl
+ * Start a service using the unified petri-pilot CLI and wait for it to be healthy.
+ *
+ * @param {string} serviceName - The name of the service to start (e.g., 'test-access', 'blog-post')
+ * @param {string} workingDir - Optional working directory for the service (for frontend assets)
+ * @returns {Object} - Object with server process and baseUrl
  */
-async function startServer() {
-  const buildDir = path.resolve(__dirname, '../../generated/test-access');
-  const binaryPath = path.join(buildDir, 'access-test');
+async function startServer(serviceName = 'test-access', workingDir = null) {
+  const projectRoot = path.resolve(__dirname, '../..');
+  const petriPilotBin = path.join(projectRoot, 'petri-pilot');
   const port = getRandomPort();
   const baseUrl = `http://localhost:${port}`;
 
-  console.log(`Starting server from ${binaryPath} on port ${port}`);
+  // Determine working directory - use the generated service directory if not specified
+  // This ensures frontend assets can be found
+  let cwd = workingDir;
+  if (!cwd) {
+    // Map service name to package directory name (remove hyphens)
+    const pkgName = serviceName.replace(/-/g, '');
+    cwd = path.join(projectRoot, 'generated', pkgName);
+  }
 
-  const server = spawn(binaryPath, [], {
-    cwd: buildDir,
+  console.log(`Starting service ${serviceName} on port ${port} (cwd: ${cwd})`);
+
+  const server = spawn(petriPilotBin, ['serve', '-port', String(port), serviceName], {
+    cwd: cwd,
     env: { ...process.env, MOCK_AUTH: 'true', PORT: String(port) },
     stdio: 'pipe',
   });

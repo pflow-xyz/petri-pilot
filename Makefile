@@ -1,4 +1,4 @@
-.PHONY: build test clean validate-all codegen-all build-examples help
+.PHONY: build test clean validate-all codegen-all build-examples regenerate-imports help
 .PHONY: $(EXAMPLE_TARGETS) $(CODEGEN_TARGETS)
 .PHONY: $(addprefix run-,$(EXAMPLE_NAMES))
 
@@ -30,63 +30,80 @@ test:
 # Clean build artifacts
 clean:
 	rm -f $(BINARY)
-	rm -rf $(OUTPUT_DIR)
+	rm -rf $(OUTPUT_DIR)/*/
 
 # Validate all examples
 validate-all: $(EXAMPLE_TARGETS)
 
-# Generate code for all examples
-codegen-all: $(CODEGEN_TARGETS)
+# Generate code for all examples as submodules
+codegen-all: $(CODEGEN_TARGETS) regenerate-imports
 
-# Generate and build all examples (verifies generated code compiles)
-# Produces named binaries for each app (binary name matches model name from JSON)
+# Generate and build the unified binary (verifies all services compile)
 build-examples: codegen-all
-	@echo "=== Building all generated examples ==="
+	@echo "=== Building unified petri-pilot binary ==="
+	go build -o $(BINARY) ./cmd/petri-pilot
+	@echo "=== Verifying registered services ==="
+	./$(BINARY) serve
+	@echo "Build successful!"
+
+# Regenerate generated/imports.go with all service imports
+regenerate-imports:
+	@echo "=== Regenerating generated/imports.go ==="
+	@echo '// Package generated provides auto-discovery of all generated Petri-pilot services.' > $(OUTPUT_DIR)/imports.go
+	@echo '// This file imports all service packages to trigger their init() functions,' >> $(OUTPUT_DIR)/imports.go
+	@echo '// which register them with the serve package.' >> $(OUTPUT_DIR)/imports.go
+	@echo '//' >> $(OUTPUT_DIR)/imports.go
+	@echo '// This file is auto-generated. Do not edit manually.' >> $(OUTPUT_DIR)/imports.go
+	@echo '// Regenerate with: make codegen-all' >> $(OUTPUT_DIR)/imports.go
+	@echo 'package generated' >> $(OUTPUT_DIR)/imports.go
+	@echo '' >> $(OUTPUT_DIR)/imports.go
+	@echo 'import (' >> $(OUTPUT_DIR)/imports.go
 	@for name in $(EXAMPLE_NAMES); do \
-		echo "Building $$name..."; \
-		model_name=$$(grep -o '"name": *"[^"]*"' examples/$$name.json 2>/dev/null | head -1 | sed 's/"name": *"//;s/"//') && \
-		if [ -z "$$model_name" ]; then model_name=$$name; fi && \
-		cd $(OUTPUT_DIR)/$$name && \
-		echo "replace github.com/pflow-xyz/petri-pilot => ../.." >> go.mod && \
-		GOWORK=off go mod tidy && \
-		echo "  -> Binary: $$model_name" && \
-		GOWORK=off go build -o "$$model_name" . || exit 1; \
-		cd - > /dev/null; \
+		pkgname=$$(echo $$name | tr -d '-'); \
+		echo "	_ \"github.com/pflow-xyz/petri-pilot/generated/$$pkgname\"" >> $(OUTPUT_DIR)/imports.go; \
 	done
-	@echo "All examples built successfully!"
+	@echo ')' >> $(OUTPUT_DIR)/imports.go
 
 # Individual validate targets
+# Use -tags noserve to avoid requiring generated packages during validation
 validate-%: examples/%.json
 	@echo "=== Validating $< ==="
-	go run ./cmd/petri-pilot/... validate $<
+	go run -tags noserve ./cmd/petri-pilot/... validate $<
 
-# Individual codegen targets
+# Individual codegen targets (as submodules, no go.mod)
+# Use -tags noserve to avoid circular dependency on generated packages
 codegen-%: examples/%.json
 	@echo "=== Generating code from $< ==="
-	@mkdir -p $(OUTPUT_DIR)/$*
-	go run ./cmd/petri-pilot/... codegen -o $(OUTPUT_DIR)/$* --frontend $<
+	@# Extract sanitized package name (remove hyphens)
+	@pkgname=$$(echo $* | tr -d '-'); \
+	rm -f $(OUTPUT_DIR)/$$pkgname/main.go $(OUTPUT_DIR)/$$pkgname/go.mod $(OUTPUT_DIR)/$$pkgname/go.sum 2>/dev/null || true; \
+	mkdir -p $(OUTPUT_DIR)/$$pkgname && \
+	go run -tags noserve ./cmd/petri-pilot/... codegen -submodule -pkg $$pkgname -o $(OUTPUT_DIR)/$$pkgname --frontend $<
 
-# Run individual examples (generates, builds frontend, runs server)
-run-%: codegen-%
+# Run individual examples using unified CLI
+run-%: build
 	@echo "=== Running $* ==="
-	@cd $(OUTPUT_DIR)/$* && \
-		echo "replace github.com/pflow-xyz/petri-pilot => ../.." >> go.mod && \
-		GOWORK=off go mod tidy && \
-		if [ -d frontend ]; then \
-			echo "Building frontend..." && \
-			cd frontend && npm install && npm run build && cd ..; \
-		fi && \
-		echo "Starting server..." && \
-		GOWORK=off go run .
+	@# Build frontend if it exists
+	@pkgname=$$(echo $* | tr -d '-'); \
+	if [ -d $(OUTPUT_DIR)/$$pkgname/frontend ]; then \
+		echo "Building frontend..." && \
+		cd $(OUTPUT_DIR)/$$pkgname/frontend && npm install && npm run build && cd -; \
+	fi
+	@# Determine service name from the model JSON
+	@pkgname=$$(echo $* | tr -d '-'); \
+	model_name=$$(grep -o '"name": *"[^"]*"' examples/$*.json 2>/dev/null | head -1 | sed 's/"name": *"//;s/"//') && \
+	if [ -z "$$model_name" ]; then model_name=$$pkgname; fi && \
+	echo "Starting $$model_name..." && \
+	./$(BINARY) serve "$$model_name"
 
-# Run MCP server
+# Run MCP server (doesn't need generated packages)
 mcp:
-	go run ./cmd/petri-pilot/... mcp
+	go run -tags noserve ./cmd/petri-pilot/... mcp
 
 # Generate and auto-validate a model from requirements
 generate:
 	@if [ -z "$(REQ)" ]; then echo "Usage: make generate REQ='your requirements'"; exit 1; fi
-	go run ./cmd/petri-pilot/... generate -auto "$(REQ)"
+	go run -tags noserve ./cmd/petri-pilot/... generate -auto "$(REQ)"
 
 # E2E tests
 e2e: build-examples
@@ -117,16 +134,21 @@ help:
 	done
 	@echo ""
 	@echo "Codegen targets (output to $(OUTPUT_DIR)/<name>/):"
-	@echo "  codegen-all    Generate code for all examples"
-	@echo "  build-examples Generate and compile all examples"
+	@echo "  codegen-all        Generate code for all examples as submodules"
+	@echo "  build-examples     Generate and compile unified binary"
+	@echo "  regenerate-imports Update generated/imports.go"
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "  codegen-$$name"; \
 	done
 	@echo ""
-	@echo "Run targets (generates code, builds frontend, runs server):"
+	@echo "Run targets (uses unified CLI):"
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "  run-$$name"; \
 	done
+	@echo ""
+	@echo "Serve command:"
+	@echo "  ./petri-pilot serve              List available services"
+	@echo "  ./petri-pilot serve <name>       Run a specific service"
 	@echo ""
 	@echo "E2E test targets:"
 	@echo "  e2e            Run E2E tests (headless)"
@@ -138,7 +160,7 @@ help:
 	@echo "  generate       Generate model from requirements (REQ='...')"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make validate-order-system"
-	@echo "  make codegen-token-ledger OUTPUT_DIR=./myout"
-	@echo "  make run-order-processing   # Run the order-processing example"
+	@echo "  make validate-order-processing"
+	@echo "  make codegen-erc20-token"
+	@echo "  make run-order-processing"
 	@echo "  make generate REQ='order processing workflow'"

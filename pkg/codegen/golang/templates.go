@@ -15,6 +15,7 @@ var templateFS embed.FS
 const (
 	TemplateGoMod     = "go_mod"
 	TemplateMain      = "main"
+	TemplateService   = "service"
 	TemplateWorkflow  = "workflow"
 	TemplateEvents    = "events"
 	TemplateAggregate = "aggregate"
@@ -95,6 +96,7 @@ var templateInfo = map[string]struct {
 }{
 	TemplateGoMod:     {File: "go_mod.tmpl", Output: "go.mod"},
 	TemplateMain:      {File: "main.tmpl", Output: "main.go"},
+	TemplateService:   {File: "service.tmpl", Output: "service.go"},
 	TemplateWorkflow:  {File: "workflow.tmpl", Output: "workflow.go"},
 	TemplateEvents:    {File: "events.tmpl", Output: "events.go"},
 	TemplateAggregate: {File: "aggregate.tmpl", Output: "aggregate.go"},
@@ -245,9 +247,24 @@ func AllTemplateNames() []string {
 }
 
 // CodeTemplateNames returns template names that generate code (excludes go.mod, tests, and infra).
+// These templates generate standalone services with main.go.
 func CodeTemplateNames() []string {
 	return []string{
 		TemplateMain,
+		TemplateWorkflow,
+		TemplateEvents,
+		TemplateAggregate,
+		TemplateAPI,
+		TemplateOpenAPI,
+		TemplateConfig,
+	}
+}
+
+// SubmoduleCodeTemplateNames returns template names for submodule mode.
+// Uses service.go instead of main.go for registration-based services.
+func SubmoduleCodeTemplateNames() []string {
+	return []string{
+		TemplateService,
 		TemplateWorkflow,
 		TemplateEvents,
 		TemplateAggregate,

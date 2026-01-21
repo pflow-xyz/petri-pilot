@@ -1,7 +1,7 @@
 /**
  * Generic app server launcher for E2E testing.
  *
- * Handles starting/stopping generated apps and waiting for them to be ready.
+ * Uses the unified petri-pilot CLI to start generated services.
  */
 
 const { spawn, execSync } = require('child_process');
@@ -27,15 +27,15 @@ async function waitForHealth(url, maxAttempts = 60, intervalMs = 500) {
 }
 
 /**
- * Get the binary name for an app (converts hyphens to hyphens, same as package name)
+ * Get the package directory name from an app name (removes hyphens)
  */
-function getBinaryName(appName) {
-  // The binary name matches the package name which is the kebab-case app name
-  return appName;
+function getPkgName(appName) {
+  return appName.replace(/-/g, '');
 }
 
 /**
  * AppServer manages the lifecycle of a generated app for testing.
+ * Uses the unified petri-pilot CLI instead of standalone binaries.
  */
 class AppServer {
   constructor(appName, options = {}) {
@@ -43,47 +43,24 @@ class AppServer {
     this.port = options.port || 8080 + Math.floor(Math.random() * 1000);
     this.baseUrl = `http://localhost:${this.port}`;
     this.rootDir = options.rootDir || path.resolve(__dirname, '../..');
-    this.generatedDir = path.join(this.rootDir, 'generated', appName);
-    this.binaryPath = path.join(this.generatedDir, getBinaryName(appName));
+    this.pkgName = getPkgName(appName);
+    this.generatedDir = path.join(this.rootDir, 'generated', this.pkgName);
+    this.petriPilotBin = path.join(this.rootDir, 'petri-pilot');
     this.server = null;
     this.logs = [];
   }
 
   /**
-   * Build the app if the binary doesn't exist or is outdated.
+   * Build the app if needed (for frontend assets).
+   * With the unified CLI, we don't need to build a separate binary,
+   * but we may need to build the frontend.
    */
   async build() {
-    // Check if we need to regenerate
-    const modelPath = path.join(this.rootDir, 'examples', `${this.appName}.json`);
-
-    if (!fs.existsSync(modelPath)) {
-      throw new Error(`Model file not found: ${modelPath}`);
-    }
-
-    // Generate the code
-    console.log(`Generating ${this.appName}...`);
-    execSync(
-      `go run ./cmd/petri-pilot/... codegen -o ./generated/${this.appName} --frontend examples/${this.appName}.json`,
-      { cwd: this.rootDir, stdio: 'inherit' }
-    );
-
-    // Add replace directive for local development
-    const goModPath = path.join(this.generatedDir, 'go.mod');
-    let goMod = fs.readFileSync(goModPath, 'utf8');
-    // Check for an actual (non-commented) replace directive
-    const hasReplaceDirective = /^replace\s+github\.com\/pflow-xyz\/petri-pilot\s+=>/m.test(goMod);
-    if (!hasReplaceDirective) {
-      goMod += `\nreplace github.com/pflow-xyz/petri-pilot => ${this.rootDir}\n`;
-      fs.writeFileSync(goModPath, goMod);
-    }
-
-    // Build the binary
-    console.log(`Building ${this.appName} backend...`);
-    execSync('GOWORK=off go mod tidy && GOWORK=off go build .', { cwd: this.generatedDir, stdio: 'inherit', shell: true });
-
-    // Build the frontend if it exists
+    // Build the frontend if it exists and hasn't been built
     const frontendDir = path.join(this.generatedDir, 'frontend');
-    if (fs.existsSync(frontendDir)) {
+    const frontendDistPath = path.join(frontendDir, 'dist', 'index.html');
+
+    if (fs.existsSync(frontendDir) && !fs.existsSync(frontendDistPath)) {
       console.log(`Building ${this.appName} frontend...`);
       execSync('npm install && npm run build', { cwd: frontendDir, stdio: 'inherit', shell: true });
     }
@@ -93,16 +70,23 @@ class AppServer {
    * Start the server and wait for it to be healthy.
    */
   async start() {
-    // Check if we need to build (binary missing or frontend not built)
-    const frontendDistPath = path.join(this.generatedDir, 'frontend', 'dist', 'index.html');
-    if (!fs.existsSync(this.binaryPath) || !fs.existsSync(frontendDistPath)) {
+    // Check if the petri-pilot binary exists
+    if (!fs.existsSync(this.petriPilotBin)) {
+      throw new Error(`petri-pilot binary not found at ${this.petriPilotBin}. Run 'make build-examples' first.`);
+    }
+
+    // Build frontend if needed
+    const frontendDir = path.join(this.generatedDir, 'frontend');
+    const frontendDistPath = path.join(frontendDir, 'dist', 'index.html');
+    if (fs.existsSync(frontendDir) && !fs.existsSync(frontendDistPath)) {
       await this.build();
     }
 
     console.log(`Starting ${this.appName} on port ${this.port}...`);
 
-    this.server = spawn(this.binaryPath, [], {
-      cwd: this.generatedDir,
+    // Use the unified CLI to start the service
+    this.server = spawn(this.petriPilotBin, ['serve', '-port', String(this.port), this.appName], {
+      cwd: this.generatedDir, // Set cwd so static files can be found
       env: {
         ...process.env,
         PORT: String(this.port),

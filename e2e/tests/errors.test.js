@@ -24,15 +24,16 @@ async function waitForHealth(url, maxAttempts = 60, intervalMs = 500) {
 }
 
 /**
- * Start the order-processing server
+ * Start the order-processing server using the unified petri-pilot CLI
  */
 async function startServer(port) {
-  const buildDir = path.resolve(__dirname, '../../generated/order-processing');
-  const binaryPath = path.join(buildDir, 'order-processing');
+  const projectRoot = path.resolve(__dirname, '../..');
+  const petriPilotBin = path.join(projectRoot, 'petri-pilot');
+  const cwd = path.join(projectRoot, 'generated', 'orderprocessing');
   const baseUrl = `http://localhost:${port}`;
 
-  const server = spawn(binaryPath, [], {
-    cwd: buildDir,
+  const server = spawn(petriPilotBin, ['serve', '-port', String(port), 'order-processing'], {
+    cwd: cwd,
     env: { ...process.env, MOCK_AUTH: 'true', PORT: String(port) },
     stdio: 'pipe',
   });
@@ -127,7 +128,7 @@ describe('Error Handling', () => {
       });
 
       const result = await shipRes.json();
-      
+
       // Should return error response
       expect(shipRes.status).toBe(409); // Conflict
       expect(result.code).toBe('TRANSITION_FAILED');
@@ -164,7 +165,7 @@ describe('Error Handling', () => {
       });
 
       const result = await paymentRes.json();
-      
+
       // Error should mention process_payment and current state
       expect(paymentRes.status).toBe(409);
       expect(result.code).toBe('TRANSITION_FAILED');
@@ -177,7 +178,7 @@ describe('Error Handling', () => {
     // Note: These tests demonstrate the limitation of in-memory storage.
     // The generated server uses NewMemoryStore() which doesn't persist across restarts.
     // For production, you would use NewSQLiteStore() or configure persistent storage.
-    
+
     test('should demonstrate in-memory store limitation on restart', async () => {
       // Create instance and execute a transition
       const createRes = await fetch(`${baseUrl}/api/orderprocessing`, {
@@ -190,7 +191,7 @@ describe('Error Handling', () => {
       });
       const instance = await createRes.json();
       const instanceId = instance.aggregate_id;
-      
+
       // Execute validate transition to move to 'validated' state
       const validateRes = await fetch(`${baseUrl}/api/validate`, {
         method: 'POST',
@@ -215,7 +216,7 @@ describe('Error Handling', () => {
 
       // Stop the server
       await stopServer(server);
-      
+
       // Wait for server to stop
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -241,7 +242,7 @@ describe('Error Handling', () => {
         }
       });
       const state = await stateRes.json();
-      
+
       // The instance is created with initial state, not the validated state
       // This demonstrates the in-memory store limitation
       expect(state.aggregate_id).toBe(instanceId);
@@ -322,11 +323,11 @@ describe('Error Handling', () => {
         }
       });
       const state = await stateRes.json();
-      
+
       // State is reset to initial (received=1), events were lost
       expect(state.places.received).toBe(1);
       expect(state.places.paid).toBe(0);
-      
+
       // Attempting to continue workflow from previous state will fail
       // because we're back in 'received' state
       const shipRes = await fetch(`${baseUrl}/api/ship`, {
@@ -344,7 +345,7 @@ describe('Error Handling', () => {
           }
         })
       });
-      
+
       // Ship transition requires 'paid' state, but we're in 'received'
       expect(shipRes.status).toBe(409); // Conflict - transition cannot fire
       const error = await shipRes.json();

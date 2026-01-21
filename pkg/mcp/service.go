@@ -180,22 +180,46 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 		return nil, fmt.Errorf("failed to create stderr log: %w", err)
 	}
 
-	// Build the binary first
-	binaryPath := filepath.Join(directory, name)
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
-	buildCmd.Dir = directory
-	// Disable Go workspace mode so it uses the local go.mod instead of parent
-	buildCmd.Env = append(os.Environ(), "GOWORK=off")
-	buildOutput, buildErr := buildCmd.CombinedOutput()
-	if buildErr != nil {
-		stdoutFile.Close()
-		stderrFile.Close()
-		return nil, fmt.Errorf("failed to build service: %v\n%s", buildErr, string(buildOutput))
+	var cmd *exec.Cmd
+
+	// Check if this is a standalone service (has go.mod) or unified service (no go.mod)
+	goModPath := filepath.Join(directory, "go.mod")
+	if _, err := os.Stat(goModPath); os.IsNotExist(err) {
+		// Unified mode: use petri-pilot serve command
+		// Find petri-pilot binary
+		petriPilotBin, err := exec.LookPath("petri-pilot")
+		if err != nil {
+			// Try to find it in the same directory as the current process
+			execPath, _ := os.Executable()
+			petriPilotBin = filepath.Join(filepath.Dir(execPath), "petri-pilot")
+			if _, err := os.Stat(petriPilotBin); os.IsNotExist(err) {
+				stdoutFile.Close()
+				stderrFile.Close()
+				return nil, fmt.Errorf("petri-pilot binary not found: install with 'go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest'")
+			}
+		}
+
+		cmd = exec.Command(petriPilotBin, "serve", name, "-port", fmt.Sprintf("%d", port))
+		cmd.Dir = directory
+	} else {
+		// Standalone mode: build and run the binary
+		binaryPath := filepath.Join(directory, name)
+		buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
+		buildCmd.Dir = directory
+		// Disable Go workspace mode so it uses the local go.mod instead of parent
+		buildCmd.Env = append(os.Environ(), "GOWORK=off")
+		buildOutput, buildErr := buildCmd.CombinedOutput()
+		if buildErr != nil {
+			stdoutFile.Close()
+			stderrFile.Close()
+			return nil, fmt.Errorf("failed to build service: %v\n%s", buildErr, string(buildOutput))
+		}
+
+		cmd = exec.Command(binaryPath)
+		cmd.Dir = directory
 	}
 
-	// Run the built binary - start in new process group so it survives parent exit
-	cmd := exec.Command(binaryPath)
-	cmd.Dir = directory
+	// Configure command
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -213,7 +237,6 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 	if err := cmd.Start(); err != nil {
 		stdoutFile.Close()
 		stderrFile.Close()
-		os.Remove(binaryPath) // Clean up binary on failure
 		return nil, fmt.Errorf("failed to start service: %v", err)
 	}
 

@@ -121,18 +121,29 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		return nil, fmt.Errorf("model validation failed: %v", issues)
 	}
 
+	// Determine package name: use "main" for standalone mode, custom name for submodule
+	packageName := g.opts.PackageName
+	if !g.opts.AsSubmodule && packageName == "" {
+		packageName = "main"
+	}
+
 	// Build template context
 	ctx, err := NewContext(model, ContextOptions{
 		ModulePath:  g.opts.ModulePath,
-		PackageName: g.opts.PackageName,
+		PackageName: packageName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)
 	}
 
 	// Determine which templates to generate
-	templateNames := CodeTemplateNames()
-	if !g.opts.AsSubmodule {
+	var templateNames []string
+	if g.opts.AsSubmodule {
+		// Use service template for submodule mode (registrable services)
+		templateNames = SubmoduleCodeTemplateNames()
+	} else {
+		// Use main template for standalone mode
+		templateNames = CodeTemplateNames()
 		// Include go.mod only for standalone modules
 		templateNames = append([]string{TemplateGoMod}, templateNames...)
 	}

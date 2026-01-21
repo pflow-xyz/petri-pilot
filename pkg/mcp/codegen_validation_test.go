@@ -280,8 +280,8 @@ func TestGeneratedFrontendValidation(t *testing.T) {
 	// Basic syntax validation - check for common Go syntax
 	contentStr := string(content)
 	
-	// Check for package declaration
-	if !strings.Contains(contentStr, "package main") {
+	// Check for package declaration (could be "package main" or any valid package name)
+	if !strings.Contains(contentStr, "package ") {
 		t.Error("Generated code missing package declaration")
 	}
 

@@ -358,9 +358,16 @@ func TestGeneratedCodeCompiles(t *testing.T) {
 		t.Fatalf("Failed to get petri-pilot path: %v", err)
 	}
 
-	// Add replace directive for local development
-	newGoMod := string(goModContent) + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
-	if err := os.WriteFile(goModPath, []byte(newGoMod), 0644); err != nil {
+	// Always update the replace directive to use absolute path (relative paths don't work from temp dirs)
+	goModStr := string(goModContent)
+	if strings.Contains(goModStr, "replace github.com/pflow-xyz/petri-pilot") {
+		// Replace existing relative path with absolute path
+		goModStr = strings.ReplaceAll(goModStr, "replace github.com/pflow-xyz/petri-pilot => ../..","replace github.com/pflow-xyz/petri-pilot => " + petriPilotPath)
+	} else {
+		// Add new replace directive
+		goModStr = goModStr + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
+	}
+	if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
 		t.Fatalf("Failed to update go.mod: %v", err)
 	}
 
@@ -411,8 +418,16 @@ func TestGeneratedTestsPass(t *testing.T) {
 		t.Fatalf("Failed to get petri-pilot path: %v", err)
 	}
 
-	newGoMod := string(goModContent) + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
-	if err := os.WriteFile(goModPath, []byte(newGoMod), 0644); err != nil {
+	// Always update the replace directive to use absolute path (relative paths don't work from temp dirs)
+	goModStr := string(goModContent)
+	if strings.Contains(goModStr, "replace github.com/pflow-xyz/petri-pilot") {
+		// Replace existing relative path with absolute path
+		goModStr = strings.ReplaceAll(goModStr, "replace github.com/pflow-xyz/petri-pilot => ../..","replace github.com/pflow-xyz/petri-pilot => " + petriPilotPath)
+	} else {
+		// Add new replace directive
+		goModStr = goModStr + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
+	}
+	if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
 		t.Fatalf("Failed to update go.mod: %v", err)
 	}
 

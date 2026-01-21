@@ -223,7 +223,7 @@ class TestHarness {
   async getEventHistory(aggregateId) {
     // Use the events API endpoint
     // Convert kebab-case to camelcase for API path
-    const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+    const apiPath = this.appName.replace(/-/g, '');
     const response = await this.apiCall('GET', `/api/${apiPath}/${aggregateId}/events`, null, {
       'Authorization': `Bearer ${this.authToken}`
     });
@@ -258,7 +258,7 @@ class TestHarness {
    * @returns {Promise<object>} - The aggregate state with places
    */
   async getState(aggregateId) {
-    const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+    const apiPath = this.appName.replace(/-/g, '');
     const result = await this.apiCall('GET', `/api/${apiPath}/${aggregateId}`, null, {
       'Authorization': `Bearer ${this.authToken}`
     });
@@ -280,7 +280,7 @@ class TestHarness {
       const instances = result.instances || [];
 
       const rows = [];
-      const apiPath = this.appName === 'test-access' ? 'accesstest' : this.appName.replace(/-/g, '');
+      const apiPath = this.appName.replace(/-/g, '');
       for (const instance of instances) {
         const instanceId = instance.id || instance.ID || instance.aggregate_id;
         const events = await this.apiCall('GET', `/api/${apiPath}/${instanceId}/events`);

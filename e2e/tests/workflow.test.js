@@ -22,7 +22,7 @@ describe('Workflow State Machine', () => {
   });
 
   test('create new aggregate', async () => {
-    const res = await fetch(`${baseUrl}/api/accesstest`, {
+    const res = await fetch(`${baseUrl}/api/testaccess`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -38,7 +38,7 @@ describe('Workflow State Machine', () => {
 
   test('execute submit transition', async () => {
     // Create aggregate
-    const createRes = await fetch(`${baseUrl}/api/accesstest`, {
+    const createRes = await fetch(`${baseUrl}/api/testaccess`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}'
@@ -63,7 +63,7 @@ describe('Workflow State Machine', () => {
 
   test('access control - reviewer can approve', async () => {
     // Create aggregate
-    const createRes = await fetch(`${baseUrl}/api/accesstest`, {
+    const createRes = await fetch(`${baseUrl}/api/testaccess`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}'
