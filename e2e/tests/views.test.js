@@ -82,10 +82,14 @@ describe('Views and Data Projection', () => {
     test('disabled transitions show as disabled buttons', async () => {
       await harness.pilot.create();
 
+      // Wait for instance to be in received state (ensures detail page fully loaded)
+      await harness.pilot.waitForState('received');
+
       const buttons = await harness.pilot.getButtons();
 
-      // Ship should be disabled in received state
-      const shipButton = buttons.find(b => b.text.toLowerCase().includes('ship'));
+      // Ship should be disabled in received state (requires paid)
+      // Match exact button text "Ship" to avoid matching role buttons containing "ship"
+      const shipButton = buttons.find(b => b.text.trim() === 'Ship');
       if (shipButton) {
         expect(shipButton.disabled).toBe(true);
       }

@@ -8,6 +8,8 @@
   "places": [
     {"id": "applied", "description": "Application submitted", "initial": 1},
     {"id": "screening", "description": "Initial screening in progress", "initial": 0},
+    {"id": "ready_for_phone_screen", "description": "Ready to schedule phone screen", "initial": 0},
+    {"id": "ready_for_background_check", "description": "Ready to start background check", "initial": 0},
     {"id": "phone_screen_pending", "description": "Phone screen scheduled", "initial": 0},
     {"id": "phone_screen_complete", "description": "Phone screen completed", "initial": 0},
     {"id": "background_check_pending", "description": "Background check in progress", "initial": 0},
@@ -20,6 +22,7 @@
   ],
   "transitions": [
     {"id": "start_screening", "description": "Begin candidate screening"},
+    {"id": "begin_checks", "description": "Start parallel phone screen and background check processes"},
     {"id": "schedule_phone_screen", "description": "Schedule phone screen"},
     {"id": "start_background_check", "description": "Initiate background check"},
     {"id": "complete_phone_screen", "description": "Complete phone screen"},
@@ -35,9 +38,12 @@
   "arcs": [
     {"from": "applied", "to": "start_screening"},
     {"from": "start_screening", "to": "screening"},
-    {"from": "screening", "to": "schedule_phone_screen"},
+    {"from": "screening", "to": "begin_checks"},
+    {"from": "begin_checks", "to": "ready_for_phone_screen"},
+    {"from": "begin_checks", "to": "ready_for_background_check"},
+    {"from": "ready_for_phone_screen", "to": "schedule_phone_screen"},
     {"from": "schedule_phone_screen", "to": "phone_screen_pending"},
-    {"from": "screening", "to": "start_background_check"},
+    {"from": "ready_for_background_check", "to": "start_background_check"},
     {"from": "start_background_check", "to": "background_check_pending"},
     {"from": "phone_screen_pending", "to": "complete_phone_screen"},
     {"from": "complete_phone_screen", "to": "phone_screen_complete"},
@@ -85,6 +91,10 @@
   "access": [
     {
       "transition": "start_screening",
+      "roles": ["recruiter"]
+    },
+    {
+      "transition": "begin_checks",
       "roles": ["recruiter"]
     },
     {
