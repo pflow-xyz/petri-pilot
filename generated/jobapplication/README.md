@@ -30,6 +30,8 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 |-------|------|---------|-------------|
 | `applied` | Token | 1 | Application submitted |
 | `screening` | Token | 0 | Initial screening in progress |
+| `ready_for_phone_screen` | Token | 0 | Ready to schedule phone screen |
+| `ready_for_background_check` | Token | 0 | Ready to start background check |
 | `phone_screen_pending` | Token | 0 | Phone screen scheduled |
 | `phone_screen_complete` | Token | 0 | Phone screen completed |
 | `background_check_pending` | Token | 0 | Background check in progress |
@@ -46,6 +48,7 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | Transition | Event | Guard | Description |
 |------------|-------|-------|-------------|
 | `start_screening` | `StartScreeninged` | - | Begin candidate screening |
+| `begin_checks` | `BeginChecksed` | - | Start parallel phone screen and background check processes |
 | `schedule_phone_screen` | `SchedulePhoneScreened` | - | Schedule phone screen |
 | `start_background_check` | `StartBackgroundChecked` | - | Initiate background check |
 | `complete_phone_screen` | `CompletePhoneScreened` | - | Complete phone screen |
@@ -67,6 +70,8 @@ stateDiagram-v2
 
     state "applied (1)" as PlaceApplied
     state "screening" as PlaceScreening
+    state "ready_for_phone_screen" as PlaceReadyForPhoneScreen
+    state "ready_for_background_check" as PlaceReadyForBackgroundCheck
     state "phone_screen_pending" as PlacePhoneScreenPending
     state "phone_screen_complete" as PlacePhoneScreenComplete
     state "background_check_pending" as PlaceBackgroundCheckPending
@@ -79,6 +84,7 @@ stateDiagram-v2
 
 
     state "start_screening" as t_TransitionStartScreening
+    state "begin_checks" as t_TransitionBeginChecks
     state "schedule_phone_screen" as t_TransitionSchedulePhoneScreen
     state "start_background_check" as t_TransitionStartBackgroundCheck
     state "complete_phone_screen" as t_TransitionCompletePhoneScreen
@@ -95,10 +101,14 @@ stateDiagram-v2
     PlaceApplied --> t_TransitionStartScreening
     t_TransitionStartScreening --> PlaceScreening
 
-    PlaceScreening --> t_TransitionSchedulePhoneScreen
+    PlaceScreening --> t_TransitionBeginChecks
+    t_TransitionBeginChecks --> PlaceReadyForPhoneScreen
+    t_TransitionBeginChecks --> PlaceReadyForBackgroundCheck
+
+    PlaceReadyForPhoneScreen --> t_TransitionSchedulePhoneScreen
     t_TransitionSchedulePhoneScreen --> PlacePhoneScreenPending
 
-    PlaceScreening --> t_TransitionStartBackgroundCheck
+    PlaceReadyForBackgroundCheck --> t_TransitionStartBackgroundCheck
     t_TransitionStartBackgroundCheck --> PlaceBackgroundCheckPending
 
     PlacePhoneScreenPending --> t_TransitionCompletePhoneScreen
@@ -138,6 +148,8 @@ flowchart TD
     subgraph Places
         PlaceApplied[("applied<br/>initial: 1")]
         PlaceScreening[("screening")]
+        PlaceReadyForPhoneScreen[("ready_for_phone_screen")]
+        PlaceReadyForBackgroundCheck[("ready_for_background_check")]
         PlacePhoneScreenPending[("phone_screen_pending")]
         PlacePhoneScreenComplete[("phone_screen_complete")]
         PlaceBackgroundCheckPending[("background_check_pending")]
@@ -151,6 +163,7 @@ flowchart TD
 
     subgraph Transitions
         t_TransitionStartScreening["start_screening"]
+        t_TransitionBeginChecks["begin_checks"]
         t_TransitionSchedulePhoneScreen["schedule_phone_screen"]
         t_TransitionStartBackgroundCheck["start_background_check"]
         t_TransitionCompletePhoneScreen["complete_phone_screen"]
@@ -168,10 +181,14 @@ flowchart TD
     PlaceApplied --> t_TransitionStartScreening
     t_TransitionStartScreening --> PlaceScreening
 
-    PlaceScreening --> t_TransitionSchedulePhoneScreen
+    PlaceScreening --> t_TransitionBeginChecks
+    t_TransitionBeginChecks --> PlaceReadyForPhoneScreen
+    t_TransitionBeginChecks --> PlaceReadyForBackgroundCheck
+
+    PlaceReadyForPhoneScreen --> t_TransitionSchedulePhoneScreen
     t_TransitionSchedulePhoneScreen --> PlacePhoneScreenPending
 
-    PlaceScreening --> t_TransitionStartBackgroundCheck
+    PlaceReadyForBackgroundCheck --> t_TransitionStartBackgroundCheck
     t_TransitionStartBackgroundCheck --> PlaceBackgroundCheckPending
 
     PlacePhoneScreenPending --> t_TransitionCompletePhoneScreen
@@ -215,6 +232,7 @@ Events are immutable records of state transitions. Each event captures the trans
 | Event Type | Transition | Fields |
 |------------|------------|--------|
 | `StartScreeninged` | `start_screening` | `aggregate_id`, `timestamp` |
+| `BeginChecksed` | `begin_checks` | `aggregate_id`, `timestamp` |
 | `SchedulePhoneScreened` | `schedule_phone_screen` | `aggregate_id`, `timestamp` |
 | `StartBackgroundChecked` | `start_background_check` | `aggregate_id`, `timestamp` |
 | `CompletePhoneScreened` | `complete_phone_screen` | `aggregate_id`, `timestamp` |
@@ -245,6 +263,12 @@ classDiagram
         +time.Time Timestamp
     }
     Event <|-- StartScreeningedEvent
+
+    class BeginChecksedEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- BeginChecksedEvent
 
     class SchedulePhoneScreenedEvent {
         +string AggregateId
@@ -337,6 +361,7 @@ Role-based access control (RBAC) restricts which users can execute transitions.
 | Transition | Required Roles | Guard |
 |------------|----------------|-------|
 | `start_screening` | `recruiter` | - |
+| `begin_checks` | `recruiter` | - |
 | `schedule_phone_screen` | `recruiter` | - |
 | `start_background_check` | `recruiter` | - |
 | `complete_phone_screen` | `recruiter` | - |
@@ -361,6 +386,7 @@ graph TD
 
     subgraph Transitions
         t_start_screening["start_screening"]
+        t_begin_checks["begin_checks"]
         t_schedule_phone_screen["schedule_phone_screen"]
         t_start_background_check["start_background_check"]
         t_complete_phone_screen["complete_phone_screen"]
@@ -376,6 +402,8 @@ graph TD
 
 
     role_recruiter -.->|can execute| t_start_screening
+
+    role_recruiter -.->|can execute| t_begin_checks
 
     role_recruiter -.->|can execute| t_schedule_phone_screen
 
@@ -419,6 +447,7 @@ graph TD
 | Method | Path | Transition | Description |
 |--------|------|------------|-------------|
 | POST | `/api/start_screening` | `start_screening` | Begin candidate screening |
+| POST | `/api/begin_checks` | `begin_checks` | Start parallel phone screen and background check processes |
 | POST | `/api/schedule_phone_screen` | `schedule_phone_screen` | Schedule phone screen |
 | POST | `/api/start_background_check` | `start_background_check` | Initiate background check |
 | POST | `/api/complete_phone_screen` | `complete_phone_screen` | Complete phone screen |

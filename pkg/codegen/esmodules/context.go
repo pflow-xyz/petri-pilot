@@ -129,6 +129,13 @@ type TransitionContext struct {
 
 	// Input fields for action form
 	Fields []TransitionFieldContext
+
+	// Access control - roles that can fire this transition
+	RequiredRoles     []string // e.g., ["customer", "admin"]
+	RequiredRolesJSON string   // JSON array for template: '["customer", "admin"]'
+
+	// API path for frontend (e.g., "/api/submit" or custom path)
+	APIPath string // The actual path to call for this transition
 }
 
 // TransitionFieldContext provides template-friendly access to transition field data.
@@ -239,8 +246,8 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Build place contexts
 	ctx.Places = buildPlaceContexts(enriched.Places)
 
-	// Build transition contexts
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions)
+	// Build transition contexts with access control info
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Access)
 
 	// Build route contexts from bridge inference
 	apiRoutes := bridge.InferAPIRoutes(enriched)
@@ -279,19 +286,44 @@ func buildPlaceContexts(places []schema.Place) []PlaceContext {
 	return result
 }
 
-func buildTransitionContexts(transitions []schema.Transition) []TransitionContext {
+func buildTransitionContexts(transitions []schema.Transition, access []schema.AccessRule) []TransitionContext {
+	// Build access map: transition ID -> required roles
+	accessMap := make(map[string][]string)
+	for _, rule := range access {
+		accessMap[rule.Transition] = rule.Roles
+	}
+
 	result := make([]TransitionContext, len(transitions))
 	for i, t := range transitions {
+		roles := accessMap[t.ID]
+		rolesJSON := "[]"
+		if len(roles) > 0 {
+			quotedRoles := make([]string, len(roles))
+			for j, r := range roles {
+				quotedRoles[j] = `"` + r + `"`
+			}
+			rolesJSON = "[" + strings.Join(quotedRoles, ", ") + "]"
+		}
+
+		// Determine the API path - use HTTPPath if specified, otherwise default to /api/{id}
+		apiPath := t.HTTPPath
+		if apiPath == "" {
+			apiPath = "/api/" + t.ID
+		}
+
 		result[i] = TransitionContext{
-			ID:          t.ID,
-			Description: t.Description,
-			HTTPMethod:  t.HTTPMethod,
-			HTTPPath:    t.HTTPPath,
-			PascalName:  toPascalCase(t.ID),
-			CamelName:   toCamelCase(t.ID),
-			ConstName:   toConstName(t.ID),
-			DisplayName: toDisplayName(t.ID),
-			Fields:      buildTransitionFieldContexts(t.Fields),
+			ID:                t.ID,
+			Description:       t.Description,
+			HTTPMethod:        t.HTTPMethod,
+			HTTPPath:          t.HTTPPath,
+			PascalName:        toPascalCase(t.ID),
+			CamelName:         toCamelCase(t.ID),
+			ConstName:         toConstName(t.ID),
+			DisplayName:       toDisplayName(t.ID),
+			Fields:            buildTransitionFieldContexts(t.Fields),
+			RequiredRoles:     roles,
+			RequiredRolesJSON: rolesJSON,
+			APIPath:           apiPath,
 		}
 	}
 	return result

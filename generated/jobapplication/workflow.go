@@ -6,6 +6,8 @@ package jobapplication
 const (
 	PlaceApplied = "applied"
 	PlaceScreening = "screening"
+	PlaceReadyForPhoneScreen = "ready_for_phone_screen"
+	PlaceReadyForBackgroundCheck = "ready_for_background_check"
 	PlacePhoneScreenPending = "phone_screen_pending"
 	PlacePhoneScreenComplete = "phone_screen_complete"
 	PlaceBackgroundCheckPending = "background_check_pending"
@@ -20,6 +22,7 @@ const (
 // Transition constants
 const (
 	TransitionStartScreening = "start_screening"
+	TransitionBeginChecks = "begin_checks"
 	TransitionSchedulePhoneScreen = "schedule_phone_screen"
 	TransitionStartBackgroundCheck = "start_background_check"
 	TransitionCompletePhoneScreen = "complete_phone_screen"
@@ -36,6 +39,7 @@ const (
 // Event type constants
 const (
 	EventTypeStartScreening = "StartScreeninged"
+	EventTypeBeginChecks = "BeginChecksed"
 	EventTypeSchedulePhoneScreen = "SchedulePhoneScreened"
 	EventTypeStartBackgroundCheck = "StartBackgroundChecked"
 	EventTypeCompletePhoneScreen = "CompletePhoneScreened"
@@ -61,6 +65,8 @@ func AllPlaces() []string {
 	return []string{
 		PlaceApplied,
 		PlaceScreening,
+		PlaceReadyForPhoneScreen,
+		PlaceReadyForBackgroundCheck,
 		PlacePhoneScreenPending,
 		PlacePhoneScreenComplete,
 		PlaceBackgroundCheckPending,
@@ -77,6 +83,7 @@ func AllPlaces() []string {
 func AllTransitions() []string {
 	return []string{
 		TransitionStartScreening,
+		TransitionBeginChecks,
 		TransitionSchedulePhoneScreen,
 		TransitionStartBackgroundCheck,
 		TransitionCompletePhoneScreen,

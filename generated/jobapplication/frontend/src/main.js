@@ -135,6 +135,13 @@ const TRANSITION_DEFS = [
     ]
   },
   {
+    id: 'begin_checks',
+    name: 'Begin Checks',
+    description: "Start parallel phone screen and background check processes",
+    fields: [
+    ]
+  },
+  {
     id: 'schedule_phone_screen',
     name: 'Schedule Phone Screen',
     description: "Schedule phone screen",
@@ -330,7 +337,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1705,18 +1717,19 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start_screening', name: 'Start Screening', description: "Begin candidate screening" },
-      { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: "Schedule phone screen" },
-      { id: 'start_background_check', name: 'Start Background Check', description: "Initiate background check" },
-      { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: "Complete phone screen" },
-      { id: 'complete_background_check', name: 'Complete Background Check', description: "Complete background check" },
-      { id: 'advance_to_interview', name: 'Advance To Interview', description: "Both checks passed, advance to interview" },
-      { id: 'conduct_interview', name: 'Conduct Interview', description: "Conduct interview" },
-      { id: 'extend_offer', name: 'Extend Offer', description: "Extend job offer" },
-      { id: 'accept_offer', name: 'Accept Offer', description: "Candidate accepts offer" },
-      { id: 'reject_after_screen', name: 'Reject After Screen', description: "Reject after screening" },
-      { id: 'reject_after_interview', name: 'Reject After Interview', description: "Reject after interview" },
-      { id: 'decline_offer', name: 'Decline Offer', description: "Candidate declines offer" },
+      { id: 'start_screening', name: 'Start Screening', description: "Begin candidate screening", requiredRoles: ["recruiter"], apiPath: '/api/start_screening' },
+      { id: 'begin_checks', name: 'Begin Checks', description: "Start parallel phone screen and background check processes", requiredRoles: ["recruiter"], apiPath: '/api/begin_checks' },
+      { id: 'schedule_phone_screen', name: 'Schedule Phone Screen', description: "Schedule phone screen", requiredRoles: ["recruiter"], apiPath: '/api/schedule_phone_screen' },
+      { id: 'start_background_check', name: 'Start Background Check', description: "Initiate background check", requiredRoles: ["recruiter"], apiPath: '/api/start_background_check' },
+      { id: 'complete_phone_screen', name: 'Complete Phone Screen', description: "Complete phone screen", requiredRoles: ["recruiter"], apiPath: '/api/complete_phone_screen' },
+      { id: 'complete_background_check', name: 'Complete Background Check', description: "Complete background check", requiredRoles: ["recruiter"], apiPath: '/api/complete_background_check' },
+      { id: 'advance_to_interview', name: 'Advance To Interview', description: "Both checks passed, advance to interview", requiredRoles: ["recruiter"], apiPath: '/api/advance_to_interview' },
+      { id: 'conduct_interview', name: 'Conduct Interview', description: "Conduct interview", requiredRoles: ["hiring_manager"], apiPath: '/api/conduct_interview' },
+      { id: 'extend_offer', name: 'Extend Offer', description: "Extend job offer", requiredRoles: ["hiring_manager"], apiPath: '/api/extend_offer' },
+      { id: 'accept_offer', name: 'Accept Offer', description: "Candidate accepts offer", requiredRoles: ["candidate"], apiPath: '/api/accept_offer' },
+      { id: 'reject_after_screen', name: 'Reject After Screen', description: "Reject after screening", requiredRoles: ["recruiter"], apiPath: '/api/reject_after_screen' },
+      { id: 'reject_after_interview', name: 'Reject After Interview', description: "Reject after interview", requiredRoles: ["hiring_manager"], apiPath: '/api/reject_after_interview' },
+      { id: 'decline_offer', name: 'Decline Offer', description: "Candidate declines offer", requiredRoles: ["candidate"], apiPath: '/api/decline_offer' },
     ]
   },
 
@@ -1725,6 +1738,8 @@ window.pilot = {
     return [
       { id: 'applied', name: 'Applied', initial: 1 },
       { id: 'screening', name: 'Screening', initial: 0 },
+      { id: 'ready_for_phone_screen', name: 'ReadyForPhoneScreen', initial: 0 },
+      { id: 'ready_for_background_check', name: 'ReadyForBackgroundCheck', initial: 0 },
       { id: 'phone_screen_pending', name: 'PhoneScreenPending', initial: 0 },
       { id: 'phone_screen_complete', name: 'PhoneScreenComplete', initial: 0 },
       { id: 'background_check_pending', name: 'BackgroundCheckPending', initial: 0 },
@@ -1764,7 +1779,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

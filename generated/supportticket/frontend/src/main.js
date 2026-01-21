@@ -309,7 +309,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1684,15 +1689,15 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'assign', name: 'Assign', description: "Assign ticket to an agent" },
-      { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket" },
-      { id: 'escalate', name: 'Escalate', description: "Escalate to senior support" },
-      { id: 'request_info', name: 'Request Info', description: "Request more information from customer" },
-      { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information" },
-      { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress" },
-      { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved" },
-      { id: 'close', name: 'Close', description: "Close the ticket" },
-      { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket" },
+      { id: 'assign', name: 'Assign', description: "Assign ticket to an agent", requiredRoles: ["agent"], apiPath: '/api/assign' },
+      { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket", requiredRoles: ["agent"], apiPath: '/api/start_work' },
+      { id: 'escalate', name: 'Escalate', description: "Escalate to senior support", requiredRoles: ["agent"], apiPath: '/api/escalate' },
+      { id: 'request_info', name: 'Request Info', description: "Request more information from customer", requiredRoles: ["agent"], apiPath: '/api/request_info' },
+      { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information", requiredRoles: ["customer"], apiPath: '/api/customer_reply' },
+      { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress", requiredRoles: ["agent"], apiPath: '/api/resolve' },
+      { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved", requiredRoles: ["supervisor"], apiPath: '/api/resolve_escalated' },
+      { id: 'close', name: 'Close', description: "Close the ticket", requiredRoles: ["agent"], apiPath: '/api/close' },
+      { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket", requiredRoles: ["customer"], apiPath: '/api/reopen' },
     ]
   },
 
@@ -1736,7 +1741,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

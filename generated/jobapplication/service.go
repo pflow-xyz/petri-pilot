@@ -45,6 +45,11 @@ func NewService() (serve.Service, error) {
 			Guard:        "",
 		},
 		{
+			TransitionID: "begin_checks",
+			Roles:        []string{"recruiter",  },
+			Guard:        "",
+		},
+		{
 			TransitionID: "schedule_phone_screen",
 			Roles:        []string{"recruiter",  },
 			Guard:        "",

@@ -3,7 +3,7 @@
 package {{.PackageName}}
 
 import (
-{{- if or .HasAdmin .HasEventSourcing}}
+{{- if .HasAdmin}}
 	"context"
 {{- end}}
 {{- if .HasSnapshots}}
@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
-{{- if or .HasAdmin .HasEventSourcing}}
+{{- if or .HasAdmin .HasSnapshots}}
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 {{- end}}
 )

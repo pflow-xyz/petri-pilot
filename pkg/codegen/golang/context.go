@@ -1505,9 +1505,10 @@ func (c *Context) HasAdmin() bool {
 return c.Admin != nil && c.Admin.Enabled
 }
 
-// HasEventSourcing returns true if the model has event sourcing configuration.
+// HasEventSourcing returns true if event sourcing is enabled.
+// Always returns true since the runtime always uses event sourcing.
 func (c *Context) HasEventSourcing() bool {
-return c.EventSourcing != nil
+	return true
 }
 
 // HasSnapshots returns true if automatic snapshots are enabled.

@@ -109,6 +109,40 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
+  /api/begin_checks:
+    post:
+      summary: "Start parallel phone screen and background check processes"
+      operationId: beginChecks
+      tags:
+        - transitions
+      x-transition-id: begin_checks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
   /api/schedule_phone_screen:
     post:
       summary: "Schedule phone screen"
@@ -540,6 +574,10 @@ components:
         applied:
           type: integer
         screening:
+          type: integer
+        ready_for_phone_screen:
+          type: integer
+        ready_for_background_check:
           type: integer
         phone_screen_pending:
           type: integer

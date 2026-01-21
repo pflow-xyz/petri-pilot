@@ -309,7 +309,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1684,15 +1689,15 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'order_espresso', name: 'Order Espresso', description: "Customer orders espresso" },
-      { id: 'order_latte', name: 'Order Latte', description: "Customer orders latte" },
-      { id: 'order_cappuccino', name: 'Order Cappuccino', description: "Customer orders cappuccino" },
-      { id: 'make_espresso', name: 'Make Espresso', description: "Barista makes espresso" },
-      { id: 'make_latte', name: 'Make Latte', description: "Barista makes latte" },
-      { id: 'make_cappuccino', name: 'Make Cappuccino', description: "Barista makes cappuccino" },
-      { id: 'serve_espresso', name: 'Serve Espresso', description: "Serve espresso to customer" },
-      { id: 'serve_latte', name: 'Serve Latte', description: "Serve latte to customer" },
-      { id: 'serve_cappuccino', name: 'Serve Cappuccino', description: "Serve cappuccino to customer" },
+      { id: 'order_espresso', name: 'Order Espresso', description: "Customer orders espresso", requiredRoles: [], apiPath: '/api/order_espresso' },
+      { id: 'order_latte', name: 'Order Latte', description: "Customer orders latte", requiredRoles: [], apiPath: '/api/order_latte' },
+      { id: 'order_cappuccino', name: 'Order Cappuccino', description: "Customer orders cappuccino", requiredRoles: [], apiPath: '/api/order_cappuccino' },
+      { id: 'make_espresso', name: 'Make Espresso', description: "Barista makes espresso", requiredRoles: [], apiPath: '/api/make_espresso' },
+      { id: 'make_latte', name: 'Make Latte', description: "Barista makes latte", requiredRoles: [], apiPath: '/api/make_latte' },
+      { id: 'make_cappuccino', name: 'Make Cappuccino', description: "Barista makes cappuccino", requiredRoles: [], apiPath: '/api/make_cappuccino' },
+      { id: 'serve_espresso', name: 'Serve Espresso', description: "Serve espresso to customer", requiredRoles: [], apiPath: '/api/serve_espresso' },
+      { id: 'serve_latte', name: 'Serve Latte', description: "Serve latte to customer", requiredRoles: [], apiPath: '/api/serve_latte' },
+      { id: 'serve_cappuccino', name: 'Serve Cappuccino', description: "Serve cappuccino to customer", requiredRoles: [], apiPath: '/api/serve_cappuccino' },
     ]
   },
 
@@ -1737,7 +1742,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

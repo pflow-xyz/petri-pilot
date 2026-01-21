@@ -267,7 +267,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1642,9 +1647,9 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'submit', name: 'Submit', description: "Submit for review" },
-      { id: 'approve', name: 'Approve', description: "Approve the submission" },
-      { id: 'reject', name: 'Reject', description: "Reject the submission" },
+      { id: 'submit', name: 'Submit', description: "Submit for review", requiredRoles: ["customer"], apiPath: '/items/{id}/submit' },
+      { id: 'approve', name: 'Approve', description: "Approve the submission", requiredRoles: ["reviewer"], apiPath: '/items/{id}/approve' },
+      { id: 'reject', name: 'Reject', description: "Reject the submission", requiredRoles: ["reviewer"], apiPath: '/items/{id}/reject' },
     ]
   },
 
@@ -1685,7 +1690,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

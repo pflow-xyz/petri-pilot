@@ -302,7 +302,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1677,13 +1682,13 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'create_post', name: 'Create Post', description: "Create a new blog post" },
-      { id: 'update', name: 'Update', description: "Update post content" },
-      { id: 'submit', name: 'Submit', description: "Submit draft for review" },
-      { id: 'approve', name: 'Approve', description: "Approve and publish the post" },
-      { id: 'reject', name: 'Reject', description: "Reject and return to draft" },
-      { id: 'unpublish', name: 'Unpublish', description: "Take down a published post" },
-      { id: 'restore', name: 'Restore', description: "Restore archived post to draft" },
+      { id: 'create_post', name: 'Create Post', description: "Create a new blog post", requiredRoles: ["author"], apiPath: '/api/create_post' },
+      { id: 'update', name: 'Update', description: "Update post content", requiredRoles: ["author"], apiPath: '/api/update' },
+      { id: 'submit', name: 'Submit', description: "Submit draft for review", requiredRoles: ["author"], apiPath: '/api/submit' },
+      { id: 'approve', name: 'Approve', description: "Approve and publish the post", requiredRoles: ["editor"], apiPath: '/api/approve' },
+      { id: 'reject', name: 'Reject', description: "Reject and return to draft", requiredRoles: ["editor"], apiPath: '/api/reject' },
+      { id: 'unpublish', name: 'Unpublish', description: "Take down a published post", requiredRoles: ["editor"], apiPath: '/api/unpublish' },
+      { id: 'restore', name: 'Restore', description: "Restore archived post to draft", requiredRoles: ["admin"], apiPath: '/api/restore' },
     ]
   },
 
@@ -1724,7 +1729,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

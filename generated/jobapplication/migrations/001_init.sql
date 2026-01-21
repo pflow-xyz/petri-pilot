@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS "jobapplication_state" (
     version INTEGER NOT NULL DEFAULT 0,
     "applied" INTEGER DEFAULT 0,
     "screening" INTEGER DEFAULT 0,
+    "ready_for_phone_screen" INTEGER DEFAULT 0,
+    "ready_for_background_check" INTEGER DEFAULT 0,
     "phone_screen_pending" INTEGER DEFAULT 0,
     "phone_screen_complete" INTEGER DEFAULT 0,
     "background_check_pending" INTEGER DEFAULT 0,
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS "jobapplication_places" (
 
 -- Event type constants for reference:
 -- StartScreeninged
+-- BeginChecksed
 -- SchedulePhoneScreened
 -- StartBackgroundChecked
 -- CompletePhoneScreened
@@ -77,6 +80,8 @@ CREATE TABLE IF NOT EXISTS "jobapplication_places" (
 -- Place constants for reference:
 -- applied: Application submitted
 -- screening: Initial screening in progress
+-- ready_for_phone_screen: Ready to schedule phone screen
+-- ready_for_background_check: Ready to start background check
 -- phone_screen_pending: Phone screen scheduled
 -- phone_screen_complete: Phone screen completed
 -- background_check_pending: Background check in progress
@@ -89,6 +94,7 @@ CREATE TABLE IF NOT EXISTS "jobapplication_places" (
 
 -- Transition constants for reference:
 -- start_screening: Begin candidate screening
+-- begin_checks: Start parallel phone screen and background check processes
 -- schedule_phone_screen: Schedule phone screen
 -- start_background_check: Initiate background check
 -- complete_phone_screen: Complete phone screen

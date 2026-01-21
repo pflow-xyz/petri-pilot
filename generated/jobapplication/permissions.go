@@ -156,6 +156,22 @@ func CheckAccessStartScreening(user *User, state map[string]any) error {
 	return nil
 }
 
+// CheckAccessBeginChecks verifies access for the begin_checks transition.
+func CheckAccessBeginChecks(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "recruiter" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
 // CheckAccessSchedulePhoneScreen verifies access for the schedule_phone_screen transition.
 func CheckAccessSchedulePhoneScreen(user *User, state map[string]any) error {
 	if user == nil {

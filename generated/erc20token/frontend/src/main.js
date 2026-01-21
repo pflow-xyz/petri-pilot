@@ -297,7 +297,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1672,11 +1677,11 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'transfer', name: 'Transfer', description: "Transfer tokens from sender to recipient" },
-      { id: 'approve', name: 'Approve', description: "Approve spender to transfer tokens on owner's behalf" },
-      { id: 'transfer_from', name: 'Transfer From', description: "Transfer tokens using allowance (delegated transfer)" },
-      { id: 'mint', name: 'Mint', description: "Create new tokens and add to recipient balance" },
-      { id: 'burn', name: 'Burn', description: "Destroy tokens from holder's balance" },
+      { id: 'transfer', name: 'Transfer', description: "Transfer tokens from sender to recipient", requiredRoles: ["holder", "admin"], apiPath: '/api/transfer' },
+      { id: 'approve', name: 'Approve', description: "Approve spender to transfer tokens on owner's behalf", requiredRoles: ["holder", "admin"], apiPath: '/api/approve' },
+      { id: 'transfer_from', name: 'Transfer From', description: "Transfer tokens using allowance (delegated transfer)", requiredRoles: ["holder", "admin"], apiPath: '/api/transfer_from' },
+      { id: 'mint', name: 'Mint', description: "Create new tokens and add to recipient balance", requiredRoles: ["admin"], apiPath: '/api/mint' },
+      { id: 'burn', name: 'Burn', description: "Destroy tokens from holder's balance", requiredRoles: ["admin"], apiPath: '/api/burn' },
     ]
   },
 
@@ -1716,7 +1721,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

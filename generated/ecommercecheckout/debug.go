@@ -242,6 +242,38 @@ func HandleListSessions(broker *DebugBroker) http.HandlerFunc {
 }
 
 
+// testLoginRoleHierarchy defines which roles inherit from which.
+var testLoginRoleHierarchy = map[string][]string{
+	"admin": { "customer", "system", "fulfillment" },
+}
+
+// expandTestRoles expands a list of roles to include inherited roles.
+func expandTestRoles(roles []string) []string {
+	seen := make(map[string]bool)
+	expanded := make([]string, 0)
+
+	var expand func(role string)
+	expand = func(role string) {
+		if seen[role] {
+			return
+		}
+		seen[role] = true
+		expanded = append(expanded, role)
+
+		// Add parent roles
+		if parents, ok := testLoginRoleHierarchy[role]; ok {
+			for _, parent := range parents {
+				expand(parent)
+			}
+		}
+	}
+
+	for _, role := range roles {
+		expand(role)
+	}
+	return expanded
+}
+
 // HandleTestLogin creates a test session with specified roles (debug mode only).
 func HandleTestLogin(sessions SessionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -261,13 +293,16 @@ func HandleTestLogin(sessions SessionStore) http.HandlerFunc {
 			req.Roles = []string{"admin", "fulfillment", "system", "customer"}
 		}
 
-		// Create a test user with the specified roles
+		// Expand roles to include inherited roles
+		expandedRoles := expandTestRoles(req.Roles)
+
+		// Create a test user with the expanded roles
 		user := &User{
 			ID:    12345,
 			Login: req.Login,
 			Name:  "Test User",
 			Email: req.Login + "@test.local",
-			Roles: req.Roles,
+			Roles: expandedRoles,
 		}
 
 		session, err := sessions.Create(r.Context(), user)

@@ -19,6 +19,18 @@ func (e StartScreeningedEvent) EventType() string {
 }
 
 
+// BeginChecksedEvent is emitted when the begin_checks transition fires.
+type BeginChecksedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e BeginChecksedEvent) EventType() string {
+	return "BeginChecksed"
+}
+
+
 // SchedulePhoneScreenedEvent is emitted when the schedule_phone_screen transition fires.
 type SchedulePhoneScreenedEvent struct {
 	AggregateId string `json:"aggregate_id"`

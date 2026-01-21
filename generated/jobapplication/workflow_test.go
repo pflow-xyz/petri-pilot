@@ -12,14 +12,14 @@ import (
 func TestWorkflowConstants(t *testing.T) {
 	// Verify place constants
 	places := AllPlaces()
-	if len(places) != 11 {
-		t.Errorf("expected 11 places, got %d", len(places))
+	if len(places) != 13 {
+		t.Errorf("expected 13 places, got %d", len(places))
 	}
 
 	// Verify transition constants
 	transitions := AllTransitions()
-	if len(transitions) != 12 {
-		t.Errorf("expected 12 transitions, got %d", len(transitions))
+	if len(transitions) != 13 {
+		t.Errorf("expected 13 transitions, got %d", len(transitions))
 	}
 }
 

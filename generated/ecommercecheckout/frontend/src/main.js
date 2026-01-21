@@ -323,7 +323,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1698,17 +1703,17 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process" },
-      { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details" },
-      { id: 'process_payment', name: 'Process Payment', description: "Process the payment" },
-      { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully" },
-      { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed" },
-      { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)" },
-      { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed" },
-      { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)" },
-      { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed" },
-      { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries" },
-      { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order" },
+      { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process", requiredRoles: ["customer"], apiPath: '/api/start_checkout' },
+      { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details", requiredRoles: ["customer"], apiPath: '/api/enter_payment' },
+      { id: 'process_payment', name: 'Process Payment', description: "Process the payment", requiredRoles: ["system"], apiPath: '/api/process_payment' },
+      { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully", requiredRoles: ["system"], apiPath: '/api/payment_success' },
+      { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_1' },
+      { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)", requiredRoles: ["customer"], apiPath: '/api/retry_payment_1' },
+      { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_2' },
+      { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)", requiredRoles: ["customer"], apiPath: '/api/retry_payment_2' },
+      { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_3' },
+      { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries", requiredRoles: ["system"], apiPath: '/api/cancel_order' },
+      { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order", requiredRoles: ["fulfillment"], apiPath: '/api/fulfill' },
     ]
   },
 
@@ -1755,7 +1760,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 

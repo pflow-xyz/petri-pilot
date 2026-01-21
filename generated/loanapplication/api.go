@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
@@ -38,6 +39,10 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+
+	// Event replay endpoints
+	r.GET("/api/loanapplication/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/loanapplication/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 
 
 
@@ -649,8 +654,86 @@ func HandleGetViews() http.HandlerFunc {
 
 
 
+// HandleGetEvents returns the event history for an aggregate.
+func HandleGetEvents(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		from := getIntQueryParam(r, "from", 0)
+
+		events, err := app.store.Read(ctx, id, from)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"events": events,
+		})
+	}
+}
+
+// HandleGetStateAtVersion returns the aggregate state at a specific version.
+func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		versionStr := r.PathValue("version")
+
+		version := getInt(versionStr, 0)
+		if version <= 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
+			return
+		}
+
+		events, err := app.store.Read(ctx, id, 0)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Create temporary aggregate and replay up to version
+		agg := NewAggregate(id)
+		for _, evt := range events {
+			if evt.Version > version {
+				break
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":      agg.ID(),
+			"version": version,
+			"state":   agg.State(),
+		})
+	}
+}
 
 
 
+
+
+// Helper functions
+
+func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
+	val := r.URL.Query().Get(name)
+	return getInt(val, defaultVal)
+}
+
+func getInt(s string, defaultVal int) int {
+	if s == "" {
+		return defaultVal
+	}
+
+	intVal, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+
+	return intVal
+}
 
 

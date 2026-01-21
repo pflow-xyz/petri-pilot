@@ -17,6 +17,8 @@ import (
 type State struct {
 	Applied int `json:"applied"`
 	Screening int `json:"screening"`
+	ReadyForPhoneScreen int `json:"ready_for_phone_screen"`
+	ReadyForBackgroundCheck int `json:"ready_for_background_check"`
 	PhoneScreenPending int `json:"phone_screen_pending"`
 	PhoneScreenComplete int `json:"phone_screen_complete"`
 	BackgroundCheckPending int `json:"background_check_pending"`
@@ -58,10 +60,21 @@ func NewAggregate(id string) *Aggregate {
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionBeginChecks,
+		EventType: EventTypeBeginChecks,
+		Inputs: map[string]int{
+			PlaceScreening: 1,
+		},
+		Outputs: map[string]int{
+			PlaceReadyForPhoneScreen: 1,
+			PlaceReadyForBackgroundCheck: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
 		ID:        TransitionSchedulePhoneScreen,
 		EventType: EventTypeSchedulePhoneScreen,
 		Inputs: map[string]int{
-			PlaceScreening: 1,
+			PlaceReadyForPhoneScreen: 1,
 		},
 		Outputs: map[string]int{
 			PlacePhoneScreenPending: 1,
@@ -71,7 +84,7 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionStartBackgroundCheck,
 		EventType: EventTypeStartBackgroundCheck,
 		Inputs: map[string]int{
-			PlaceScreening: 1,
+			PlaceReadyForBackgroundCheck: 1,
 		},
 		Outputs: map[string]int{
 			PlaceBackgroundCheckPending: 1,
@@ -173,6 +186,9 @@ func NewAggregate(id string) *Aggregate {
 	sm.RegisterHandler(EventTypeStartScreening, func(state *State, event *runtime.Event) error {
 		return applyStartScreening(state, event)
 	})
+	sm.RegisterHandler(EventTypeBeginChecks, func(state *State, event *runtime.Event) error {
+		return applyBeginChecks(state, event)
+	})
 	sm.RegisterHandler(EventTypeSchedulePhoneScreen, func(state *State, event *runtime.Event) error {
 		return applySchedulePhoneScreen(state, event)
 	})
@@ -257,6 +273,13 @@ func (a *Aggregate) Apply(event *runtime.Event) error {
 // Event application functions
 
 func applyStartScreening(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyBeginChecks(state *State, event *runtime.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

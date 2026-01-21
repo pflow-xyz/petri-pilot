@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
@@ -39,6 +40,10 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+	// Event replay endpoints
+	r.GET("/api/jobapplication/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/jobapplication/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+
 
 
 
@@ -69,6 +74,7 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 	// Transition endpoints
 	r.Transition("start_screening", "/api/start_screening", "Begin candidate screening", middleware.RequirePermission("start_screening")(HandleStartScreening(app)))
+	r.Transition("begin_checks", "/api/begin_checks", "Start parallel phone screen and background check processes", middleware.RequirePermission("begin_checks")(HandleBeginChecks(app)))
 	r.Transition("schedule_phone_screen", "/api/schedule_phone_screen", "Schedule phone screen", middleware.RequirePermission("schedule_phone_screen")(HandleSchedulePhoneScreen(app)))
 	r.Transition("start_background_check", "/api/start_background_check", "Initiate background check", middleware.RequirePermission("start_background_check")(HandleStartBackgroundCheck(app)))
 	r.Transition("complete_phone_screen", "/api/complete_phone_screen", "Complete phone screen", middleware.RequirePermission("complete_phone_screen")(HandleCompletePhoneScreen(app)))
@@ -226,6 +232,39 @@ func HandleStartScreening(app *Application) http.HandlerFunc {
 		}
 
 		agg, err := app.Execute(ctx, req.AggregateID, TransitionStartScreening, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleBeginChecks handles the begin_checks transition.
+func HandleBeginChecks(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionBeginChecks, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
 			return
@@ -624,8 +663,86 @@ func HandleGetViews() http.HandlerFunc {
 
 
 
+// HandleGetEvents returns the event history for an aggregate.
+func HandleGetEvents(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		from := getIntQueryParam(r, "from", 0)
+
+		events, err := app.store.Read(ctx, id, from)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"events": events,
+		})
+	}
+}
+
+// HandleGetStateAtVersion returns the aggregate state at a specific version.
+func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		versionStr := r.PathValue("version")
+
+		version := getInt(versionStr, 0)
+		if version <= 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
+			return
+		}
+
+		events, err := app.store.Read(ctx, id, 0)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
+
+		// Create temporary aggregate and replay up to version
+		agg := NewAggregate(id)
+		for _, evt := range events {
+			if evt.Version > version {
+				break
+			}
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":      agg.ID(),
+			"version": version,
+			"state":   agg.State(),
+		})
+	}
+}
 
 
 
+
+
+// Helper functions
+
+func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
+	val := r.URL.Query().Get(name)
+	return getInt(val, defaultVal)
+}
+
+func getInt(s string, defaultVal int) int {
+	if s == "" {
+		return defaultVal
+	}
+
+	intVal, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+
+	return intVal
+}
 
 

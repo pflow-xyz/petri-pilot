@@ -330,7 +330,12 @@ const api = {
   async executeTransition(transitionId, aggregateId, data = {}) {
     // Scale amount fields before sending to API
     const scaledData = scaleFormData(data)
-    const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+    // Get the API path from transition definition, or fall back to default
+    const transition = window.pilot?.getTransition?.(transitionId)
+    let apiPath = transition?.apiPath || `/api/${transitionId}`
+    // Substitute {id} placeholder with actual aggregate ID
+    apiPath = apiPath.replace('{id}', aggregateId)
+    const response = await fetch(`${API_BASE}${apiPath}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ aggregate_id: aggregateId, data: scaledData }),
@@ -1705,18 +1710,18 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check" },
-      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score" },
-      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review" },
-      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application" },
-      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application" },
-      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score" },
-      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval" },
-      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer" },
-      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period" },
-      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment" },
-      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete" },
-      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted" },
+      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check", requiredRoles: ["system"], apiPath: '/api/run_credit_check' },
+      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_approve' },
+      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review", requiredRoles: ["system"], apiPath: '/api/flag_for_review' },
+      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_approve' },
+      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_deny' },
+      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_deny' },
+      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval", requiredRoles: ["system"], apiPath: '/api/finalize_approval' },
+      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer", requiredRoles: ["admin"], apiPath: '/api/disburse' },
+      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period", requiredRoles: ["system"], apiPath: '/api/start_repayment' },
+      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment", requiredRoles: ["applicant"], apiPath: '/api/make_payment' },
+      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete", requiredRoles: ["system"], apiPath: '/api/complete' },
+      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted", requiredRoles: ["admin"], apiPath: '/api/mark_default' },
     ]
   },
 
@@ -1763,7 +1768,20 @@ window.pilot = {
       }
     }
 
-    // Note: Role checks are enforced server-side
+    // Check role-based access control
+    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
+      const userRoles = this.getRoles()
+      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
+      if (!hasRequiredRole) {
+        return {
+          canFire: false,
+          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
+          requiredRoles: transition.requiredRoles,
+          userRoles: userRoles
+        }
+      }
+    }
+
     return { canFire: true }
   },
 
