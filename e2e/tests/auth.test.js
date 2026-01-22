@@ -7,7 +7,10 @@ describe('Authentication', () => {
   beforeAll(async () => {
     server = await startServer();
     baseUrl = server.baseUrl;
-    browser = await puppeteer.launch({ headless: process.env.HEADLESS !== 'false' });
+    browser = await puppeteer.launch({
+      headless: process.env.HEADLESS !== 'false',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
   });
 
   afterAll(async () => {
