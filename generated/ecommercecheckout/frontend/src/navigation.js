@@ -19,8 +19,8 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'ecommerce-checkout',
   items: [
-    { label: 'ecommerce-checkout', path: '/ecommercecheckout', icon: '' },
-    { label: 'New', path: '/ecommercecheckout/new', icon: '+' },
+    { label: 'ecommerce-checkout', path: '/ecommerce-checkout', icon: '' },
+    { label: 'New', path: '/ecommerce-checkout/new', icon: '+' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }
@@ -73,7 +73,7 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/ecommercecheckout" onclick="handleNavClick(event, '/ecommercecheckout')">
+        <a href="/ecommerce-checkout" onclick="handleNavClick(event, '/ecommerce-checkout')">
           ${brand}
         </a>
       </div>
@@ -331,7 +331,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/ecommercecheckout')
+  navigate('/ecommerce-checkout')
 }
 
 // Helper functions

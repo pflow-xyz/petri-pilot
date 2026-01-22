@@ -678,14 +678,19 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Build place contexts
 	ctx.Places = buildPlaceContexts(enriched.Places)
 
-	// Build place ID set for quick lookups
+	// Build place ID set for quick lookups and track data state places
 	placeIDs := make(map[string]bool)
+	dataPlaceIDs := make(map[string]bool)
 	for _, p := range enriched.Places {
 		placeIDs[p.ID] = true
+		if p.IsData() {
+			dataPlaceIDs[p.ID] = true
+		}
 	}
 
 	// Build transition contexts with arc information
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, placeIDs)
+	// Data state places are excluded from token counting (guards handle those)
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, placeIDs, dataPlaceIDs)
 
 	// Build event contexts from bridge inference
 	eventDefs := bridge.InferEvents(enriched)
@@ -911,10 +916,11 @@ func buildPlaceContexts(places []schema.Place) []PlaceContext {
 	return result
 }
 
-func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc, placeIDs map[string]bool) []TransitionContext {
+func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
 	// Build arc maps for each transition
 	// Inputs: arcs where arc.To == transition.ID (place -> transition)
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
+	// Note: Data state places are excluded from token counting - guards handle those
 	inputArcs := make(map[string][]ArcContext)
 	outputArcs := make(map[string][]ArcContext)
 
@@ -926,7 +932,8 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 
 		// If arc goes from a place to something, and that something is not a place,
 		// it's an input to a transition
-		if placeIDs[arc.From] && !placeIDs[arc.To] {
+		// Skip data state places - they don't use token counting
+		if placeIDs[arc.From] && !placeIDs[arc.To] && !dataPlaceIDs[arc.From] {
 			inputArcs[arc.To] = append(inputArcs[arc.To], ArcContext{
 				PlaceID:   arc.From,
 				ConstName: ToConstName("Place", arc.From),
@@ -936,7 +943,8 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 
 		// If arc goes from something that's not a place to a place,
 		// it's an output from a transition
-		if !placeIDs[arc.From] && placeIDs[arc.To] {
+		// Skip data state places - they don't use token counting
+		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] {
 			outputArcs[arc.From] = append(outputArcs[arc.From], ArcContext{
 				PlaceID:   arc.To,
 				ConstName: ToConstName("Place", arc.To),
@@ -1109,6 +1117,19 @@ func buildCollectionContexts(collections []bridge.CollectionSpec) []CollectionCo
 	return result
 }
 
+// extractFinalValueType recursively extracts the final value type from a map type.
+// For nested maps like map[string]map[string]int64, returns int64.
+// For simple maps like map[string]int64, returns int64.
+// For non-map types, returns the type itself.
+func extractFinalValueType(typ string) string {
+	_, vt, isMap := ParseMapType(typ)
+	if !isMap {
+		return TypeToGo(typ)
+	}
+	// Recursively extract if nested
+	return extractFinalValueType(vt)
+}
+
 func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 	var result []DataArcContext
 
@@ -1120,6 +1141,9 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				keyFields[i] = ToPascalCase(k)
 			}
 
+			// For checking IsNumeric, we need the final value type (for nested maps)
+			finalValueType := extractFinalValueType(read.CollectionType)
+			// For the ValueType field, we need the immediate value type for codegen
 			valueType := TypeToGo(read.CollectionType)
 			if !read.IsSimple {
 				// For maps, the value type is the map's value type
@@ -1142,7 +1166,7 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				ValueField:       ToPascalCase(read.ValueBinding),
 				IsInput:          true,
 				IsOutput:         false,
-				IsNumeric:        IsNumericType(valueType),
+				IsNumeric:        IsNumericType(finalValueType),
 				UsesCompositeKey: usesCompositeKey,
 			})
 		}
@@ -1154,6 +1178,9 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				keyFields[i] = ToPascalCase(k)
 			}
 
+			// For checking IsNumeric, we need the final value type (for nested maps)
+			finalValueType := extractFinalValueType(write.CollectionType)
+			// For the ValueType field, we need the immediate value type for codegen
 			valueType := TypeToGo(write.CollectionType)
 			if !write.IsSimple {
 				// For maps, the value type is the map's value type
@@ -1176,7 +1203,7 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 				ValueField:       ToPascalCase(write.ValueBinding),
 				IsInput:          false,
 				IsOutput:         true,
-				IsNumeric:        IsNumericType(valueType),
+				IsNumeric:        IsNumericType(finalValueType),
 				UsesCompositeKey: usesCompositeKey,
 			})
 		}

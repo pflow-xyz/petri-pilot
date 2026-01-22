@@ -62,20 +62,10 @@ stateDiagram-v2
     state "burn" as t_TransitionBurn
 
 
-    PlaceBalances --> t_TransitionTransfer
-    t_TransitionTransfer --> PlaceBalances
 
-    t_TransitionApprove --> PlaceAllowances
 
-    PlaceBalances --> t_TransitionTransferFrom
-    PlaceAllowances --> t_TransitionTransferFrom
-    t_TransitionTransferFrom --> PlaceBalances
 
-    t_TransitionMint --> PlaceBalances
-    t_TransitionMint --> PlaceTotalSupply
 
-    PlaceBalances --> t_TransitionBurn
-    PlaceTotalSupply --> t_TransitionBurn
 
 ```
 
@@ -98,20 +88,10 @@ flowchart TD
     end
 
 
-    PlaceBalances --> t_TransitionTransfer
-    t_TransitionTransfer --> PlaceBalances
 
-    t_TransitionApprove --> PlaceAllowances
 
-    PlaceBalances --> t_TransitionTransferFrom
-    PlaceAllowances --> t_TransitionTransferFrom
-    t_TransitionTransferFrom --> PlaceBalances
 
-    t_TransitionMint --> PlaceBalances
-    t_TransitionMint --> PlaceTotalSupply
 
-    PlaceBalances --> t_TransitionBurn
-    PlaceTotalSupply --> t_TransitionBurn
 
 
     style Places fill:#e1f5fe

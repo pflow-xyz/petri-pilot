@@ -18,8 +18,8 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'erc20-token',
   items: [
-    { label: 'erc20-token', path: '/erc20token', icon: '' },
-    { label: 'New', path: '/erc20token/new', icon: '+' },
+    { label: 'erc20-token', path: '/erc20-token', icon: '' },
+    { label: 'New', path: '/erc20-token/new', icon: '+' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }
@@ -72,7 +72,7 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/erc20token" onclick="handleNavClick(event, '/erc20token')">
+        <a href="/erc20-token" onclick="handleNavClick(event, '/erc20-token')">
           ${brand}
         </a>
       </div>
@@ -325,7 +325,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/erc20token')
+  navigate('/erc20-token')
 }
 
 // Helper functions

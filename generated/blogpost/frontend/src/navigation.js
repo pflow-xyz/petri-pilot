@@ -18,8 +18,8 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'blog-post',
   items: [
-    { label: 'blog-post', path: '/blogpost', icon: '' },
-    { label: 'New', path: '/blogpost/new', icon: '+' },
+    { label: 'blog-post', path: '/blog-post', icon: '' },
+    { label: 'New', path: '/blog-post/new', icon: '+' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }
@@ -72,7 +72,7 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/blogpost" onclick="handleNavClick(event, '/blogpost')">
+        <a href="/blog-post" onclick="handleNavClick(event, '/blog-post')">
           ${brand}
         </a>
       </div>
@@ -330,7 +330,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/blogpost')
+  navigate('/blog-post')
 }
 
 // Helper functions

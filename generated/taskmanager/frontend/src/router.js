@@ -15,17 +15,17 @@ export const routes = [
   },
   // Entity routes
   {
-    path: '/taskmanager',
+    path: '/task-manager',
     component: 'List',
     title: 'task-manager',
   },
   {
-    path: '/taskmanager/new',
+    path: '/task-manager/new',
     component: 'Form',
     title: 'New task-manager',
   },
   {
-    path: '/taskmanager/:id',
+    path: '/task-manager/:id',
     component: 'Detail',
     title: 'task-manager Detail',
   },
@@ -93,7 +93,7 @@ export function navigate(path, state = {}) {
   if (!match) {
     // Fallback to list page for unknown routes
     console.warn(`No route found for path: ${path}, falling back to list`)
-    path = '/taskmanager'
+    path = '/task-manager'
     const fallback = matchRoute(path)
     if (fallback) {
       currentRoute = fallback.route
@@ -109,7 +109,7 @@ export function navigate(path, state = {}) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate('/taskmanager')
+      navigate('/task-manager')
       return
     }
   }
@@ -134,7 +134,7 @@ window.addEventListener('popstate', () => {
     renderCurrentRoute()
   } else {
     // Fallback to list
-    navigate('/taskmanager')
+    navigate('/task-manager')
   }
 })
 
@@ -190,7 +190,7 @@ export function initRouter() {
     currentParams = match.params
   } else {
     // Default to list page
-    currentRoute = routes.find(r => r.path === '/taskmanager') || routes[0]
+    currentRoute = routes.find(r => r.path === '/task-manager') || routes[0]
     currentParams = {}
   }
 }

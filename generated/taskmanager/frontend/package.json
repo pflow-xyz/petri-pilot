@@ -1,5 +1,5 @@
 {
-  "name": "taskmanager-frontend",
+  "name": "task-manager-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",

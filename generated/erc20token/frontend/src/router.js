@@ -15,17 +15,17 @@ export const routes = [
   },
   // Entity routes
   {
-    path: '/erc20token',
+    path: '/erc20-token',
     component: 'List',
     title: 'erc20-token',
   },
   {
-    path: '/erc20token/new',
+    path: '/erc20-token/new',
     component: 'Form',
     title: 'New erc20-token',
   },
   {
-    path: '/erc20token/:id',
+    path: '/erc20-token/:id',
     component: 'Detail',
     title: 'erc20-token Detail',
   },
@@ -93,7 +93,7 @@ export function navigate(path, state = {}) {
   if (!match) {
     // Fallback to list page for unknown routes
     console.warn(`No route found for path: ${path}, falling back to list`)
-    path = '/erc20token'
+    path = '/erc20-token'
     const fallback = matchRoute(path)
     if (fallback) {
       currentRoute = fallback.route
@@ -109,7 +109,7 @@ export function navigate(path, state = {}) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate('/erc20token')
+      navigate('/erc20-token')
       return
     }
   }
@@ -134,7 +134,7 @@ window.addEventListener('popstate', () => {
     renderCurrentRoute()
   } else {
     // Fallback to list
-    navigate('/erc20token')
+    navigate('/erc20-token')
   }
 })
 
@@ -190,7 +190,7 @@ export function initRouter() {
     currentParams = match.params
   } else {
     // Default to list page
-    currentRoute = routes.find(r => r.path === '/erc20token') || routes[0]
+    currentRoute = routes.find(r => r.path === '/erc20-token') || routes[0]
     currentParams = {}
   }
 }

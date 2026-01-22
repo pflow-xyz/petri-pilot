@@ -428,7 +428,7 @@ function renderInstancesList() {
   container.innerHTML = instances.map(inst => {
     const status = getStatus(inst.state || inst.places)
     return `
-      <div class="entity-card" onclick="navigate('/blogpost/${inst.id}')">
+      <div class="entity-card" onclick="navigate('/blog-post/${inst.id}')">
         <div class="entity-info">
           <h3>${inst.id}</h3>
           <div class="entity-meta">
@@ -436,7 +436,7 @@ function renderInstancesList() {
           </div>
         </div>
         <div class="entity-actions">
-          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/blogpost/${inst.id}')">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/blog-post/${inst.id}')">
             View
           </button>
         </div>
@@ -455,7 +455,7 @@ async function renderDetailPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/blogpost')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/blog-post')" style="margin-left: -0.5rem">
             &larr; Back to List
           </button>
           <h1 style="margin-top: 0.5rem">Instance: ${id}</h1>
@@ -997,7 +997,7 @@ async function renderFormPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/blogpost')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/blog-post')" style="margin-left: -0.5rem">
             &larr; Cancel
           </button>
           <h1 style="margin-top: 0.5rem">Create New</h1>
@@ -1008,7 +1008,7 @@ async function renderFormPage() {
           <p style="color: #666; margin-bottom: 1rem;">Create a new workflow instance. The instance will start in the initial state.</p>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Create</button>
-            <button type="button" class="btn btn-secondary" onclick="navigate('/blogpost')">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('/blog-post')">Cancel</button>
           </div>
         </form>
       </div>
@@ -1079,7 +1079,7 @@ async function renderAdminPage() {
                     <td><code>${inst.id}</code></td>
                     <td>${formatStatus(status)}</td>
                     <td>${inst.version || 0}</td>
-                    <td><button class="btn btn-sm btn-link" onclick="navigate('/blogpost/${inst.id}')">View</button></td>
+                    <td><button class="btn btn-sm btn-link" onclick="navigate('/blog-post/${inst.id}')">View</button></td>
                   </tr>
                 `
               }).join('')}
@@ -1099,7 +1099,7 @@ async function renderAdminPage() {
 window.navigate = navigate
 
 window.handleCreateNew = async function() {
-  navigate('/blogpost/new')
+  navigate('/blog-post/new')
 }
 
 window.handleSubmitCreate = async function(event) {
@@ -1107,7 +1107,7 @@ window.handleSubmitCreate = async function(event) {
   try {
     const result = await api.createInstance({})
     showSuccess('Instance created successfully!')
-    navigate(`/blogpost/${result.aggregate_id || result.id}`)
+    navigate(`/blog-post/${result.aggregate_id || result.id}`)
   } catch (err) {
     showError('Failed to create: ' + err.message)
   }
@@ -1155,11 +1155,11 @@ function handleRouteChange(event) {
   }
 
   const path = route.path
-  if (path === '/blogpost' || path === '/') {
+  if (path === '/blog-post' || path === '/') {
     renderListPage()
-  } else if (path === '/blogpost/new') {
+  } else if (path === '/blog-post/new') {
     renderFormPage()
-  } else if (path === '/blogpost/:id') {
+  } else if (path === '/blog-post/:id') {
     renderDetailPage()
   } else if (path === '/admin' || path.startsWith('/admin')) {
     renderAdminPage()
@@ -1321,7 +1321,7 @@ window.pilot = {
 
   /** Navigate to the list page */
   async list() {
-    navigate('/blogpost')
+    navigate('/blog-post')
     // Wait for instances to load
     await this.waitFor('.entity-card, .empty-state', 5000).catch(() => {})
     return instances
@@ -1329,13 +1329,13 @@ window.pilot = {
 
   /** Navigate to create new instance form */
   newForm() {
-    navigate('/blogpost/new')
+    navigate('/blog-post/new')
     return this.waitForRender()
   },
 
   /** Navigate to view a specific instance */
   async view(id) {
-    navigate(`/blogpost/${id}`)
+    navigate(`/blog-post/${id}`)
     await this.waitForRender()
     return currentInstance
   },
@@ -1352,7 +1352,7 @@ window.pilot = {
   async create(data = {}) {
     const result = await api.createInstance(data)
     const id = result.aggregate_id || result.id
-    navigate(`/blogpost/${id}`)
+    navigate(`/blog-post/${id}`)
     await this.waitForRender()
     return { id, ...result }
   },

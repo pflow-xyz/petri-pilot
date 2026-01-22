@@ -18,8 +18,8 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'task-manager',
   items: [
-    { label: 'task-manager', path: '/taskmanager', icon: '' },
-    { label: 'New', path: '/taskmanager/new', icon: '+' },
+    { label: 'task-manager', path: '/task-manager', icon: '' },
+    { label: 'New', path: '/task-manager/new', icon: '+' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }
@@ -72,7 +72,7 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/taskmanager" onclick="handleNavClick(event, '/taskmanager')">
+        <a href="/task-manager" onclick="handleNavClick(event, '/task-manager')">
           ${brand}
         </a>
       </div>
@@ -330,7 +330,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/taskmanager')
+  navigate('/task-manager')
 }
 
 // Helper functions

@@ -15,17 +15,17 @@ export const routes = [
   },
   // Entity routes
   {
-    path: '/{{.ProjectName}}',
+    path: '/{{.ModelName}}',
     component: 'List',
     title: '{{.ModelName}}',
   },
   {
-    path: '/{{.ProjectName}}/new',
+    path: '/{{.ModelName}}/new',
     component: 'Form',
     title: 'New {{.ModelName}}',
   },
   {
-    path: '/{{.ProjectName}}/:id',
+    path: '/{{.ModelName}}/:id',
     component: 'Detail',
     title: '{{.ModelName}} Detail',
   },
@@ -95,7 +95,7 @@ export function navigate(path, state = {}) {
   if (!match) {
     // Fallback to list page for unknown routes
     console.warn(`No route found for path: ${path}, falling back to list`)
-    path = '/{{.ProjectName}}'
+    path = '/{{.ModelName}}'
     const fallback = matchRoute(path)
     if (fallback) {
       currentRoute = fallback.route
@@ -111,7 +111,7 @@ export function navigate(path, state = {}) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate('/{{.ProjectName}}')
+      navigate('/{{.ModelName}}')
       return
     }
   }
@@ -136,7 +136,7 @@ window.addEventListener('popstate', () => {
     renderCurrentRoute()
   } else {
     // Fallback to list
-    navigate('/{{.ProjectName}}')
+    navigate('/{{.ModelName}}')
   }
 })
 
@@ -192,7 +192,7 @@ export function initRouter() {
     currentParams = match.params
   } else {
     // Default to list page
-    currentRoute = routes.find(r => r.path === '/{{.ProjectName}}') || routes[0]
+    currentRoute = routes.find(r => r.path === '/{{.ModelName}}') || routes[0]
     currentParams = {}
   }
 }

@@ -19,8 +19,8 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'support-ticket',
   items: [
-    { label: 'support-ticket', path: '/supportticket', icon: '' },
-    { label: 'New', path: '/supportticket/new', icon: '+' },
+    { label: 'support-ticket', path: '/support-ticket', icon: '' },
+    { label: 'New', path: '/support-ticket/new', icon: '+' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }
@@ -73,7 +73,7 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/supportticket" onclick="handleNavClick(event, '/supportticket')">
+        <a href="/support-ticket" onclick="handleNavClick(event, '/support-ticket')">
           ${brand}
         </a>
       </div>
@@ -331,7 +331,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/supportticket')
+  navigate('/support-ticket')
 }
 
 // Helper functions

@@ -81,10 +81,8 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionTransfer,
 		EventType: EventTypeTransfer,
 		Inputs: map[string]int{
-			PlaceBalances: 1,
 		},
 		Outputs: map[string]int{
-			PlaceBalances: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -93,18 +91,14 @@ func NewAggregate(id string) *Aggregate {
 		Inputs: map[string]int{
 		},
 		Outputs: map[string]int{
-			PlaceAllowances: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
 		ID:        TransitionTransferFrom,
 		EventType: EventTypeTransferFrom,
 		Inputs: map[string]int{
-			PlaceBalances: 1,
-			PlaceAllowances: 1,
 		},
 		Outputs: map[string]int{
-			PlaceBalances: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -113,16 +107,12 @@ func NewAggregate(id string) *Aggregate {
 		Inputs: map[string]int{
 		},
 		Outputs: map[string]int{
-			PlaceBalances: 1,
-			PlaceTotalSupply: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
 		ID:        TransitionBurn,
 		EventType: EventTypeBurn,
 		Inputs: map[string]int{
-			PlaceBalances: 1,
-			PlaceTotalSupply: 1,
 		},
 		Outputs: map[string]int{
 		},
@@ -276,11 +266,11 @@ func applyApprove(state *State, event *runtime.Event) error {
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
-	// Set Allowances at key from binding (non-numeric map)
+	// Add to Allowances
 	if state.Allowances[bindings.Owner] == nil {
 		state.Allowances[bindings.Owner] = make(map[string]int64)
 	}
-	state.Allowances[bindings.Owner][bindings.Spender] = bindings.Amount.Int64()
+	state.Allowances[bindings.Owner][bindings.Spender] += bindings.Amount.Int64()
 	return nil
 }
 
@@ -292,6 +282,11 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 	}
 	// Subtract from Balances
 	state.Balances[bindings.From] -= bindings.Amount.Int64()
+	// Subtract from Allowances
+	if state.Allowances[bindings.From] == nil {
+		state.Allowances[bindings.From] = make(map[string]int64)
+	}
+	state.Allowances[bindings.From][bindings.Caller] -= bindings.Amount.Int64()
 	// Add to Balances
 	state.Balances[bindings.To] += bindings.Amount.Int64()
 	return nil

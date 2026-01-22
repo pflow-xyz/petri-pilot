@@ -449,7 +449,7 @@ function renderInstancesList() {
   container.innerHTML = instances.map(inst => {
     const status = getStatus(inst.state || inst.places)
     return `
-      <div class="entity-card" onclick="navigate('/ecommercecheckout/${inst.id}')">
+      <div class="entity-card" onclick="navigate('/ecommerce-checkout/${inst.id}')">
         <div class="entity-info">
           <h3>${inst.id}</h3>
           <div class="entity-meta">
@@ -457,7 +457,7 @@ function renderInstancesList() {
           </div>
         </div>
         <div class="entity-actions">
-          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/ecommercecheckout/${inst.id}')">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/ecommerce-checkout/${inst.id}')">
             View
           </button>
         </div>
@@ -476,7 +476,7 @@ async function renderDetailPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/ecommercecheckout')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/ecommerce-checkout')" style="margin-left: -0.5rem">
             &larr; Back to List
           </button>
           <h1 style="margin-top: 0.5rem">Instance: ${id}</h1>
@@ -1018,7 +1018,7 @@ async function renderFormPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/ecommercecheckout')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/ecommerce-checkout')" style="margin-left: -0.5rem">
             &larr; Cancel
           </button>
           <h1 style="margin-top: 0.5rem">Create New</h1>
@@ -1029,7 +1029,7 @@ async function renderFormPage() {
           <p style="color: #666; margin-bottom: 1rem;">Create a new workflow instance. The instance will start in the initial state.</p>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Create</button>
-            <button type="button" class="btn btn-secondary" onclick="navigate('/ecommercecheckout')">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('/ecommerce-checkout')">Cancel</button>
           </div>
         </form>
       </div>
@@ -1100,7 +1100,7 @@ async function renderAdminPage() {
                     <td><code>${inst.id}</code></td>
                     <td>${formatStatus(status)}</td>
                     <td>${inst.version || 0}</td>
-                    <td><button class="btn btn-sm btn-link" onclick="navigate('/ecommercecheckout/${inst.id}')">View</button></td>
+                    <td><button class="btn btn-sm btn-link" onclick="navigate('/ecommerce-checkout/${inst.id}')">View</button></td>
                   </tr>
                 `
               }).join('')}
@@ -1120,7 +1120,7 @@ async function renderAdminPage() {
 window.navigate = navigate
 
 window.handleCreateNew = async function() {
-  navigate('/ecommercecheckout/new')
+  navigate('/ecommerce-checkout/new')
 }
 
 window.handleSubmitCreate = async function(event) {
@@ -1128,7 +1128,7 @@ window.handleSubmitCreate = async function(event) {
   try {
     const result = await api.createInstance({})
     showSuccess('Instance created successfully!')
-    navigate(`/ecommercecheckout/${result.aggregate_id || result.id}`)
+    navigate(`/ecommerce-checkout/${result.aggregate_id || result.id}`)
   } catch (err) {
     showError('Failed to create: ' + err.message)
   }
@@ -1176,11 +1176,11 @@ function handleRouteChange(event) {
   }
 
   const path = route.path
-  if (path === '/ecommercecheckout' || path === '/') {
+  if (path === '/ecommerce-checkout' || path === '/') {
     renderListPage()
-  } else if (path === '/ecommercecheckout/new') {
+  } else if (path === '/ecommerce-checkout/new') {
     renderFormPage()
-  } else if (path === '/ecommercecheckout/:id') {
+  } else if (path === '/ecommerce-checkout/:id') {
     renderDetailPage()
   } else if (path === '/admin' || path.startsWith('/admin')) {
     renderAdminPage()
@@ -1342,7 +1342,7 @@ window.pilot = {
 
   /** Navigate to the list page */
   async list() {
-    navigate('/ecommercecheckout')
+    navigate('/ecommerce-checkout')
     // Wait for instances to load
     await this.waitFor('.entity-card, .empty-state', 5000).catch(() => {})
     return instances
@@ -1350,13 +1350,13 @@ window.pilot = {
 
   /** Navigate to create new instance form */
   newForm() {
-    navigate('/ecommercecheckout/new')
+    navigate('/ecommerce-checkout/new')
     return this.waitForRender()
   },
 
   /** Navigate to view a specific instance */
   async view(id) {
-    navigate(`/ecommercecheckout/${id}`)
+    navigate(`/ecommerce-checkout/${id}`)
     await this.waitForRender()
     return currentInstance
   },
@@ -1373,7 +1373,7 @@ window.pilot = {
   async create(data = {}) {
     const result = await api.createInstance(data)
     const id = result.aggregate_id || result.id
-    navigate(`/ecommercecheckout/${id}`)
+    navigate(`/ecommerce-checkout/${id}`)
     await this.waitForRender()
     return { id, ...result }
   },

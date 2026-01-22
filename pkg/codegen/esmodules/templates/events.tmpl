@@ -23,7 +23,7 @@ let replayInProgress = false
 const eventsAPI = {
   // Get event history for an aggregate
   async getEvents(aggregateId, fromVersion = 0) {
-    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${aggregateId}/events?from=${fromVersion}`, {
+    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${aggregateId}/events?from=${fromVersion}`, {
       headers: getHeaders(),
     })
     return handleResponse(response)
@@ -31,7 +31,7 @@ const eventsAPI = {
 
   // Get state at a specific version (time travel)
   async getStateAtVersion(aggregateId, version) {
-    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${aggregateId}/at/${version}`, {
+    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${aggregateId}/at/${version}`, {
       headers: getHeaders(),
     })
     return handleResponse(response)
@@ -40,7 +40,7 @@ const eventsAPI = {
   {{if .HasSnapshots}}
   // Create a snapshot of current state
   async createSnapshot(aggregateId) {
-    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${aggregateId}/snapshot`, {
+    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${aggregateId}/snapshot`, {
       method: 'POST',
       headers: getHeaders(),
     })
@@ -49,7 +49,7 @@ const eventsAPI = {
 
   // Replay from snapshot
   async replayFromSnapshot(aggregateId) {
-    const response = await fetch(`${API_BASE}/api/{{.ProjectName}}/${aggregateId}/replay`, {
+    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${aggregateId}/replay`, {
       method: 'POST',
       headers: getHeaders(),
     })

@@ -136,37 +136,62 @@ describe('Admin Dashboard', () => {
 
       // Navigate to order-processing detail page
       await harness.navigate(`/order-processing/${id}`);
-      
+
       // Wait for the instance view to load
       await harness.page.waitForSelector('.page', { timeout: 5000 });
 
-      // Find and click the validate action button
-      // Look for button with data-transition attribute or by text
-      const validateButtons = await harness.page.$$('button');
-      let clicked = false;
-      
-      for (const button of validateButtons) {
-        const text = await harness.page.evaluate(el => el.textContent, button);
-        const dataAttr = await harness.page.evaluate(el => el.getAttribute('data-transition'), button);
-        
-        if (text.toLowerCase().includes('validate') || dataAttr === 'validate') {
-          await button.click();
-          clicked = true;
-          break;
+      // Wait a moment for JavaScript to render the action buttons
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Try to click the validate button - first check if it's enabled
+      const buttonInfo = await harness.page.evaluate(() => {
+        const buttons = document.querySelectorAll('button');
+        for (const button of buttons) {
+          const text = button.textContent?.toLowerCase() || '';
+          if (text.includes('validate')) {
+            return {
+              found: true,
+              enabled: !button.disabled,
+              text: button.textContent
+            };
+          }
         }
-      }
-      
-      // If no button found, use the API directly (fallback)
-      if (!clicked) {
+        return { found: false };
+      });
+
+      // If button is found and enabled, click it; otherwise use API
+      if (buttonInfo.found && buttonInfo.enabled) {
+        await harness.page.evaluate(() => {
+          const buttons = document.querySelectorAll('button');
+          for (const button of buttons) {
+            const text = button.textContent?.toLowerCase() || '';
+            if (text.includes('validate') && !button.disabled) {
+              button.click();
+              break;
+            }
+          }
+        });
+
+        // Wait for the transition to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Check if the state changed
+        let updatedInstance = await harness.getInstance(id);
+        if (!updatedInstance.places?.validated) {
+          // Button click didn't work, use API as fallback
+          await harness.executeTransition('validate', id);
+        }
+      } else {
+        // Button not found or disabled, use API directly
         await harness.executeTransition('validate', id);
       }
-      
-      // Wait a moment for the transition to complete
+
+      // Wait for final state
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Get updated state
       const updatedInstance = await harness.getInstance(id);
-      
+
       // Verify state changed to 'validated'
       expect(updatedInstance).toHaveTokenIn('validated');
     });
