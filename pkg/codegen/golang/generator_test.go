@@ -156,7 +156,7 @@ func TestTemplates(t *testing.T) {
 func TestGenerateFiles(t *testing.T) {
 	model := loadTestModel(t)
 
-	gen, err := New(Options{IncludeTests: true})
+	gen, err := New(Options{IncludeTests: true, AsSubmodule: true})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}
@@ -166,12 +166,13 @@ func TestGenerateFiles(t *testing.T) {
 		t.Fatalf("GenerateFiles failed: %v", err)
 	}
 
-	// Should generate: go.mod, main.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
+	// Should generate: service.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
 	// Plus auth.go, middleware.go, permissions.go (when access control is present), views.go (when views are present),
 	// api_events.go (always generated), navigation.go (when navigation is configured), admin.go (when admin is enabled),
 	// debug.go (when debug is enabled), sla.go (when SLA is configured), GraphQL files (when graphql is enabled),
 	// README.md (always generated)
-	expectedFiles := []string{"go.mod", "main.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go", "api_events.go", "navigation.go", "admin.go", "debug.go", "sla.go", "graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml", "README.md"}
+	// Note: AsSubmodule mode generates service.go instead of main.go and skips go.mod
+	expectedFiles := []string{"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go", "api_events.go", "navigation.go", "admin.go", "debug.go", "sla.go", "graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml", "README.md"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 		for _, f := range files {
@@ -194,7 +195,7 @@ func TestGenerateFiles(t *testing.T) {
 func TestGenerateFilesContent(t *testing.T) {
 	model := loadTestModel(t)
 
-	gen, err := New(Options{IncludeTests: true})
+	gen, err := New(Options{IncludeTests: true, AsSubmodule: true})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}
@@ -244,16 +245,14 @@ func TestGenerateFilesContent(t *testing.T) {
 				t.Error("api.go missing HandleValidate function")
 			}
 
-		case "main.go":
-			// Should contain main function
-			if !strings.Contains(content, "func main()") {
-				t.Error("main.go missing main function")
+		case "service.go":
+			// Should contain serve.Register call (submodule mode)
+			if !strings.Contains(content, "serve.Register") {
+				t.Error("service.go missing serve.Register call")
 			}
-
-		case "go.mod":
-			// Should contain module declaration
-			if !strings.Contains(content, "module") {
-				t.Error("go.mod missing module declaration")
+			// Should contain NewService function
+			if !strings.Contains(content, "func NewService()") {
+				t.Error("service.go missing NewService function")
 			}
 
 		case "workflow_test.go":
@@ -332,55 +331,42 @@ func TestGeneratedCodeCompiles(t *testing.T) {
 
 	model := loadTestModel(t)
 
-	// Create temp directory
-	tmpDir, err := os.MkdirTemp("", "codegen-compile-test-*")
+	// Get project root
+	projectRoot, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatalf("Failed to get project root: %v", err)
+	}
+
+	// Create temp directory within the project (so it's part of the main module)
+	tmpDir, err := os.MkdirTemp(filepath.Join(projectRoot, "generated"), "compiletest")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Generate files with tests
-	_, err = GenerateToDir(model, tmpDir, true)
+	// Determine the correct module path for the generated code
+	tmpDirName := filepath.Base(tmpDir)
+	modulePath := "github.com/pflow-xyz/petri-pilot/generated/" + tmpDirName
+
+	// Generate files with tests (as submodule - no go.mod)
+	gen, err := New(Options{
+		OutputDir:    tmpDir,
+		IncludeTests: true,
+		AsSubmodule:  true,
+		ModulePath:   modulePath,
+		PackageName:  tmpDirName,
+	})
 	if err != nil {
-		t.Fatalf("GenerateToDir failed: %v", err)
+		t.Fatalf("New failed: %v", err)
 	}
-
-	// Update go.mod to use the local petri-pilot module
-	goModPath := filepath.Join(tmpDir, "go.mod")
-	goModContent, err := os.ReadFile(goModPath)
+	_, err = gen.Generate(model)
 	if err != nil {
-		t.Fatalf("Failed to read go.mod: %v", err)
+		t.Fatalf("Generate failed: %v", err)
 	}
 
-	// Get the absolute path to petri-pilot
-	petriPilotPath, err := filepath.Abs("../../..")
-	if err != nil {
-		t.Fatalf("Failed to get petri-pilot path: %v", err)
-	}
-
-	// Always update the replace directive to use absolute path (relative paths don't work from temp dirs)
-	goModStr := string(goModContent)
-	if strings.Contains(goModStr, "replace github.com/pflow-xyz/petri-pilot") {
-		// Replace existing relative path with absolute path
-		goModStr = strings.ReplaceAll(goModStr, "replace github.com/pflow-xyz/petri-pilot => ../..","replace github.com/pflow-xyz/petri-pilot => " + petriPilotPath)
-	} else {
-		// Add new replace directive
-		goModStr = goModStr + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
-	}
-	if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
-		t.Fatalf("Failed to update go.mod: %v", err)
-	}
-
-	// Run go mod tidy
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = tmpDir
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
-	}
-
-	// Try to compile
-	buildCmd := exec.Command("go", "build", "./...")
-	buildCmd.Dir = tmpDir
+	// Compile from project root (generated code is part of main module)
+	buildCmd := exec.Command("go", "build", "./"+tmpDirName+"/...")
+	buildCmd.Dir = filepath.Join(projectRoot, "generated")
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("Generated code failed to compile: %v\n%s", err, output)
 	}
@@ -393,54 +379,42 @@ func TestGeneratedTestsPass(t *testing.T) {
 
 	model := loadTestModel(t)
 
-	// Create temp directory
-	tmpDir, err := os.MkdirTemp("", "codegen-test-run-*")
+	// Get project root
+	projectRoot, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatalf("Failed to get project root: %v", err)
+	}
+
+	// Create temp directory within the project (so it's part of the main module)
+	tmpDir, err := os.MkdirTemp(filepath.Join(projectRoot, "generated"), "testrun")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Generate files with tests
-	_, err = GenerateToDir(model, tmpDir, true)
+	// Determine the correct module path for the generated code
+	tmpDirName := filepath.Base(tmpDir)
+	modulePath := "github.com/pflow-xyz/petri-pilot/generated/" + tmpDirName
+
+	// Generate files with tests (as submodule - no go.mod)
+	gen, err := New(Options{
+		OutputDir:    tmpDir,
+		IncludeTests: true,
+		AsSubmodule:  true,
+		ModulePath:   modulePath,
+		PackageName:  tmpDirName,
+	})
 	if err != nil {
-		t.Fatalf("GenerateToDir failed: %v", err)
+		t.Fatalf("New failed: %v", err)
 	}
-
-	// Update go.mod with replace directive
-	goModPath := filepath.Join(tmpDir, "go.mod")
-	goModContent, err := os.ReadFile(goModPath)
+	_, err = gen.Generate(model)
 	if err != nil {
-		t.Fatalf("Failed to read go.mod: %v", err)
+		t.Fatalf("Generate failed: %v", err)
 	}
 
-	petriPilotPath, err := filepath.Abs("../../..")
-	if err != nil {
-		t.Fatalf("Failed to get petri-pilot path: %v", err)
-	}
-
-	// Always update the replace directive to use absolute path (relative paths don't work from temp dirs)
-	goModStr := string(goModContent)
-	if strings.Contains(goModStr, "replace github.com/pflow-xyz/petri-pilot") {
-		// Replace existing relative path with absolute path
-		goModStr = strings.ReplaceAll(goModStr, "replace github.com/pflow-xyz/petri-pilot => ../..","replace github.com/pflow-xyz/petri-pilot => " + petriPilotPath)
-	} else {
-		// Add new replace directive
-		goModStr = goModStr + "\n\nreplace github.com/pflow-xyz/petri-pilot => " + petriPilotPath + "\n"
-	}
-	if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
-		t.Fatalf("Failed to update go.mod: %v", err)
-	}
-
-	// Run go mod tidy
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = tmpDir
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
-	}
-
-	// Run generated tests
-	testCmd := exec.Command("go", "test", "-v", "./...")
-	testCmd.Dir = tmpDir
+	// Run generated tests from project root (generated code is part of main module)
+	testCmd := exec.Command("go", "test", "-v", "./"+tmpDirName+"/...")
+	testCmd.Dir = filepath.Join(projectRoot, "generated")
 	if output, err := testCmd.CombinedOutput(); err != nil {
 		t.Fatalf("Generated tests failed: %v\n%s", err, output)
 	}

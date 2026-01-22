@@ -279,11 +279,13 @@ func ValidateModel(model *schema.Model) []string {
 }
 
 // GenerateToDir is a convenience function that creates a generator and writes files.
+// Generated code is always a submodule (no go.mod) to be part of the parent module.
 func GenerateToDir(model *schema.Model, outputDir string, includeTests bool) ([]string, error) {
 	gen, err := New(Options{
 		OutputDir:    outputDir,
 		IncludeTests: includeTests,
-		IncludeInfra: true, // Include infrastructure by default
+		IncludeInfra: true,  // Include infrastructure by default
+		AsSubmodule:  true,  // Always generate as submodule (no go.mod)
 	})
 	if err != nil {
 		return nil, err
