@@ -135,6 +135,97 @@ func e2eEventsTool() mcp.Tool {
 	)
 }
 
+func e2eNavigateTool() mcp.Tool {
+	return mcp.NewTool("e2e_navigate",
+		mcp.WithDescription("Navigate to a URL within an existing browser session."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("url",
+			mcp.Required(),
+			mcp.Description("The URL to navigate to"),
+		),
+		mcp.WithBoolean("wait_ready",
+			mcp.Description("Wait for document ready state (default: true)"),
+		),
+	)
+}
+
+func e2eClickTool() mcp.Tool {
+	return mcp.NewTool("e2e_click",
+		mcp.WithDescription("Click an element by CSS selector."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("selector",
+			mcp.Required(),
+			mcp.Description("CSS selector for the element to click"),
+		),
+	)
+}
+
+func e2eTypeTool() mcp.Tool {
+	return mcp.NewTool("e2e_type",
+		mcp.WithDescription("Type text into an input element."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("selector",
+			mcp.Required(),
+			mcp.Description("CSS selector for the input element"),
+		),
+		mcp.WithString("text",
+			mcp.Required(),
+			mcp.Description("Text to type into the input"),
+		),
+		mcp.WithBoolean("clear",
+			mcp.Description("Clear existing text before typing (default: true)"),
+		),
+	)
+}
+
+func e2eRunTool() mcp.Tool {
+	return mcp.NewTool("e2e_run",
+		mcp.WithDescription("Execute JavaScript directly in the browser context. Unlike e2e_eval, this runs directly via chromedp without needing a debug session. Use 'return' to get a result."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("code",
+			mcp.Required(),
+			mcp.Description("JavaScript code to execute. Wrap in async IIFE for async code: (async () => { ... })()"),
+		),
+		mcp.WithBoolean("screenshot",
+			mcp.Description("Take a screenshot after execution (default: false)"),
+		),
+		mcp.WithNumber("wait_ms",
+			mcp.Description("Wait this many milliseconds after execution before returning/screenshot (default: 0)"),
+		),
+	)
+}
+
+func e2eWaitTool() mcp.Tool {
+	return mcp.NewTool("e2e_wait",
+		mcp.WithDescription("Wait for an element to be visible, or for a JavaScript condition to be true."),
+		mcp.WithString("session_id",
+			mcp.Required(),
+			mcp.Description("The browser session ID"),
+		),
+		mcp.WithString("selector",
+			mcp.Description("CSS selector to wait for (element must be visible)"),
+		),
+		mcp.WithString("condition",
+			mcp.Description("JavaScript expression that should evaluate to true"),
+		),
+		mcp.WithNumber("timeout_ms",
+			mcp.Description("Maximum time to wait in milliseconds (default: 10000)"),
+		),
+	)
+}
+
 func markdownPreviewTool() mcp.Tool {
 	return mcp.NewTool("markdown_preview",
 		mcp.WithDescription("Render markdown like GitHub and take a screenshot. Useful for validating generated README files. Returns base64-encoded PNG and any rendering errors."),
@@ -302,6 +393,169 @@ func handleE2EEvents(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		"session_id": sessionID,
 		"count":      len(events),
 		"events":     events,
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleE2ENavigate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id: %v", err)), nil
+	}
+
+	url, err := request.RequireString("url")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing url: %v", err)), nil
+	}
+
+	waitReady := request.GetBool("wait_ready", true)
+
+	if err := e2eManager.Navigate(sessionID, url, waitReady); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("navigation failed: %v", err)), nil
+	}
+
+	result := map[string]any{
+		"session_id": sessionID,
+		"url":        url,
+		"status":     "navigated",
+	}
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleE2EClick(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id: %v", err)), nil
+	}
+
+	selector, err := request.RequireString("selector")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing selector: %v", err)), nil
+	}
+
+	if err := e2eManager.Click(sessionID, selector); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("click failed: %v", err)), nil
+	}
+
+	result := map[string]any{
+		"session_id": sessionID,
+		"selector":   selector,
+		"status":     "clicked",
+	}
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleE2EType(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id: %v", err)), nil
+	}
+
+	selector, err := request.RequireString("selector")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing selector: %v", err)), nil
+	}
+
+	text, err := request.RequireString("text")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing text: %v", err)), nil
+	}
+
+	clearFirst := request.GetBool("clear", true)
+
+	if err := e2eManager.Type(sessionID, selector, text, clearFirst); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("type failed: %v", err)), nil
+	}
+
+	result := map[string]any{
+		"session_id": sessionID,
+		"selector":   selector,
+		"status":     "typed",
+	}
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleE2ERun(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id: %v", err)), nil
+	}
+
+	code, err := request.RequireString("code")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing code: %v", err)), nil
+	}
+
+	takeScreenshot := request.GetBool("screenshot", false)
+	waitMs := request.GetInt("wait_ms", 0)
+
+	result, err := e2eManager.Run(sessionID, code)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("run failed: %v", err)), nil
+	}
+
+	// Wait if requested
+	if waitMs > 0 {
+		time.Sleep(time.Duration(waitMs) * time.Millisecond)
+	}
+
+	// If screenshot requested, take it
+	if takeScreenshot {
+		screenshot, err := e2eManager.Screenshot(sessionID)
+		if err != nil {
+			output, _ := json.MarshalIndent(map[string]any{
+				"result":           result,
+				"screenshot_error": err.Error(),
+			}, "", "  ")
+			return mcp.NewToolResultText(string(output)), nil
+		}
+
+		output, _ := json.MarshalIndent(result, "", "  ")
+		b64 := base64.StdEncoding.EncodeToString(screenshot)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.NewTextContent(string(output)),
+				mcp.NewImageContent(b64, "image/png"),
+			},
+		}, nil
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+func handleE2EWait(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sessionID, err := request.RequireString("session_id")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing session_id: %v", err)), nil
+	}
+
+	selector := request.GetString("selector", "")
+	condition := request.GetString("condition", "")
+	timeoutMs := request.GetInt("timeout_ms", 10000)
+
+	if selector == "" && condition == "" {
+		return mcp.NewToolResultError("either 'selector' or 'condition' is required"), nil
+	}
+
+	if err := e2eManager.Wait(sessionID, selector, condition, time.Duration(timeoutMs)*time.Millisecond); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("wait failed: %v", err)), nil
+	}
+
+	result := map[string]any{
+		"session_id": sessionID,
+		"status":     "ready",
+	}
+	if selector != "" {
+		result["selector"] = selector
+	}
+	if condition != "" {
+		result["condition"] = condition
 	}
 
 	output, _ := json.MarshalIndent(result, "", "  ")
@@ -654,6 +908,131 @@ func (m *E2EManager) GetEvents(sessionID string, typeFilter []string, clear bool
 	}
 
 	return filtered, nil
+}
+
+// Navigate navigates to a URL within an existing browser session.
+func (m *E2EManager) Navigate(sessionID, url string, waitReady bool) error {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	actions := []chromedp.Action{chromedp.Navigate(url)}
+	if waitReady {
+		actions = append(actions, chromedp.WaitReady("body"))
+	}
+
+	if err := chromedp.Run(session.ctx, actions...); err != nil {
+		return fmt.Errorf("navigate failed: %w", err)
+	}
+
+	// Update session URL
+	m.mu.Lock()
+	if s, ok := m.sessions[sessionID]; ok {
+		s.URL = url
+	}
+	m.mu.Unlock()
+
+	return nil
+}
+
+// Click clicks an element by CSS selector.
+func (m *E2EManager) Click(sessionID, selector string) error {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	err := chromedp.Run(session.ctx,
+		chromedp.WaitVisible(selector),
+		chromedp.Click(selector),
+	)
+	if err != nil {
+		return fmt.Errorf("click failed: %w", err)
+	}
+
+	return nil
+}
+
+// Type types text into an input element.
+func (m *E2EManager) Type(sessionID, selector, text string, clearFirst bool) error {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	actions := []chromedp.Action{chromedp.WaitVisible(selector)}
+	if clearFirst {
+		actions = append(actions, chromedp.Clear(selector))
+	}
+	actions = append(actions, chromedp.SendKeys(selector, text))
+
+	if err := chromedp.Run(session.ctx, actions...); err != nil {
+		return fmt.Errorf("type failed: %w", err)
+	}
+
+	return nil
+}
+
+// Run executes JavaScript directly in the browser context.
+func (m *E2EManager) Run(sessionID, code string) (any, error) {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	var result any
+	err := chromedp.Run(session.ctx,
+		chromedp.Evaluate(code, &result),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("run failed: %w", err)
+	}
+
+	return result, nil
+}
+
+// Wait waits for an element to be visible or a condition to be true.
+func (m *E2EManager) Wait(sessionID, selector, condition string, timeout time.Duration) error {
+	m.mu.RLock()
+	session, ok := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	// Create a timeout context
+	ctx, cancel := context.WithTimeout(session.ctx, timeout)
+	defer cancel()
+
+	if selector != "" {
+		if err := chromedp.Run(ctx, chromedp.WaitVisible(selector)); err != nil {
+			return fmt.Errorf("wait for selector failed: %w", err)
+		}
+	}
+
+	if condition != "" {
+		if err := chromedp.Run(ctx,
+			chromedp.Poll(condition, nil, chromedp.WithPollingInterval(100*time.Millisecond)),
+		); err != nil {
+			return fmt.Errorf("wait for condition failed: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // Screenshot takes a screenshot of the current browser state.

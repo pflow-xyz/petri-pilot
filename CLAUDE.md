@@ -206,12 +206,33 @@ mcp__petri-pilot__e2e_start_browser(url="http://localhost:8080")
 # Take a screenshot
 mcp__petri-pilot__e2e_screenshot(session_id="browser-1")
 
-# Execute JavaScript in browser (use 'return' for results)
+# Execute JavaScript directly in browser (preferred - works without debug session)
+mcp__petri-pilot__e2e_run(session_id="browser-1", code="document.title")
+
+# Execute JavaScript via debug API (requires debug session endpoint)
 mcp__petri-pilot__e2e_eval(session_id="browser-1", code="return document.title")
+
+# Navigate to a different URL
+mcp__petri-pilot__e2e_navigate(session_id="browser-1", url="http://localhost:8080/dashboard")
+
+# Click an element by CSS selector
+mcp__petri-pilot__e2e_click(session_id="browser-1", selector=".btn-primary")
+
+# Type text into an input field
+mcp__petri-pilot__e2e_type(session_id="browser-1", selector="#username", text="admin")
+
+# Wait for element to be visible or condition to be true
+mcp__petri-pilot__e2e_wait(session_id="browser-1", selector=".success-message")
+mcp__petri-pilot__e2e_wait(session_id="browser-1", condition="window.loaded === true")
+
+# Get captured browser events (console logs, network requests, exceptions)
+mcp__petri-pilot__e2e_events(session_id="browser-1", types="console,exception")
 
 # Stop browser session
 mcp__petri-pilot__e2e_stop_browser(session_id="browser-1")
 ```
+
+**Note:** Prefer `e2e_run` over `e2e_eval` - it executes JavaScript directly via chromedp without requiring a debug session API endpoint.
 
 #### Using the Pilot API
 
@@ -247,32 +268,37 @@ window.pilot.assertEnabled(['transition1', 'transition2'])
 service_start(directory="/path/to/generated/blog-post", port=8080)
 e2e_start_browser(url="http://localhost:8080")
 
-// 2. Login and create instance
-e2e_eval(code=`
-  await window.pilot.loginAs(['admin', 'author']);
-  const resp = await fetch('/api/blogpost', {
+// 2. Login using e2e_run (executes JS directly via chromedp)
+e2e_run(session_id="browser-1", code=`(async () => {
+  const resp = await fetch('/api/debug/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: '{}'
+    body: JSON.stringify({ login: 'test', roles: ['admin', 'author'] })
   });
-  return await resp.json();
-`)
+  const data = await resp.json();
+  localStorage.setItem('auth', JSON.stringify(data));
+  return data;
+})()`)
 
-// 3. Execute workflow transitions
-e2e_eval(code=`
-  const token = JSON.parse(localStorage.getItem('auth')).token;
+// 3. Click to create a new instance
+e2e_click(session_id="browser-1", selector=".btn-create")
+e2e_wait(session_id="browser-1", selector=".instance-detail")
+
+// 4. Execute a workflow transition via API
+e2e_run(session_id="browser-1", code=`(async () => {
+  const auth = JSON.parse(localStorage.getItem('auth'));
   const resp = await fetch('/api/submit', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + auth.token },
     body: JSON.stringify({ aggregate_id: 'xxx', data: {} })
   });
   return await resp.json();
-`)
+})()`)
 
-// 4. Take screenshot to verify UI
+// 5. Take screenshot to verify UI
 e2e_screenshot(session_id="browser-1")
 
-// 5. Cleanup
+// 6. Cleanup
 e2e_stop_browser(session_id="browser-1")
 service_stop(service_id="svc-1")
 ```
@@ -280,8 +306,9 @@ service_stop(service_id="svc-1")
 #### Notes
 
 - Browser session IDs are managed by the MCP server and increment globally
-- Service debug session IDs reset when services restart
-- Use `return` in eval code to get results back
+- **Use `e2e_run` for JavaScript execution** - it works directly via chromedp without needing a debug session
+- `e2e_eval` requires the app to have a `/api/debug/sessions/:id/eval` endpoint (may not exist)
+- For async code in `e2e_run`, wrap in an IIFE: `(async () => { ... })()`
 - The pilot API methods are async - use `await`
 
 ## Monitoring GitHub Actions
