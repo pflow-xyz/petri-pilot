@@ -7,11 +7,17 @@
 
 // Route definitions - order matters! More specific routes first
 export const routes = [
-  // Root redirects to list
+  // Root redirects to dashboard
   {
     path: '/',
-    component: 'List',
-    title: 'coffeeshop',
+    component: 'Dashboard',
+    title: 'Coffee Shop Dashboard',
+  },
+  // Dashboard route
+  {
+    path: '/dashboard',
+    component: 'Dashboard',
+    title: 'Coffee Shop Dashboard',
   },
   // Entity routes
   {
