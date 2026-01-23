@@ -21,6 +21,7 @@ const defaultNavigation = {
   items: [
     { label: 'order-processing', path: '/order-processing', icon: '' },
     { label: 'New', path: '/order-processing/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

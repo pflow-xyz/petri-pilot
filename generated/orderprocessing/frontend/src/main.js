@@ -995,6 +995,264 @@ async function renderFormPage() {
   `
 }
 
+// Schema viewer page
+async function renderSchemaPage() {
+  const app = document.getElementById('app')
+  app.innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <h1>Schema Viewer</h1>
+        <p style="color: #666; margin-top: 0.5rem;">Inspect the Petri net model that powers this application</p>
+      </div>
+      <div id="schema-content" class="card">
+        <div class="loading">Loading schema...</div>
+      </div>
+    </div>
+  `
+
+  try {
+    const response = await fetch(`${API_BASE}/api/schema`)
+    const schema = await response.json()
+
+    const schemaContent = document.getElementById('schema-content')
+    schemaContent.innerHTML = `
+      <div class="schema-viewer">
+        <div class="schema-tabs">
+          <button class="schema-tab active" onclick="showSchemaTab('overview')">Overview</button>
+          <button class="schema-tab" onclick="showSchemaTab('places')">Places (${schema.places?.length || 0})</button>
+          <button class="schema-tab" onclick="showSchemaTab('transitions')">Transitions (${schema.transitions?.length || 0})</button>
+          <button class="schema-tab" onclick="showSchemaTab('arcs')">Arcs (${schema.arcs?.length || 0})</button>
+          <button class="schema-tab" onclick="showSchemaTab('raw')">Raw JSON</button>
+        </div>
+
+        <div id="schema-tab-overview" class="schema-tab-content active">
+          <div class="schema-overview">
+            <div class="schema-info-card">
+              <h3>${schema.name || 'Unnamed'}</h3>
+              <p>${schema.description || 'No description'}</p>
+            </div>
+            <div class="schema-stats">
+              <div class="stat-item">
+                <span class="stat-value">${schema.places?.length || 0}</span>
+                <span class="stat-label">Places</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">${schema.transitions?.length || 0}</span>
+                <span class="stat-label">Transitions</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">${schema.arcs?.length || 0}</span>
+                <span class="stat-label">Arcs</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">${schema.roles?.length || 0}</span>
+                <span class="stat-label">Roles</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="schema-tab-places" class="schema-tab-content" style="display: none;">
+          <table class="schema-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Initial</th>
+                <th>Capacity</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(schema.places || []).map(p => `
+                <tr>
+                  <td><code>${p.id}</code></td>
+                  <td>${p.description || '-'}</td>
+                  <td>${p.initial || 0}</td>
+                  <td>${p.capacity || '∞'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="schema-tab-transitions" class="schema-tab-content" style="display: none;">
+          <table class="schema-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Guard</th>
+                <th>Roles</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(schema.transitions || []).map(t => `
+                <tr>
+                  <td><code>${t.id}</code></td>
+                  <td>${t.description || '-'}</td>
+                  <td><code>${t.guard || '-'}</code></td>
+                  <td>${(t.roles || []).join(', ') || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="schema-tab-arcs" class="schema-tab-content" style="display: none;">
+          <table class="schema-table">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Weight</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(schema.arcs || []).map(a => `
+                <tr>
+                  <td><code>${a.from}</code></td>
+                  <td><code>${a.to}</code></td>
+                  <td>${a.weight || 1}</td>
+                  <td>${a.type || 'normal'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="schema-tab-raw" class="schema-tab-content" style="display: none;">
+          <pre class="schema-json">${JSON.stringify(schema, null, 2)}</pre>
+        </div>
+      </div>
+
+      <style>
+        .schema-viewer {
+          padding: 1rem;
+        }
+        .schema-tabs {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 0.5rem;
+        }
+        .schema-tab {
+          padding: 0.5rem 1rem;
+          border: none;
+          background: #f5f5f5;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.9rem;
+        }
+        .schema-tab:hover {
+          background: #e9e9e9;
+        }
+        .schema-tab.active {
+          background: #007bff;
+          color: white;
+        }
+        .schema-tab-content {
+          display: none;
+        }
+        .schema-tab-content.active {
+          display: block;
+        }
+        .schema-overview {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+        .schema-info-card h3 {
+          margin: 0 0 0.5rem 0;
+          font-size: 1.5rem;
+        }
+        .schema-info-card p {
+          margin: 0;
+          color: #666;
+        }
+        .schema-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 1rem;
+        }
+        .stat-item {
+          background: #f8f9fa;
+          padding: 1rem;
+          border-radius: 8px;
+          text-align: center;
+        }
+        .stat-value {
+          display: block;
+          font-size: 2rem;
+          font-weight: 600;
+          color: #007bff;
+        }
+        .stat-label {
+          display: block;
+          font-size: 0.85rem;
+          color: #666;
+          margin-top: 0.25rem;
+        }
+        .schema-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .schema-table th,
+        .schema-table td {
+          padding: 0.75rem;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+        }
+        .schema-table th {
+          background: #f8f9fa;
+          font-weight: 600;
+        }
+        .schema-table code {
+          background: #f0f0f0;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          font-size: 0.85rem;
+        }
+        .schema-json {
+          background: #1e1e1e;
+          color: #d4d4d4;
+          padding: 1rem;
+          border-radius: 8px;
+          overflow-x: auto;
+          font-size: 0.85rem;
+          line-height: 1.5;
+        }
+      </style>
+    `
+  } catch (err) {
+    console.error('Failed to load schema:', err)
+    document.getElementById('schema-content').innerHTML = `
+      <div class="error">Failed to load schema: ${err.message}</div>
+    `
+  }
+}
+
+// Schema tab switching
+window.showSchemaTab = function(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.schema-tab').forEach(tab => {
+    tab.classList.remove('active')
+  })
+  event.target.classList.add('active')
+
+  // Update tab content
+  document.querySelectorAll('.schema-tab-content').forEach(content => {
+    content.style.display = 'none'
+    content.classList.remove('active')
+  })
+  const targetContent = document.getElementById(`schema-tab-${tabName}`)
+  if (targetContent) {
+    targetContent.style.display = 'block'
+    targetContent.classList.add('active')
+  }
+}
+
 // Admin dashboard
 async function renderAdminPage() {
   const app = document.getElementById('app')
@@ -1140,6 +1398,8 @@ function handleRouteChange(event) {
     renderFormPage()
   } else if (path === '/order-processing/:id') {
     renderDetailPage()
+  } else if (path === '/schema') {
+    renderSchemaPage()
   } else if (path === '/admin' || path.startsWith('/admin')) {
     renderAdminPage()
   } else {

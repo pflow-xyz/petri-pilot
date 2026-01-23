@@ -20,6 +20,7 @@ const defaultNavigation = {
   items: [
     { label: 'blog-post', path: '/blog-post', icon: '' },
     { label: 'New', path: '/blog-post/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

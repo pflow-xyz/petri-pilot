@@ -21,6 +21,7 @@ const defaultNavigation = {
   items: [
     { label: 'loan-application', path: '/loan-application', icon: '' },
     { label: 'New', path: '/loan-application/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

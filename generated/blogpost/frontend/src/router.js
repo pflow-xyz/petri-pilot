@@ -29,6 +29,12 @@ export const routes = [
     component: 'Detail',
     title: 'blog-post Detail',
   },
+  // Schema viewer
+  {
+    path: '/schema',
+    component: 'Schema',
+    title: 'Schema Viewer',
+  },
   // Admin routes
   {
     path: '/admin',

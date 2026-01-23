@@ -21,6 +21,7 @@ const defaultNavigation = {
   items: [
     { label: 'ecommerce-checkout', path: '/ecommerce-checkout', icon: '' },
     { label: 'New', path: '/ecommerce-checkout/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

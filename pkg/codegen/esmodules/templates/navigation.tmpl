@@ -23,6 +23,7 @@ const defaultNavigation = {
   items: [
     { label: '{{.ModelName}}', path: '/{{.ModelName}}', icon: '' },
     { label: 'New', path: '/{{.ModelName}}/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
 {{- if .HasAdmin}}
     { label: 'Admin', path: '/admin', icon: '' },
 {{- end}}

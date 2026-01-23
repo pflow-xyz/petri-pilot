@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"os"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
@@ -119,6 +121,9 @@ type Context struct {
 
 	// Original model for reference
 	Model *schema.Model
+
+	// Schema JSON for schema viewer page
+	SchemaJSON string
 }
 
 // WorkflowContext provides template-friendly access to workflow orchestration data.
@@ -816,6 +821,13 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 
 	// Build soft delete context
 	ctx.SoftDelete = buildSoftDeleteContext(enriched.SoftDelete)
+
+	// Serialize schema JSON for schema viewer (base64 encoded to avoid escaping issues)
+	schemaBytes, err := json.MarshalIndent(enriched, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	ctx.SchemaJSON = base64.StdEncoding.EncodeToString(schemaBytes)
 
 	return ctx, nil
 }

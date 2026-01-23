@@ -21,6 +21,7 @@ const defaultNavigation = {
   items: [
     { label: 'job-application', path: '/job-application', icon: '' },
     { label: 'New', path: '/job-application/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

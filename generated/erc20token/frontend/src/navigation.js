@@ -20,6 +20,7 @@ const defaultNavigation = {
   items: [
     { label: 'erc20-token', path: '/erc20-token', icon: '' },
     { label: 'New', path: '/erc20-token/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

@@ -6,6 +6,7 @@ import (
 {{- if .HasAdmin}}
 	"context"
 {{- end}}
+	"encoding/base64"
 {{- if .HasSnapshots}}
 	"encoding/json"
 {{- end}}
@@ -52,6 +53,9 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	// Navigation endpoint
 	r.GET("/api/navigation", "Get navigation menu", HandleNavigation(navigation))
 {{end}}
+	// Schema viewer endpoint
+	r.GET("/api/schema", "Get model schema", HandleGetSchema())
+
 {{if .HasAdmin}}
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
@@ -807,4 +811,21 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 {{end}}
+
+// HandleGetSchema returns the model schema JSON for the schema viewer.
+func HandleGetSchema() http.HandlerFunc {
+	// Schema JSON is embedded at generation time (base64 encoded)
+	schemaBase64 := "{{.SchemaJSON}}"
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		schemaJSON, err := base64.StdEncoding.DecodeString(schemaBase64)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "schema_decode_error", "Failed to decode schema")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(schemaJSON)
+	}
+}
 

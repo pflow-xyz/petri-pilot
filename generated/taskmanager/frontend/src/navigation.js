@@ -20,6 +20,7 @@ const defaultNavigation = {
   items: [
     { label: 'task-manager', path: '/task-manager', icon: '' },
     { label: 'New', path: '/task-manager/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

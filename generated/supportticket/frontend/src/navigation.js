@@ -21,6 +21,7 @@ const defaultNavigation = {
   items: [
     { label: 'support-ticket', path: '/support-ticket', icon: '' },
     { label: 'New', path: '/support-ticket/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

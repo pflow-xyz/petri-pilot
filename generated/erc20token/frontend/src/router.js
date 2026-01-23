@@ -29,6 +29,12 @@ export const routes = [
     component: 'Detail',
     title: 'erc20-token Detail',
   },
+  // Schema viewer
+  {
+    path: '/schema',
+    component: 'Schema',
+    title: 'Schema Viewer',
+  },
   // Admin routes
   {
     path: '/admin',

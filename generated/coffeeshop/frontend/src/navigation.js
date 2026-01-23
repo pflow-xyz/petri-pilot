@@ -17,6 +17,7 @@ const defaultNavigation = {
   items: [
     { label: 'coffeeshop', path: '/coffeeshop', icon: '' },
     { label: 'New', path: '/coffeeshop/new', icon: '+' },
+    { label: 'Schema', path: '/schema', icon: '⚙' },
     { label: 'Admin', path: '/admin', icon: '' },
   ]
 }

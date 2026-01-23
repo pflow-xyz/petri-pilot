@@ -29,6 +29,12 @@ export const routes = [
     component: 'Detail',
     title: '{{.ModelName}} Detail',
   },
+  // Schema viewer
+  {
+    path: '/schema',
+    component: 'Schema',
+    title: 'Schema Viewer',
+  },
 {{- if .HasAdmin}}
   // Admin routes
   {
