@@ -44,6 +44,10 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Simulation endpoint
 	r.GET("/api/simulation", "Get simulation data", HandleGetSimulation())
 
+	// ODE Heatmap endpoint - computes strategic values using go-pflow ODE solver
+	r.GET("/api/heatmap", "Get ODE heatmap for empty board", HandleHeatmap())
+	r.POST("/api/heatmap", "Get ODE heatmap for board state", HandleHeatmap())
+
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
 	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))

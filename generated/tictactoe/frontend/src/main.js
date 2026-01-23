@@ -5,22 +5,21 @@ import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/
 
 const API_BASE = ''
 
-// Default strategic values (fallback if ODE fails)
-const STRATEGIC_VALUES = {
-  '00': { value: 0.316, type: 'corner', patterns: 3 },
-  '01': { value: 0.218, type: 'edge', patterns: 2 },
-  '02': { value: 0.316, type: 'corner', patterns: 3 },
-  '10': { value: 0.218, type: 'edge', patterns: 2 },
-  '11': { value: 0.430, type: 'center', patterns: 4 },
-  '12': { value: 0.218, type: 'edge', patterns: 2 },
-  '20': { value: 0.316, type: 'corner', patterns: 3 },
-  '21': { value: 0.218, type: 'edge', patterns: 2 },
-  '22': { value: 0.316, type: 'corner', patterns: 3 },
-}
-
 // ODE simulation results cache
 let odeValues = null
 let odeSolution = null
+
+// Configurable ODE solver parameters
+let solverParams = {
+  tspan: 2.0,
+  dt: 0.2,
+  adaptive: false,
+  abstol: 1e-4,
+  reltol: 1e-3
+}
+
+// Last run stats
+let lastRunStats = { time: 0, center: 0 }
 
 // Win patterns as position indices (derived from Petri net topology)
 // These are encoded as transitions in the net - each pattern is a transition
@@ -231,86 +230,282 @@ function buildTicTacToePetriNet(board = null, player = 'X') {
   }
 }
 
-// Run ODE simulation and compute strategic values
-// Returns raw ODE-computed values without scaling
+// Compute strategic values using Go backend ODE API
+// Calls /api/heatmap endpoint which uses go-pflow ODE solver
+// Use local JS ODE by default, set to false to use Go backend API
+let useLocalODE = true
+
 async function runODESimulation(board = null) {
+  if (useLocalODE) {
+    return runLocalODESimulation(board)
+  } else {
+    return runAPIHeatmap(board)
+  }
+}
+
+// Local JavaScript ODE computation using pflow.xyz solver
+// Mirrors the Go backend logic in ode.go
+// Note: Solver has shared state, so we run sequentially
+function runLocalODESimulation(board = null) {
   try {
-    const currentPlayer = gameState.currentPlayer || 'X'
-    const model = buildTicTacToePetriNet(board, currentPlayer)
-
-    const net = Solver.fromJSON(model)
-    const initialState = Solver.setState(net)
-    const rates = Solver.setRates(net)
-
-    // Run ODE simulation
-    const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
-    const solution = Solver.solve(prob, Solver.Tsit5(), {
-      dt: 0.1,
-      abstol: 1e-6,
-      reltol: 1e-4,
-      adaptive: true
-    })
-
-    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
-    const placeNames = Object.keys(model.places)
-
-    console.log('ODE places:', placeNames)
-    console.log('ODE final state:', finalState)
-
-    // Extract values for each position from the ODE solution
-    // Use the history place values (X00, O00, etc.) as strategic indicators
     const values = {}
+    const details = {}
     const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
 
-    positions.forEach(pos => {
+    // Determine current player
+    let xCount = 0, oCount = 0
+    if (board) {
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (board[r][c] === 'X') xCount++
+          if (board[r][c] === 'O') oCount++
+        }
+      }
+    }
+    const currentPlayer = xCount > oCount ? 'O' : 'X'
+
+    console.log(`Local ODE: currentPlayer=${currentPlayer}, board=`, board)
+
+    // Run ODE simulations sequentially (Solver has shared state)
+    for (const pos of positions) {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
 
+      // Skip occupied positions
       if (board && board[row][col] !== '') {
         values[pos] = 0
-        return
+        continue
       }
 
-      // Get the position place value from ODE state
-      const posPlaceIdx = placeNames.indexOf(`P${row}${col}`)
-      const xHistIdx = placeNames.indexOf(`X${row}${col}`)
-      const oHistIdx = placeNames.indexOf(`O${row}${col}`)
+      // Build Petri net with hypothetical move
+      const model = buildODEPetriNet(board, currentPlayer, row, col)
 
-      if (finalState && posPlaceIdx >= 0) {
-        // Value is based on token flow through this position
-        const posValue = finalState[posPlaceIdx] || 0
-        const xValue = xHistIdx >= 0 ? (finalState[xHistIdx] || 0) : 0
-        const oValue = oHistIdx >= 0 ? (finalState[oHistIdx] || 0) : 0
+      // Run ODE simulation
+      const result = solveODE(model)
 
-        // Strategic value = how much token has flowed through this position
-        values[pos] = xValue + oValue + (1 - posValue)
+      if (result) {
+        const { winX, winO } = result
+        // Score from current player's perspective
+        const score = currentPlayer === 'X' ? (winX - winO) : (winO - winX)
+        values[pos] = score
+        details[pos] = { WinX: winX, WinO: winO, score }
       } else {
         values[pos] = 0
       }
-    })
-
-    // Log win place values
-    const winXIdx = placeNames.indexOf('WinX')
-    const winOIdx = placeNames.indexOf('WinO')
-    if (finalState && winXIdx >= 0) {
-      console.log(`WinX: ${finalState[winXIdx]?.toFixed(4)}, WinO: ${finalState[winOIdx]?.toFixed(4)}`)
     }
 
-    console.log('ODE values:', values)
-    return { values, solution, model }
+    console.log('Local ODE values:', values)
+    return { values, details, player: currentPlayer, solution: null, model: null }
   } catch (err) {
-    console.error('ODE simulation failed:', err)
+    console.error('Local ODE failed:', err)
     return null
   }
 }
 
+// Ensure ODE values are computed (called before rendering if needed)
+function ensureODEValues(board = null) {
+  if (odeValues === null) {
+    const result = runLocalODESimulation(board)
+    if (result) {
+      odeValues = result.values
+    }
+  }
+  return odeValues
+}
+
+// Build Petri net for ODE with hypothetical move applied
+// Matches go-pflow structure: 30 places, 34 transitions
+function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
+  const places = {}
+  const transitions = {}
+  const arcs = []
+
+  // Board position places P00-P22
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const id = `P${r}${c}`
+      let initial = 1 // empty
+      if (board && board[r][c] !== '') initial = 0
+      // Apply hypothetical move
+      if (r === hypRow && c === hypCol) initial = 0
+      places[id] = { '@type': 'Place', initial: [initial], x: 50 + c * 60, y: 50 + r * 60 }
+    }
+  }
+
+  // X history places X00-X22
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const id = `X${r}${c}`
+      let initial = 0
+      if (board && board[r][c] === 'X') initial = 1
+      // Apply hypothetical move for X
+      if (currentPlayer === 'X' && r === hypRow && c === hypCol) initial = 1
+      places[id] = { '@type': 'Place', initial: [initial], x: 200 + c * 60, y: 50 + r * 60 }
+    }
+  }
+
+  // O history places O00-O22
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const id = `O${r}${c}`
+      let initial = 0
+      if (board && board[r][c] === 'O') initial = 1
+      // Apply hypothetical move for O
+      if (currentPlayer === 'O' && r === hypRow && c === hypCol) initial = 1
+      places[id] = { '@type': 'Place', initial: [initial], x: 350 + c * 60, y: 50 + r * 60 }
+    }
+  }
+
+  // Turn control: Next (0=X's turn, 1=O's turn)
+  // After hypothetical move, it's opponent's turn
+  const nextTurn = currentPlayer === 'X' ? 1 : 0
+  places['Next'] = { '@type': 'Place', initial: [nextTurn], x: 250, y: 250 }
+
+  // Win detection places
+  places['WinX'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
+  places['WinO'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
+
+  // X move transitions: P -> PlayX -> X + Next
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const tid = `PlayX${r}${c}`
+      transitions[tid] = { '@type': 'Transition', x: 120 + c * 60, y: 50 + r * 60 }
+      arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: 'Next', weight: [1] })
+    }
+  }
+
+  // O move transitions: Next + P -> PlayO -> O
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const tid = `PlayO${r}${c}`
+      transitions[tid] = { '@type': 'Transition', x: 270 + c * 60, y: 50 + r * 60 }
+      arcs.push({ '@type': 'Arrow', source: 'Next', target: tid, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
+    }
+  }
+
+  // Win pattern transitions
+  const winPatterns = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
+    [0, 4, 8], [2, 4, 6]             // diags
+  ]
+  const patternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
+
+  // X win transitions
+  winPatterns.forEach((pattern, idx) => {
+    const tid = `X${patternNames[idx]}`
+    transitions[tid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
+    pattern.forEach(cellIdx => {
+      const r = Math.floor(cellIdx / 3)
+      const c = cellIdx % 3
+      arcs.push({ '@type': 'Arrow', source: `X${r}${c}`, target: tid, weight: [1] })
+    })
+    arcs.push({ '@type': 'Arrow', source: tid, target: 'WinX', weight: [1] })
+  })
+
+  // O win transitions
+  winPatterns.forEach((pattern, idx) => {
+    const tid = `O${patternNames[idx]}`
+    transitions[tid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
+    pattern.forEach(cellIdx => {
+      const r = Math.floor(cellIdx / 3)
+      const c = cellIdx % 3
+      arcs.push({ '@type': 'Arrow', source: `O${r}${c}`, target: tid, weight: [1] })
+    })
+    arcs.push({ '@type': 'Arrow', source: tid, target: 'WinO', weight: [1] })
+  })
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    places,
+    transitions,
+    arcs
+  }
+}
+
+// Run ODE solver and extract WinX/WinO values
+function solveODE(model) {
+  try {
+    const net = Solver.fromJSON(model)
+    const initialState = Solver.setState(net)
+    const rates = Solver.setRates(net)
+
+    // Use configurable solver parameters
+    const prob = new Solver.ODEProblem(net, initialState, [0, solverParams.tspan], rates)
+    const opts = { dt: solverParams.dt, adaptive: solverParams.adaptive }
+    if (solverParams.adaptive) {
+      opts.abstol = solverParams.abstol
+      opts.reltol = solverParams.reltol
+    }
+    const solution = Solver.solve(prob, Solver.Tsit5(), opts)
+
+    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
+    if (!finalState) return null
+
+    // finalState is a dictionary with place names as keys
+    return {
+      winX: finalState['WinX'] || 0,
+      winO: finalState['WinO'] || 0
+    }
+  } catch (err) {
+    console.error('ODE solve error:', err)
+    return null
+  }
+}
+
+// API-based heatmap (Go backend) - for demo/testing
+async function runAPIHeatmap(board = null) {
+  try {
+    const apiBoard = board ? board.map(row => [...row]) : [['','',''],['','',''],['','','']]
+
+    const response = await fetch(`${API_BASE}/api/heatmap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board: apiBoard })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Heatmap API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('ODE heatmap from backend API:', data)
+
+    return {
+      values: data.values,
+      details: data.details,
+      player: data.current_player,
+      solution: null,
+      model: null
+    }
+  } catch (err) {
+    console.error('Heatmap API failed, falling back to local:', err)
+    return runLocalODESimulation(board)
+  }
+}
+
+// Toggle between local and API ODE computation
+function setODEMode(useLocal) {
+  useLocalODE = useLocal
+  console.log(`ODE mode: ${useLocal ? 'local (JS)' : 'API (Go backend)'}`)
+}
+
+// Export for console testing
+window.setODEMode = setODEMode
+window.runAPIHeatmap = runAPIHeatmap
+window.runLocalODESimulation = runLocalODESimulation
+
 // Get ODE-computed value for a position
 function getODEValue(pos, board = null) {
-  if (odeValues && odeValues[pos] !== undefined) {
-    return odeValues[pos]
+  if (odeValues === null) {
+    ensureODEValues(board)
   }
-  // Fallback to static values
-  return STRATEGIC_VALUES[pos]?.value || 0
+  return (odeValues && odeValues[pos] !== undefined) ? odeValues[pos] : 0
 }
 
 // Game state
@@ -525,8 +720,11 @@ async function toggleHeatmap() {
     btn.textContent = 'Hide Heat Map'
     board.classList.add('show-heatmap')
 
-    // Run ODE simulation for current game state
-    if (gameState.id) {
+    // Auto-start a new game if none exists
+    if (!gameState.id) {
+      await newGame() // newGame() handles ODE computation when showHeatmap is true
+    } else {
+      // Run ODE simulation for current game state
       const result = await runODESimulation(gameState.board)
       if (result) {
         odeValues = result.values
@@ -541,11 +739,11 @@ async function toggleHeatmap() {
 }
 
 function getHeatColor(value, minVal = null, maxVal = null) {
-  // Auto-scale if not provided
+  // Auto-scale based on all available ODE values (including negative)
   if (minVal === null || maxVal === null) {
-    // Use current ODE values for scaling if available
     if (odeValues) {
-      const vals = Object.values(odeValues).filter(v => v > 0)
+      // Get all non-zero values (empty positions only)
+      const vals = Object.values(odeValues).filter(v => v !== 0)
       if (vals.length > 0) {
         minVal = Math.min(...vals)
         maxVal = Math.max(...vals)
@@ -556,11 +754,16 @@ function getHeatColor(value, minVal = null, maxVal = null) {
     if (maxVal === null) maxVal = 1
   }
 
-  // Avoid division by zero
+  // For occupied cells (value=0), return gray
+  if (value === 0 && odeValues) {
+    return 'rgb(180, 180, 180)'
+  }
+
+  // Normalize: best move (highest) = red, worst move (lowest) = blue
   const range = maxVal - minVal
   const normalized = range > 0 ? Math.max(0, Math.min(1, (value - minVal) / range)) : 0.5
 
-  // Interpolate between blue (low) and red (high)
+  // Interpolate between blue (low/worst) and red (high/best)
   const r = Math.round(255 * normalized)
   const g = Math.round(100 - 50 * normalized)
   const b = Math.round(255 * (1 - normalized))
@@ -590,13 +793,17 @@ function renderGame() {
   const statusEl = document.getElementById('status-display')
   const winningPattern = findWinningPattern()
 
+  // Ensure ODE values are computed for heatmap display
+  if (showHeatmap && !gameState.gameOver && odeValues === null) {
+    ensureODEValues(gameState.id ? gameState.board : null)
+  }
+
   // Render board
   let boardHtml = ''
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
       const piece = gameState.board[row][col]
       const pos = `${row}${col}`
-      const strategy = STRATEGIC_VALUES[pos]
       const isWinning = winningPattern && winningPattern.includes(row * 3 + col)
 
       const classes = ['cell']
@@ -604,11 +811,11 @@ function renderGame() {
       if (gameState.gameOver && !piece) classes.push('disabled')
       if (isWinning) classes.push('winning')
 
-      // Use ODE value if available, otherwise fall back to static value
-      const odeValue = (odeValues && odeValues[pos] !== undefined) ? odeValues[pos] : null
-      const displayValue = piece ? 0 : (odeValue !== null ? odeValue : strategy.value)
+      // Always use ODE computed values
+      const odeValue = (odeValues && odeValues[pos] !== undefined) ? odeValues[pos] : 0
+      const displayValue = piece ? 0 : odeValue
       const heatColor = getHeatColor(displayValue)
-      const label = piece ? 'played' : (odeValue !== null ? 'ODE' : strategy.type)
+      const label = piece ? 'played' : 'ODE'
 
       boardHtml += `
         <button class="${classes.join(' ')}"
@@ -820,43 +1027,72 @@ window.showTab = function(tabName) {
   }
 }
 
+// Custom plugin to draw "marked" separator line
+const markedLinePlugin = {
+  id: 'markedLine',
+  afterDraw: (chart) => {
+    if (chart.markedLevel === null || chart.markedLevel === undefined) return
+
+    const ctx = chart.ctx
+    const yAxis = chart.scales.y
+    const xAxis = chart.scales.x
+
+    // Draw line slightly above marked level
+    const lineY = yAxis.getPixelForValue(chart.markedLevel + 0.02)
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.setLineDash([5, 5])
+    ctx.strokeStyle = 'rgba(150, 150, 150, 0.7)'
+    ctx.lineWidth = 1
+    ctx.moveTo(xAxis.left, lineY)
+    ctx.lineTo(xAxis.right, lineY)
+    ctx.stroke()
+
+    // Draw "marked" label
+    ctx.fillStyle = 'rgba(150, 150, 150, 0.9)'
+    ctx.font = '11px sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText('marked', xAxis.left + 5, lineY - 4)
+    ctx.restore()
+  }
+}
+
 function initValueChart() {
   const ctx = document.getElementById('value-chart').getContext('2d')
 
   const positions = ['(0,0)', '(0,1)', '(0,2)', '(1,0)', '(1,1)', '(1,2)', '(2,0)', '(2,1)', '(2,2)']
   const values = [0.316, 0.218, 0.316, 0.218, 0.430, 0.218, 0.316, 0.218, 0.316]
-  const patterns = [3, 2, 3, 2, 4, 2, 3, 2, 3]
 
-  const colors = values.map(v => {
-    if (v === 0.430) return 'rgba(231, 76, 60, 0.8)'
-    if (v === 0.316) return 'rgba(243, 156, 18, 0.8)'
-    return 'rgba(52, 152, 219, 0.8)'
-  })
+  // Position type colors: center=red, corner=orange, edge=blue
+  const positionColors = [
+    'rgba(243, 156, 18, 1)',  // (0,0) corner
+    'rgba(52, 152, 219, 1)',   // (0,1) edge
+    'rgba(243, 156, 18, 1)',  // (0,2) corner
+    'rgba(52, 152, 219, 1)',   // (1,0) edge
+    'rgba(231, 76, 60, 1)',    // (1,1) center
+    'rgba(52, 152, 219, 1)',   // (1,2) edge
+    'rgba(243, 156, 18, 1)',  // (2,0) corner
+    'rgba(52, 152, 219, 1)',   // (2,1) edge
+    'rgba(243, 156, 18, 1)',  // (2,2) corner
+  ]
 
   valueChart = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: positions,
       datasets: [
         {
-          label: 'Strategic Value',
+          label: 'ODE Strategic Value',
           data: values,
-          backgroundColor: colors,
-          borderColor: colors.map(c => c.replace('0.8', '1')),
-          borderWidth: 2,
-          yAxisID: 'y',
-        },
-        {
-          label: 'Win Patterns',
-          data: patterns,
-          type: 'line',
-          borderColor: 'rgba(102, 126, 234, 1)',
-          backgroundColor: 'rgba(102, 126, 234, 0.2)',
-          borderWidth: 3,
+          borderColor: 'rgba(150, 150, 150, 0.3)',
+          borderWidth: 1,
+          pointBackgroundColor: positionColors,
+          pointBorderColor: positionColors,
+          pointRadius: 12,
+          pointHoverRadius: 16,
           fill: false,
-          yAxisID: 'y1',
-          pointRadius: 6,
-          pointHoverRadius: 8,
+          tension: 0,
         }
       ]
     },
@@ -876,30 +1112,49 @@ function initValueChart() {
             display: true,
             text: 'Strategic Value'
           },
-          min: 0,
-          max: 0.5,
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          title: {
-            display: true,
-            text: 'Win Patterns'
-          },
-          min: 0,
-          max: 5,
-          grid: {
-            drawOnChartArea: false,
-          },
+          ticks: {
+            callback: function(value) {
+              return value.toFixed(2)
+            }
+          }
         }
       },
       plugins: {
         legend: {
+          display: true,
           position: 'bottom',
+          labels: {
+            generateLabels: function(chart) {
+              return [
+                { text: 'Center', fillStyle: 'rgba(231, 76, 60, 1)', strokeStyle: 'rgba(231, 76, 60, 1)', pointStyle: 'circle', lineWidth: 0 },
+                { text: 'Corner', fillStyle: 'rgba(243, 156, 18, 1)', strokeStyle: 'rgba(243, 156, 18, 1)', pointStyle: 'circle', lineWidth: 0 },
+                { text: 'Edge', fillStyle: 'rgba(52, 152, 219, 1)', strokeStyle: 'rgba(52, 152, 219, 1)', pointStyle: 'circle', lineWidth: 0 },
+                { text: 'X Played', fillStyle: 'rgba(231, 76, 60, 1)', strokeStyle: 'rgba(231, 76, 60, 1)', pointStyle: 'rectRot', lineWidth: 0 },
+                { text: 'O Played', fillStyle: 'rgba(52, 152, 219, 1)', strokeStyle: 'rgba(52, 152, 219, 1)', pointStyle: 'rectRot', lineWidth: 0 },
+              ]
+            },
+            usePointStyle: true,
+            pointStyle: 'circle',
+            padding: 15,
+            boxWidth: 12,
+            boxHeight: 12,
+          }
         },
         tooltip: {
           callbacks: {
+            label: function(context) {
+              const index = context.dataIndex
+              const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
+              const pos = positions[index]
+              const row = parseInt(pos[0])
+              const col = parseInt(pos[1])
+              const piece = gameState.board[row][col]
+
+              if (piece !== '') {
+                return `Played: ${piece}`
+              }
+              return `Value: ${context.parsed.y.toFixed(3)}`
+            },
             afterBody: function(context) {
               const index = context[0].dataIndex
               const types = ['corner', 'edge', 'corner', 'edge', 'center', 'edge', 'corner', 'edge', 'corner']
@@ -908,7 +1163,8 @@ function initValueChart() {
           }
         }
       }
-    }
+    },
+    plugins: [markedLinePlugin]
   })
 }
 
@@ -937,8 +1193,10 @@ async function setSimMode(mode) {
     }
   } else {
     if (!gameState.id) {
+      odeValues = null // Clear stale values
       desc.textContent = 'No game in progress. Start a new game to see contextual values.'
     } else if (gameState.gameOver) {
+      odeValues = null // Clear - no strategic values for completed game
       desc.textContent = `Game over - ${gameState.winner === 'draw' ? 'Draw' : gameState.winner + ' wins'}.`
     } else {
       desc.innerHTML = '<span style="color: #667eea;">Running ODE simulation for current state...</span>'
@@ -958,108 +1216,44 @@ async function setSimMode(mode) {
   updateSimulationChart()
 }
 
-function calculateContextualValues() {
-  // Calculate strategic values based on current board state
-  // A position's value depends on how many winning patterns it can still contribute to
-  const values = []
-
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      const pos = `${row}${col}`
-      const piece = gameState.board[row][col]
-
-      if (piece !== '') {
-        // Cell is occupied
-        values.push({ pos, value: 0, type: 'occupied', piece })
-      } else {
-        // Calculate value based on available patterns
-        const cellIndex = row * 3 + col
-        let availablePatterns = 0
-        let blockedByOpponent = 0
-
-        for (const pattern of WIN_PATTERNS) {
-          if (pattern.includes(cellIndex)) {
-            // Check if this pattern is still viable
-            const patternCells = pattern.map(i => {
-              const r = Math.floor(i / 3)
-              const c = i % 3
-              return gameState.board[r][c]
-            })
-
-            const hasX = patternCells.includes('X')
-            const hasO = patternCells.includes('O')
-
-            // Pattern is viable if it doesn't have both X and O
-            if (!(hasX && hasO)) {
-              availablePatterns++
-            } else {
-              blockedByOpponent++
-            }
-          }
-        }
-
-        // Calculate normalized value (original max was 4 patterns for center)
-        const baseValue = STRATEGIC_VALUES[pos].value
-        const maxPatterns = STRATEGIC_VALUES[pos].patterns
-        const ratio = maxPatterns > 0 ? availablePatterns / maxPatterns : 0
-        const adjustedValue = baseValue * ratio
-
-        values.push({
-          pos,
-          value: adjustedValue,
-          type: STRATEGIC_VALUES[pos].type,
-          availablePatterns,
-          totalPatterns: maxPatterns,
-          blocked: blockedByOpponent
-        })
-      }
-    }
-  }
-
-  return values
-}
-
 function renderSimulationGrid() {
   const grid = document.getElementById('position-grid')
   if (!grid) return
 
+  // Ensure ODE values are computed
+  if (odeValues === null) {
+    const board = simMode === 'current' ? gameState.board : null
+    ensureODEValues(board)
+  }
+
+  const positionTypes = {
+    '00': 'corner', '01': 'edge', '02': 'corner',
+    '10': 'edge', '11': 'center', '12': 'edge',
+    '20': 'corner', '21': 'edge', '22': 'corner'
+  }
+
   let cells = []
+  const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
 
   if (simMode === 'empty') {
-    // Show ODE-computed values for empty board
-    const positions = [
-      { pos: '00', type: 'corner' },
-      { pos: '01', type: 'edge' },
-      { pos: '02', type: 'corner' },
-      { pos: '10', type: 'edge' },
-      { pos: '11', type: 'center' },
-      { pos: '12', type: 'edge' },
-      { pos: '20', type: 'corner' },
-      { pos: '21', type: 'edge' },
-      { pos: '22', type: 'corner' },
-    ]
-
-    cells = positions.map(p => {
-      // Use ODE value if available, otherwise fallback to static
-      const value = odeValues ? (odeValues[p.pos] || 0) : STRATEGIC_VALUES[p.pos].value
+    cells = positions.map(pos => {
+      const value = odeValues ? (odeValues[pos] || 0) : 0
+      const type = positionTypes[pos]
       return `
-        <div class="position-cell ${p.type}">
+        <div class="position-cell ${type}">
           <span class="value">${value.toFixed(3)}</span>
-          <span class="type">${p.type}</span>
+          <span class="type">ODE</span>
         </div>
       `
     })
   } else {
-    // Show current game state with ODE-computed values
-    const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
-
     cells = positions.map(pos => {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
       const piece = gameState.board[row][col]
+      const type = positionTypes[pos]
 
       if (piece !== '') {
-        // Occupied cell - show the piece
         const pieceColor = piece === 'X' ? '#e74c3c' : '#3498db'
         return `
           <div class="position-cell" style="background: ${pieceColor};">
@@ -1068,30 +1262,16 @@ function renderSimulationGrid() {
           </div>
         `
       } else {
-        // Use ODE value if available
-        const odeValue = odeValues ? odeValues[pos] : null
-        const value = odeValue !== null ? odeValue : STRATEGIC_VALUES[pos].value
-        const type = STRATEGIC_VALUES[pos].type
+        const value = odeValues ? (odeValues[pos] || 0) : 0
+        const maxValue = odeValues ? Math.max(...Object.values(odeValues).map(Math.abs)) : 1
+        const opacity = 0.4 + (Math.abs(value) / maxValue) * 0.6
 
-        if (value === 0 || (odeValue !== null && odeValue < 0.01)) {
-          // No viable patterns or very low ODE value
-          return `
-            <div class="position-cell" style="background: #999;">
-              <span class="value">${value.toFixed(3)}</span>
-              <span class="type">low value</span>
-            </div>
-          `
-        } else {
-          // Available cell with ODE value
-          const maxValue = odeValues ? Math.max(...Object.values(odeValues)) : 0.430
-          const opacity = 0.4 + (value / maxValue) * 0.6
-          return `
-            <div class="position-cell ${type}" style="opacity: ${opacity};">
-              <span class="value">${value.toFixed(3)}</span>
-              <span class="type">${odeValues ? 'ODE' : type}</span>
-            </div>
-          `
-        }
+        return `
+          <div class="position-cell ${type}" style="opacity: ${opacity};">
+            <span class="value">${value.toFixed(3)}</span>
+            <span class="type">ODE</span>
+          </div>
+        `
       }
     })
   }
@@ -1103,75 +1283,193 @@ function updateSimulationChart() {
   if (!valueChart) return
 
   const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
-  const patterns = [3, 2, 3, 2, 4, 2, 3, 2, 3]
+  const positionTypes = {
+    '00': 'corner', '01': 'edge', '02': 'corner',
+    '10': 'edge', '11': 'center', '12': 'edge',
+    '20': 'corner', '21': 'edge', '22': 'corner'
+  }
+
+  // Ensure ODE values are computed
+  if (odeValues === null) {
+    const board = simMode === 'current' ? gameState.board : null
+    ensureODEValues(board)
+  }
+
+  // Helper to update y-axis scale based on values
+  function updateYAxisScale(values, markedLevel = null) {
+    const nonZeroValues = values.filter(v => v !== 0)
+    if (nonZeroValues.length === 0) {
+      valueChart.options.scales.y.min = markedLevel !== null ? markedLevel - 0.05 : -0.5
+      valueChart.options.scales.y.max = 0.5
+    } else {
+      const minVal = Math.min(...nonZeroValues)
+      const maxVal = Math.max(...nonZeroValues)
+      // Add 10% padding and round to nice numbers
+      const range = maxVal - minVal || 0.1
+      const padding = range * 0.15
+      let scaleMin = Math.floor((minVal - padding) * 10) / 10
+      // Extend to include marked level if present
+      if (markedLevel !== null) {
+        scaleMin = Math.min(scaleMin, markedLevel - 0.02)
+      }
+      valueChart.options.scales.y.min = scaleMin
+      valueChart.options.scales.y.max = Math.ceil((maxVal + padding) * 10) / 10
+    }
+  }
+
+  // Position type colors: center=red, corner=orange, edge=blue
+  function getPositionColor(pos, isOccupied = false) {
+    if (isOccupied) return 'rgba(128, 128, 128, 0.5)'
+    const type = positionTypes[pos]
+    if (type === 'center') return 'rgba(231, 76, 60, 1)'
+    if (type === 'corner') return 'rgba(243, 156, 18, 1)'
+    return 'rgba(52, 152, 219, 1)'
+  }
 
   if (simMode === 'empty') {
-    // Use ODE values if available
-    const values = positions.map(pos =>
-      odeValues ? (odeValues[pos] || 0) : STRATEGIC_VALUES[pos].value
-    )
-    const maxVal = Math.max(...values)
-    const colors = values.map((v, i) => {
-      const type = STRATEGIC_VALUES[positions[i]].type
-      if (type === 'center') return 'rgba(231, 76, 60, 0.8)'
-      if (type === 'corner') return 'rgba(243, 156, 18, 0.8)'
-      return 'rgba(52, 152, 219, 0.8)'
-    })
+    const values = positions.map(pos => odeValues ? (odeValues[pos] || 0) : 0)
+    const colors = positions.map(pos => getPositionColor(pos))
 
     valueChart.data.datasets[0].data = values
-    valueChart.data.datasets[0].backgroundColor = colors
-    valueChart.data.datasets[1].data = patterns
+    valueChart.data.datasets[0].pointBackgroundColor = colors
+    valueChart.data.datasets[0].pointBorderColor = colors
+    valueChart.data.datasets[0].pointStyle = 'circle'  // Reset to circles
+    valueChart.markedLevel = null  // No marked level for empty board
+    updateYAxisScale(values)
     valueChart.update()
   } else {
-    // Use ODE values for current game state
+    // First pass: collect open position values and track occupied positions
+    const openValues = []
+    const occupiedIndices = []
+    positions.forEach((pos, i) => {
+      const row = parseInt(pos[0])
+      const col = parseInt(pos[1])
+      const piece = gameState.board[row][col]
+      if (piece === '') {
+        const val = odeValues ? (odeValues[pos] || 0) : 0
+        openValues.push(val)
+      } else {
+        occupiedIndices.push(i)
+      }
+    })
+
+    // Calculate scale bounds first
+    let scaleMin = -0.5
+    let markedLevel = -0.6  // Below the data, for played pieces
+    if (openValues.length > 0) {
+      const minVal = Math.min(...openValues)
+      const maxVal = Math.max(...openValues)
+      const range = maxVal - minVal || 0.1
+      const padding = range * 0.15
+      scaleMin = Math.floor((minVal - padding) * 10) / 10
+      markedLevel = scaleMin - (range * 0.15)  // Place below scale min
+    }
+
+    // Build display values (occupied cells go at "marked" level)
     const values = positions.map(pos => {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
       const piece = gameState.board[row][col]
-      if (piece !== '') return 0 // Occupied
-      return odeValues ? (odeValues[pos] || 0) : STRATEGIC_VALUES[pos].value
+      if (piece !== '') return markedLevel  // Place at "marked" level
+      return odeValues ? (odeValues[pos] || 0) : 0
     })
 
-    const patternsData = positions.map((pos, i) => {
-      const row = parseInt(pos[0])
-      const col = parseInt(pos[1])
-      const piece = gameState.board[row][col]
-      if (piece !== '') return 0
-      // Count available patterns for this position
-      const cellIndex = row * 3 + col
-      let available = 0
-      for (const pattern of WIN_PATTERNS) {
-        if (pattern.includes(cellIndex)) {
-          const patternCells = pattern.map(idx => {
-            const r = Math.floor(idx / 3)
-            const c = idx % 3
-            return gameState.board[r][c]
-          })
-          const hasX = patternCells.includes('X')
-          const hasO = patternCells.includes('O')
-          if (!(hasX && hasO)) available++
-        }
-      }
-      return available
-    })
+    // Store marked level for axis label
+    valueChart.markedLevel = occupiedIndices.length > 0 ? markedLevel : null
 
+    // Colors: X=red, O=blue, open positions by type
     const colors = positions.map((pos, i) => {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
       const piece = gameState.board[row][col]
-      if (piece !== '') return 'rgba(128, 128, 128, 0.8)' // Occupied
-      if (values[i] === 0) return 'rgba(153, 153, 153, 0.5)' // Blocked
-      const type = STRATEGIC_VALUES[pos].type
-      if (type === 'center') return 'rgba(231, 76, 60, 0.8)'
-      if (type === 'corner') return 'rgba(243, 156, 18, 0.8)'
-      return 'rgba(52, 152, 219, 0.8)'
+      if (piece === 'X') return 'rgba(231, 76, 60, 1)'  // X is red
+      if (piece === 'O') return 'rgba(52, 152, 219, 1)' // O is blue
+      return getPositionColor(pos, false)
+    })
+
+    // Custom point styles: diamond for played pieces
+    const pointStyles = positions.map(pos => {
+      const row = parseInt(pos[0])
+      const col = parseInt(pos[1])
+      const piece = gameState.board[row][col]
+      return piece !== '' ? 'rectRot' : 'circle'
     })
 
     valueChart.data.datasets[0].data = values
-    valueChart.data.datasets[0].backgroundColor = colors
-    valueChart.data.datasets[1].data = patternsData
+    valueChart.data.datasets[0].pointBackgroundColor = colors
+    valueChart.data.datasets[0].pointBorderColor = colors
+    valueChart.data.datasets[0].pointStyle = pointStyles
+    updateYAxisScale(openValues, occupiedIndices.length > 0 ? markedLevel : null)
     valueChart.update()
   }
+}
+
+// Solver parameter controls
+function updateSolverParams() {
+  const tspanSlider = document.getElementById('tspan-slider')
+  const dtSlider = document.getElementById('dt-slider')
+  const adaptiveToggle = document.getElementById('adaptive-toggle')
+  const tspanValue = document.getElementById('tspan-value')
+  const dtValue = document.getElementById('dt-value')
+
+  if (tspanSlider && dtSlider && adaptiveToggle) {
+    solverParams.tspan = parseFloat(tspanSlider.value)
+    solverParams.dt = parseFloat(dtSlider.value)
+    solverParams.adaptive = adaptiveToggle.checked
+
+    if (tspanValue) tspanValue.textContent = solverParams.tspan.toFixed(1)
+    if (dtValue) dtValue.textContent = solverParams.dt.toFixed(2)
+  }
+}
+
+function applyPreset(preset) {
+  const tspanSlider = document.getElementById('tspan-slider')
+  const dtSlider = document.getElementById('dt-slider')
+  const adaptiveToggle = document.getElementById('adaptive-toggle')
+
+  if (preset === 'fast') {
+    solverParams = { tspan: 2.0, dt: 0.2, adaptive: false, abstol: 1e-4, reltol: 1e-3 }
+  } else if (preset === 'balanced') {
+    solverParams = { tspan: 2.0, dt: 0.2, adaptive: true, abstol: 1e-4, reltol: 1e-3 }
+  } else if (preset === 'accurate') {
+    solverParams = { tspan: 3.0, dt: 0.1, adaptive: true, abstol: 1e-6, reltol: 1e-4 }
+  }
+
+  // Update UI
+  if (tspanSlider) tspanSlider.value = solverParams.tspan
+  if (dtSlider) dtSlider.value = solverParams.dt
+  if (adaptiveToggle) adaptiveToggle.checked = solverParams.adaptive
+  updateSolverParams()
+
+  // Re-run simulation
+  rerunSimulation()
+}
+
+async function rerunSimulation() {
+  const statsEl = document.getElementById('solver-stats')
+  if (statsEl) {
+    statsEl.textContent = 'Running simulation...'
+  }
+
+  const startTime = performance.now()
+  const board = simMode === 'current' ? gameState.board : null
+  const result = runLocalODESimulation(board)
+  const elapsed = performance.now() - startTime
+
+  if (result) {
+    odeValues = result.values
+    lastRunStats = {
+      time: elapsed.toFixed(0),
+      center: result.values['11']?.toFixed(4) || '--'
+    }
+  }
+
+  if (statsEl) {
+    statsEl.textContent = `Last run: ${lastRunStats.time}ms | Center: ${lastRunStats.center} | tspan=${solverParams.tspan} dt=${solverParams.dt} adaptive=${solverParams.adaptive}`
+  }
+
+  renderSimulationGrid()
+  updateSimulationChart()
 }
 
 // Export functions for onclick handlers
@@ -1181,10 +1479,14 @@ window.resetGame = resetGame
 window.toggleHeatmap = toggleHeatmap
 window.setSimMode = setSimMode
 window.revertToMove = revertToMove
+window.updateSolverParams = updateSolverParams
+window.applyPreset = applyPreset
+window.rerunSimulation = rerunSimulation
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   renderGame()
   renderEvents()
   renderSimulationGrid()
+  updateSolverParams() // Initialize solver params from UI
 })

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ODE Heatmap Tests</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 { color: #667eea; }
+    .pass { color: #2ecc71; }
+    .fail { color: #e74c3c; }
+    pre {
+      background: #16213e;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    #output { white-space: pre-wrap; }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    button:hover { background: #764ba2; }
+  </style>
+</head>
+<body>
+  <h1>ODE Heatmap Tests</h1>
+  <button onclick="runTests()">Run Tests</button>
+  <button onclick="compareWithAPI()">Compare JS vs API</button>
+  <pre id="output">Click "Run Tests" to start...</pre>
+
+  <script type="module">
+    import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
+
+    const output = document.getElementById('output')
+    function log(msg) {
+      output.textContent += msg + '\n'
+      console.log(msg)
+    }
+
+    // Win patterns
+    const WIN_PATTERNS = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ]
+    const PATTERN_NAMES = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
+
+    // Go reference values
+    const GO_REFERENCE = {
+      '00': 0.3157, '01': 0.2179, '02': 0.3157,
+      '10': 0.2179, '11': 0.4300, '12': 0.2179,
+      '20': 0.3157, '21': 0.2179, '22': 0.3157,
+    }
+
+    function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
+      const places = {}
+      const transitions = {}
+      const arcs = []
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          let initial = 1
+          if (board && board[r][c] !== '') initial = 0
+          if (r === hypRow && c === hypCol) initial = 0
+          places[`P${r}${c}`] = { '@type': 'Place', initial: [initial], x: 50 + c * 60, y: 50 + r * 60 }
+        }
+      }
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          let xInit = 0, oInit = 0
+          if (board && board[r][c] === 'X') xInit = 1
+          if (board && board[r][c] === 'O') oInit = 1
+          if (currentPlayer === 'X' && r === hypRow && c === hypCol) xInit = 1
+          if (currentPlayer === 'O' && r === hypRow && c === hypCol) oInit = 1
+          places[`X${r}${c}`] = { '@type': 'Place', initial: [xInit], x: 200 + c * 60, y: 50 + r * 60 }
+          places[`O${r}${c}`] = { '@type': 'Place', initial: [oInit], x: 350 + c * 60, y: 50 + r * 60 }
+        }
+      }
+
+      places['Next'] = { '@type': 'Place', initial: [currentPlayer === 'X' ? 1 : 0], x: 250, y: 250 }
+      places['WinX'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
+      places['WinO'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const xTid = `PlayX${r}${c}`, oTid = `PlayO${r}${c}`
+          transitions[xTid] = { '@type': 'Transition', x: 120 + c * 60, y: 50 + r * 60 }
+          transitions[oTid] = { '@type': 'Transition', x: 270 + c * 60, y: 50 + r * 60 }
+          arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: xTid, weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: xTid, target: `X${r}${c}`, weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: xTid, target: 'Next', weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: 'Next', target: oTid, weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: oTid, weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: oTid, target: `O${r}${c}`, weight: [1] })
+        }
+      }
+
+      WIN_PATTERNS.forEach((pattern, idx) => {
+        const xTid = `X${PATTERN_NAMES[idx]}`, oTid = `O${PATTERN_NAMES[idx]}`
+        transitions[xTid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
+        transitions[oTid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
+        pattern.forEach(cellIdx => {
+          const r = Math.floor(cellIdx / 3), c = cellIdx % 3
+          arcs.push({ '@type': 'Arrow', source: `X${r}${c}`, target: xTid, weight: [1] })
+          arcs.push({ '@type': 'Arrow', source: `O${r}${c}`, target: oTid, weight: [1] })
+        })
+        arcs.push({ '@type': 'Arrow', source: xTid, target: 'WinX', weight: [1] })
+        arcs.push({ '@type': 'Arrow', source: oTid, target: 'WinO', weight: [1] })
+      })
+
+      return { '@context': 'https://pflow.xyz/schema', '@type': 'PetriNet', places, transitions, arcs }
+    }
+
+    function solveODE(model) {
+      try {
+        const net = Solver.fromJSON(model)
+        const initialState = Solver.setState(net)
+        const rates = Solver.setRates(net)
+        // Optimized params: 420x faster, 0.05 max diff
+        const prob = new Solver.ODEProblem(net, initialState, [0, 2.0], rates)
+        const solution = Solver.solve(prob, Solver.Tsit5(), { dt: 0.2, adaptive: false })
+        const finalState = solution.u ? solution.u[solution.u.length - 1] : null
+        if (!finalState) return null
+        // finalState is a dictionary with place names as keys
+        return {
+          winX: finalState['WinX'] || 0,
+          winO: finalState['WinO'] || 0
+        }
+      } catch (e) {
+        console.error('ODE error:', e)
+        return null
+      }
+    }
+
+    function computeHeatmap(board = null) {
+      const values = {}
+      let xCount = 0, oCount = 0
+      if (board) {
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (board[r][c] === 'X') xCount++
+            if (board[r][c] === 'O') oCount++
+          }
+        }
+      }
+      const currentPlayer = xCount > oCount ? 'O' : 'X'
+
+      // Run ODE simulations sequentially
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const pos = `${r}${c}`
+          if (board && board[r][c] !== '') {
+            values[pos] = 0
+            continue
+          }
+          const model = buildODEPetriNet(board, currentPlayer, r, c)
+          const result = solveODE(model)
+          if (result) {
+            values[pos] = currentPlayer === 'X' ? (result.winX - result.winO) : (result.winO - result.winX)
+          } else {
+            values[pos] = 0
+          }
+        }
+      }
+
+      return { values, currentPlayer }
+    }
+
+    window.runTests = function() {
+      output.textContent = ''
+      log('=== ODE Heatmap Tests (Fast Solver) ===\n')
+
+      // Test 1: Empty board
+      log('Test 1: Empty board heatmap')
+      const startTime = performance.now()
+      const result = computeHeatmap(null)
+      const elapsed = (performance.now() - startTime).toFixed(0)
+      log(`Computed in ${elapsed}ms (optimized: 420x faster)`)
+
+      log('\nPosition | JS ODE  | Go Ref  | Diff')
+      log('---------|---------|---------|-------')
+      let maxDiff = 0
+      for (const pos of ['00', '01', '02', '10', '11', '12', '20', '21', '22']) {
+        const jsVal = result.values[pos]
+        const goVal = GO_REFERENCE[pos]
+        const diff = Math.abs(jsVal - goVal)
+        maxDiff = Math.max(maxDiff, diff)
+        const status = diff < 0.06 ? '✓' : '✗'
+        log(`   ${pos}    | ${jsVal.toFixed(4)} | ${goVal.toFixed(4)} | ${diff.toFixed(4)} ${status}`)
+      }
+
+      if (maxDiff < 0.06) {
+        log('\n✓ Test 1 PASSED: JS ODE matches Go reference within tolerance (0.06)')
+      } else {
+        log(`\n✗ Test 1 FAILED: Max difference ${maxDiff.toFixed(4)} exceeds tolerance 0.06`)
+      }
+
+      // Test 2: Value ordering
+      log('\nTest 2: Value ordering (center > corner > edge)')
+      const center = result.values['11']
+      const corner = result.values['00']
+      const edge = result.values['01']
+      log(`Center: ${center.toFixed(4)}, Corner: ${corner.toFixed(4)}, Edge: ${edge.toFixed(4)}`)
+      if (center > corner && corner > edge) {
+        log('✓ Test 2 PASSED')
+      } else {
+        log('✗ Test 2 FAILED')
+      }
+
+      // Test 3: Symmetry
+      log('\nTest 3: Corner symmetry')
+      const corners = ['00', '02', '20', '22'].map(p => result.values[p])
+      const cornerDiff = Math.max(...corners) - Math.min(...corners)
+      log(`Corners: ${corners.map(v => v.toFixed(4)).join(', ')}`)
+      log(`Max difference: ${cornerDiff.toFixed(6)}`)
+      if (cornerDiff < 0.001) {
+        log('✓ Test 3 PASSED')
+      } else {
+        log('✗ Test 3 FAILED')
+      }
+
+      // Test 4: X at center
+      log('\nTest 4: X at center (O to move)')
+      const board2 = [['','',''],['','X',''],['','','']]
+      const result2 = computeHeatmap(board2)
+      log(`Current player: ${result2.currentPlayer}`)
+      log(`Center (occupied): ${result2.values['11']}`)
+      log(`Corner 00: ${result2.values['00'].toFixed(4)}`)
+      if (result2.currentPlayer === 'O' && result2.values['11'] === 0) {
+        log('✓ Test 4 PASSED')
+      } else {
+        log('✗ Test 4 FAILED')
+      }
+
+      log('\n=== Tests Complete ===')
+    }
+
+    window.compareWithAPI = async function() {
+      output.textContent = ''
+      log('=== Comparing JS ODE vs Go API ===\n')
+
+      try {
+        const startTime = performance.now()
+
+        // Run JS ODE
+        const jsResult = computeHeatmap(null)
+        const jsElapsed = (performance.now() - startTime).toFixed(0)
+
+        // Fetch API result
+        const apiResponse = await fetch('/api/heatmap')
+        const apiData = await apiResponse.json()
+        const totalElapsed = (performance.now() - startTime).toFixed(0)
+
+        log(`JS ODE: ${jsElapsed}ms, Total: ${totalElapsed}ms\n`)
+
+        log('Position | JS ODE  | Go API  | Diff')
+        log('---------|---------|---------|-------')
+        let maxDiff = 0
+        for (const pos of ['00', '01', '02', '10', '11', '12', '20', '21', '22']) {
+          const jsVal = jsResult.values[pos]
+          const apiVal = apiData.values[pos]
+          const diff = Math.abs(jsVal - apiVal)
+          maxDiff = Math.max(maxDiff, diff)
+          const status = diff < 0.06 ? '✓' : '✗'
+          log(`   ${pos}    | ${jsVal.toFixed(4)} | ${apiVal.toFixed(4)} | ${diff.toFixed(4)} ${status}`)
+        }
+
+        if (maxDiff < 0.06) {
+          log('\n✓ JS ODE matches Go API within tolerance (0.06)')
+          log('Note: Fast solver trades some precision for 420x speedup')
+        } else {
+          log(`\n✗ Max difference: ${maxDiff.toFixed(4)} exceeds tolerance`)
+        }
+      } catch (e) {
+        log(`Error: ${e.message}`)
+        log('Make sure the Go backend is running (go run ./cmd/petri-pilot serve tic-tac-toe)')
+      }
+    }
+  </script>
+</body>
+</html>
