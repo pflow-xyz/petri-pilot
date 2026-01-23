@@ -41,6 +41,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
 	s.AddTool(applicationTool(), handleApplication)
+	s.AddTool(docsTool(), handleDocs)
 
 	// Delegate tools for GitHub Copilot integration
 	s.AddTool(delegateAppTool(), handleDelegateApp)
@@ -301,6 +302,19 @@ func visualizeTool() mcp.Tool {
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as a JSON string"),
+		),
+	)
+}
+
+func docsTool() mcp.Tool {
+	return mcp.NewTool("petri_docs",
+		mcp.WithDescription("Generate markdown documentation from a Petri net model with mermaid diagrams for visualization. Useful for exploring and understanding models."),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The Petri net model as a JSON string"),
+		),
+		mcp.WithBoolean("include_metadata",
+			mcp.Description("Include model metadata in documentation (default: true)"),
 		),
 	)
 }
@@ -1184,6 +1198,350 @@ func handleVisualize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	svg := generateSVG(model)
 
 	return mcp.NewToolResultText(svg), nil
+}
+
+func handleDocs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	model, err := parseModel(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	includeMetadata := request.GetBool("include_metadata", true)
+
+	// Generate markdown documentation
+	md := generateMarkdownDocs(model, modelJSON, includeMetadata)
+
+	return mcp.NewToolResultText(md), nil
+}
+
+// generateMarkdownDocs creates markdown documentation with mermaid diagrams
+func generateMarkdownDocs(model *schema.Model, rawJSON string, includeMetadata bool) string {
+	var sb strings.Builder
+
+	// Title and description
+	name := model.Name
+	if name == "" {
+		name = "Petri Net Model"
+	}
+	sb.WriteString(fmt.Sprintf("# %s\n\n", titleCase(strings.ReplaceAll(name, "-", " "))))
+
+	if model.Description != "" {
+		sb.WriteString(fmt.Sprintf("%s\n\n", model.Description))
+	}
+
+	if model.Version != "" {
+		sb.WriteString(fmt.Sprintf("**Version:** %s\n\n", model.Version))
+	}
+
+	// Summary stats
+	sb.WriteString("## Summary\n\n")
+	sb.WriteString(fmt.Sprintf("| Element | Count |\n"))
+	sb.WriteString(fmt.Sprintf("|---------|-------|\n"))
+	sb.WriteString(fmt.Sprintf("| Places | %d |\n", len(model.Places)))
+	sb.WriteString(fmt.Sprintf("| Transitions | %d |\n", len(model.Transitions)))
+	sb.WriteString(fmt.Sprintf("| Arcs | %d |\n", len(model.Arcs)))
+	if len(model.Events) > 0 {
+		sb.WriteString(fmt.Sprintf("| Events | %d |\n", len(model.Events)))
+	}
+	if len(model.Roles) > 0 {
+		sb.WriteString(fmt.Sprintf("| Roles | %d |\n", len(model.Roles)))
+	}
+	if len(model.Access) > 0 {
+		sb.WriteString(fmt.Sprintf("| Access Rules | %d |\n", len(model.Access)))
+	}
+	sb.WriteString("\n")
+
+	// Mermaid state diagram
+	sb.WriteString("## State Diagram\n\n")
+	sb.WriteString("```mermaid\n")
+	sb.WriteString("stateDiagram-v2\n")
+
+	// Add places as states
+	for _, p := range model.Places {
+		label := p.ID
+		if p.Initial > 0 {
+			label = fmt.Sprintf("%s [%d]", p.ID, p.Initial)
+		}
+		sb.WriteString(fmt.Sprintf("    %s: %s\n", sanitizeMermaidID(p.ID), label))
+	}
+
+	// Add transitions as notes and connections
+	for _, arc := range model.Arcs {
+		from := sanitizeMermaidID(arc.From)
+		to := sanitizeMermaidID(arc.To)
+		sb.WriteString(fmt.Sprintf("    %s --> %s\n", from, to))
+	}
+
+	sb.WriteString("```\n\n")
+
+	// Flowchart (alternative view showing transitions as nodes)
+	sb.WriteString("## Petri Net Flow\n\n")
+	sb.WriteString("```mermaid\n")
+	sb.WriteString("flowchart LR\n")
+
+	// Style definitions
+	sb.WriteString("    classDef place fill:#e3f2fd,stroke:#1976d2,stroke-width:2px\n")
+	sb.WriteString("    classDef transition fill:#333,stroke:#333,color:#fff\n")
+	sb.WriteString("    classDef initial fill:#c8e6c9,stroke:#388e3c,stroke-width:2px\n\n")
+
+	// Add places (circles)
+	for _, p := range model.Places {
+		id := sanitizeMermaidID(p.ID)
+		label := p.ID
+		if p.Description != "" {
+			label = p.Description
+		}
+		sb.WriteString(fmt.Sprintf("    %s((%s))\n", id, truncate(label, 20)))
+	}
+
+	// Add transitions (rectangles)
+	for _, t := range model.Transitions {
+		id := sanitizeMermaidID(t.ID)
+		label := t.ID
+		if t.Description != "" {
+			label = t.Description
+		}
+		sb.WriteString(fmt.Sprintf("    %s[%s]\n", id, truncate(label, 25)))
+	}
+
+	sb.WriteString("\n")
+
+	// Add arcs
+	for _, arc := range model.Arcs {
+		from := sanitizeMermaidID(arc.From)
+		to := sanitizeMermaidID(arc.To)
+		sb.WriteString(fmt.Sprintf("    %s --> %s\n", from, to))
+	}
+
+	sb.WriteString("\n")
+
+	// Apply classes
+	var placeIDs, transIDs, initialIDs []string
+	for _, p := range model.Places {
+		id := sanitizeMermaidID(p.ID)
+		if p.Initial > 0 {
+			initialIDs = append(initialIDs, id)
+		} else {
+			placeIDs = append(placeIDs, id)
+		}
+	}
+	for _, t := range model.Transitions {
+		transIDs = append(transIDs, sanitizeMermaidID(t.ID))
+	}
+
+	if len(placeIDs) > 0 {
+		sb.WriteString(fmt.Sprintf("    class %s place\n", strings.Join(placeIDs, ",")))
+	}
+	if len(initialIDs) > 0 {
+		sb.WriteString(fmt.Sprintf("    class %s initial\n", strings.Join(initialIDs, ",")))
+	}
+	if len(transIDs) > 0 {
+		sb.WriteString(fmt.Sprintf("    class %s transition\n", strings.Join(transIDs, ",")))
+	}
+
+	sb.WriteString("```\n\n")
+
+	// Places table
+	sb.WriteString("## Places\n\n")
+	sb.WriteString("| ID | Description | Initial Tokens |\n")
+	sb.WriteString("|----|-------------|----------------|\n")
+	for _, p := range model.Places {
+		desc := p.Description
+		if desc == "" {
+			desc = "-"
+		}
+		sb.WriteString(fmt.Sprintf("| `%s` | %s | %d |\n", p.ID, desc, p.Initial))
+	}
+	sb.WriteString("\n")
+
+	// Transitions table
+	sb.WriteString("## Transitions\n\n")
+	sb.WriteString("| ID | Description | Event | Guard |\n")
+	sb.WriteString("|----|-------------|-------|-------|\n")
+	for _, t := range model.Transitions {
+		desc := t.Description
+		if desc == "" {
+			desc = "-"
+		}
+		event := t.Event
+		if event == "" {
+			event = "-"
+		}
+		guard := t.Guard
+		if guard == "" {
+			guard = "-"
+		} else {
+			guard = fmt.Sprintf("`%s`", guard)
+		}
+		sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n", t.ID, desc, event, guard))
+	}
+	sb.WriteString("\n")
+
+	// Arcs table
+	sb.WriteString("## Arcs\n\n")
+	sb.WriteString("| From | To | Type |\n")
+	sb.WriteString("|------|-----|------|\n")
+	for _, arc := range model.Arcs {
+		arcType := "normal"
+		if arc.IsInhibitor() {
+			arcType = "inhibitor"
+		}
+		sb.WriteString(fmt.Sprintf("| `%s` | `%s` | %s |\n", arc.From, arc.To, arcType))
+	}
+	sb.WriteString("\n")
+
+	// Events section
+	if len(model.Events) > 0 {
+		sb.WriteString("## Events\n\n")
+		for _, e := range model.Events {
+			eventName := e.Name
+			if eventName == "" {
+				eventName = e.ID
+			}
+			sb.WriteString(fmt.Sprintf("### %s\n\n", eventName))
+			if e.Description != "" {
+				sb.WriteString(fmt.Sprintf("%s\n\n", e.Description))
+			}
+			if len(e.Fields) > 0 {
+				sb.WriteString("| Field | Type | Required | Description |\n")
+				sb.WriteString("|-------|------|----------|-------------|\n")
+				for _, f := range e.Fields {
+					required := "No"
+					if f.Required {
+						required = "Yes"
+					}
+					desc := f.Description
+					if desc == "" {
+						desc = "-"
+					}
+					sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n", f.Name, f.Type, required, desc))
+				}
+				sb.WriteString("\n")
+			}
+		}
+	}
+
+	// Roles section
+	if len(model.Roles) > 0 {
+		sb.WriteString("## Roles\n\n")
+		sb.WriteString("| ID | Name | Description | Inherits |\n")
+		sb.WriteString("|----|------|-------------|----------|\n")
+		for _, r := range model.Roles {
+			name := r.Name
+			if name == "" {
+				name = r.ID
+			}
+			desc := r.Description
+			if desc == "" {
+				desc = "-"
+			}
+			inherits := "-"
+			if len(r.Inherits) > 0 {
+				inherits = strings.Join(r.Inherits, ", ")
+			}
+			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n", r.ID, name, desc, inherits))
+		}
+		sb.WriteString("\n")
+	}
+
+	// Access control section
+	if len(model.Access) > 0 {
+		sb.WriteString("## Access Control\n\n")
+		sb.WriteString("| Transition | Allowed Roles |\n")
+		sb.WriteString("|------------|---------------|\n")
+		for _, a := range model.Access {
+			roles := strings.Join(a.Roles, ", ")
+			sb.WriteString(fmt.Sprintf("| `%s` | %s |\n", a.Transition, roles))
+		}
+		sb.WriteString("\n")
+	}
+
+	// Metadata section
+	if includeMetadata {
+		// Try to extract metadata from raw JSON
+		var rawModel map[string]any
+		if err := json.Unmarshal([]byte(rawJSON), &rawModel); err == nil {
+			if metadata, ok := rawModel["metadata"].(map[string]any); ok && len(metadata) > 0 {
+				sb.WriteString("## Metadata\n\n")
+
+				// Strategic values
+				if sv, ok := metadata["strategicValues"].(map[string]any); ok {
+					sb.WriteString("### Strategic Values\n\n")
+					sb.WriteString("Position values derived from Petri net topology:\n\n")
+					sb.WriteString("| Position | Value | Type | Patterns |\n")
+					sb.WriteString("|----------|-------|------|----------|\n")
+					for pos, data := range sv {
+						if d, ok := data.(map[string]any); ok {
+							value := d["value"]
+							posType := d["type"]
+							patterns := d["patterns"]
+							sb.WriteString(fmt.Sprintf("| `%s` | %.3f | %v | %v |\n", pos, value, posType, patterns))
+						}
+					}
+					sb.WriteString("\n")
+				}
+
+				// Win patterns
+				if wp, ok := metadata["winPatterns"].([]any); ok {
+					sb.WriteString("### Win Patterns\n\n")
+					sb.WriteString("```\n")
+					for i, pattern := range wp {
+						sb.WriteString(fmt.Sprintf("Pattern %d: %v\n", i+1, pattern))
+					}
+					sb.WriteString("```\n\n")
+				}
+
+				// ODE simulation info
+				if ode, ok := metadata["odeSimulation"].(map[string]any); ok {
+					sb.WriteString("### ODE Simulation\n\n")
+					if desc, ok := ode["description"].(string); ok {
+						sb.WriteString(fmt.Sprintf("%s\n\n", desc))
+					}
+					if solver, ok := ode["solver"].(string); ok {
+						sb.WriteString(fmt.Sprintf("**Solver:** %s\n\n", solver))
+					}
+					if interp, ok := ode["interpretation"].(string); ok {
+						sb.WriteString(fmt.Sprintf("**Interpretation:** %s\n\n", interp))
+					}
+				}
+			}
+		}
+	}
+
+	return sb.String()
+}
+
+// sanitizeMermaidID converts an ID to be valid for mermaid diagrams
+func sanitizeMermaidID(id string) string {
+	// Replace hyphens and dots with underscores
+	id = strings.ReplaceAll(id, "-", "_")
+	id = strings.ReplaceAll(id, ".", "_")
+	id = strings.ReplaceAll(id, " ", "_")
+	return id
+}
+
+// truncate shortens a string to maxLen characters
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// titleCase converts a string to title case (first letter of each word capitalized)
+func titleCase(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // --- Helpers ---
