@@ -21,6 +21,9 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	"github.com/pflow-xyz/petri-pilot/examples"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
+
+	// Register external services
+	_ "github.com/pflow-xyz/petri-pilot/pkg/services/pflowxyz"
 )
 
 func main() {
