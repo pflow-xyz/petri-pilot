@@ -48,125 +48,177 @@ const PATTERN_NAMES = [
 ]
 
 // Build Petri net model for tic-tac-toe strategic analysis
-// Win patterns are modeled as TRANSITIONS that consume from piece places
-// This allows ODE simulation to compute strategic values from topology
+// Matches go-pflow structure: https://github.com/pflow-xyz/go-pflow/blob/main/examples/tictactoe/metamodel/tictactoe.go
+// - Board positions P00-P22 (initial=1 if empty)
+// - Move history X00-X22, O00-O22 (initial=0, set to 1 when played)
+// - Turn control: Next (0=X's turn, 1=O's turn)
+// - Win detection: WinX, WinO
 function buildTicTacToePetriNet(board = null, player = 'X') {
   const places = {}
   const transitions = {}
   const arcs = []
 
-  // Create piece places for each cell position
-  // _X00 = X piece at (0,0), _O00 = O piece at (0,0), etc.
+  // Determine current turn from board state
+  let xCount = 0, oCount = 0
+  if (board) {
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (board[r][c] === 'X') xCount++
+        if (board[r][c] === 'O') oCount++
+      }
+    }
+  }
+  const isXTurn = xCount === oCount // X goes first, so equal means X's turn
+
+  // Board position places (P00-P22): 1 if empty, 0 if taken
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
-      const xPlaceId = `_X${row}${col}`
-      const oPlaceId = `_O${row}${col}`
-
-      // Set initial tokens based on current board state
+      const posId = `P${row}${col}`
       const cell = board ? board[row][col] : ''
-      places[xPlaceId] = {
+      places[posId] = {
         '@type': 'Place',
-        'initial': cell === 'X' ? [1] : [0],
-        'x': 100 + col * 80,
-        'y': 100 + row * 80
-      }
-      places[oPlaceId] = {
-        '@type': 'Place',
-        'initial': cell === 'O' ? [1] : [0],
-        'x': 100 + col * 80,
-        'y': 350 + row * 80
+        'initial': cell === '' ? [1] : [0],
+        'x': 50 + col * 60,
+        'y': 50 + row * 60
       }
     }
   }
 
+  // X move history places (X00-X22): 1 if X played here
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const xId = `X${row}${col}`
+      const cell = board ? board[row][col] : ''
+      places[xId] = {
+        '@type': 'Place',
+        'initial': cell === 'X' ? [1] : [0],
+        'x': 200 + col * 60,
+        'y': 50 + row * 60
+      }
+    }
+  }
+
+  // O move history places (O00-O22): 1 if O played here
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const oId = `O${row}${col}`
+      const cell = board ? board[row][col] : ''
+      places[oId] = {
+        '@type': 'Place',
+        'initial': cell === 'O' ? [1] : [0],
+        'x': 350 + col * 60,
+        'y': 50 + row * 60
+      }
+    }
+  }
+
+  // Turn control: Next (0=X's turn, 1=O's turn)
+  places['Next'] = {
+    '@type': 'Place',
+    'initial': isXTurn ? [0] : [1],
+    'x': 250,
+    'y': 250
+  }
+
   // Win detection places
-  places['win_x'] = {
+  places['WinX'] = {
+    '@type': 'Place',
+    'initial': [0],
+    'x': 500,
+    'y': 100
+  }
+  places['WinO'] = {
     '@type': 'Place',
     'initial': [0],
     'x': 500,
     'y': 200
   }
-  places['win_o'] = {
-    '@type': 'Place',
-    'initial': [0],
-    'x': 500,
-    'y': 450
+
+  // X move transitions: Position -> PlayX -> History + Next
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const posId = `P${row}${col}`
+      const xHistId = `X${row}${col}`
+      const playXId = `PlayX${row}${col}`
+
+      // Only add if position is empty (or building full model)
+      const cell = board ? board[row][col] : ''
+      if (cell === '') {
+        transitions[playXId] = {
+          '@type': 'Transition',
+          'x': 120 + col * 60,
+          'y': 50 + row * 60
+        }
+        // Position -> PlayX
+        arcs.push({ '@type': 'Arrow', 'source': posId, 'target': playXId, 'weight': [1] })
+        // PlayX -> History
+        arcs.push({ '@type': 'Arrow', 'source': playXId, 'target': xHistId, 'weight': [1] })
+        // PlayX -> Next (produces turn token for O)
+        arcs.push({ '@type': 'Arrow', 'source': playXId, 'target': 'Next', 'weight': [1] })
+      }
+    }
   }
 
-  // Create WIN PATTERN TRANSITIONS
-  // Each winning line (row, col, diagonal) becomes a transition
-  // The transition reads from the 3 piece places in that line
+  // O move transitions: Next + Position -> PlayO -> History
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const posId = `P${row}${col}`
+      const oHistId = `O${row}${col}`
+      const playOId = `PlayO${row}${col}`
+
+      const cell = board ? board[row][col] : ''
+      if (cell === '') {
+        transitions[playOId] = {
+          '@type': 'Transition',
+          'x': 270 + col * 60,
+          'y': 50 + row * 60
+        }
+        // Next -> PlayO (consumes turn token)
+        arcs.push({ '@type': 'Arrow', 'source': 'Next', 'target': playOId, 'weight': [1] })
+        // Position -> PlayO
+        arcs.push({ '@type': 'Arrow', 'source': posId, 'target': playOId, 'weight': [1] })
+        // PlayO -> History
+        arcs.push({ '@type': 'Arrow', 'source': playOId, 'target': oHistId, 'weight': [1] })
+      }
+    }
+  }
+
+  // X win detection transitions: 3-in-a-row -> WinX
+  const winPatternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
   WIN_PATTERN_INDICES.forEach((pattern, idx) => {
-    const [[r0, c0], [r1, c1], [r2, c2]] = pattern
+    const xWinId = `X${winPatternNames[idx]}`
+    const oWinId = `O${winPatternNames[idx]}`
 
-    // X win transition for this pattern
-    const xWinId = `X${r0}${c0}_X${r1}${c1}_X${r2}${c2}`
-    // O win transition for this pattern
-    const oWinId = `O${r0}${c0}_O${r1}${c1}_O${r2}${c2}`
-
-    // Check if X can still win on this pattern
-    let xCanWin = true
-    let oCanWin = true
+    // Check if patterns are still possible
+    let xCanWin = true, oCanWin = true
     if (board) {
       const cells = pattern.map(([r, c]) => board[r][c])
-      xCanWin = !cells.includes('O') // X can't win if O has a piece here
-      oCanWin = !cells.includes('X') // O can't win if X has a piece here
+      xCanWin = !cells.includes('O')
+      oCanWin = !cells.includes('X')
     }
 
-    // X win pattern transition
     if (xCanWin) {
       transitions[xWinId] = {
         '@type': 'Transition',
-        'x': 400,
-        'y': 100 + idx * 35
+        'x': 450,
+        'y': 50 + idx * 25
       }
-
-      // Arcs from X piece places to win transition (read arcs, don't consume)
       pattern.forEach(([r, c]) => {
-        const piecePlace = `_X${r}${c}`
-        arcs.push({
-          '@type': 'Arrow',
-          'source': piecePlace,
-          'target': xWinId,
-          'weight': [1]
-        })
+        arcs.push({ '@type': 'Arrow', 'source': `X${r}${c}`, 'target': xWinId, 'weight': [1] })
       })
-
-      // Arc from win transition to win_x place
-      arcs.push({
-        '@type': 'Arrow',
-        'source': xWinId,
-        'target': 'win_x',
-        'weight': [1]
-      })
+      arcs.push({ '@type': 'Arrow', 'source': xWinId, 'target': 'WinX', 'weight': [1] })
     }
 
-    // O win pattern transition
     if (oCanWin) {
       transitions[oWinId] = {
         '@type': 'Transition',
-        'x': 400,
-        'y': 350 + idx * 35
+        'x': 450,
+        'y': 250 + idx * 25
       }
-
-      // Arcs from O piece places to win transition
       pattern.forEach(([r, c]) => {
-        const piecePlace = `_O${r}${c}`
-        arcs.push({
-          '@type': 'Arrow',
-          'source': piecePlace,
-          'target': oWinId,
-          'weight': [1]
-        })
+        arcs.push({ '@type': 'Arrow', 'source': `O${r}${c}`, 'target': oWinId, 'weight': [1] })
       })
-
-      // Arc from win transition to win_o place
-      arcs.push({
-        '@type': 'Arrow',
-        'source': oWinId,
-        'target': 'win_o',
-        'weight': [1]
-      })
+      arcs.push({ '@type': 'Arrow', 'source': oWinId, 'target': 'WinO', 'weight': [1] })
     }
   })
 
@@ -179,82 +231,100 @@ function buildTicTacToePetriNet(board = null, player = 'X') {
   }
 }
 
-// Run ODE simulation and compute strategic values from Petri net topology
-// Values are derived from how each position contributes to win pattern transitions
+// Run ODE simulation and compute strategic values
+// For each empty position, simulate placing a piece there and measure WinX - WinO
+// This matches go-pflow: https://github.com/pflow-xyz/go-pflow/blob/main/examples/tictactoe/metamodel/ode_test.go
 async function runODESimulation(board = null) {
   try {
     const currentPlayer = gameState.currentPlayer || 'X'
-    const model = buildTicTacToePetriNet(board, currentPlayer)
-
-    // Check if we have any transitions (viable patterns)
-    if (Object.keys(model.transitions).length === 0) {
-      console.log('No viable patterns - all blocked')
-      return null
-    }
-
-    const net = Solver.fromJSON(model)
-    const initialState = Solver.setState(net)
-    const rates = Solver.setRates(net)
-
-    // Run ODE simulation to compute flow through the network
-    // The ODE solver computes token flow rates based on topology
-    const prob = new Solver.ODEProblem(net, initialState, [0, 3], rates)
-    const sol = Solver.solve(prob, Solver.Tsit5(), {
-      dt: 0.5,
-      abstol: 1e-3,
-      reltol: 1e-2,
-      adaptive: false
-    })
-
-    // Compute strategic values from the Petri net topology
-    // Value = number of win pattern transitions a position contributes to
-    // This is exactly what the pflow.xyz ODE simulation measures:
-    // positions connected to more win transitions have higher "flow potential"
     const values = {}
     const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
-    const opponent = currentPlayer === 'X' ? 'O' : 'X'
 
-    // For each empty position, count how many win transitions it feeds into
-    // This is derived directly from the net topology (arcs to win transitions)
-    positions.forEach(pos => {
+    // For each empty position, evaluate the move
+    for (const pos of positions) {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
 
-      // Check if position is occupied
+      // Skip occupied positions
       if (board && board[row][col] !== '') {
         values[pos] = 0
-        return
+        continue
       }
 
-      // Count win transitions this position contributes to
-      // In our Petri net, each piece place connects to win pattern transitions
-      let winTransitionCount = 0
+      // Create a hypothetical board with this move
+      const hypotheticalBoard = board
+        ? board.map(r => [...r])
+        : [['', '', ''], ['', '', ''], ['', '', '']]
+      hypotheticalBoard[row][col] = currentPlayer
 
-      WIN_PATTERN_INDICES.forEach(pattern => {
-        const posInPattern = pattern.some(([r, c]) => r === row && c === col)
-        if (!posInPattern) return
+      // Build Petri net for this hypothetical state
+      const model = buildTicTacToePetriNet(hypotheticalBoard, currentPlayer)
 
-        // Check if this pattern is still winnable for current player
-        if (board) {
-          const cells = pattern.map(([r, c]) => board[r][c])
-          const hasOpponent = cells.includes(opponent)
-          if (hasOpponent) return // Pattern blocked by opponent
+      if (Object.keys(model.transitions).length === 0) {
+        values[pos] = 0
+        continue
+      }
+
+      try {
+        const net = Solver.fromJSON(model)
+        const initialState = Solver.setState(net)
+        const rates = Solver.setRates(net)
+
+        // Run ODE simulation
+        const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
+        const sol = Solver.solve(prob, Solver.Tsit5(), {
+          dt: 0.1,
+          abstol: 1e-4,
+          reltol: 1e-3,
+          adaptive: true
+        })
+
+        // Get final state from solution
+        const finalState = sol.u ? sol.u[sol.u.length - 1] : null
+        if (!finalState) {
+          values[pos] = 0
+          continue
         }
 
-        // This position contributes to an active win transition
-        winTransitionCount++
-      })
+        // Find WinX and WinO indices in the state vector
+        const placeNames = Object.keys(model.places)
+        const winXIdx = placeNames.indexOf('WinX')
+        const winOIdx = placeNames.indexOf('WinO')
 
-      // The ODE-derived value is proportional to win transition connectivity
-      // Scale to match expected strategic values:
-      // Center (4 patterns) -> ~0.43, Corner (3 patterns) -> ~0.32, Edge (2 patterns) -> ~0.22
-      values[pos] = winTransitionCount > 0 ? (0.1 * winTransitionCount + 0.03) : 0
-    })
+        const winX = winXIdx >= 0 ? (finalState[winXIdx] || 0) : 0
+        const winO = winOIdx >= 0 ? (finalState[winOIdx] || 0) : 0
 
-    console.log('ODE simulation complete (topology-derived):', values)
-    console.log('Win transitions in net:', Object.keys(model.transitions).length)
-    console.log('Solution trajectory points:', sol.t?.length || 'N/A')
-    return { values, solution: sol, net, model }
+        // Strategic value = WinX - WinO (positive = good for X)
+        // Normalize and adjust for current player
+        let score = winX - winO
+        if (currentPlayer === 'O') {
+          score = -score // Flip for O's perspective
+        }
+
+        // Normalize to 0-1 range (values typically range from -1 to 1)
+        values[pos] = Math.max(0, Math.min(1, (score + 1) / 2))
+      } catch (e) {
+        console.warn(`ODE failed for position ${pos}:`, e.message)
+        values[pos] = 0
+      }
+    }
+
+    // Also run base simulation for logging
+    const baseModel = buildTicTacToePetriNet(board, currentPlayer)
+    let baseSol = null
+    try {
+      const net = Solver.fromJSON(baseModel)
+      const initialState = Solver.setState(net)
+      const rates = Solver.setRates(net)
+      const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
+      baseSol = Solver.solve(prob, Solver.Tsit5(), { dt: 0.1, abstol: 1e-4, reltol: 1e-3, adaptive: true })
+    } catch (e) {
+      console.warn('Base ODE simulation failed:', e.message)
+    }
+
+    console.log('ODE simulation complete (WinX-WinO per move):', values)
+    console.log('Current player:', currentPlayer)
+    return { values, solution: baseSol, model: baseModel }
   } catch (err) {
     console.error('ODE simulation failed:', err)
     return null
