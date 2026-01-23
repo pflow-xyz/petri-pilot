@@ -102,68 +102,7 @@ MCP tools for headless browser testing of generated apps. Allows LLM to run E2E 
 
 ## Known Issues
 
-### List View Status Shows "UNKNOWN"
-
-**Files:**
-- Backend: `pkg/codegen/golang/templates/api.go.tmpl` (`HandleAdminListInstances`)
-- Frontend: `pkg/codegen/golang/templates/frontend/main.js.tmpl` (`getStatus()`, `renderInstancesList()`)
-
-**Problem:** The list view shows "UNKNOWN" for instance status instead of the actual workflow state (e.g., "checked out", "no show").
-
-**Root Cause:** The `/admin/instances` API returns `eventstore.Instance` objects which only contain basic metadata (`id`, `version`), but NOT the `state` or `places` data. The `getStatus()` function in the frontend expects `inst.state` or `inst.places` to determine the current status.
-
-**Fix needed:** Either:
-1. Modify the list API to include state/places data for each instance (preferred)
-2. Add a separate `status` field to the list response
-3. Have the frontend fetch individual instance details (expensive)
-
----
-
-### Broken Import in serve_import.go
-
-**File:** `serve_import.go:8`
-
-**Error:** `could not import github.com/pflow-xyz/petri-pilot/generated`
-
-**Problem:** The `generated` package doesn't exist as a proper Go module.
-
----
-
-### Missing E2E Test for vet-clinic
-
-**Problem:** No Node.js e2e test exists for the vet-clinic example.
-
-**Location:** Should be added to `e2e/tests/vet-clinic.test.js`
-
-**Notes:**
-- vet-clinic needs to be in `examples/` directory for the test harness to find it
-- Test should cover workflow paths:
-  - Happy path: requested → scheduled → checked_in → in_progress → completed → checked_out
-  - No-show path: requested → scheduled → no_show
-  - Cancellation: cancel_requested, cancel_scheduled
-  - Lab workflow: send_to_lab → receive_results
-  - Referral: refer_out
-- RBAC should be tested (different roles for different transitions)
-
----
-
-### Dashboard API Returns HTML Instead of JSON
-
-**Problem:** The Dashboard page shows "Unable to load analytics" error.
-
-**Root Cause:** The `/api/admin/analytics` endpoint returns HTML (`<!doctype html>...`) instead of JSON. This appears to be a routing issue where the API endpoint is being caught by the SPA fallback route.
-
-**Discovered:** During Playwright testing of vet-clinic app.
-
----
-
-### Simulation API Returns HTML Instead of JSON
-
-**Problem:** The Simulation page fails with error: `Failed to start simulation: Unexpected token '<', "<!doctype "... is not valid JSON`
-
-**Root Cause:** The simulation status endpoint returns HTML instead of JSON. Same routing issue as Dashboard - API routes are falling through to the SPA fallback.
-
-**Discovered:** During Playwright testing of vet-clinic app.
+None currently tracked.
 
 ---
 
