@@ -1,0 +1,205 @@
+{
+  "name": "tic-tac-toe",
+  "version": "1.0.0",
+  "description": "Tic-tac-toe game modeled as a Petri net with ODE-based strategic analysis",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
+  "places": [
+    {"id": "p00", "initial": 1, "description": "Cell (0,0) empty"},
+    {"id": "p01", "initial": 1, "description": "Cell (0,1) empty"},
+    {"id": "p02", "initial": 1, "description": "Cell (0,2) empty"},
+    {"id": "p10", "initial": 1, "description": "Cell (1,0) empty"},
+    {"id": "p11", "initial": 1, "description": "Cell (1,1) empty - center"},
+    {"id": "p12", "initial": 1, "description": "Cell (1,2) empty"},
+    {"id": "p20", "initial": 1, "description": "Cell (2,0) empty"},
+    {"id": "p21", "initial": 1, "description": "Cell (2,1) empty"},
+    {"id": "p22", "initial": 1, "description": "Cell (2,2) empty"},
+    {"id": "x00", "initial": 0, "description": "X piece at (0,0)"},
+    {"id": "x01", "initial": 0, "description": "X piece at (0,1)"},
+    {"id": "x02", "initial": 0, "description": "X piece at (0,2)"},
+    {"id": "x10", "initial": 0, "description": "X piece at (1,0)"},
+    {"id": "x11", "initial": 0, "description": "X piece at (1,1)"},
+    {"id": "x12", "initial": 0, "description": "X piece at (1,2)"},
+    {"id": "x20", "initial": 0, "description": "X piece at (2,0)"},
+    {"id": "x21", "initial": 0, "description": "X piece at (2,1)"},
+    {"id": "x22", "initial": 0, "description": "X piece at (2,2)"},
+    {"id": "o00", "initial": 0, "description": "O piece at (0,0)"},
+    {"id": "o01", "initial": 0, "description": "O piece at (0,1)"},
+    {"id": "o02", "initial": 0, "description": "O piece at (0,2)"},
+    {"id": "o10", "initial": 0, "description": "O piece at (1,0)"},
+    {"id": "o11", "initial": 0, "description": "O piece at (1,1)"},
+    {"id": "o12", "initial": 0, "description": "O piece at (1,2)"},
+    {"id": "o20", "initial": 0, "description": "O piece at (2,0)"},
+    {"id": "o21", "initial": 0, "description": "O piece at (2,1)"},
+    {"id": "o22", "initial": 0, "description": "O piece at (2,2)"},
+    {"id": "x_turn", "initial": 1, "description": "X's turn to play"},
+    {"id": "o_turn", "initial": 0, "description": "O's turn to play"}
+  ],
+  "transitions": [
+    {"id": "x_play_00", "description": "X plays at (0,0)"},
+    {"id": "x_play_01", "description": "X plays at (0,1)"},
+    {"id": "x_play_02", "description": "X plays at (0,2)"},
+    {"id": "x_play_10", "description": "X plays at (1,0)"},
+    {"id": "x_play_11", "description": "X plays at (1,1) - center"},
+    {"id": "x_play_12", "description": "X plays at (1,2)"},
+    {"id": "x_play_20", "description": "X plays at (2,0)"},
+    {"id": "x_play_21", "description": "X plays at (2,1)"},
+    {"id": "x_play_22", "description": "X plays at (2,2)"},
+    {"id": "o_play_00", "description": "O plays at (0,0)"},
+    {"id": "o_play_01", "description": "O plays at (0,1)"},
+    {"id": "o_play_02", "description": "O plays at (0,2)"},
+    {"id": "o_play_10", "description": "O plays at (1,0)"},
+    {"id": "o_play_11", "description": "O plays at (1,1) - center"},
+    {"id": "o_play_12", "description": "O plays at (1,2)"},
+    {"id": "o_play_20", "description": "O plays at (2,0)"},
+    {"id": "o_play_21", "description": "O plays at (2,1)"},
+    {"id": "o_play_22", "description": "O plays at (2,2)"},
+    {"id": "reset", "description": "Reset game to initial state"}
+  ],
+  "arcs": [
+    {"from": "p00", "to": "x_play_00"},
+    {"from": "x_turn", "to": "x_play_00"},
+    {"from": "x_play_00", "to": "x00"},
+    {"from": "x_play_00", "to": "o_turn"},
+
+    {"from": "p01", "to": "x_play_01"},
+    {"from": "x_turn", "to": "x_play_01"},
+    {"from": "x_play_01", "to": "x01"},
+    {"from": "x_play_01", "to": "o_turn"},
+
+    {"from": "p02", "to": "x_play_02"},
+    {"from": "x_turn", "to": "x_play_02"},
+    {"from": "x_play_02", "to": "x02"},
+    {"from": "x_play_02", "to": "o_turn"},
+
+    {"from": "p10", "to": "x_play_10"},
+    {"from": "x_turn", "to": "x_play_10"},
+    {"from": "x_play_10", "to": "x10"},
+    {"from": "x_play_10", "to": "o_turn"},
+
+    {"from": "p11", "to": "x_play_11"},
+    {"from": "x_turn", "to": "x_play_11"},
+    {"from": "x_play_11", "to": "x11"},
+    {"from": "x_play_11", "to": "o_turn"},
+
+    {"from": "p12", "to": "x_play_12"},
+    {"from": "x_turn", "to": "x_play_12"},
+    {"from": "x_play_12", "to": "x12"},
+    {"from": "x_play_12", "to": "o_turn"},
+
+    {"from": "p20", "to": "x_play_20"},
+    {"from": "x_turn", "to": "x_play_20"},
+    {"from": "x_play_20", "to": "x20"},
+    {"from": "x_play_20", "to": "o_turn"},
+
+    {"from": "p21", "to": "x_play_21"},
+    {"from": "x_turn", "to": "x_play_21"},
+    {"from": "x_play_21", "to": "x21"},
+    {"from": "x_play_21", "to": "o_turn"},
+
+    {"from": "p22", "to": "x_play_22"},
+    {"from": "x_turn", "to": "x_play_22"},
+    {"from": "x_play_22", "to": "x22"},
+    {"from": "x_play_22", "to": "o_turn"},
+
+    {"from": "p00", "to": "o_play_00"},
+    {"from": "o_turn", "to": "o_play_00"},
+    {"from": "o_play_00", "to": "o00"},
+    {"from": "o_play_00", "to": "x_turn"},
+
+    {"from": "p01", "to": "o_play_01"},
+    {"from": "o_turn", "to": "o_play_01"},
+    {"from": "o_play_01", "to": "o01"},
+    {"from": "o_play_01", "to": "x_turn"},
+
+    {"from": "p02", "to": "o_play_02"},
+    {"from": "o_turn", "to": "o_play_02"},
+    {"from": "o_play_02", "to": "o02"},
+    {"from": "o_play_02", "to": "x_turn"},
+
+    {"from": "p10", "to": "o_play_10"},
+    {"from": "o_turn", "to": "o_play_10"},
+    {"from": "o_play_10", "to": "o10"},
+    {"from": "o_play_10", "to": "x_turn"},
+
+    {"from": "p11", "to": "o_play_11"},
+    {"from": "o_turn", "to": "o_play_11"},
+    {"from": "o_play_11", "to": "o11"},
+    {"from": "o_play_11", "to": "x_turn"},
+
+    {"from": "p12", "to": "o_play_12"},
+    {"from": "o_turn", "to": "o_play_12"},
+    {"from": "o_play_12", "to": "o12"},
+    {"from": "o_play_12", "to": "x_turn"},
+
+    {"from": "p20", "to": "o_play_20"},
+    {"from": "o_turn", "to": "o_play_20"},
+    {"from": "o_play_20", "to": "o20"},
+    {"from": "o_play_20", "to": "x_turn"},
+
+    {"from": "p21", "to": "o_play_21"},
+    {"from": "o_turn", "to": "o_play_21"},
+    {"from": "o_play_21", "to": "o21"},
+    {"from": "o_play_21", "to": "x_turn"},
+
+    {"from": "p22", "to": "o_play_22"},
+    {"from": "o_turn", "to": "o_play_22"},
+    {"from": "o_play_22", "to": "o22"},
+    {"from": "o_play_22", "to": "x_turn"}
+  ],
+  "events": [
+    {
+      "id": "x_played",
+      "name": "XPlayed",
+      "description": "X placed a piece on the board",
+      "fields": [
+        {"name": "row", "type": "integer", "required": true},
+        {"name": "col", "type": "integer", "required": true}
+      ]
+    },
+    {
+      "id": "o_played",
+      "name": "OPlayed",
+      "description": "O placed a piece on the board",
+      "fields": [
+        {"name": "row", "type": "integer", "required": true},
+        {"name": "col", "type": "integer", "required": true}
+      ]
+    },
+    {
+      "id": "game_reset",
+      "name": "GameReset",
+      "description": "Game was reset to initial state"
+    }
+  ],
+  "metadata": {
+    "winPatterns": [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
+    ],
+    "strategicValues": {
+      "00": {"value": 0.316, "type": "corner", "patterns": 3},
+      "01": {"value": 0.218, "type": "edge", "patterns": 2},
+      "02": {"value": 0.316, "type": "corner", "patterns": 3},
+      "10": {"value": 0.218, "type": "edge", "patterns": 2},
+      "11": {"value": 0.430, "type": "center", "patterns": 4},
+      "12": {"value": 0.218, "type": "edge", "patterns": 2},
+      "20": {"value": 0.316, "type": "corner", "patterns": 3},
+      "21": {"value": 0.218, "type": "edge", "patterns": 2},
+      "22": {"value": 0.316, "type": "corner", "patterns": 3}
+    },
+    "odeSimulation": {
+      "description": "Strategic values derived from Petri net ODE simulation",
+      "solver": "pflow.xyz",
+      "interpretation": "Higher values indicate positions with more winning potential"
+    }
+  }
+}
