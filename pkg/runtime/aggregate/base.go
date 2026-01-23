@@ -93,6 +93,10 @@ type Transition struct {
 	// Outputs are the output places with produced token counts.
 	Outputs map[string]int
 
+	// Inhibitors are places that block firing if they have any tokens.
+	// Unlike Inputs, inhibitor arcs don't consume tokens - they just check for absence.
+	Inhibitors map[string]bool
+
 	// Guard is an optional condition that must be true to fire.
 	Guard func(state any) bool
 
@@ -169,6 +173,13 @@ func (sm *StateMachine[S]) CanFire(transitionID string) bool {
 		}
 	}
 
+	// Check inhibitor arcs - blocked if any inhibitor place has tokens
+	for place := range t.Inhibitors {
+		if sm.places[place] > 0 {
+			return false
+		}
+	}
+
 	// Check guard
 	if t.Guard != nil && !t.Guard(sm.state) {
 		return false
@@ -203,6 +214,13 @@ func (sm *StateMachine[S]) canFireLocked(transitionID string) bool {
 		}
 	}
 
+	// Check inhibitor arcs - blocked if any inhibitor place has tokens
+	for place := range t.Inhibitors {
+		if sm.places[place] > 0 {
+			return false
+		}
+	}
+
 	if t.Guard != nil && !t.Guard(sm.state) {
 		return false
 	}
@@ -226,6 +244,13 @@ func (sm *StateMachine[S]) Fire(transitionID string, data any) (*runtime.Event, 
 	for place, required := range t.Inputs {
 		if sm.places[place] < required {
 			return nil, fmt.Errorf("%w: insufficient tokens in %s", ErrInvalidTransition, place)
+		}
+	}
+
+	// Check inhibitor arcs - blocked if any inhibitor place has tokens
+	for place := range t.Inhibitors {
+		if sm.places[place] > 0 {
+			return nil, fmt.Errorf("%w: inhibited by tokens in %s", ErrInvalidTransition, place)
 		}
 	}
 

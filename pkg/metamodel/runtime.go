@@ -339,22 +339,31 @@ func (r *Runtime) DataMap(stateID string) map[string]any {
 // Enabled returns true if an action can execute.
 // For TokenState inputs: checks token count >= weight (default 1)
 // For DataState inputs: always enabled (data transformation doesn't consume)
+// For inhibitor arcs: blocks if source has any tokens (inhibitor semantics)
 func (r *Runtime) Enabled(actionID string) bool {
 	a := r.Schema.ActionByID(actionID)
 	if a == nil {
 		return false
 	}
 
-	// Check all input arcs from TokenStates have sufficient tokens
+	// Check all input arcs from TokenStates
 	for _, arc := range r.Schema.InputArcs(actionID) {
 		st := r.Schema.StateByID(arc.Source)
 		if st != nil && st.IsToken() {
-			weight := arc.Weight
-			if weight == 0 {
-				weight = 1
-			}
-			if r.Tokens(arc.Source) < weight {
-				return false
+			if arc.IsInhibitor() {
+				// Inhibitor arc: blocked if source has ANY tokens
+				if r.Tokens(arc.Source) > 0 {
+					return false
+				}
+			} else {
+				// Normal arc: need sufficient tokens
+				weight := arc.Weight
+				if weight == 0 {
+					weight = 1
+				}
+				if r.Tokens(arc.Source) < weight {
+					return false
+				}
 			}
 		}
 	}
@@ -383,6 +392,10 @@ func (r *Runtime) Execute(actionID string) error {
 
 	// Process input arcs
 	for _, arc := range r.Schema.InputArcs(actionID) {
+		// Skip inhibitor arcs - they are read-only
+		if arc.IsInhibitor() {
+			continue
+		}
 		st := r.Schema.StateByID(arc.Source)
 		if st != nil && st.IsToken() {
 			weight := arc.Weight
@@ -468,6 +481,11 @@ func (r *Runtime) ExecuteWithBindings(actionID string, bindings Bindings) error 
 func (r *Runtime) applyArcs(actionID string, bindings Bindings) {
 	// Process input arcs (consume from source states)
 	for _, arc := range r.Schema.InputArcs(actionID) {
+		// Skip inhibitor arcs - they are read-only and don't consume tokens
+		if arc.IsInhibitor() {
+			continue
+		}
+
 		st := r.Schema.StateByID(arc.Source)
 		if st == nil {
 			continue

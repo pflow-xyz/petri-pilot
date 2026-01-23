@@ -151,10 +151,17 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionRequestAuth,
 		EventType: EventTypeRequestAuth,
 		Inputs: map[string]int{
-			PlaceCompleted: 1,
+			// No input arcs - can fire anytime during the appointment
 		},
 		Outputs: map[string]int{
 			PlaceAwaitingAuthorization: 1,
+		},
+		Inhibitors: map[string]bool{
+			// Cannot request auth once appointment is closed
+			PlaceCheckedOut: true,
+			PlaceCancelled:  true,
+			PlaceNoShow:     true,
+			PlaceReferred:   true,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -164,7 +171,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceAwaitingAuthorization: 1,
 		},
 		Outputs: map[string]int{
-			PlaceCheckedOut: 1,
+			// No output - just clears the awaiting_authorization state
 		},
 	})
 	sm.AddTransition(aggregate.Transition{

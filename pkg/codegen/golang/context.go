@@ -533,9 +533,10 @@ type TransitionContext struct {
 
 // ArcContext provides template-friendly access to arc data.
 type ArcContext struct {
-	PlaceID   string // The place ID
-	ConstName string // e.g., "PlaceReceived"
-	Weight    int    // Token weight (default 1)
+	PlaceID     string // The place ID
+	ConstName   string // e.g., "PlaceReceived"
+	Weight      int    // Token weight (default 1)
+	IsInhibitor bool   // True if this is an inhibitor arc (blocks if place has tokens)
 }
 
 // BindingContext provides template-friendly access to transition bindings.
@@ -921,6 +922,7 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 	// Inputs: arcs where arc.To == transition.ID (place -> transition)
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
 	// Note: Data state places are excluded from token counting - guards handle those
+	// Inhibitor arcs are included in inputs but marked with IsInhibitor=true
 	inputArcs := make(map[string][]ArcContext)
 	outputArcs := make(map[string][]ArcContext)
 
@@ -935,20 +937,23 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 		// Skip data state places - they don't use token counting
 		if placeIDs[arc.From] && !placeIDs[arc.To] && !dataPlaceIDs[arc.From] {
 			inputArcs[arc.To] = append(inputArcs[arc.To], ArcContext{
-				PlaceID:   arc.From,
-				ConstName: ToConstName("Place", arc.From),
-				Weight:    weight,
+				PlaceID:     arc.From,
+				ConstName:   ToConstName("Place", arc.From),
+				Weight:      weight,
+				IsInhibitor: arc.IsInhibitor(),
 			})
 		}
 
 		// If arc goes from something that's not a place to a place,
 		// it's an output from a transition
 		// Skip data state places - they don't use token counting
-		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] {
+		// Note: Inhibitor arcs don't have outputs (they're read-only)
+		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] && !arc.IsInhibitor() {
 			outputArcs[arc.From] = append(outputArcs[arc.From], ArcContext{
-				PlaceID:   arc.To,
-				ConstName: ToConstName("Place", arc.To),
-				Weight:    weight,
+				PlaceID:     arc.To,
+				ConstName:   ToConstName("Place", arc.To),
+				Weight:      weight,
+				IsInhibitor: false,
 			})
 		}
 	}

@@ -105,16 +105,35 @@ type Action struct {
 	Bindings map[string]string `json:"bindings,omitempty"`
 }
 
+// ArcType discriminates between normal and inhibitor arcs.
+type ArcType string
+
+const (
+	// NormalArc consumes tokens from input places and produces tokens to output places.
+	NormalArc ArcType = ""
+
+	// InhibitorArc prevents firing if the source place has tokens.
+	// Inhibitor arcs are read-only - they don't consume or produce tokens.
+	InhibitorArc ArcType = "inhibitor"
+)
+
 // Arc connects states and actions, defining state transformation flow.
 // Semantics depend on the connected state's Kind:
 //   - TokenState: arc weight is 1, decrement on input, increment on output
 //   - DataState: Keys specify map access path, Value specifies the binding name
+//   - InhibitorArc: prevents firing if source has tokens (read-only)
 type Arc struct {
-	Source string   `json:"source"`          // state or action ID
-	Target string   `json:"target"`          // state or action ID
-	Keys   []string `json:"keys,omitempty"`  // for DataState: binding names for map keys
-	Value  string   `json:"value,omitempty"` // for DataState: binding name for value (default: "amount")
+	Source string   `json:"source"`           // state or action ID
+	Target string   `json:"target"`           // state or action ID
+	Keys   []string `json:"keys,omitempty"`   // for DataState: binding names for map keys
+	Value  string   `json:"value,omitempty"`  // for DataState: binding name for value (default: "amount")
 	Weight int      `json:"weight,omitempty"` // for TokenState: arc weight (default: 1)
+	Type   ArcType  `json:"type,omitempty"`   // arc type: "" (normal) or "inhibitor"
+}
+
+// IsInhibitor returns true if this is an inhibitor arc.
+func (a *Arc) IsInhibitor() bool {
+	return a.Type == InhibitorArc
 }
 
 // Constraint represents a property that must hold across all snapshots.
@@ -314,6 +333,7 @@ func (s *Schema) ToModel() *schema.Model {
 			Weight: arc.Weight,
 			Keys:   arc.Keys,
 			Value:  arc.Value,
+			Type:   schema.ArcType(arc.Type),
 		}
 		if modelArc.Weight == 0 {
 			modelArc.Weight = 1

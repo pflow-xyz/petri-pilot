@@ -53,34 +53,20 @@ petri_preview(model='...', file='workflow')  # Preview Petri net definition
 
 ### 3. Start and Test the Service
 
-Start the generated service:
+Start the generated service via MCP or directly:
 
-```
+```bash
+# Via MCP tool
 service_start(directory='/path/to/generated/app', port=8080)
+
+# Or directly
+cd generated/my-app && go build && ./my-app
 ```
 
-Launch a browser session to test the UI:
+For UI testing, use the e2e test suite (see E2E Tests section below):
 
-```
-e2e_start_browser(url='http://localhost:8080')
-```
-
-Take screenshots to verify the UI:
-
-```
-e2e_screenshot(session_id='browser-1')
-```
-
-Execute JavaScript to interact with the app:
-
-```
-e2e_eval(session_id='browser-1', code='await window.pilot.loginAs(["admin"]); return window.pilot.getEnabled();')
-```
-
-Check for errors in console/network:
-
-```
-e2e_events(session_id='browser-1', types='console,exception')
+```bash
+cd e2e && npm run test:headed
 ```
 
 ### 4. Iterate
@@ -88,8 +74,7 @@ e2e_events(session_id='browser-1', types='console,exception')
 If something isn't working:
 
 1. Check service logs: `service_logs(service_id='svc-1')`
-2. Check browser events: `e2e_events(session_id='browser-1')`
-3. Modify the model using `petri_extend`:
+2. Modify the model using `petri_extend`:
    ```
    petri_extend(model='...', operations='[{"op":"add_place","id":"cancelled"},{"op":"add_transition","id":"cancel"},{"op":"add_arc","from":"pending","to":"cancel"},{"op":"add_arc","from":"cancel","to":"cancelled"}]')
    ```
@@ -106,15 +91,13 @@ If something isn't working:
 When done testing:
 
 ```
-e2e_stop_browser(session_id='browser-1')
 service_stop(service_id='svc-1')
 ```
 
-List running services/sessions:
+List running services:
 
 ```
 service_list()
-e2e_list_sessions()
 ```
 
 ## Architecture
@@ -165,18 +148,37 @@ make build-examples     # Regenerate and build all examples
 
 ### E2E Tests
 
-E2E tests use Puppeteer with Chrome. On macOS, set the Chrome path:
+E2E tests use Jest + Puppeteer for browser automation. Run locally:
 
 ```bash
 cd e2e
+npm install        # First time only
+npm test           # Run all tests
+```
+
+For interactive debugging:
+
+```bash
+npm run test:headed    # Watch tests run in browser
+npm run test:debug     # Debug mode with visible browser
+```
+
+To test a specific app:
+
+```bash
+npm run test:app blog-post         # Test single app
+npm test -- --testPathPattern="blog-post|task-manager"  # Multiple apps
+```
+
+On macOS, set the Chrome path if needed:
+
+```bash
 PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm test
 ```
 
-On Linux (CI), the default `/usr/bin/chromium` is used.
+### MCP Service Tools
 
-### MCP Testing Tools
-
-The MCP server provides tools for testing generated services interactively during development. These tools allow you to start services, launch headless browsers, and execute JavaScript in the browser context.
+The MCP server provides tools for managing generated services during development.
 
 #### Service Management
 
@@ -196,120 +198,6 @@ mcp__petri-pilot__service_stop(service_id="svc-1")
 # List all running services
 mcp__petri-pilot__service_list()
 ```
-
-#### Browser Testing
-
-```
-# Start a headless browser session
-mcp__petri-pilot__e2e_start_browser(url="http://localhost:8080")
-
-# Take a screenshot
-mcp__petri-pilot__e2e_screenshot(session_id="browser-1")
-
-# Execute JavaScript directly in browser (preferred - works without debug session)
-mcp__petri-pilot__e2e_run(session_id="browser-1", code="document.title")
-
-# Execute JavaScript via debug API (requires debug session endpoint)
-mcp__petri-pilot__e2e_eval(session_id="browser-1", code="return document.title")
-
-# Navigate to a different URL
-mcp__petri-pilot__e2e_navigate(session_id="browser-1", url="http://localhost:8080/dashboard")
-
-# Click an element by CSS selector
-mcp__petri-pilot__e2e_click(session_id="browser-1", selector=".btn-primary")
-
-# Type text into an input field
-mcp__petri-pilot__e2e_type(session_id="browser-1", selector="#username", text="admin")
-
-# Wait for element to be visible or condition to be true
-mcp__petri-pilot__e2e_wait(session_id="browser-1", selector=".success-message")
-mcp__petri-pilot__e2e_wait(session_id="browser-1", condition="window.loaded === true")
-
-# Get captured browser events (console logs, network requests, exceptions)
-mcp__petri-pilot__e2e_events(session_id="browser-1", types="console,exception")
-
-# Stop browser session
-mcp__petri-pilot__e2e_stop_browser(session_id="browser-1")
-```
-
-**Note:** Prefer `e2e_run` over `e2e_eval` - it executes JavaScript directly via chromedp without requiring a debug session API endpoint.
-
-#### Using the Pilot API
-
-Generated frontends include a `window.pilot` API for testing:
-
-```javascript
-// Authentication
-await window.pilot.loginAs(['admin', 'editor'])
-await window.pilot.logout()
-
-// Instance management
-await window.pilot.create()
-await window.pilot.view(instanceId)
-await window.pilot.refresh()
-
-// Execute transitions
-await window.pilot.action('submit', { field: 'value' })
-
-// Query state
-window.pilot.getCurrentInstance()
-window.pilot.getEnabled()
-window.pilot.getEvents()
-
-// Assertions
-window.pilot.assertState({ place: 1 })
-window.pilot.assertEnabled(['transition1', 'transition2'])
-```
-
-#### Example: Testing a Service
-
-```javascript
-// 1. Start service and browser
-service_start(directory="/path/to/generated/blog-post", port=8080)
-e2e_start_browser(url="http://localhost:8080")
-
-// 2. Login using e2e_run (executes JS directly via chromedp)
-e2e_run(session_id="browser-1", code=`(async () => {
-  const resp = await fetch('/api/debug/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login: 'test', roles: ['admin', 'author'] })
-  });
-  const data = await resp.json();
-  localStorage.setItem('auth', JSON.stringify(data));
-  return data;
-})()`)
-
-// 3. Click to create a new instance
-e2e_click(session_id="browser-1", selector=".btn-create")
-e2e_wait(session_id="browser-1", selector=".instance-detail")
-
-// 4. Execute a workflow transition via API
-e2e_run(session_id="browser-1", code=`(async () => {
-  const auth = JSON.parse(localStorage.getItem('auth'));
-  const resp = await fetch('/api/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + auth.token },
-    body: JSON.stringify({ aggregate_id: 'xxx', data: {} })
-  });
-  return await resp.json();
-})()`)
-
-// 5. Take screenshot to verify UI
-e2e_screenshot(session_id="browser-1")
-
-// 6. Cleanup
-e2e_stop_browser(session_id="browser-1")
-service_stop(service_id="svc-1")
-```
-
-#### Notes
-
-- Browser session IDs are managed by the MCP server and increment globally
-- **Use `e2e_run` for JavaScript execution** - it works directly via chromedp without needing a debug session
-- `e2e_eval` requires the app to have a `/api/debug/sessions/:id/eval` endpoint (may not exist)
-- For async code in `e2e_run`, wrap in an IIFE: `(async () => { ... })()`
-- The pilot API methods are async - use `await`
 
 ## Monitoring GitHub Actions
 

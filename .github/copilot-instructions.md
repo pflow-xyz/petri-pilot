@@ -89,26 +89,15 @@ service_health(service_id="svc-1")
 service_logs(service_id="svc-1", lines=50)
 ```
 
-### 2. Test with Headless Browser
+### 2. Test with Puppeteer
 
-Launch browser and take screenshots to verify UI:
-```
-e2e_start_browser(url="http://localhost:8080")
-e2e_screenshot(session_id="browser-1")
-```
+Use Jest + Puppeteer for UI testing. See `e2e/` directory for test examples.
 
-Execute JavaScript to test workflows:
-```
-e2e_eval(session_id="browser-1", code=`
-  await window.pilot.loginAs(['admin']);
-  await window.pilot.create();
-  return window.pilot.getEnabled();
-`)
-```
-
-Check for console errors or failed requests:
-```
-e2e_events(session_id="browser-1", types="console,exception")
+```bash
+cd e2e
+npm install     # First time only
+npm test        # Run all tests
+npm run test:headed  # Watch tests in browser
 ```
 
 ### 3. Validate README
@@ -120,9 +109,8 @@ markdown_preview(file_path="/absolute/path/to/generated/app/README.md")
 
 ### 4. Cleanup
 
-Always stop services and browsers when done:
+Always stop services when done:
 ```
-e2e_stop_browser(session_id="browser-1")
 service_stop(service_id="svc-1")
 ```
 

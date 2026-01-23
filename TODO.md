@@ -72,31 +72,16 @@ Parallel e2e test execution with 5 test groups:
 
 ---
 
-### MCP Headless Browser Testing (e2e_* tools) ✅
+### E2E Testing
 
-MCP tools for headless browser testing of generated apps. Allows LLM to run E2E tests via eval commands.
+Browser testing uses Jest + Puppeteer. See `e2e/` directory for test examples.
 
-**Implemented:**
-- `e2e_start_browser` - Launches headless Chrome via chromedp
-- `e2e_list_sessions` - Lists active browser sessions
-- `e2e_eval` - Evaluates JavaScript in browser via debug WebSocket
-- `e2e_stop_browser` - Closes browser session
-- `e2e_screenshot` - Captures browser screenshot
-
-**Fixed issues:**
-- WebSocket sessions now stay connected (fixed by using `context.Background()` for browser allocator)
-- Port configuration via `E2E_PORT` environment variable
-
-**Usage notes:**
-- Eval code must use `return await` prefix for async functions
-  - Example: `return await pilot.loginAs(['admin'])` not `loginAs(['admin'])`
-- Token amounts should be small (1-9) due to 18-decimal scaling (int64 overflow with large amounts)
-- Set `PUPPETEER_EXECUTABLE_PATH` for custom Chrome location
-
-**Files:**
-- `pkg/mcp/e2e.go` - E2E manager and tool handlers
-- `pkg/mcp/e2e_test.go` - Tests
-- `pkg/mcp/server.go` - Tool registration
+```bash
+cd e2e
+npm install     # First time only
+npm test        # Run all tests
+npm run test:headed  # Watch tests in browser
+```
 
 ---
 

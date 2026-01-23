@@ -359,15 +359,36 @@ type Transition struct {
 	LegacyBindings map[string]string `json:"legacy_bindings,omitempty"` // Use Bindings instead
 }
 
+// ArcType discriminates between normal and inhibitor arcs.
+type ArcType string
+
+const (
+	// NormalArc consumes tokens from input places and produces tokens to output places.
+	NormalArc ArcType = ""
+
+	// InhibitorArc prevents firing if the source place has tokens.
+	// Inhibitor arcs are read-only - they don't consume or produce tokens.
+	InhibitorArc ArcType = "inhibitor"
+)
+
 // Arc represents a flow between place and transition.
 type Arc struct {
 	From   string `json:"from"`
 	To     string `json:"to"`
 	Weight int    `json:"weight,omitempty"` // default 1
 
+	// Type specifies the arc semantics: "" (normal) or "inhibitor"
+	// Normal arcs consume/produce tokens; inhibitor arcs block if source has tokens
+	Type ArcType `json:"type,omitempty"`
+
 	// Extended fields for data flow
 	Keys  []string `json:"keys,omitempty"`  // Map access keys for data places
 	Value string   `json:"value,omitempty"` // Value binding name (default: "amount")
+}
+
+// IsInhibitor returns true if this is an inhibitor arc.
+func (a *Arc) IsInhibitor() bool {
+	return a.Type == InhibitorArc
 }
 
 // Constraint represents an invariant on the model.

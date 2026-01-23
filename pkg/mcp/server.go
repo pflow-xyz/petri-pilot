@@ -47,20 +47,6 @@ func NewServer() *server.MCPServer {
 	s.AddTool(delegateStatusTool(), handleDelegateStatus)
 	s.AddTool(delegateTasksTool(), handleDelegateTasks)
 
-	// E2E testing tools for headless browser automation
-	s.AddTool(e2eStartBrowserTool(), handleE2EStartBrowser)
-	s.AddTool(e2eListSessionsTool(), handleE2EListSessions)
-	s.AddTool(e2eEvalTool(), handleE2EEval)
-	s.AddTool(e2eStopBrowserTool(), handleE2EStopBrowser)
-	s.AddTool(e2eScreenshotTool(), handleE2EScreenshot)
-	s.AddTool(e2eEventsTool(), handleE2EEvents)
-	s.AddTool(e2eNavigateTool(), handleE2ENavigate)
-	s.AddTool(e2eClickTool(), handleE2EClick)
-	s.AddTool(e2eTypeTool(), handleE2EType)
-	s.AddTool(e2eRunTool(), handleE2ERun)
-	s.AddTool(e2eWaitTool(), handleE2EWait)
-	s.AddTool(markdownPreviewTool(), handleMarkdownPreview)
-
 	// Service management tools for controlling generated services
 	for _, st := range ServiceTools() {
 		s.AddTool(st.Tool, st.Handler)

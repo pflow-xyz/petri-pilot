@@ -103,7 +103,9 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventType{{.FuncName}},
 		Inputs: map[string]int{
 {{- range .Inputs}}
+{{- if not .IsInhibitor}}
 			{{.ConstName}}: {{.Weight}},
+{{- end}}
 {{- end}}
 		},
 		Outputs: map[string]int{
@@ -111,6 +113,17 @@ func NewAggregate(id string) *Aggregate {
 			{{.ConstName}}: {{.Weight}},
 {{- end}}
 		},
+{{- $hasInhibitors := false}}
+{{- range .Inputs}}{{if .IsInhibitor}}{{$hasInhibitors = true}}{{end}}{{end}}
+{{- if $hasInhibitors}}
+		Inhibitors: map[string]bool{
+{{- range .Inputs}}
+{{- if .IsInhibitor}}
+			{{.ConstName}}: true,
+{{- end}}
+{{- end}}
+		},
+{{- end}}
 	})
 {{- end}}
 
