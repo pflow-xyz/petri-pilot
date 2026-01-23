@@ -1,6 +1,14 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
+  // Serve custom/ directory as public assets
+  publicDir: 'custom',
+  resolve: {
+    alias: {
+      '/custom': resolve(__dirname, 'custom'),
+    },
+  },
   server: {
     proxy: {
       '/api': {

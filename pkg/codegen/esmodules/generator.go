@@ -24,8 +24,9 @@ type Options struct {
 
 // GeneratedFile represents a generated file's content.
 type GeneratedFile struct {
-	Name    string // File path relative to output dir (e.g., "src/main.js")
-	Content []byte
+	Name         string // File path relative to output dir (e.g., "src/main.js")
+	Content      []byte
+	SkipIfExists bool // If true, don't overwrite existing files (user-customizable)
 }
 
 // Generator generates frontend code from Petri net models.
@@ -84,6 +85,14 @@ func (g *Generator) Generate(model *schema.Model) ([]string, error) {
 			return nil, fmt.Errorf("creating directory %s: %w", dir, err)
 		}
 
+		// Skip files marked as "generate once" if they already exist
+		if file.SkipIfExists {
+			if _, err := os.Stat(path); err == nil {
+				// File exists, skip it to preserve user customizations
+				continue
+			}
+		}
+
 		if err := os.WriteFile(path, file.Content, 0644); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", file.Name, err)
 		}
@@ -131,8 +140,9 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 		}
 
 		files = append(files, GeneratedFile{
-			Name:    g.templates.OutputFileName(name),
-			Content: content,
+			Name:         g.templates.OutputFileName(name),
+			Content:      content,
+			SkipIfExists: g.templates.ShouldSkipIfExists(name),
 		})
 	}
 

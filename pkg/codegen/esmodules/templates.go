@@ -25,12 +25,15 @@ const (
 	TemplateSimulation  = "simulation"
 	TemplateBlobs       = "blobs"
 	TemplateWallet      = "wallet"
+	TemplateComponents  = "components"
+	TemplateTheme       = "theme"
 )
 
 // templateInfo maps template names to their file names and output files.
 var templateInfo = map[string]struct {
-	File   string
-	Output string
+	File         string
+	Output       string
+	SkipIfExists bool // If true, don't overwrite existing files (user-customizable)
 }{
 	TemplatePackageJSON: {File: "package_json.tmpl", Output: "package.json"},
 	TemplateViteConfig:  {File: "vite_config.tmpl", Output: "vite.config.js"},
@@ -45,6 +48,8 @@ var templateInfo = map[string]struct {
 	TemplateSimulation:  {File: "simulation.tmpl", Output: "src/simulation.js"},
 	TemplateBlobs:       {File: "blobs.tmpl", Output: "src/blobs.js"},
 	TemplateWallet:      {File: "wallet.tmpl", Output: "src/wallet.js"},
+	TemplateComponents:  {File: "components.tmpl", Output: "custom/components.js", SkipIfExists: true},
+	TemplateTheme:       {File: "theme.tmpl", Output: "custom/theme.css", SkipIfExists: true},
 }
 
 // Templates holds parsed templates for code generation.
@@ -99,6 +104,14 @@ func (t *Templates) OutputFileName(name string) string {
 	return name + ".js"
 }
 
+// ShouldSkipIfExists returns true if this template should not overwrite existing files.
+func (t *Templates) ShouldSkipIfExists(name string) bool {
+	if info, ok := templateInfo[name]; ok {
+		return info.SkipIfExists
+	}
+	return false
+}
+
 // AllTemplateNames returns template names for generation.
 func AllTemplateNames() []string {
 	return []string{
@@ -113,5 +126,7 @@ func AllTemplateNames() []string {
 		TemplateEvents,
 		TemplateAdmin,
 		TemplateSimulation,
+		TemplateComponents,
+		TemplateTheme,
 	}
 }

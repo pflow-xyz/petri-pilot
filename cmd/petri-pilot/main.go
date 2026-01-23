@@ -45,6 +45,8 @@ func main() {
 		cmdDelegate(os.Args[2:])
 	case "serve":
 		cmdServe(os.Args[2:])
+	case "service":
+		cmdService(os.Args[2:])
 	case "mcp":
 		cmdMcp()
 	case "schema":
@@ -75,6 +77,7 @@ Commands:
   codegen     Generate backend application code from a validated model
   frontend    Generate vanilla JavaScript ES modules frontend from a validated model
   serve       Run a registered service by name
+  service     Manage running services (list, stop, logs, stats, health)
   delegate    Delegate tasks to GitHub Copilot coding agent
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
   schema      Print the JSON Schema for Petri net models
@@ -114,6 +117,12 @@ Examples:
 
   # Run a specific service
   petri-pilot serve blog-post -port 8080
+
+  # List running services
+  petri-pilot service list
+
+  # Stop a service
+  petri-pilot service stop svc-1
 
 For more information, see: https://github.com/pflow-xyz/petri-pilot`)
 }

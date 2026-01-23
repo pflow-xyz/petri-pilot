@@ -812,3 +812,97 @@ func getIntParam(request mcp.CallToolRequest, name string, defaultVal int) int {
 	}
 	return defaultVal
 }
+
+// CLI-accessible functions
+
+// ServiceInfo represents a service for CLI output.
+type ServiceInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Directory string `json:"directory"`
+	URL       string `json:"url"`
+	PID       int    `json:"pid"`
+	Status    string `json:"status"`
+	StartedAt string `json:"started_at"`
+}
+
+// ListServices returns all tracked services for CLI use.
+func ListServices() ([]ServiceInfo, error) {
+	services, err := svcManager.List()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]ServiceInfo, len(services))
+	for i, svc := range services {
+		status := "stopped"
+		if isRunning(svc.PID) {
+			status = "running"
+		}
+		result[i] = ServiceInfo{
+			ID:        svc.ID,
+			Name:      svc.Name,
+			Directory: svc.Directory,
+			URL:       svc.URL,
+			PID:       svc.PID,
+			Status:    status,
+			StartedAt: svc.StartedAt.Format(time.RFC3339),
+		}
+	}
+	return result, nil
+}
+
+// StopService stops a service by ID for CLI use.
+func StopService(id string) error {
+	return svcManager.Stop(id)
+}
+
+// ServiceLogs returns log lines for a service.
+func ServiceLogs(id string, lines int, stream string) ([]string, error) {
+	return svcManager.Logs(id, lines, stream)
+}
+
+// GetServiceStats returns statistics for a service.
+func GetServiceStats(id string) (*ServiceStats, error) {
+	return svcManager.Stats(id)
+}
+
+// HealthCheckResult represents health check output.
+type HealthCheckResult struct {
+	ServiceID  string          `json:"service_id"`
+	URL        string          `json:"url"`
+	StatusCode int             `json:"status_code"`
+	Body       json.RawMessage `json:"body"`
+}
+
+// CheckServiceHealth checks the health endpoint of a service.
+func CheckServiceHealth(id string) (*HealthCheckResult, error) {
+	svc, ok, err := svcManager.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("service not found: %s", id)
+	}
+
+	if !isRunning(svc.PID) {
+		return nil, fmt.Errorf("service %s is not running", id)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	healthURL := svc.URL + "/health"
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		return nil, fmt.Errorf("health check failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	return &HealthCheckResult{
+		ServiceID:  id,
+		URL:        healthURL,
+		StatusCode: resp.StatusCode,
+		Body:       json.RawMessage(body),
+	}, nil
+}

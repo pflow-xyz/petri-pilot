@@ -1028,11 +1028,16 @@ async function renderFormPage() {
 async function renderDashboardPage() {
   const app = document.getElementById('app')
   app.innerHTML = renderDashboard()
-  
-  // Wait for next tick to ensure DOM is ready
-  setTimeout(() => {
-    initDashboard()
-  }, 0)
+
+  // Wait for next tick to ensure DOM is ready, then init dashboard
+  // Using queueMicrotask for faster execution than setTimeout
+  queueMicrotask(async () => {
+    try {
+      await initDashboard()
+    } catch (e) {
+      console.error('Dashboard init error:', e)
+    }
+  })
 }
 
 // Admin dashboard

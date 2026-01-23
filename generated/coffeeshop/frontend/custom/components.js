@@ -768,10 +768,24 @@ class RateConfigPanel extends CoffeeShopComponent {
         </div>
 
         <div class="presets">
-          <button class="preset-btn" data-preset="slow">☕ Slow Day</button>
-          <button class="preset-btn" data-preset="normal">📊 Normal</button>
-          <button class="preset-btn" data-preset="rush">🔥 Rush Hour</button>
-          <button class="preset-btn" data-preset="stressed">😰 Stressed</button>
+          <button class="preset-btn" data-preset="healthy">💚 Healthy</button>
+          <button class="preset-btn" data-preset="busy">💛 Busy</button>
+          <button class="preset-btn" data-preset="stressed">🟠 Stressed</button>
+          <button class="preset-btn" data-preset="sla_crisis">🔴 SLA Crisis</button>
+          <button class="preset-btn" data-preset="inventory_crisis">📦 Inventory</button>
+          <button class="preset-btn" data-preset="critical">🚨 Critical</button>
+        </div>
+
+        <div class="rate-group" style="margin-top: 1rem;">
+          <div class="group-title">🧪 Test States (directly set state values)</div>
+          <div class="presets">
+            <button class="preset-btn test-state-btn" data-test-state="healthy">💚 Test Healthy</button>
+            <button class="preset-btn test-state-btn" data-test-state="busy">💛 Test Busy</button>
+            <button class="preset-btn test-state-btn" data-test-state="stressed">🟠 Test Stressed</button>
+            <button class="preset-btn test-state-btn" data-test-state="sla_crisis">🔴 Test SLA</button>
+            <button class="preset-btn test-state-btn" data-test-state="inventory_crisis">📦 Test Inventory</button>
+            <button class="preset-btn test-state-btn" data-test-state="critical">🚨 Test Critical</button>
+          </div>
         </div>
       </div>
     `;
@@ -811,36 +825,67 @@ class RateConfigPanel extends CoffeeShopComponent {
       }
     });
 
-    // Presets
-    this.$$('.preset-btn').forEach(btn => {
+    // Rate Presets
+    this.$$('.preset-btn:not(.test-state-btn)').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const preset = e.target.dataset.preset;
-        this.applyPreset(preset);
+        if (preset) this.applyPreset(preset);
+      });
+    });
+
+    // Test State Presets (directly set state values)
+    this.$$('.test-state-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const testState = e.target.dataset.testState;
+        if (testState) this.applyTestState(testState);
       });
     });
   }
 
   applyPreset(preset) {
+    // Presets mirror go-pflow/examples/coffeeshop health states
     const presets = {
-      slow: {
-        order_espresso: 5, order_latte: 7, order_cappuccino: 3,
-        make_espresso: 20, make_latte: 12, make_cappuccino: 10,
-        serve_espresso: 30, serve_latte: 30, serve_cappuccino: 30
-      },
-      normal: {
+      // 💚 Healthy: Capacity exceeds demand, ~90% SLA compliance
+      // Orders: 33/hr total, Capacity: ~42/hr = comfortable headroom
+      healthy: {
         order_espresso: 10, order_latte: 15, order_cappuccino: 8,
-        make_espresso: 20, make_latte: 12, make_cappuccino: 10,
+        make_espresso: 20, make_latte: 14, make_cappuccino: 12,
         serve_espresso: 30, serve_latte: 30, serve_cappuccino: 30
       },
-      rush: {
-        order_espresso: 25, order_latte: 30, order_cappuccino: 20,
-        make_espresso: 30, make_latte: 20, make_cappuccino: 18,
-        serve_espresso: 40, serve_latte: 40, serve_cappuccino: 40
+      // 💛 Busy: High traffic but managing, queue 5-10
+      // Orders: 60/hr total, Capacity: ~54/hr = slight pressure
+      busy: {
+        order_espresso: 18, order_latte: 25, order_cappuccino: 17,
+        make_espresso: 22, make_latte: 18, make_cappuccino: 14,
+        serve_espresso: 35, serve_latte: 35, serve_cappuccino: 35
       },
+      // 🟠 Stressed: Falling behind, queue > 10, growing fast
+      // Orders: 90/hr total, Capacity: ~52/hr = queue grows ~38/hr
       stressed: {
-        order_espresso: 40, order_latte: 45, order_cappuccino: 35,
-        make_espresso: 25, make_latte: 15, make_cappuccino: 12,
+        order_espresso: 28, order_latte: 38, order_cappuccino: 24,
+        make_espresso: 22, make_latte: 18, make_cappuccino: 12,
         serve_espresso: 30, serve_latte: 30, serve_cappuccino: 30
+      },
+      // 🔴 SLA Crisis: >30% breach rate, slow baristas + high demand
+      // Orders: 75/hr total, Capacity: ~30/hr = guaranteed SLA breaches
+      sla_crisis: {
+        order_espresso: 25, order_latte: 30, order_cappuccino: 20,
+        make_espresso: 12, make_latte: 10, make_cappuccino: 8,
+        serve_espresso: 20, serve_latte: 20, serve_cappuccino: 20
+      },
+      // 📦 Inventory Crisis: Very high throughput to drain resources
+      // Fast prep + high orders = rapid inventory depletion
+      inventory_crisis: {
+        order_espresso: 35, order_latte: 45, order_cappuccino: 30,
+        make_espresso: 40, make_latte: 35, make_cappuccino: 30,
+        serve_espresso: 50, serve_latte: 50, serve_cappuccino: 50
+      },
+      // 🚨 Critical: Impossible scenario - everything overwhelmed
+      // Orders: 150/hr, Capacity: ~24/hr = complete breakdown
+      critical: {
+        order_espresso: 50, order_latte: 60, order_cappuccino: 40,
+        make_espresso: 10, make_latte: 8, make_cappuccino: 6,
+        serve_espresso: 15, serve_latte: 15, serve_cappuccino: 15
       }
     };
 
@@ -856,6 +901,66 @@ class RateConfigPanel extends CoffeeShopComponent {
     });
 
     this.emit('preset-applied', { preset, rates });
+  }
+
+  applyTestState(testState) {
+    // Test states directly set inventory/queue values to induce each health condition
+    // These match the thresholds in health.go and dashboard.js
+    const testStates = {
+      // 💚 Healthy: Full inventory, no queue
+      healthy: {
+        coffee_beans: 1000,
+        milk: 500,
+        cups: 200,
+        orders_pending: 0,
+        orders_complete: 50
+      },
+      // 💛 Busy: Queue > 5 (triggers busy threshold)
+      busy: {
+        coffee_beans: 800,
+        milk: 400,
+        cups: 150,
+        orders_pending: 8,
+        orders_complete: 200  // 8/(200+8) = 4% breach rate
+      },
+      // 🟠 Stressed: Queue > 10 (triggers stressed threshold)
+      stressed: {
+        coffee_beans: 600,
+        milk: 300,
+        cups: 100,
+        orders_pending: 15,
+        orders_complete: 200  // 15/(200+15) = 7% breach rate
+      },
+      // 🔴 SLA Crisis: >30% breach rate
+      sla_crisis: {
+        coffee_beans: 500,
+        milk: 250,
+        cups: 80,
+        orders_pending: 20,
+        orders_complete: 40  // 20/(40+20) = 33% breach rate
+      },
+      // 📦 Inventory Crisis: Any resource < 10%
+      inventory_crisis: {
+        coffee_beans: 150,   // 7.5% of 2000 max
+        milk: 80,            // 8% of 1000 max
+        cups: 40,            // 8% of 500 max
+        orders_pending: 5,
+        orders_complete: 100
+      },
+      // 🚨 Critical: Any resource depleted
+      critical: {
+        coffee_beans: 0,     // Depleted!
+        milk: 50,
+        cups: 20,
+        orders_pending: 25,
+        orders_complete: 50
+      }
+    };
+
+    const state = testStates[testState];
+    if (!state) return;
+
+    this.emit('test-state-applied', { testState, state });
   }
 
   getRates() {
