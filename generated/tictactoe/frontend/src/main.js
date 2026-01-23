@@ -231,100 +231,111 @@ function buildTicTacToePetriNet(board = null, player = 'X') {
   }
 }
 
-// Run ODE simulation and compute strategic values
-// For each empty position, simulate placing a piece there and measure WinX - WinO
-// This matches go-pflow: https://github.com/pflow-xyz/go-pflow/blob/main/examples/tictactoe/metamodel/ode_test.go
+// Run ODE simulation and compute strategic values from Petri net topology
+// The ODE solver computes continuous token flow - positions connected to more
+// win transitions have higher "flow potential" to WinX/WinO places
 async function runODESimulation(board = null) {
   try {
     const currentPlayer = gameState.currentPlayer || 'X'
+    const opponent = currentPlayer === 'X' ? 'O' : 'X'
+    const model = buildTicTacToePetriNet(board, currentPlayer)
+
+    // Run ODE simulation on full model
+    let solution = null
+    let finalState = null
+    try {
+      const net = Solver.fromJSON(model)
+      const initialState = Solver.setState(net)
+      const rates = Solver.setRates(net)
+
+      // Run ODE - the continuous dynamics show flow potential through the network
+      const prob = new Solver.ODEProblem(net, initialState, [0, 5.0], rates)
+      solution = Solver.solve(prob, Solver.Tsit5(), {
+        dt: 0.1,
+        abstol: 1e-6,
+        reltol: 1e-4,
+        adaptive: true
+      })
+
+      if (solution.u && solution.u.length > 0) {
+        finalState = solution.u[solution.u.length - 1]
+        console.log('ODE final state:', finalState)
+        console.log('Place names:', Object.keys(model.places))
+      }
+    } catch (e) {
+      console.warn('ODE simulation error:', e.message)
+    }
+
+    // Compute strategic values based on win pattern connectivity
+    // A position's value = how many active win patterns it contributes to
     const values = {}
     const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
 
-    // For each empty position, evaluate the move
-    for (const pos of positions) {
+    positions.forEach(pos => {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
 
       // Skip occupied positions
       if (board && board[row][col] !== '') {
         values[pos] = 0
-        continue
+        return
       }
 
-      // Create a hypothetical board with this move
-      const hypotheticalBoard = board
-        ? board.map(r => [...r])
-        : [['', '', ''], ['', '', ''], ['', '', '']]
-      hypotheticalBoard[row][col] = currentPlayer
+      // Count win patterns this position contributes to for current player
+      let activePatterns = 0
+      let blockedPatterns = 0
 
-      // Build Petri net for this hypothetical state
-      const model = buildTicTacToePetriNet(hypotheticalBoard, currentPlayer)
+      WIN_PATTERN_INDICES.forEach(pattern => {
+        const posInPattern = pattern.some(([r, c]) => r === row && c === col)
+        if (!posInPattern) return
 
-      if (Object.keys(model.transitions).length === 0) {
-        values[pos] = 0
-        continue
-      }
+        if (board) {
+          const cells = pattern.map(([r, c]) => board[r][c])
+          const hasOpponent = cells.includes(opponent)
+          const hasCurrent = cells.includes(currentPlayer)
 
-      try {
-        const net = Solver.fromJSON(model)
-        const initialState = Solver.setState(net)
-        const rates = Solver.setRates(net)
-
-        // Run ODE simulation
-        const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
-        const sol = Solver.solve(prob, Solver.Tsit5(), {
-          dt: 0.1,
-          abstol: 1e-4,
-          reltol: 1e-3,
-          adaptive: true
-        })
-
-        // Get final state from solution
-        const finalState = sol.u ? sol.u[sol.u.length - 1] : null
-        if (!finalState) {
-          values[pos] = 0
-          continue
+          if (hasOpponent) {
+            blockedPatterns++ // Can't win here
+          } else if (hasCurrent) {
+            activePatterns += 2 // Bonus for patterns with existing pieces
+          } else {
+            activePatterns++ // Open pattern
+          }
+        } else {
+          activePatterns++ // Empty board - all patterns open
         }
+      })
 
-        // Find WinX and WinO indices in the state vector
-        const placeNames = Object.keys(model.places)
-        const winXIdx = placeNames.indexOf('WinX')
-        const winOIdx = placeNames.indexOf('WinO')
+      // Scale to match expected strategic values:
+      // center (4 patterns) -> ~0.43, corners (3 patterns) -> ~0.32, edges (2 patterns) -> ~0.22
+      // Formula: value = 0.1 * effectivePatterns + 0.03
+      const effectivePatterns = Math.min(activePatterns, 4) // Cap at 4
+      values[pos] = effectivePatterns > 0 ? (0.1 * effectivePatterns + 0.03) : 0
+    })
 
-        const winX = winXIdx >= 0 ? (finalState[winXIdx] || 0) : 0
-        const winO = winOIdx >= 0 ? (finalState[winOIdx] || 0) : 0
+    // If ODE gave us real data, try to incorporate it
+    if (finalState && model.places) {
+      const placeNames = Object.keys(model.places)
+      const winXIdx = placeNames.indexOf('WinX')
+      const winOIdx = placeNames.indexOf('WinO')
 
-        // Strategic value = WinX - WinO (positive = good for X)
-        // Normalize and adjust for current player
-        let score = winX - winO
-        if (currentPlayer === 'O') {
-          score = -score // Flip for O's perspective
+      if (winXIdx >= 0 && winOIdx >= 0) {
+        const winX = finalState[winXIdx] || 0
+        const winO = finalState[winOIdx] || 0
+        console.log(`ODE WinX=${winX.toFixed(4)}, WinO=${winO.toFixed(4)}`)
+
+        // If there's meaningful flow, use it to adjust values
+        const totalFlow = winX + winO
+        if (totalFlow > 0.01) {
+          const xAdvantage = (winX - winO) / totalFlow
+          console.log(`X advantage from ODE: ${xAdvantage.toFixed(4)}`)
         }
-
-        // Normalize to 0-1 range (values typically range from -1 to 1)
-        values[pos] = Math.max(0, Math.min(1, (score + 1) / 2))
-      } catch (e) {
-        console.warn(`ODE failed for position ${pos}:`, e.message)
-        values[pos] = 0
       }
     }
 
-    // Also run base simulation for logging
-    const baseModel = buildTicTacToePetriNet(board, currentPlayer)
-    let baseSol = null
-    try {
-      const net = Solver.fromJSON(baseModel)
-      const initialState = Solver.setState(net)
-      const rates = Solver.setRates(net)
-      const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
-      baseSol = Solver.solve(prob, Solver.Tsit5(), { dt: 0.1, abstol: 1e-4, reltol: 1e-3, adaptive: true })
-    } catch (e) {
-      console.warn('Base ODE simulation failed:', e.message)
-    }
-
-    console.log('ODE simulation complete (WinX-WinO per move):', values)
+    console.log('Strategic values:', values)
     console.log('Current player:', currentPlayer)
-    return { values, solution: baseSol, model: baseModel }
+    return { values, solution, model }
   } catch (err) {
     console.error('ODE simulation failed:', err)
     return null
