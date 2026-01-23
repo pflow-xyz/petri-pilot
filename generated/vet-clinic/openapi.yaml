@@ -1,0 +1,620 @@
+openapi: "3.0.3"
+info:
+  title: "vet-clinic API"
+  version: "1.0.0"
+  description: "Generated API for vet-clinic workflow"
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/vetclinic:
+    post:
+      summary: Create new vet-clinic
+      operationId: createVetClinic
+      tags:
+        - vetclinic
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/vetclinic/{id}:
+    get:
+      summary: Get vet-clinic state
+      operationId: getVetClinic
+      tags:
+        - vetclinic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Aggregate ID
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/schedule:
+    post:
+      summary: "Fire schedule transition"
+      operationId: schedule
+      tags:
+        - transitions
+      x-transition-id: schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/check_in:
+    post:
+      summary: "Fire check_in transition"
+      operationId: checkIn
+      tags:
+        - transitions
+      x-transition-id: check_in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/start_exam:
+    post:
+      summary: "Fire start_exam transition"
+      operationId: startExam
+      tags:
+        - transitions
+      x-transition-id: start_exam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/complete:
+    post:
+      summary: "Fire complete transition"
+      operationId: complete
+      tags:
+        - transitions
+      x-transition-id: complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/checkout:
+    post:
+      summary: "Fire checkout transition"
+      operationId: checkout
+      tags:
+        - transitions
+      x-transition-id: checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/cancel_requested:
+    post:
+      summary: "Fire cancel_requested transition"
+      operationId: cancelRequested
+      tags:
+        - transitions
+      x-transition-id: cancel_requested
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/cancel_scheduled:
+    post:
+      summary: "Fire cancel_scheduled transition"
+      operationId: cancelScheduled
+      tags:
+        - transitions
+      x-transition-id: cancel_scheduled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/mark_no_show:
+    post:
+      summary: "Fire mark_no_show transition"
+      operationId: markNoShow
+      tags:
+        - transitions
+      x-transition-id: mark_no_show
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/send_to_lab:
+    post:
+      summary: "Fire send_to_lab transition"
+      operationId: sendToLab
+      tags:
+        - transitions
+      x-transition-id: send_to_lab
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/receive_results:
+    post:
+      summary: "Fire receive_results transition"
+      operationId: receiveResults
+      tags:
+        - transitions
+      x-transition-id: receive_results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/request_auth:
+    post:
+      summary: "Fire request_auth transition"
+      operationId: requestAuth
+      tags:
+        - transitions
+      x-transition-id: request_auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/authorize:
+    post:
+      summary: "Fire authorize transition"
+      operationId: authorize
+      tags:
+        - transitions
+      x-transition-id: authorize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/refer_out:
+    post:
+      summary: "Fire refer_out transition"
+      operationId: referOut
+      tags:
+        - transitions
+      x-transition-id: refer_out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+components:
+  schemas:
+    TransitionRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    TransitionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
+    StateResponse:
+      type: object
+      properties:
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          $ref: "#/components/schemas/VetClinicState"
+        places:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Current Petri net marking
+        enabled_transitions:
+          type: array
+          items:
+            type: string
+          description: Transitions that can currently fire
+
+    VetClinicState:
+      type: object
+      description: Aggregate state for vet-clinic
+      properties:
+        requested:
+          type: integer
+        scheduled:
+          type: integer
+        checked_in:
+          type: integer
+        in_progress:
+          type: integer
+        completed:
+          type: integer
+        checked_out:
+          type: integer
+        cancelled:
+          type: integer
+        no_show:
+          type: integer
+        awaiting_lab:
+          type: integer
+        awaiting_authorization:
+          type: integer
+        referred:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: system
+    description: System endpoints
+  - name: vetclinic
+    description: vet-clinic aggregate operations
+  - name: transitions
+    description: Petri net transition endpoints
