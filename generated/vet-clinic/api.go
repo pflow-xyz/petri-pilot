@@ -16,7 +16,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the vet-clinic workflow.
-func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, navigation *Navigation, debugBroker *DebugBroker) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, navigation *Navigation, debugBroker *DebugBroker, blobStore *BlobStore) http.Handler {
 	r := api.NewRouter()
 
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -74,6 +74,13 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 	// Analytics endpoint
 	r.GET("/api/analytics", "Get analytics", HandleGetAnalytics(app))
+
+	// Blob store endpoints for attachments
+	r.POST("/api/blobs", "Upload attachment", HandleBlobUpload(blobStore))
+	r.GET("/api/blobs/{id}", "Download attachment", HandleBlobDownload(blobStore))
+	r.GET("/api/blobs/{id}/meta", "Get attachment metadata", HandleBlobMeta(blobStore))
+	r.GET("/api/vetclinic/{id}/attachments", "List appointment attachments", HandleListAttachments(blobStore))
+	r.DELETE("/api/blobs/{id}", "Delete attachment", HandleBlobDelete(blobStore))
 
 
 

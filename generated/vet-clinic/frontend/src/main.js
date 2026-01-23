@@ -127,6 +127,17 @@ let currentUser = null
 let authToken = null
 let instances = []
 let currentInstance = null
+let currentAttachments = []
+
+// Attachment type options
+const ATTACHMENT_TYPES = [
+  { id: 'lab_report', name: 'Lab Report' },
+  { id: 'xray', name: 'X-Ray / Imaging' },
+  { id: 'prescription', name: 'Prescription' },
+  { id: 'consent_form', name: 'Consent Form' },
+  { id: 'clinical_notes', name: 'Clinical Notes' },
+  { id: 'other', name: 'Other' },
+]
 
 // Transition definitions with fields (populated in renderInstanceDetail)
 const TRANSITION_DEFS = [
@@ -352,6 +363,43 @@ const api = {
     })
     return handleResponse(response)
   },
+
+  // Attachment APIs
+  async listAttachments(appointmentId) {
+    const response = await fetch(`${API_BASE}/api/vetclinic/${appointmentId}/attachments`, { headers: getHeaders() })
+    return handleResponse(response)
+  },
+
+  async uploadAttachment(appointmentId, file, attachmentType) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('stream_id', appointmentId)
+    formData.append('attachment_type', attachmentType)
+
+    const headers = {}
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`
+    }
+
+    const response = await fetch(`${API_BASE}/api/blobs`, {
+      method: 'POST',
+      headers: headers,
+      body: formData,
+    })
+    return handleResponse(response)
+  },
+
+  async deleteAttachment(blobId) {
+    const response = await fetch(`${API_BASE}/api/blobs/${blobId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    })
+    return handleResponse(response)
+  },
+
+  getAttachmentUrl(blobId) {
+    return `${API_BASE}/api/blobs/${blobId}`
+  },
 }
 
 // Export for global access
@@ -496,7 +544,7 @@ async function renderDetailPage() {
           <button class="btn btn-link" onclick="navigate('/vet-clinic')" style="margin-left: -0.5rem">
             &larr; Back to List
           </button>
-          <h1 style="margin-top: 0.5rem">Instance: ${id}</h1>
+          <h1 style="margin-top: 0.5rem">Appointment: ${id}</h1>
         </div>
       </div>
       <div id="instance-detail">
@@ -506,7 +554,12 @@ async function renderDetailPage() {
   `
 
   try {
-    const result = await api.getInstance(id)
+    // Load instance and attachments in parallel
+    const [result, attachmentsResult] = await Promise.all([
+      api.getInstance(id),
+      api.listAttachments(id).catch(() => ({ attachments: [] }))
+    ])
+
     currentInstance = {
       id: result.aggregate_id || id,
       version: result.version,
@@ -515,6 +568,8 @@ async function renderDetailPage() {
       places: result.places,
       enabled: result.enabled || result.enabled_transitions || [],
     }
+    currentAttachments = attachmentsResult.attachments || []
+
     // Store state for debug wallet view
     window.currentInstanceState = currentInstance.state
     renderInstanceDetail()
@@ -580,7 +635,153 @@ function renderInstanceDetail() {
         ${renderStateDisplay(currentInstance.displayState || currentInstance.state)}
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>Attachments</span>
+        <span style="font-size: 0.85rem; color: #666; margin-left: 0.5rem;">(${currentAttachments.length})</span>
+      </div>
+      <div class="attachments-section">
+        ${renderAttachmentUploadForm()}
+        ${renderAttachmentsList()}
+      </div>
+    </div>
   `
+}
+
+// Render attachment upload form
+function renderAttachmentUploadForm() {
+  return `
+    <form id="attachment-upload-form" class="attachment-upload" onsubmit="handleAttachmentUpload(event)">
+      <div class="upload-row">
+        <select name="attachment_type" required class="form-control" style="width: auto; min-width: 150px;">
+          <option value="">Select type...</option>
+          ${ATTACHMENT_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+        </select>
+        <input type="file" name="file" required class="form-control" style="flex: 1;" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt" />
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </div>
+      <p class="upload-hint">Supported: PDF, JPEG, PNG, GIF, TXT (max 10MB)</p>
+    </form>
+  `
+}
+
+// Render attachments list
+function renderAttachmentsList() {
+  if (!currentAttachments || currentAttachments.length === 0) {
+    return '<p class="empty-attachments">No attachments yet.</p>'
+  }
+
+  return `
+    <table class="attachments-table">
+      <thead>
+        <tr>
+          <th>Filename</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Uploaded</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${currentAttachments.map(att => {
+          const typeLabel = ATTACHMENT_TYPES.find(t => t.id === att.attachmentType)?.name || att.attachmentType || 'Other'
+          const sizeStr = formatFileSize(att.size)
+          const dateStr = new Date(att.createdAt).toLocaleDateString()
+          return `
+            <tr>
+              <td class="filename-cell">
+                <span class="file-icon">${getFileIcon(att.contentType)}</span>
+                <span class="filename">${escapeHtml(att.filename)}</span>
+              </td>
+              <td><span class="badge badge-type">${typeLabel}</span></td>
+              <td>${sizeStr}</td>
+              <td>${dateStr}</td>
+              <td class="actions-cell">
+                <a href="${api.getAttachmentUrl(att.id)}" download class="btn btn-sm btn-secondary" title="Download">
+                  Download
+                </a>
+                <button onclick="handleDeleteAttachment('${att.id}')" class="btn btn-sm btn-danger" title="Delete">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          `
+        }).join('')}
+      </tbody>
+    </table>
+  `
+}
+
+// Format file size for display
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+// Get file icon based on content type
+function getFileIcon(contentType) {
+  if (contentType.startsWith('image/')) return '\u{1F5BC}'  // picture frame emoji
+  if (contentType === 'application/pdf') return '\u{1F4C4}'  // page facing up emoji
+  if (contentType.startsWith('text/')) return '\u{1F4DD}'  // memo emoji
+  return '\u{1F4CE}'  // paperclip emoji
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+// Handle attachment upload
+window.handleAttachmentUpload = async function(event) {
+  event.preventDefault()
+
+  if (!currentInstance) return
+
+  const form = event.target
+  const formData = new FormData(form)
+  const file = formData.get('file')
+  const attachmentType = formData.get('attachment_type')
+
+  if (!file || !attachmentType) {
+    showError('Please select a file and attachment type')
+    return
+  }
+
+  // Check file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    showError('File too large. Maximum size is 10MB.')
+    return
+  }
+
+  try {
+    const result = await api.uploadAttachment(currentInstance.id, file, attachmentType)
+    currentAttachments = [result, ...currentAttachments]
+    renderInstanceDetail()
+    showSuccess('Attachment uploaded successfully!')
+    form.reset()
+  } catch (err) {
+    showError('Failed to upload attachment: ' + err.message)
+  }
+}
+
+// Handle attachment deletion
+window.handleDeleteAttachment = async function(blobId) {
+  if (!confirm('Are you sure you want to delete this attachment?')) {
+    return
+  }
+
+  try {
+    await api.deleteAttachment(blobId)
+    currentAttachments = currentAttachments.filter(a => a.id !== blobId)
+    renderInstanceDetail()
+    showSuccess('Attachment deleted!')
+  } catch (err) {
+    showError('Failed to delete attachment: ' + err.message)
+  }
 }
 
 // Render state data for display (handles nested objects like balances map)

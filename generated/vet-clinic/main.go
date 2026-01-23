@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -11,10 +12,34 @@ import (
 	"syscall"
 	"time"
 
+	_ "modernc.org/sqlite"
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 
 func main() {
+	// Initialize SQLite database for blob storage
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		dbPath = "vet-clinic.db"
+	}
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize blob store (10MB max, common document types)
+	blobStore := NewBlobStore(db, 10*1024*1024, []string{
+		"application/pdf",
+		"image/jpeg",
+		"image/png",
+		"image/gif",
+		"text/plain",
+	})
+	if err := blobStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize blob store schema: %v", err)
+	}
+
 	// Initialize event store (in-memory for development)
 	store := eventstore.NewMemoryStore()
 	defer store.Close()
@@ -110,7 +135,7 @@ func main() {
 	debugBroker := NewDebugBroker()
 
 	// Build HTTP router
-	router := BuildRouter(app, middleware, sessions, navigation, debugBroker)
+	router := BuildRouter(app, middleware, sessions, navigation, debugBroker, blobStore)
 
 	// Configure server
 	port := os.Getenv("PORT")
