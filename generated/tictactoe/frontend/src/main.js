@@ -231,43 +231,34 @@ function buildTicTacToePetriNet(board = null, player = 'X') {
   }
 }
 
-// Run ODE simulation and compute strategic values from Petri net topology
-// The ODE solver computes continuous token flow - positions connected to more
-// win transitions have higher "flow potential" to WinX/WinO places
+// Run ODE simulation and compute strategic values
+// Returns raw ODE-computed values without scaling
 async function runODESimulation(board = null) {
   try {
     const currentPlayer = gameState.currentPlayer || 'X'
-    const opponent = currentPlayer === 'X' ? 'O' : 'X'
     const model = buildTicTacToePetriNet(board, currentPlayer)
 
-    // Run ODE simulation on full model
-    let solution = null
-    let finalState = null
-    try {
-      const net = Solver.fromJSON(model)
-      const initialState = Solver.setState(net)
-      const rates = Solver.setRates(net)
+    const net = Solver.fromJSON(model)
+    const initialState = Solver.setState(net)
+    const rates = Solver.setRates(net)
 
-      // Run ODE - the continuous dynamics show flow potential through the network
-      const prob = new Solver.ODEProblem(net, initialState, [0, 5.0], rates)
-      solution = Solver.solve(prob, Solver.Tsit5(), {
-        dt: 0.1,
-        abstol: 1e-6,
-        reltol: 1e-4,
-        adaptive: true
-      })
+    // Run ODE simulation
+    const prob = new Solver.ODEProblem(net, initialState, [0, 3.0], rates)
+    const solution = Solver.solve(prob, Solver.Tsit5(), {
+      dt: 0.1,
+      abstol: 1e-6,
+      reltol: 1e-4,
+      adaptive: true
+    })
 
-      if (solution.u && solution.u.length > 0) {
-        finalState = solution.u[solution.u.length - 1]
-        console.log('ODE final state:', finalState)
-        console.log('Place names:', Object.keys(model.places))
-      }
-    } catch (e) {
-      console.warn('ODE simulation error:', e.message)
-    }
+    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
+    const placeNames = Object.keys(model.places)
 
-    // Compute strategic values based on win pattern connectivity
-    // A position's value = how many active win patterns it contributes to
+    console.log('ODE places:', placeNames)
+    console.log('ODE final state:', finalState)
+
+    // Extract values for each position from the ODE solution
+    // Use the history place values (X00, O00, etc.) as strategic indicators
     const values = {}
     const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
 
@@ -275,66 +266,37 @@ async function runODESimulation(board = null) {
       const row = parseInt(pos[0])
       const col = parseInt(pos[1])
 
-      // Skip occupied positions
       if (board && board[row][col] !== '') {
         values[pos] = 0
         return
       }
 
-      // Count win patterns this position contributes to for current player
-      let activePatterns = 0
-      let blockedPatterns = 0
+      // Get the position place value from ODE state
+      const posPlaceIdx = placeNames.indexOf(`P${row}${col}`)
+      const xHistIdx = placeNames.indexOf(`X${row}${col}`)
+      const oHistIdx = placeNames.indexOf(`O${row}${col}`)
 
-      WIN_PATTERN_INDICES.forEach(pattern => {
-        const posInPattern = pattern.some(([r, c]) => r === row && c === col)
-        if (!posInPattern) return
+      if (finalState && posPlaceIdx >= 0) {
+        // Value is based on token flow through this position
+        const posValue = finalState[posPlaceIdx] || 0
+        const xValue = xHistIdx >= 0 ? (finalState[xHistIdx] || 0) : 0
+        const oValue = oHistIdx >= 0 ? (finalState[oHistIdx] || 0) : 0
 
-        if (board) {
-          const cells = pattern.map(([r, c]) => board[r][c])
-          const hasOpponent = cells.includes(opponent)
-          const hasCurrent = cells.includes(currentPlayer)
-
-          if (hasOpponent) {
-            blockedPatterns++ // Can't win here
-          } else if (hasCurrent) {
-            activePatterns += 2 // Bonus for patterns with existing pieces
-          } else {
-            activePatterns++ // Open pattern
-          }
-        } else {
-          activePatterns++ // Empty board - all patterns open
-        }
-      })
-
-      // Scale to match expected strategic values:
-      // center (4 patterns) -> ~0.43, corners (3 patterns) -> ~0.32, edges (2 patterns) -> ~0.22
-      // Formula: value = 0.1 * effectivePatterns + 0.03
-      const effectivePatterns = Math.min(activePatterns, 4) // Cap at 4
-      values[pos] = effectivePatterns > 0 ? (0.1 * effectivePatterns + 0.03) : 0
+        // Strategic value = how much token has flowed through this position
+        values[pos] = xValue + oValue + (1 - posValue)
+      } else {
+        values[pos] = 0
+      }
     })
 
-    // If ODE gave us real data, try to incorporate it
-    if (finalState && model.places) {
-      const placeNames = Object.keys(model.places)
-      const winXIdx = placeNames.indexOf('WinX')
-      const winOIdx = placeNames.indexOf('WinO')
-
-      if (winXIdx >= 0 && winOIdx >= 0) {
-        const winX = finalState[winXIdx] || 0
-        const winO = finalState[winOIdx] || 0
-        console.log(`ODE WinX=${winX.toFixed(4)}, WinO=${winO.toFixed(4)}`)
-
-        // If there's meaningful flow, use it to adjust values
-        const totalFlow = winX + winO
-        if (totalFlow > 0.01) {
-          const xAdvantage = (winX - winO) / totalFlow
-          console.log(`X advantage from ODE: ${xAdvantage.toFixed(4)}`)
-        }
-      }
+    // Log win place values
+    const winXIdx = placeNames.indexOf('WinX')
+    const winOIdx = placeNames.indexOf('WinO')
+    if (finalState && winXIdx >= 0) {
+      console.log(`WinX: ${finalState[winXIdx]?.toFixed(4)}, WinO: ${finalState[winOIdx]?.toFixed(4)}`)
     }
 
-    console.log('Strategic values:', values)
-    console.log('Current player:', currentPlayer)
+    console.log('ODE values:', values)
     return { values, solution, model }
   } catch (err) {
     console.error('ODE simulation failed:', err)
@@ -578,12 +540,27 @@ async function toggleHeatmap() {
   }
 }
 
-function getHeatColor(value) {
+function getHeatColor(value, minVal = null, maxVal = null) {
+  // Auto-scale if not provided
+  if (minVal === null || maxVal === null) {
+    // Use current ODE values for scaling if available
+    if (odeValues) {
+      const vals = Object.values(odeValues).filter(v => v > 0)
+      if (vals.length > 0) {
+        minVal = Math.min(...vals)
+        maxVal = Math.max(...vals)
+      }
+    }
+    // Fallback defaults
+    if (minVal === null) minVal = 0
+    if (maxVal === null) maxVal = 1
+  }
+
+  // Avoid division by zero
+  const range = maxVal - minVal
+  const normalized = range > 0 ? Math.max(0, Math.min(1, (value - minVal) / range)) : 0.5
+
   // Interpolate between blue (low) and red (high)
-  // Handle ODE value range (0.13 - 0.43) and static range (0.218 - 0.430)
-  const minVal = 0.10
-  const maxVal = 0.45
-  const normalized = Math.max(0, Math.min(1, (value - minVal) / (maxVal - minVal)))
   const r = Math.round(255 * normalized)
   const g = Math.round(100 - 50 * normalized)
   const b = Math.round(255 * (1 - normalized))
