@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      color: white;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 1.1rem;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 50px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: #667eea;
+    }
+
+    .content {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    /* Game Board */
+    .game-container {
+      display: flex;
+      gap: 3rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .board-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background: #333;
+      padding: 8px;
+      border-radius: 12px;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #f0f0f0;
+      border: none;
+      border-radius: 8px;
+      font-size: 3rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cell:hover:not(.occupied):not(.disabled) {
+      background: #e0e0e0;
+      transform: scale(1.02);
+    }
+
+    .cell.occupied {
+      cursor: default;
+    }
+
+    .cell.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .cell .piece {
+      font-size: 3.5rem;
+      line-height: 1;
+    }
+
+    .cell .piece.x {
+      color: #e74c3c;
+    }
+
+    .cell .piece.o {
+      color: #3498db;
+    }
+
+    .cell.winning {
+      background: #90EE90 !important;
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    /* Heat map overlay */
+    .cell .heat-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .show-heatmap .cell:not(.occupied) .heat-overlay {
+      opacity: 1;
+    }
+
+    .heat-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .heat-label {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.9);
+      text-transform: uppercase;
+    }
+
+    /* Game Info */
+    .info-section {
+      min-width: 280px;
+    }
+
+    .status-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .status-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-card .turn {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+
+    .status-card .turn.x { color: #ffcccb; }
+    .status-card .turn.o { color: #add8e6; }
+
+    .winner-banner {
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      color: white;
+      margin-bottom: 1.5rem;
+    }
+
+    .winner-banner.draw {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .winner-banner h2 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-secondary.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Simulation Page */
+    .simulation-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .simulation-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sim-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .sim-card h3 {
+      color: #667eea;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    .position-cell {
+      aspect-ratio: 1;
+      background: #667eea;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .position-cell .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .position-cell .type {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .position-cell.center {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+
+    .position-cell.corner {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .position-cell.edge {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    }
+
+    .chart-container {
+      height: 300px;
+      position: relative;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .patterns-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .pattern-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .pattern-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      width: 45px;
+    }
+
+    .pattern-preview span {
+      width: 13px;
+      height: 13px;
+      background: #ddd;
+      border-radius: 2px;
+    }
+
+    .pattern-preview span.active {
+      background: #667eea;
+    }
+
+    .pattern-name {
+      font-weight: 500;
+    }
+
+    /* Event History */
+    .events-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .event-item:last-child {
+      border-bottom: none;
+    }
+
+    .event-num {
+      background: #667eea;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .event-info {
+      flex: 1;
+    }
+
+    .event-type {
+      font-weight: 600;
+    }
+
+    .event-time {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .event-item:hover {
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    .event-item.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      color: white;
+    }
+
+    .event-item.active .event-num {
+      background: white;
+      color: #667eea;
+    }
+
+    .event-item.active .event-type {
+      color: white;
+    }
+
+    .event-item.past {
+      opacity: 0.7;
+    }
+
+    .event-item.future {
+      opacity: 0.4;
+    }
+
+    .event-item.future .event-num {
+      background: #aaa;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <h1>Tic-Tac-Toe Simulator</h1>
+      <p>Petri net-based game with strategic analysis and heat maps</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('play')">Play Game</button>
+      <button class="tab-btn" onclick="showTab('simulation')">Simulation</button>
+    </div>
+
+    <div class="content">
+      <div id="play-tab">
+        <div class="game-container">
+          <div class="board-section">
+            <div id="game-board" class="board"></div>
+          </div>
+          <div class="info-section">
+            <div id="status-display"></div>
+            <div class="controls">
+              <button id="heatmap-btn" class="btn btn-secondary" onclick="toggleHeatmap()">
+                Show Heat Map
+              </button>
+              <button id="new-game-btn" class="btn btn-primary" onclick="newGame()">
+                New Game
+              </button>
+              <button id="reset-btn" class="btn btn-secondary hidden" onclick="resetGame()">
+                Play Again
+              </button>
+            </div>
+            <div id="events-section" class="sim-card" style="margin-top: 1.5rem;">
+              <h3>Move History</h3>
+              <div id="events-list" class="events-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="simulation-tab" class="hidden">
+        <div class="simulation-container">
+          <div class="sim-card">
+            <h3>Strategic Position Values</h3>
+            <div class="sim-mode-toggle" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <button id="sim-empty-btn" class="btn btn-secondary active" onclick="setSimMode('empty')" style="flex: 1; padding: 0.5rem;">
+                Empty Board
+              </button>
+              <button id="sim-current-btn" class="btn btn-secondary" onclick="setSimMode('current')" style="flex: 1; padding: 0.5rem;">
+                Current Game
+              </button>
+            </div>
+            <p id="sim-description" style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
+              Values derived from Petri net ODE simulation. Higher values indicate more strategic positions.
+            </p>
+            <div id="position-grid" class="position-grid">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="legend">
+              <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;"></div>
+                <span>Center (4 patterns)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12;"></div>
+                <span>Corner (3 patterns)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;"></div>
+                <span>Edge (2 patterns)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-card">
+            <h3>Win Patterns</h3>
+            <div class="patterns-list">
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span class="active"></span><span class="active"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <span class="pattern-name">Top Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span></span><span class="active"></span><span class="active"></span><span class="active"></span><span></span><span></span><span></span></div>
+                <span class="pattern-name">Middle Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span></span><span></span><span></span><span></span><span class="active"></span><span class="active"></span><span class="active"></span></div>
+                <span class="pattern-name">Bottom Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span></div>
+                <span class="pattern-name">Left Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span></div>
+                <span class="pattern-name">Center Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span></div>
+                <span class="pattern-name">Right Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span></span><span></span><span></span><span class="active"></span><span></span><span></span><span></span><span class="active"></span></div>
+                <span class="pattern-name">Main Diagonal</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span class="active"></span><span></span><span class="active"></span><span></span><span class="active"></span><span></span><span></span></div>
+                <span class="pattern-name">Anti-Diagonal</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-card" style="grid-column: 1 / -1;">
+            <h3>Position Value Distribution</h3>
+            <div class="chart-container">
+              <canvas id="value-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="sim-card" style="grid-column: 1 / -1;">
+            <h3>How It Works</h3>
+            <p style="line-height: 1.8; color: #555;">
+              This simulator uses a Petri net model where each board position is represented as a place,
+              and moves are transitions that consume empty-cell tokens and produce player-piece tokens.
+              <br><br>
+              The strategic values are derived using ODE (Ordinary Differential Equation) simulation
+              from the go-pflow library. Each candidate move is evaluated by computing:
+              <br><br>
+              <code style="background: #f0f0f0; padding: 0.5rem; border-radius: 4px; display: block; text-align: center;">
+                Score = my_win - opponent_win
+              </code>
+              <br>
+              The center position scores highest (0.430) because it participates in 4 winning patterns.
+              Corners score 0.316 (3 patterns), and edges score 0.218 (2 patterns).
+              These values emerge purely from the Petri net topology, without explicit heuristics.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
