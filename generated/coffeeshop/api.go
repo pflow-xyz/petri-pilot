@@ -28,15 +28,6 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 	// Create new aggregate
 	r.POST("/api/coffeeshop", "Create new coffeeshop", HandleCreate(app))
 
-	// Health monitoring endpoint
-	r.GET("/api/metrics", "Get system health state", HandleHealthEndpoint(app))
-
-	// Debug test endpoint
-	r.GET("/api/test-route", "Test route", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"test works"}`))
-	})
-
 	// Get aggregate state
 	r.GET("/api/coffeeshop/{id}", "Get coffeeshop state", HandleGetState(app))
 
@@ -515,62 +506,10 @@ func HandleServeCappuccino(app *Application) http.HandlerFunc {
 	}
 }
 
-// handleHealthRequest handles health status requests.
-// Called from HandlePredict when ?health=true is passed.
-func handleHealthRequest(w http.ResponseWriter, r *http.Request, app *Application) {
-	ctx := r.Context()
-
-	// Get current state from any existing aggregate
-	// Default to initial inventory values
-	currentState := map[string]int{
-		"coffee_beans":    int(GetCurrentInventory()["coffee_beans"]),
-		"milk":            int(GetCurrentInventory()["milk"]),
-		"cups":            int(GetCurrentInventory()["cups"]),
-		"orders_pending":  0,
-		"orders_complete": 0,
-	}
-
-	// Try to get actual state from an aggregate if we have an ID
-	aggregateID := r.URL.Query().Get("id")
-	if aggregateID != "" {
-		agg, err := app.GetState(ctx, aggregateID)
-		if err == nil && agg != nil {
-			if state, ok := agg.State().(map[string]int); ok {
-				for k, v := range state {
-					currentState[k] = v
-				}
-			}
-		}
-	}
-
-	// Update health tracker with current state
-	UpdateHealthFromState(currentState)
-
-	// Get health and metrics
-	health, metrics := GetCurrentHealth()
-	info := HealthStates[health]
-
-	response := HealthResponse{
-		Health:    health,
-		Info:      info,
-		Metrics:   metrics,
-		State:     currentState,
-		Timestamp: HealthTimestamp(),
-	}
-
-	api.JSON(w, http.StatusOK, response)
-}
 
 // HandlePredict runs ODE simulation and returns predicted resource levels.
-// Also handles /api/coffeeshop/predict?health=true for health status.
 func HandlePredict(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Check if this is a health status request
-		if r.URL.Query().Get("health") == "true" {
-			handleHealthRequest(w, r, app)
-			return
-		}
-
 		hoursStr := r.URL.Query().Get("hours")
 		hours := PredictionConfig.TimeHours
 		if hoursStr != "" {
@@ -607,20 +546,10 @@ func HandleRunout(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleHealthEndpoint returns the current system health state and metrics.
-// Mirrors go-pflow/examples/coffeeshop health classification.
-// Note: Due to router limitations, use /api/coffeeshop/predict?health=true instead.
-func HandleHealthEndpoint(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		handleHealthRequest(w, r, app)
-	}
-}
 
 // HandleNavigation returns the navigation menu, filtered by user roles.
 func HandleNavigation(nav *Navigation) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Debug: check if this code is being executed
-		w.Header().Set("X-Debug-Navigation", "modified-v1")
 		userRoles := getNavUserRoles(r)
 
 		items := []NavigationItem{}

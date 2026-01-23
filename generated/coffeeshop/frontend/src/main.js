@@ -3,7 +3,6 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
-import { renderDashboard, initDashboard, cleanupDashboard } from './dashboard.js'
 
 // API client
 const API_BASE = ''
@@ -1024,22 +1023,6 @@ async function renderFormPage() {
   `
 }
 
-// Dashboard page
-async function renderDashboardPage() {
-  const app = document.getElementById('app')
-  app.innerHTML = renderDashboard()
-
-  // Wait for next tick to ensure DOM is ready, then init dashboard
-  // Using queueMicrotask for faster execution than setTimeout
-  queueMicrotask(async () => {
-    try {
-      await initDashboard()
-    } catch (e) {
-      console.error('Dashboard init error:', e)
-    }
-  })
-}
-
 // Admin dashboard
 async function renderAdminPage() {
   const app = document.getElementById('app')
@@ -1171,36 +1154,15 @@ window.handleTransition = async function(transitionId) {
 // Routing
 // ============================================================================
 
-// Track current page for cleanup
-let currentPage = null;
-
 function handleRouteChange(event) {
   const route = event.detail?.route || getCurrentRoute()
   if (!route) {
-    // Cleanup previous page if not dashboard
-    if (currentPage === 'dashboard') {
-      // Already on dashboard, no cleanup needed
-    } else if (currentPage) {
-      cleanupCurrentPage();
-    }
-    currentPage = 'dashboard';
-    renderDashboardPage()
+    renderListPage()
     return
   }
 
   const path = route.path
-  const newPage = getPageType(path);
-  
-  // Cleanup previous page if changing pages
-  if (currentPage && currentPage !== newPage) {
-    cleanupCurrentPage();
-  }
-  
-  currentPage = newPage;
-  
-  if (path === '/' || path === '/dashboard') {
-    renderDashboardPage()
-  } else if (path === '/coffeeshop') {
+  if (path === '/coffeeshop' || path === '/') {
     renderListPage()
   } else if (path === '/coffeeshop/new') {
     renderFormPage()
@@ -1209,24 +1171,8 @@ function handleRouteChange(event) {
   } else if (path === '/admin' || path.startsWith('/admin')) {
     renderAdminPage()
   } else {
-    renderDashboardPage()
+    renderListPage()
   }
-}
-
-function getPageType(path) {
-  if (path === '/' || path === '/dashboard') return 'dashboard';
-  if (path === '/coffeeshop') return 'list';
-  if (path === '/coffeeshop/new') return 'form';
-  if (path === '/coffeeshop/:id') return 'detail';
-  if (path === '/admin' || path.startsWith('/admin')) return 'admin';
-  return 'dashboard';
-}
-
-function cleanupCurrentPage() {
-  if (currentPage === 'dashboard') {
-    cleanupDashboard();
-  }
-  // Add other page cleanups here if needed
 }
 
 // ============================================================================

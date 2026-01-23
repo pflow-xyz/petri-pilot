@@ -561,6 +561,23 @@ api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
 return
 }
 
+// Load state for each instance by replaying events
+// Note: This loads aggregates individually which may be slow for large lists.
+// The perPage parameter limits the number of instances processed.
+for i := range instances {
+agg, err := app.Load(ctx, instances[i].ID)
+if err != nil {
+// Log error but continue processing other instances
+// The state will remain as initialized by ListInstances
+continue
+}
+// Type assert to map[string]int (token-based Petri net state)
+// If assertion fails, state remains as initialized
+if state, ok := agg.State().(map[string]int); ok {
+instances[i].State = state
+}
+}
+
 api.JSON(w, http.StatusOK, map[string]interface{}{
 "instances": instances,
 "total":     total,
