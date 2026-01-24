@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -161,6 +163,20 @@ func RunMultiple(names []string, opts Options) error {
 		prefix := "/" + name
 		mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
 		log.Printf("  Mounted %s at %s/", name, prefix)
+
+		// If custom frontend exists, also mount generated frontend at /{name}_/
+		if customFrontendPath := findCustomFrontend(name); customFrontendPath != "" {
+			packageName := strings.ReplaceAll(name, "-", "")
+			generatedPath := filepath.Join("generated", packageName, "frontend")
+			if _, err := os.Stat(generatedPath); err == nil {
+				genPrefix := "/" + name + "_"
+				spaHandler := createSPAHandler(generatedPath)
+				// Create combined handler that proxies API calls to main service
+				genHandler := createGeneratedFrontendHandler(spaHandler, handler)
+				mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
+				log.Printf("  Mounted %s (generated) at %s/", name, genPrefix)
+			}
+		}
 	}
 
 	// Root handler lists available services
@@ -328,4 +344,64 @@ func runHTTPService(svc Service, port int, opts Options) error {
 
 	log.Println("Server stopped")
 	return nil
+}
+
+// createGeneratedFrontendHandler creates a handler that serves the generated frontend
+// but proxies API calls to the main service handler.
+func createGeneratedFrontendHandler(spaHandler, apiHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Proxy API and admin calls to the main service
+		if strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/admin/") ||
+			strings.HasPrefix(r.URL.Path, "/auth/") ||
+			strings.HasPrefix(r.URL.Path, "/ws") {
+			apiHandler.ServeHTTP(w, r)
+			return
+		}
+		// Serve static files for everything else
+		spaHandler.ServeHTTP(w, r)
+	})
+}
+
+// findCustomFrontend checks if a custom frontend exists for the given service name.
+// Returns the path if found, empty string otherwise.
+func findCustomFrontend(name string) string {
+	path := filepath.Join("frontends", name)
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		// Check if it has an index.html
+		if _, err := os.Stat(filepath.Join(path, "index.html")); err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
+// createSPAHandler creates an HTTP handler for serving a single-page application.
+// It serves static files and falls back to index.html for SPA routing.
+func createSPAHandler(frontendPath string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Clean the path
+		path := filepath.Clean(r.URL.Path)
+		if path == "/" {
+			path = "/index.html"
+		}
+
+		// Try to serve the file
+		fullPath := filepath.Join(frontendPath, path)
+		if _, err := os.Stat(fullPath); err == nil {
+			http.ServeFile(w, r, fullPath)
+			return
+		}
+
+		// For SPA routing, serve index.html for non-existent paths
+		// (but not for paths that look like static assets)
+		ext := filepath.Ext(path)
+		if ext == "" || ext == ".html" {
+			http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
+			return
+		}
+
+		// 404 for missing static assets
+		http.NotFound(w, r)
+	})
 }

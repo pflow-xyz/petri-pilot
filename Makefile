@@ -92,7 +92,7 @@ run-%: build
 # Run demo services (tic-tac-toe and coffeeshop)
 run-demo: build
 	@echo "=== Running demo services ==="
-	./$(BINARY) serve tic-tac-toe coffeeshop
+	./$(BINARY) serve -port 8083 tic-tac-toe coffeeshop
 
 # Run MCP server (doesn't need generated packages)
 mcp:
