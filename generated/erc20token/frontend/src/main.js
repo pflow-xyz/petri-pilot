@@ -8,7 +8,7 @@ import wallet from './wallet.js'
 window.wallet = wallet
 
 // API client
-const API_BASE = ''
+const API_BASE = window.API_BASE || ''
 
 // ============================================================================
 // Token Amount Scaling

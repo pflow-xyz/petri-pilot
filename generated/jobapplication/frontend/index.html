@@ -406,13 +406,22 @@
       <div class="loading">Loading...</div>
     </div>
 
+    <!-- Detect base path for API calls when mounted at a prefix -->
+    <script>
+      (function() {
+        const path = window.location.pathname;
+        const match = path.match(/^(\/[^\/]+)\//);
+        window.API_BASE = match ? match[1] : '';
+      })();
+    </script>
+
     <!-- Custom theme (generated once, safe to customize) -->
-    <link rel="stylesheet" href="/custom/theme.css">
+    <link rel="stylesheet" href="custom/theme.css">
 
     <!-- Custom components (generated once, safe to customize) -->
-    <script type="module" src="/custom/components.js"></script>
+    <script type="module" src="custom/components.js"></script>
 
     <!-- Main application (regenerated) -->
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>

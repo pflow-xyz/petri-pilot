@@ -6,7 +6,7 @@
  */
 
 // Import customizable extensions (preserved across regeneration)
-import { adminExtensions, hooks, triggerHook } from '/custom/extensions.js'
+import { adminExtensions, hooks, triggerHook } from '../custom/extensions.js'
 
 // API helpers from main.js
 const API_BASE = window.API_BASE || ''

@@ -4,6 +4,7 @@ package coffeeshop
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"os"
@@ -44,6 +45,7 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 	// Event replay endpoints
 	r.GET("/api/coffeeshop/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/coffeeshop/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+	r.POST("/api/coffeeshop/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
 
 
@@ -95,11 +97,12 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 // StaticFileHandler returns an http.Handler that serves static files from frontend/.
 // It supports SPA routing by returning index.html for paths that don't match static files.
 func StaticFileHandler() http.HandlerFunc {
-	// Find frontend directory - try multiple locations
+	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
+		"frontends/coffeeshop",                    // Custom frontend (top priority)
 		"frontend",                                    // Running from service directory
-		"generated/coffeeshop/frontend",         // Running from repo root
+		"generated/coffeeshop/frontend",         // Generated frontend from repo root
 		filepath.Join("generated", "coffeeshop", "frontend"), // Platform-safe
 	}
 
@@ -107,6 +110,7 @@ func StaticFileHandler() http.HandlerFunc {
 	if exe, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exe)
 		candidates = append(candidates,
+			filepath.Join(exeDir, "frontends", "coffeeshop"),
 			filepath.Join(exeDir, "frontend"),
 			filepath.Join(exeDir, "generated", "coffeeshop", "frontend"),
 		)
@@ -674,6 +678,41 @@ func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
 			"id":      agg.ID(),
 			"version": version,
 			"state":   agg.State(),
+		})
+	}
+}
+
+// HandleTruncate truncates the event stream to a specific version.
+// This enables "undo and redo differently" workflows by discarding events after the target version.
+func HandleTruncate(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+
+		var req struct {
+			Version int `json:"version"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must contain version field")
+			return
+		}
+
+		if req.Version < 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be non-negative")
+			return
+		}
+
+		agg, err := app.TruncateTo(ctx, id, req.Version)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "TRUNCATE_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":                    agg.ID(),
+			"version":               agg.Version(),
+			"state":                 agg.State(),
+			"enabled_transitions":   agg.EnabledTransitions(),
 		})
 	}
 }

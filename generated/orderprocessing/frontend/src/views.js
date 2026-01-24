@@ -5,6 +5,9 @@
  * Dynamically renders forms, tables, and detail views from view definitions
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
 // View definitions will be fetched from the API
 let viewDefinitions = []
 
@@ -13,7 +16,7 @@ let viewDefinitions = []
  */
 export async function loadViews() {
   try {
-    const response = await fetch('/api/views')
+    const response = await fetch(`${API_BASE}/api/views`)
     if (!response.ok) {
       console.warn('Failed to load view definitions, using defaults')
       return []
@@ -440,7 +443,7 @@ export async function executeAction(actionId, aggregateId, data = {}) {
   }
   
   try {
-    const response = await fetch(`/api/${encodeURIComponent(actionId)}`, {
+    const response = await fetch(`${API_BASE}/api/${encodeURIComponent(actionId)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

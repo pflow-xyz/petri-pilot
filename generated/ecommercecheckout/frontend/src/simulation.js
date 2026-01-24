@@ -5,6 +5,9 @@
  * ODE-based resource prediction with Chart.js visualization
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
 // Chart.js must be loaded via CDN in index.html:
 // <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 

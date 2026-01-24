@@ -6,7 +6,7 @@ import { loadViews, renderFormView, renderDetailView, renderTableView, getFormDa
 import { initAdmin, renderAdminDashboard, loadAdminStats, renderAdminInstances, loadAdminInstances, renderAdminInstance, loadAdminInstance } from './admin.js'
 
 // API client
-const API_BASE = ''
+const API_BASE = window.API_BASE || ''
 
 // ============================================================================
 // Token Amount Scaling

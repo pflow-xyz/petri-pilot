@@ -5,6 +5,9 @@
  * Provides navigation menu with fallback defaults and role-based login
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
 import { navigate } from './router.js'
 
 // Available roles for login
@@ -41,7 +44,7 @@ async function fetchNavigation() {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const response = await fetch('/api/navigation', { headers })
+    const response = await fetch(`${API_BASE}/api/navigation`, { headers })
     if (response.ok) {
       navigationData = await response.json()
     } else {
@@ -268,7 +271,7 @@ window.hideLoginModal = function() {
 // Handle role-based login
 window.handleRoleLogin = async function(roles) {
   try {
-    const response = await fetch('/api/debug/login', {
+    const response = await fetch(`${API_BASE}/api/debug/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login: 'pilot-user', roles: roles })
@@ -311,7 +314,7 @@ window.handleLogout = async function() {
   try {
     const token = getAuthToken()
     if (token) {
-      await fetch('/auth/logout', {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })

@@ -7,23 +7,11 @@
 
 // Route definitions - order matters! More specific routes first
 export const routes = [
-  // Root shows dashboard
+  // Root redirects to list
   {
     path: '/',
-    component: 'Dashboard',
-    title: 'Coffee Shop Dashboard',
-  },
-  // Dashboard route
-  {
-    path: '/dashboard',
-    component: 'Dashboard',
-    title: 'Coffee Shop Dashboard',
-  },
-  // Orders list
-  {
-    path: '/orders',
     component: 'List',
-    title: 'Orders',
+    title: 'coffeeshop',
   },
   // Entity routes
   {
@@ -65,25 +53,14 @@ export const routes = [
   },
 ]
 
-// API base path for when service is mounted at a prefix
-const API_BASE = window.API_BASE || ''
-
 // Current route state
 let currentRoute = null
 let currentParams = {}
 
-// Strip API_BASE from a path
-function stripBase(path) {
-  if (API_BASE && path.startsWith(API_BASE)) {
-    path = path.slice(API_BASE.length) || '/'
-  }
-  return path
-}
-
 // Route matcher - tries routes in order, returns first match
 function matchRoute(path) {
-  // Strip API_BASE and normalize path
-  path = stripBase(path) || '/'
+  // Normalize path
+  path = path || '/'
   if (path !== '/' && path.endsWith('/')) {
     path = path.slice(0, -1)
   }
@@ -146,9 +123,8 @@ export function navigate(path, state = {}) {
   currentRoute = match.route
   currentParams = match.params
 
-  // Update browser history with full path including API_BASE
-  const fullPath = API_BASE + path
-  window.history.pushState(state, '', fullPath)
+  // Update browser history
+  window.history.pushState(state, '', path)
 
   // Trigger render
   renderCurrentRoute()

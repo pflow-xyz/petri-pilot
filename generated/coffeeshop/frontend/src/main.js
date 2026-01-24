@@ -4,7 +4,6 @@ import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
 import { initAdmin, renderAdminDashboard, loadAdminStats, renderAdminInstances, loadAdminInstances, renderAdminInstance, loadAdminInstance } from './admin.js'
-import { renderDashboard, initDashboard, cleanupDashboard } from './dashboard.js'
 
 // API client
 const API_BASE = window.API_BASE || ''
@@ -1369,74 +1368,35 @@ window.handleTransition = async function(transitionId) {
 }
 
 // ============================================================================
-// Dashboard Page
-// ============================================================================
-
-async function renderDashboardPage() {
-  const app = document.getElementById('app')
-  app.innerHTML = renderDashboard()
-
-  // Wait for next tick to ensure DOM is ready
-  setTimeout(() => {
-    initDashboard()
-  }, 0)
-}
-
-// ============================================================================
 // Routing
 // ============================================================================
 
-// Track current page for cleanup
-let currentPage = null
-
-function cleanupCurrentPage() {
-  if (currentPage === 'dashboard') {
-    cleanupDashboard()
-  }
-}
-
 function handleRouteChange(event) {
   const route = event.detail?.route || getCurrentRoute()
-
-  // Cleanup previous page
-  cleanupCurrentPage()
-
   if (!route) {
-    currentPage = 'dashboard'
-    renderDashboardPage()
+    renderListPage()
     return
   }
 
   const path = route.path
-  if (path === '/' || path === '/dashboard') {
-    currentPage = 'dashboard'
-    renderDashboardPage()
-  } else if (path === '/coffeeshop' || path === '/orders') {
-    currentPage = 'list'
+  if (path === '/coffeeshop' || path === '/') {
     renderListPage()
   } else if (path === '/coffeeshop/new') {
-    currentPage = 'form'
     renderFormPage()
   } else if (path === '/coffeeshop/:id') {
-    currentPage = 'detail'
     renderDetailPage()
   } else if (path === '/schema') {
-    currentPage = 'schema'
     renderSchemaPage()
   } else if (path === '/admin') {
-    currentPage = 'admin'
     renderAdminDashboardPage()
   } else if (path === '/admin/instances') {
-    currentPage = 'admin-instances'
     renderAdminInstancesPage()
   } else if (path === '/admin/instances/:id') {
-    currentPage = 'admin-instance'
     const actualPath = window.location.pathname
     const id = actualPath.replace('/admin/instances/', '')
     renderAdminInstancePage(id)
   } else {
-    currentPage = 'dashboard'
-    renderDashboardPage()
+    renderListPage()
   }
 }
 

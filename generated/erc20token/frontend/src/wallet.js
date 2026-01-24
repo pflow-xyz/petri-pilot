@@ -5,6 +5,9 @@
  * Provides MetaMask-like behavior for testing without actual blockchain
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
 // ============================================================================
 // Wallet Configuration
 // ============================================================================
@@ -92,7 +95,7 @@ export async function connect(index = 0) {
 
   // Login with the account's roles via debug endpoint
   try {
-    const response = await fetch('/api/debug/login', {
+    const response = await fetch(`${API_BASE}/api/debug/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -142,7 +145,7 @@ export async function disconnect() {
 
   // Logout from server
   try {
-    await fetch('/auth/logout', { method: 'POST' })
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST' })
   } catch (e) {
     // Ignore logout errors
   }

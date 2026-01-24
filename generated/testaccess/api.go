@@ -4,6 +4,7 @@ package testaccess
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"os"
@@ -47,6 +48,7 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	// Event replay endpoints
 	r.GET("/api/testaccess/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/testaccess/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+	r.POST("/api/testaccess/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
 
 
@@ -90,15 +92,39 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 // StaticFileHandler returns an http.Handler that serves static files from frontend/.
 // It supports SPA routing by returning index.html for paths that don't match static files.
 func StaticFileHandler() http.HandlerFunc {
-	// Find frontend directory
-	frontendPath := "frontend"
-	if _, err := os.Stat(frontendPath); os.IsNotExist(err) {
-		// Try relative to executable
-		exe, _ := os.Executable()
-		frontendPath = filepath.Join(filepath.Dir(exe), "frontend")
+	// Find frontend directory - try custom frontends first, then generated
+	frontendPath := ""
+	candidates := []string{
+		"frontends/test-access",                    // Custom frontend (top priority)
+		"frontend",                                    // Running from service directory
+		"generated/testaccess/frontend",         // Generated frontend from repo root
+		filepath.Join("generated", "testaccess", "frontend"), // Platform-safe
+	}
+
+	// Also try relative to executable
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidates = append(candidates,
+			filepath.Join(exeDir, "frontends", "test-access"),
+			filepath.Join(exeDir, "frontend"),
+			filepath.Join(exeDir, "generated", "testaccess", "frontend"),
+		)
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			frontendPath = candidate
+			break
+		}
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// No frontend found
+		if frontendPath == "" {
+			http.Error(w, "Frontend not found", http.StatusNotFound)
+			return
+		}
+
 		// Clean the path
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path == "" {
@@ -381,6 +407,41 @@ func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
 			"id":      agg.ID(),
 			"version": version,
 			"state":   agg.State(),
+		})
+	}
+}
+
+// HandleTruncate truncates the event stream to a specific version.
+// This enables "undo and redo differently" workflows by discarding events after the target version.
+func HandleTruncate(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+
+		var req struct {
+			Version int `json:"version"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must contain version field")
+			return
+		}
+
+		if req.Version < 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be non-negative")
+			return
+		}
+
+		agg, err := app.TruncateTo(ctx, id, req.Version)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "TRUNCATE_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":                    agg.ID(),
+			"version":               agg.Version(),
+			"state":                 agg.State(),
+			"enabled_transitions":   agg.EnabledTransitions(),
 		})
 	}
 }

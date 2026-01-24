@@ -433,6 +433,44 @@ func (app *Application) GetState(ctx context.Context, id string) (*Aggregate, er
 	return app.Load(ctx, id)
 }
 
+// TruncateTo truncates an aggregate's event stream to a specific version.
+// Events after the target version are removed. This enables "undo and redo differently" workflows.
+func (app *Application) TruncateTo(ctx context.Context, id string, targetVersion int) (*Aggregate, error) {
+	// Read all events
+	events, err := app.store.Read(ctx, id, 0)
+	if err != nil {
+		return nil, fmt.Errorf("reading events: %w", err)
+	}
+
+	// Validate target version
+	if targetVersion < 0 || targetVersion > len(events) {
+		return nil, fmt.Errorf("invalid target version %d (stream has %d events)", targetVersion, len(events))
+	}
+
+	// If already at target, just load and return
+	if targetVersion == len(events) {
+		return app.Load(ctx, id)
+	}
+
+	// Keep only events up to target version
+	eventsToKeep := events[:targetVersion]
+
+	// Delete the stream
+	if err := app.store.DeleteStream(ctx, id); err != nil {
+		return nil, fmt.Errorf("deleting stream: %w", err)
+	}
+
+	// Re-append the events we want to keep
+	if len(eventsToKeep) > 0 {
+		if _, err := app.store.Append(ctx, id, -1, eventsToKeep); err != nil {
+			return nil, fmt.Errorf("re-appending events: %w", err)
+		}
+	}
+
+	// Load and return the truncated aggregate
+	return app.Load(ctx, id)
+}
+
 // HealthCheck verifies the event store is accessible.
 func (app *Application) HealthCheck(ctx context.Context) error {
 	// Try to read from a non-existent stream - this exercises the store connection
