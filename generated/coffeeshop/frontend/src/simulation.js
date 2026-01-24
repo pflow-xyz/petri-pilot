@@ -5,6 +5,9 @@
  * ODE-based resource prediction with Chart.js visualization
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
 // Chart.js must be loaded via CDN in index.html:
 // <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -74,7 +77,7 @@ async function runSimulation() {
   hideError()
 
   try {
-    const response = await fetch(`/api/coffeeshop/predict?hours=${hours}`)
+    const response = await fetch(`${API_BASE}/api/coffeeshop/predict?hours=${hours}`)
     if (!response.ok) {
       throw new Error(`Simulation failed: ${response.statusText}`)
     }
@@ -98,7 +101,7 @@ async function checkRunout() {
   hideError()
 
   try {
-    const response = await fetch('/api/coffeeshop/runout')
+    const response = await fetch(`${API_BASE}/api/coffeeshop/runout`)
     if (!response.ok) {
       throw new Error(`Runout check failed: ${response.statusText}`)
     }

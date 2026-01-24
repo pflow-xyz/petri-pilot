@@ -95,15 +95,37 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 // StaticFileHandler returns an http.Handler that serves static files from frontend/.
 // It supports SPA routing by returning index.html for paths that don't match static files.
 func StaticFileHandler() http.HandlerFunc {
-	// Find frontend directory
-	frontendPath := "frontend"
-	if _, err := os.Stat(frontendPath); os.IsNotExist(err) {
-		// Try relative to executable
-		exe, _ := os.Executable()
-		frontendPath = filepath.Join(filepath.Dir(exe), "frontend")
+	// Find frontend directory - try multiple locations
+	frontendPath := ""
+	candidates := []string{
+		"frontend",                                    // Running from service directory
+		"generated/coffeeshop/frontend",         // Running from repo root
+		filepath.Join("generated", "coffeeshop", "frontend"), // Platform-safe
+	}
+
+	// Also try relative to executable
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidates = append(candidates,
+			filepath.Join(exeDir, "frontend"),
+			filepath.Join(exeDir, "generated", "coffeeshop", "frontend"),
+		)
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			frontendPath = candidate
+			break
+		}
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// No frontend found
+		if frontendPath == "" {
+			http.Error(w, "Frontend not found", http.StatusNotFound)
+			return
+		}
+
 		// Clean the path
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path == "" {

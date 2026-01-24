@@ -100,6 +100,124 @@ func DefaultOptions() Options {
 	}
 }
 
+// RunMultiple starts multiple services on a single port, each mounted at /{service-name}/.
+// It blocks until interrupted.
+func RunMultiple(names []string, opts Options) error {
+	if len(names) == 0 {
+		return fmt.Errorf("no services specified")
+	}
+	if len(names) == 1 {
+		return Run(names[0], opts)
+	}
+
+	// Create all services
+	services := make([]Service, 0, len(names))
+	for _, name := range names {
+		factory, ok := Get(name)
+		if !ok {
+			return fmt.Errorf("service %q not found", name)
+		}
+		svc, err := factory()
+		if err != nil {
+			// Clean up already-created services
+			for _, s := range services {
+				s.Close()
+			}
+			return fmt.Errorf("creating service %q: %w", name, err)
+		}
+		services = append(services, svc)
+	}
+
+	// Ensure cleanup
+	defer func() {
+		for _, svc := range services {
+			svc.Close()
+		}
+	}()
+
+	// Get port
+	port := opts.Port
+	if envPort := os.Getenv("PORT"); envPort != "" && port == 0 {
+		fmt.Sscanf(envPort, "%d", &port)
+	}
+	if port == 0 {
+		port = 8080
+	}
+
+	// Build combined mux
+	mux := http.NewServeMux()
+
+	// Shared health check
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// Mount each service at /{name}/
+	for i, svc := range services {
+		name := names[i]
+		handler := svc.BuildHandler()
+		prefix := "/" + name
+		mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
+		log.Printf("  Mounted %s at %s/", name, prefix)
+	}
+
+	// Root handler lists available services
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<html><head><title>Petri Pilot Services</title></head><body>"))
+		w.Write([]byte("<h1>Available Services</h1><ul>"))
+		for _, name := range names {
+			fmt.Fprintf(w, `<li><a href="/%s/">%s</a></li>`, name, name)
+		}
+		w.Write([]byte("</ul></body></html>"))
+	})
+
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      mux,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
+	}
+
+	// Start server
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("Starting multi-service server on http://localhost:%d", port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	// Wait for interrupt
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-quit:
+		log.Println("Shutting down server...")
+	case err := <-errCh:
+		return fmt.Errorf("server error: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown: %w", err)
+	}
+
+	log.Println("Server stopped")
+	return nil
+}
+
 // Run starts a service and blocks until interrupted.
 func Run(name string, opts Options) error {
 	factory, ok := Get(name)

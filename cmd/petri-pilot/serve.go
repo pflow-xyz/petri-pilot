@@ -14,21 +14,23 @@ func cmdServe(args []string) {
 
 	fs.Usage = func() {
 		w := fs.Output()
-		fmt.Fprintln(w, `petri-pilot serve - Run a registered service
+		fmt.Fprintln(w, `petri-pilot serve - Run registered services
 
 Usage:
-  petri-pilot serve [options] [service-name]
+  petri-pilot serve [options] [service-names...]
 
-  Without a service name, lists all available services.
-  With a service name, starts that service.
+  Without service names, lists all available services.
+  With one service name, starts that service.
+  With multiple service names, runs all on one port (mounted at /{name}/).
 
 Options:`)
 		fs.PrintDefaults()
 		fmt.Fprintln(w, `
 Examples:
-  petri-pilot serve                   List available services
-  petri-pilot serve blog-post         Run the blog-post service
-  petri-pilot serve -port 3000 myapp  Run myapp on port 3000`)
+  petri-pilot serve                        List available services
+  petri-pilot serve blog-post              Run the blog-post service
+  petri-pilot serve -port 3000 myapp       Run myapp on port 3000
+  petri-pilot serve tic-tac-toe coffeeshop Run both services together`)
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -56,25 +58,34 @@ Examples:
 		os.Exit(0)
 	}
 
-	serviceName := fs.Arg(0)
+	serviceNames := fs.Args()
 
-	// Check if service exists
-	if _, ok := serve.Get(serviceName); !ok {
-		fmt.Fprintf(os.Stderr, "Error: service %q not found\n", serviceName)
-		fmt.Fprintf(os.Stderr, "\nAvailable services:\n")
-		for _, name := range serve.List() {
-			fmt.Fprintf(os.Stderr, "  %s\n", name)
+	// Check if all services exist
+	for _, name := range serviceNames {
+		if _, ok := serve.Get(name); !ok {
+			fmt.Fprintf(os.Stderr, "Error: service %q not found\n", name)
+			fmt.Fprintf(os.Stderr, "\nAvailable services:\n")
+			for _, n := range serve.List() {
+				fmt.Fprintf(os.Stderr, "  %s\n", n)
+			}
+			os.Exit(1)
 		}
-		os.Exit(1)
 	}
 
-	// Run the service
+	// Run the service(s)
 	opts := serve.DefaultOptions()
 	if *port > 0 {
 		opts.Port = *port
 	}
 
-	if err := serve.Run(serviceName, opts); err != nil {
+	var err error
+	if len(serviceNames) == 1 {
+		err = serve.Run(serviceNames[0], opts)
+	} else {
+		err = serve.RunMultiple(serviceNames, opts)
+	}
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

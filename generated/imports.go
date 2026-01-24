@@ -17,6 +17,5 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/supportticket"
 	_ "github.com/pflow-xyz/petri-pilot/generated/taskmanager"
 	_ "github.com/pflow-xyz/petri-pilot/generated/testaccess"
-	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoev2"
 	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoe"
 )

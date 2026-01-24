@@ -83,18 +83,16 @@ codegen-%: examples/%.json
 # Run individual examples using unified CLI
 run-%: build
 	@echo "=== Running $* ==="
-	@# Build frontend if it exists
-	@pkgname=$$(echo $* | tr -d '-'); \
-	if [ -d $(OUTPUT_DIR)/$$pkgname/frontend ]; then \
-		echo "Building frontend..." && \
-		cd $(OUTPUT_DIR)/$$pkgname/frontend && npm install && npm run build && cd -; \
-	fi
-	@# Determine service name from the model JSON
 	@pkgname=$$(echo $* | tr -d '-'); \
 	model_name=$$(grep -o '"name": *"[^"]*"' examples/$*.json 2>/dev/null | head -1 | sed 's/"name": *"//;s/"//') && \
 	if [ -z "$$model_name" ]; then model_name=$$pkgname; fi && \
 	echo "Starting $$model_name..." && \
 	./$(BINARY) serve "$$model_name"
+
+# Run demo services (tic-tac-toe and coffeeshop)
+run-demo: build
+	@echo "=== Running demo services ==="
+	./$(BINARY) serve tic-tac-toe coffeeshop
 
 # Run MCP server (doesn't need generated packages)
 mcp:
@@ -142,6 +140,7 @@ help:
 	done
 	@echo ""
 	@echo "Run targets (uses unified CLI):"
+	@echo "  run-demo         Run tic-tac-toe and coffeeshop together"
 	@for name in $(EXAMPLE_NAMES); do \
 		echo "  run-$$name"; \
 	done

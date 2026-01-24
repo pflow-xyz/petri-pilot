@@ -27,10 +27,11 @@ type Route struct {
 
 // Router manages API routes.
 type Router struct {
-	routes     []Route
-	mux        *http.ServeMux
-	middleware []Middleware
-	prefix     string
+	routes            []Route
+	mux               *http.ServeMux
+	middleware        []Middleware
+	prefix            string
+	staticFileHandler http.Handler
 }
 
 // NewRouter creates a new router.
@@ -105,13 +106,10 @@ func (r *Router) Transition(transitionID, path, description string, handler http
 	return r
 }
 
-// staticFileHandler is a fallback handler for serving static files.
-var staticFileHandler http.Handler
-
 // StaticFiles registers a fallback handler for static files.
 // This should be called last and handles any paths not matched by other routes.
 func (r *Router) StaticFiles(prefix string, handler http.Handler) *Router {
-	staticFileHandler = handler
+	r.staticFileHandler = handler
 	return r
 }
 
@@ -153,8 +151,8 @@ func (r *Router) Build() http.Handler {
 			return
 		}
 		// Fall back to static file handler
-		if staticFileHandler != nil {
-			staticFileHandler.ServeHTTP(w, req)
+		if r.staticFileHandler != nil {
+			r.staticFileHandler.ServeHTTP(w, req)
 			return
 		}
 		Error(w, http.StatusNotFound, "NOT_FOUND", "not found")
