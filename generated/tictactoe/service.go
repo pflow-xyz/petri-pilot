@@ -20,10 +20,10 @@ func init() {
 
 // Service implements serve.Service for the tic-tac-toe workflow.
 type Service struct {
-	store eventstore.Store
-	app   *Application
-	debugBroker *DebugBroker
-	featuresDB *sql.DB
+	store           eventstore.Store
+	app             *Application
+	debugBroker     *DebugBroker
+	featuresDB      *sql.DB
 	softDeleteStore *SoftDeleteStore
 }
 
@@ -31,14 +31,17 @@ type Service struct {
 func NewService() (serve.Service, error) {
 	svc := &Service{}
 
-	// Initialize event store (in-memory for development)
-	svc.store = eventstore.NewMemoryStore()
+	// Initialize event store with SQLite for persistence
+	var err error
+	svc.store, err = eventstore.NewSQLiteStore("tictactoe.db")
+	if err != nil {
+		return nil, err
+	}
 
 	// Create application
 	svc.app = NewApplication(svc.store)
 	// Initialize debug broker
 	svc.debugBroker = NewDebugBroker()
-	var err error
 	// Initialize features database
 	svc.featuresDB, err = sql.Open("sqlite", "features.db")
 	if err != nil {

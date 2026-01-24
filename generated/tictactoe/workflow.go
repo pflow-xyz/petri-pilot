@@ -36,6 +36,7 @@ const (
 	PlaceWinX = "win_x"
 	PlaceWinO = "win_o"
 	PlaceCanReset = "can_reset"
+	PlaceGameActive = "game_active"
 )
 
 // Transition constants
@@ -130,6 +131,7 @@ func InitialPlaces() map[string]int {
 		PlaceP22: 1,
 		PlaceXTurn: 1,
 		PlaceCanReset: 1,
+		PlaceGameActive: 1,
 	}
 }
 
@@ -168,6 +170,7 @@ func AllPlaces() []string {
 		PlaceWinX,
 		PlaceWinO,
 		PlaceCanReset,
+		PlaceGameActive,
 	}
 }
 

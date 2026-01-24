@@ -6,3 +6,5 @@ package tictactoe
 // Admin configuration is enabled
 // Admin routes are registered in api.go
 // Admin handlers use the Application struct to access the event store
+
+

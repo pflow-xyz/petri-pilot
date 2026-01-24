@@ -115,3 +115,20 @@ func (sds *SoftDeleteStore) HandleRestore(w http.ResponseWriter, r *http.Request
 func getSoftDeleteUserID(r *http.Request) string {
 	return "anonymous"
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

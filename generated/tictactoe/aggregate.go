@@ -47,6 +47,7 @@ type State struct {
 	WinX int `json:"win_x"`
 	WinO int `json:"win_o"`
 	CanReset int `json:"can_reset"`
+	GameActive int `json:"game_active"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -301,9 +302,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX00: 1,
 			PlaceX01: 1,
 			PlaceX02: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX00: 1,
+			PlaceX01: 1,
+			PlaceX02: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -313,9 +318,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX10: 1,
 			PlaceX11: 1,
 			PlaceX12: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX10: 1,
+			PlaceX11: 1,
+			PlaceX12: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -325,9 +334,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX20: 1,
 			PlaceX21: 1,
 			PlaceX22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX20: 1,
+			PlaceX21: 1,
+			PlaceX22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -337,9 +350,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX00: 1,
 			PlaceX10: 1,
 			PlaceX20: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX00: 1,
+			PlaceX10: 1,
+			PlaceX20: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -349,9 +366,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX01: 1,
 			PlaceX11: 1,
 			PlaceX21: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX01: 1,
+			PlaceX11: 1,
+			PlaceX21: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -361,9 +382,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX02: 1,
 			PlaceX12: 1,
 			PlaceX22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX02: 1,
+			PlaceX12: 1,
+			PlaceX22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -373,9 +398,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX00: 1,
 			PlaceX11: 1,
 			PlaceX22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX00: 1,
+			PlaceX11: 1,
+			PlaceX22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -385,9 +414,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX02: 1,
 			PlaceX11: 1,
 			PlaceX20: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
+			PlaceX02: 1,
+			PlaceX11: 1,
+			PlaceX20: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -397,9 +430,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO00: 1,
 			PlaceO01: 1,
 			PlaceO02: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO00: 1,
+			PlaceO01: 1,
+			PlaceO02: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -409,9 +446,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO10: 1,
 			PlaceO11: 1,
 			PlaceO12: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO10: 1,
+			PlaceO11: 1,
+			PlaceO12: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -421,9 +462,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO20: 1,
 			PlaceO21: 1,
 			PlaceO22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO20: 1,
+			PlaceO21: 1,
+			PlaceO22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -433,9 +478,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO00: 1,
 			PlaceO10: 1,
 			PlaceO20: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO00: 1,
+			PlaceO10: 1,
+			PlaceO20: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -445,9 +494,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO01: 1,
 			PlaceO11: 1,
 			PlaceO21: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO01: 1,
+			PlaceO11: 1,
+			PlaceO21: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -457,9 +510,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO02: 1,
 			PlaceO12: 1,
 			PlaceO22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO02: 1,
+			PlaceO12: 1,
+			PlaceO22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -469,9 +526,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO00: 1,
 			PlaceO11: 1,
 			PlaceO22: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO00: 1,
+			PlaceO11: 1,
+			PlaceO22: 1,
 		},
 	})
 	sm.AddTransition(aggregate.Transition{
@@ -481,9 +542,13 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO02: 1,
 			PlaceO11: 1,
 			PlaceO20: 1,
+			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
+			PlaceO02: 1,
+			PlaceO11: 1,
+			PlaceO20: 1,
 		},
 	})
 

@@ -12,8 +12,8 @@ import (
 func TestWorkflowConstants(t *testing.T) {
 	// Verify place constants
 	places := AllPlaces()
-	if len(places) != 32 {
-		t.Errorf("expected 32 places, got %d", len(places))
+	if len(places) != 33 {
+		t.Errorf("expected 33 places, got %d", len(places))
 	}
 
 	// Verify transition constants
@@ -58,6 +58,9 @@ func TestInitialPlaces(t *testing.T) {
 	}
 	if initial[PlaceCanReset] != 1 {
 		t.Errorf("expected PlaceCanReset initial = 1, got %d", initial[PlaceCanReset])
+	}
+	if initial[PlaceGameActive] != 1 {
+		t.Errorf("expected PlaceGameActive initial = 1, got %d", initial[PlaceGameActive])
 	}
 }
 
@@ -115,6 +118,9 @@ func TestInitialState(t *testing.T) {
 	}
 	if places[PlaceCanReset] != 1 {
 		t.Errorf("expected PlaceCanReset = 1, got %d", places[PlaceCanReset])
+	}
+	if places[PlaceGameActive] != 1 {
+		t.Errorf("expected PlaceGameActive = 1, got %d", places[PlaceGameActive])
 	}
 }
 
