@@ -3,7 +3,7 @@ package bridge_test
 import (
 	"testing"
 
-	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/go-pflow/tokenmodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
@@ -49,7 +49,7 @@ func TestToMetamodel(t *testing.T) {
 	if pending == nil {
 		t.Fatal("pending state not found")
 	}
-	if pending.Kind != metamodel.TokenState {
+	if pending.Kind != tokenmodel.TokenState {
 		t.Errorf("expected pending to be token state")
 	}
 	if pending.InitialTokens() != 1 {
@@ -60,7 +60,7 @@ func TestToMetamodel(t *testing.T) {
 	if dataStore == nil {
 		t.Fatal("data_store state not found")
 	}
-	if dataStore.Kind != metamodel.DataState {
+	if dataStore.Kind != tokenmodel.DataState {
 		t.Errorf("expected data_store to be data state")
 	}
 	if !dataStore.Exported {
@@ -98,14 +98,14 @@ func TestToMetamodel(t *testing.T) {
 }
 
 func TestFromMetamodel(t *testing.T) {
-	meta := metamodel.NewSchema("test-schema")
+	meta := tokenmodel.NewSchema("test-schema")
 	meta.Version = "2.0.0"
 	meta.AddTokenState("ready", 1)
 	meta.AddDataState("balances", "map[address]uint256", nil, true)
-	meta.AddAction(metamodel.Action{ID: "transfer", Guard: "balances[from] >= amount"})
-	meta.AddArc(metamodel.Arc{Source: "ready", Target: "transfer"})
-	meta.AddArc(metamodel.Arc{Source: "balances", Target: "transfer", Keys: []string{"from"}, Value: "amount"})
-	meta.AddConstraint(metamodel.Constraint{ID: "total", Expr: "sum(balances) == totalSupply"})
+	meta.AddAction(tokenmodel.Action{ID: "transfer", Guard: "balances[from] >= amount"})
+	meta.AddArc(tokenmodel.Arc{Source: "ready", Target: "transfer"})
+	meta.AddArc(tokenmodel.Arc{Source: "balances", Target: "transfer", Keys: []string{"from"}, Value: "amount"})
+	meta.AddConstraint(tokenmodel.Constraint{ID: "total", Expr: "sum(balances) == totalSupply"})
 
 	model := bridge.FromMetamodel(meta)
 

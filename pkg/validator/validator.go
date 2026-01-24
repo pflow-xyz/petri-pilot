@@ -4,7 +4,7 @@ package validator
 import (
 	"fmt"
 
-	mpetri "github.com/pflow-xyz/go-pflow/metamodel/petri"
+	mpetri "github.com/pflow-xyz/go-pflow/tokenmodel/petri"
 	"github.com/pflow-xyz/go-pflow/petri"
 	"github.com/pflow-xyz/go-pflow/reachability"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"

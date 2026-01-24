@@ -1,14 +1,14 @@
-// Package bridge provides conversion between petri-pilot schema and go-pflow metamodel.
+// Package bridge provides conversion between petri-pilot schema and go-pflow tokenmodel.
 package bridge
 
 import (
-	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/go-pflow/tokenmodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
 
 // ToMetamodel converts a petri-pilot Model to a go-pflow Schema.
-func ToMetamodel(model *schema.Model) *metamodel.Schema {
-	s := metamodel.NewSchema(model.Name)
+func ToMetamodel(model *schema.Model) *tokenmodel.Schema {
+	s := tokenmodel.NewSchema(model.Name)
 	s.Version = model.Version
 	if s.Version == "" {
 		s.Version = "1.0.0"
@@ -16,17 +16,17 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 
 	// Convert places to states
 	for _, place := range model.Places {
-		state := metamodel.State{
+		state := tokenmodel.State{
 			ID:       place.ID,
 			Exported: place.Exported,
 		}
 
 		if place.IsData() {
-			state.Kind = metamodel.DataState
+			state.Kind = tokenmodel.DataState
 			state.Type = place.Type
 			state.Initial = nil // Data states start empty unless specified
 		} else {
-			state.Kind = metamodel.TokenState
+			state.Kind = tokenmodel.TokenState
 			state.Type = "int"
 			state.Initial = place.Initial
 		}
@@ -36,7 +36,7 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 
 	// Convert transitions to actions
 	for _, transition := range model.Transitions {
-		action := metamodel.Action{
+		action := tokenmodel.Action{
 			ID:            transition.ID,
 			Guard:         transition.Guard,
 			EventID:       transition.EventType,
@@ -47,7 +47,7 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 
 	// Convert arcs
 	for _, arc := range model.Arcs {
-		metaArc := metamodel.Arc{
+		metaArc := tokenmodel.Arc{
 			Source: arc.From,
 			Target: arc.To,
 			Keys:   arc.Keys,
@@ -64,7 +64,7 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 
 	// Convert constraints
 	for _, constraint := range model.Constraints {
-		s.AddConstraint(metamodel.Constraint{
+		s.AddConstraint(tokenmodel.Constraint{
 			ID:   constraint.ID,
 			Expr: constraint.Expr,
 		})
@@ -74,7 +74,7 @@ func ToMetamodel(model *schema.Model) *metamodel.Schema {
 }
 
 // FromMetamodel converts a go-pflow Schema to a petri-pilot Model.
-func FromMetamodel(s *metamodel.Schema) *schema.Model {
+func FromMetamodel(s *tokenmodel.Schema) *schema.Model {
 	model := &schema.Model{
 		Name:    s.Name,
 		Version: s.Version,
@@ -243,7 +243,7 @@ func bindingsToMap(bindings []schema.Binding) map[string]string {
 	return result
 }
 
-// mapToBindings converts map[string]string to []schema.Binding from metamodel.
+// mapToBindings converts map[string]string to []schema.Binding from tokenmodel.
 func mapToBindings(m map[string]string) []schema.Binding {
 	if len(m) == 0 {
 		return nil

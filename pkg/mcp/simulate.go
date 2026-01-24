@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	pflowMetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	pflowTokenmodel "github.com/pflow-xyz/go-pflow/tokenmodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
@@ -68,7 +68,7 @@ func simulate(model *schema.Model, steps []SimulationStep) SimulationResult {
 	metaSchema := bridge.ToMetamodel(model)
 
 	// Create runtime
-	runtime := pflowMetamodel.NewRuntime(metaSchema)
+	runtime := pflowTokenmodel.NewRuntime(metaSchema)
 
 	result := SimulationResult{
 		Success: true,
@@ -114,7 +114,7 @@ func simulate(model *schema.Model, steps []SimulationStep) SimulationResult {
 }
 
 // executeStep executes a single simulation step and returns its result.
-func executeStep(runtime *pflowMetamodel.Runtime, metaSchema *pflowMetamodel.Schema, step SimulationStep) StepResult {
+func executeStep(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema, step SimulationStep) StepResult {
 	stepResult := StepResult{
 		Transition: step.Transition,
 	}
@@ -155,7 +155,7 @@ func executeStep(runtime *pflowMetamodel.Runtime, metaSchema *pflowMetamodel.Sch
 }
 
 // captureMarking captures the current marking (token counts) of all places.
-func captureMarking(runtime *pflowMetamodel.Runtime, metaSchema *pflowMetamodel.Schema) map[string]int {
+func captureMarking(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema) map[string]int {
 	marking := make(map[string]int)
 	for _, state := range metaSchema.States {
 		if state.IsToken() {
@@ -166,7 +166,7 @@ func captureMarking(runtime *pflowMetamodel.Runtime, metaSchema *pflowMetamodel.
 }
 
 // determineDisabledReason determines why a transition is disabled.
-func determineDisabledReason(runtime *pflowMetamodel.Runtime, metaSchema *pflowMetamodel.Schema, transitionID string) string {
+func determineDisabledReason(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema, transitionID string) string {
 	inputArcs := metaSchema.InputArcs(transitionID)
 	if len(inputArcs) == 0 {
 		return "transition has no input arcs"
