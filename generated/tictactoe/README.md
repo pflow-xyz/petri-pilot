@@ -67,41 +67,41 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Transition | Event | Guard | Description |
 |------------|-------|-------|-------------|
-| `x_play_00` | `XPlay00ed` | - | X plays at (0,0) |
-| `x_play_01` | `XPlay01ed` | - | X plays at (0,1) |
-| `x_play_02` | `XPlay02ed` | - | X plays at (0,2) |
-| `x_play_10` | `XPlay10ed` | - | X plays at (1,0) |
-| `x_play_11` | `XPlay11ed` | - | X plays at (1,1) - center |
-| `x_play_12` | `XPlay12ed` | - | X plays at (1,2) |
-| `x_play_20` | `XPlay20ed` | - | X plays at (2,0) |
-| `x_play_21` | `XPlay21ed` | - | X plays at (2,1) |
-| `x_play_22` | `XPlay22ed` | - | X plays at (2,2) |
-| `o_play_00` | `OPlay00ed` | - | O plays at (0,0) |
-| `o_play_01` | `OPlay01ed` | - | O plays at (0,1) |
-| `o_play_02` | `OPlay02ed` | - | O plays at (0,2) |
-| `o_play_10` | `OPlay10ed` | - | O plays at (1,0) |
-| `o_play_11` | `OPlay11ed` | - | O plays at (1,1) - center |
-| `o_play_12` | `OPlay12ed` | - | O plays at (1,2) |
-| `o_play_20` | `OPlay20ed` | - | O plays at (2,0) |
-| `o_play_21` | `OPlay21ed` | - | O plays at (2,1) |
-| `o_play_22` | `OPlay22ed` | - | O plays at (2,2) |
-| `reset` | `Reseted` | - | Reset game to initial state |
-| `x_win_row0` | `XWinRow0ed` | - | X wins top row (0,0)-(0,1)-(0,2) |
-| `x_win_row1` | `XWinRow1ed` | - | X wins middle row (1,0)-(1,1)-(1,2) |
-| `x_win_row2` | `XWinRow2ed` | - | X wins bottom row (2,0)-(2,1)-(2,2) |
-| `x_win_col0` | `XWinCol0ed` | - | X wins left column (0,0)-(1,0)-(2,0) |
-| `x_win_col1` | `XWinCol1ed` | - | X wins center column (0,1)-(1,1)-(2,1) |
-| `x_win_col2` | `XWinCol2ed` | - | X wins right column (0,2)-(1,2)-(2,2) |
-| `x_win_diag` | `XWinDiaged` | - | X wins main diagonal (0,0)-(1,1)-(2,2) |
-| `x_win_anti` | `XWinAntied` | - | X wins anti-diagonal (0,2)-(1,1)-(2,0) |
-| `o_win_row0` | `OWinRow0ed` | - | O wins top row (0,0)-(0,1)-(0,2) |
-| `o_win_row1` | `OWinRow1ed` | - | O wins middle row (1,0)-(1,1)-(1,2) |
-| `o_win_row2` | `OWinRow2ed` | - | O wins bottom row (2,0)-(2,1)-(2,2) |
-| `o_win_col0` | `OWinCol0ed` | - | O wins left column (0,0)-(1,0)-(2,0) |
-| `o_win_col1` | `OWinCol1ed` | - | O wins center column (0,1)-(1,1)-(2,1) |
-| `o_win_col2` | `OWinCol2ed` | - | O wins right column (0,2)-(1,2)-(2,2) |
-| `o_win_diag` | `OWinDiaged` | - | O wins main diagonal (0,0)-(1,1)-(2,2) |
-| `o_win_anti` | `OWinAntied` | - | O wins anti-diagonal (0,2)-(1,1)-(2,0) |
+| `x_play_00` | `XPlayed00` | - | X plays at (0,0) |
+| `x_play_01` | `XPlayed01` | - | X plays at (0,1) |
+| `x_play_02` | `XPlayed02` | - | X plays at (0,2) |
+| `x_play_10` | `XPlayed10` | - | X plays at (1,0) |
+| `x_play_11` | `XPlayed11` | - | X plays at (1,1) - center |
+| `x_play_12` | `XPlayed12` | - | X plays at (1,2) |
+| `x_play_20` | `XPlayed20` | - | X plays at (2,0) |
+| `x_play_21` | `XPlayed21` | - | X plays at (2,1) |
+| `x_play_22` | `XPlayed22` | - | X plays at (2,2) |
+| `o_play_00` | `OPlayed00` | - | O plays at (0,0) |
+| `o_play_01` | `OPlayed01` | - | O plays at (0,1) |
+| `o_play_02` | `OPlayed02` | - | O plays at (0,2) |
+| `o_play_10` | `OPlayed10` | - | O plays at (1,0) |
+| `o_play_11` | `OPlayed11` | - | O plays at (1,1) - center |
+| `o_play_12` | `OPlayed12` | - | O plays at (1,2) |
+| `o_play_20` | `OPlayed20` | - | O plays at (2,0) |
+| `o_play_21` | `OPlayed21` | - | O plays at (2,1) |
+| `o_play_22` | `OPlayed22` | - | O plays at (2,2) |
+| `reset` | `GameReset` | - | Reset game to initial state |
+| `x_win_row0` | `XWon0` | - | X wins top row (0,0)-(0,1)-(0,2) |
+| `x_win_row1` | `XWon1` | - | X wins middle row (1,0)-(1,1)-(1,2) |
+| `x_win_row2` | `XWon2` | - | X wins bottom row (2,0)-(2,1)-(2,2) |
+| `x_win_col0` | `XWon0` | - | X wins left column (0,0)-(1,0)-(2,0) |
+| `x_win_col1` | `XWon1` | - | X wins center column (0,1)-(1,1)-(2,1) |
+| `x_win_col2` | `XWon2` | - | X wins right column (0,2)-(1,2)-(2,2) |
+| `x_win_diag` | `XWon` | - | X wins main diagonal (0,0)-(1,1)-(2,2) |
+| `x_win_anti` | `XWon` | - | X wins anti-diagonal (0,2)-(1,1)-(2,0) |
+| `o_win_row0` | `OWon0` | - | O wins top row (0,0)-(0,1)-(0,2) |
+| `o_win_row1` | `OWon1` | - | O wins middle row (1,0)-(1,1)-(1,2) |
+| `o_win_row2` | `OWon2` | - | O wins bottom row (2,0)-(2,1)-(2,2) |
+| `o_win_col0` | `OWon0` | - | O wins left column (0,0)-(1,0)-(2,0) |
+| `o_win_col1` | `OWon1` | - | O wins center column (0,1)-(1,1)-(2,1) |
+| `o_win_col2` | `OWon2` | - | O wins right column (0,2)-(1,2)-(2,2) |
+| `o_win_diag` | `OWon` | - | O wins main diagonal (0,0)-(1,1)-(2,2) |
+| `o_win_anti` | `OWon` | - | O wins anti-diagonal (0,2)-(1,1)-(2,0) |
 
 
 ### Petri Net Diagram

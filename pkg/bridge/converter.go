@@ -149,7 +149,12 @@ func EnrichModel(model *schema.Model) *schema.Model {
 	for i := range enriched.Transitions {
 		t := &enriched.Transitions[i]
 		if t.EventType == "" {
-			t.EventType = toEventType(t.ID)
+			// Use explicit Event name if provided, with numeric suffix from ID
+			if t.Event != "" {
+				t.EventType = toEventTypeFromEvent(t.Event, t.ID)
+			} else {
+				t.EventType = toEventType(t.ID)
+			}
 		}
 		if t.HTTPPath == "" {
 			t.HTTPPath = "/api/" + t.ID
@@ -160,6 +165,30 @@ func EnrichModel(model *schema.Model) *schema.Model {
 	}
 
 	return &enriched
+}
+
+// toEventTypeFromEvent creates an event type from an explicit event name and transition ID.
+// It extracts any numeric suffix from the transition ID and appends it to the event name.
+// Examples: ("XPlayed", "x_play_11") -> "XPlayed11", ("OPlayed", "o_play_00") -> "OPlayed00"
+func toEventTypeFromEvent(eventName, transitionID string) string {
+	// Extract numeric suffix from transition ID
+	suffix := extractNumericSuffix(transitionID)
+	return eventName + suffix
+}
+
+// extractNumericSuffix extracts trailing digits from a string.
+// Examples: "x_play_11" -> "11", "reset" -> "", "win_row0" -> "0"
+func extractNumericSuffix(s string) string {
+	// Find where the numeric suffix starts
+	suffixStart := len(s)
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] >= '0' && s[i] <= '9' {
+			suffixStart = i
+		} else {
+			break
+		}
+	}
+	return s[suffixStart:]
 }
 
 // toEventType converts a transition ID to an event type name.
