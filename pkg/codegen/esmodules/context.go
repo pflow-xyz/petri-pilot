@@ -3,8 +3,7 @@ package esmodules
 import (
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // Context holds all data needed for React code generation templates.
@@ -58,7 +57,7 @@ type Context struct {
 	Status *StatusContext
 
 	// Original model for reference
-	Model *schema.Model
+	Model *metamodel.Model
 }
 
 // PredictionContext provides template-friendly access to prediction configuration.
@@ -197,9 +196,9 @@ type ContextOptions struct {
 }
 
 // NewContext creates a Context from a model with computed template data.
-func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
+func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	// Enrich the model with defaults
-	enriched := bridge.EnrichModel(model)
+	enriched := metamodel.EnrichModel(model)
 
 	// Determine project name
 	projectName := opts.ProjectName
@@ -266,11 +265,11 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Access)
 
 	// Build route contexts from bridge inference
-	apiRoutes := bridge.InferAPIRoutes(enriched)
+	apiRoutes := metamodel.InferAPIRoutes(enriched)
 	ctx.Routes = buildRouteContexts(apiRoutes)
 
 	// Build state field contexts from bridge inference
-	stateFields := bridge.InferAggregateState(enriched)
+	stateFields := metamodel.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
 
 	// Build role contexts for login selector
@@ -287,7 +286,7 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	return ctx, nil
 }
 
-func buildPlaceContexts(places []schema.Place) []PlaceContext {
+func buildPlaceContexts(places []metamodel.Place) []PlaceContext {
 	result := make([]PlaceContext, len(places))
 	for i, p := range places {
 		result[i] = PlaceContext{
@@ -302,7 +301,7 @@ func buildPlaceContexts(places []schema.Place) []PlaceContext {
 	return result
 }
 
-func buildTransitionContexts(transitions []schema.Transition, access []schema.AccessRule) []TransitionContext {
+func buildTransitionContexts(transitions []metamodel.Transition, access []metamodel.AccessRule) []TransitionContext {
 	// Build access map: transition ID -> required roles
 	accessMap := make(map[string][]string)
 	for _, rule := range access {
@@ -345,7 +344,7 @@ func buildTransitionContexts(transitions []schema.Transition, access []schema.Ac
 	return result
 }
 
-func buildTransitionFieldContexts(fields []schema.TransitionField) []TransitionFieldContext {
+func buildTransitionFieldContexts(fields []metamodel.TransitionField) []TransitionFieldContext {
 	result := make([]TransitionFieldContext, len(fields))
 	for i, f := range fields {
 		// Build options for select fields
@@ -404,7 +403,7 @@ func inferFieldType(name string) string {
 	}
 }
 
-func buildRouteContexts(apiRoutes []bridge.APIRoute) []RouteContext {
+func buildRouteContexts(apiRoutes []metamodel.APIRoute) []RouteContext {
 	result := make([]RouteContext, len(apiRoutes))
 	for i, r := range apiRoutes {
 		result[i] = RouteContext{
@@ -419,7 +418,7 @@ func buildRouteContexts(apiRoutes []bridge.APIRoute) []RouteContext {
 	return result
 }
 
-func buildStateFieldContexts(stateFields []bridge.StateField) []StateFieldContext {
+func buildStateFieldContexts(stateFields []metamodel.StateField) []StateFieldContext {
 	result := make([]StateFieldContext, len(stateFields))
 	for i, f := range stateFields {
 		result[i] = StateFieldContext{
@@ -433,7 +432,7 @@ func buildStateFieldContexts(stateFields []bridge.StateField) []StateFieldContex
 	return result
 }
 
-func buildRoleContexts(roles []schema.Role) []RoleContext {
+func buildRoleContexts(roles []metamodel.Role) []RoleContext {
 	result := make([]RoleContext, len(roles))
 	for i, r := range roles {
 		result[i] = RoleContext{
@@ -444,7 +443,7 @@ func buildRoleContexts(roles []schema.Role) []RoleContext {
 	return result
 }
 
-func buildStatusContext(status *schema.StatusConfig) *StatusContext {
+func buildStatusContext(status *metamodel.StatusConfig) *StatusContext {
 	ctx := &StatusContext{
 		PlacesJSON: "{}",
 		Default:    "In Progress",
@@ -473,7 +472,7 @@ func buildStatusContext(status *schema.StatusConfig) *StatusContext {
 	return ctx
 }
 
-func buildWalletContext(wallet *schema.WalletConfig) *WalletContext {
+func buildWalletContext(wallet *metamodel.WalletConfig) *WalletContext {
 	accounts := make([]WalletAccountContext, len(wallet.Accounts))
 	for i, acc := range wallet.Accounts {
 		// Build JSON array of roles for template

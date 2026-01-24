@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // State holds the aggregate state for loan-application.
@@ -35,7 +33,7 @@ func NewState() State {
 
 // Aggregate wraps a StateMachine with the loan-application state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 }
 
 // NewAggregate creates a new aggregate with initial state.
@@ -43,10 +41,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRunCreditCheck,
 		EventType: EventTypeRunCreditCheck,
 		Inputs: map[string]int{
@@ -56,7 +54,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceCreditCheck: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionAutoApprove,
 		EventType: EventTypeAutoApprove,
 		Inputs: map[string]int{
@@ -66,7 +64,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceAutoApproved: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionFlagForReview,
 		EventType: EventTypeFlagForReview,
 		Inputs: map[string]int{
@@ -76,7 +74,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceManualReview: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionUnderwriterApprove,
 		EventType: EventTypeUnderwriterApprove,
 		Inputs: map[string]int{
@@ -86,7 +84,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceApproved: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionUnderwriterDeny,
 		EventType: EventTypeUnderwriterDeny,
 		Inputs: map[string]int{
@@ -96,7 +94,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDenied: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionAutoDeny,
 		EventType: EventTypeAutoDeny,
 		Inputs: map[string]int{
@@ -106,7 +104,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDenied: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionFinalizeApproval,
 		EventType: EventTypeFinalizeApproval,
 		Inputs: map[string]int{
@@ -116,7 +114,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceApproved: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionDisburse,
 		EventType: EventTypeDisburse,
 		Inputs: map[string]int{
@@ -126,7 +124,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDisbursed: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionStartRepayment,
 		EventType: EventTypeStartRepayment,
 		Inputs: map[string]int{
@@ -136,7 +134,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRepaying: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMakePayment,
 		EventType: EventTypeMakePayment,
 		Inputs: map[string]int{
@@ -146,7 +144,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRepaying: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionComplete,
 		EventType: EventTypeComplete,
 		Inputs: map[string]int{
@@ -156,7 +154,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaidOff: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMarkDefault,
 		EventType: EventTypeMarkDefault,
 		Inputs: map[string]int{
@@ -168,40 +166,40 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeRunCreditCheck, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRunCreditCheck, func(state *State, event *eventsource.Event) error {
 		return applyRunCreditCheck(state, event)
 	})
-	sm.RegisterHandler(EventTypeAutoApprove, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeAutoApprove, func(state *State, event *eventsource.Event) error {
 		return applyAutoApprove(state, event)
 	})
-	sm.RegisterHandler(EventTypeFlagForReview, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeFlagForReview, func(state *State, event *eventsource.Event) error {
 		return applyFlagForReview(state, event)
 	})
-	sm.RegisterHandler(EventTypeUnderwriterApprove, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeUnderwriterApprove, func(state *State, event *eventsource.Event) error {
 		return applyUnderwriterApprove(state, event)
 	})
-	sm.RegisterHandler(EventTypeUnderwriterDeny, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeUnderwriterDeny, func(state *State, event *eventsource.Event) error {
 		return applyUnderwriterDeny(state, event)
 	})
-	sm.RegisterHandler(EventTypeAutoDeny, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeAutoDeny, func(state *State, event *eventsource.Event) error {
 		return applyAutoDeny(state, event)
 	})
-	sm.RegisterHandler(EventTypeFinalizeApproval, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeFinalizeApproval, func(state *State, event *eventsource.Event) error {
 		return applyFinalizeApproval(state, event)
 	})
-	sm.RegisterHandler(EventTypeDisburse, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeDisburse, func(state *State, event *eventsource.Event) error {
 		return applyDisburse(state, event)
 	})
-	sm.RegisterHandler(EventTypeStartRepayment, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeStartRepayment, func(state *State, event *eventsource.Event) error {
 		return applyStartRepayment(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakePayment, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMakePayment, func(state *State, event *eventsource.Event) error {
 		return applyMakePayment(state, event)
 	})
-	sm.RegisterHandler(EventTypeComplete, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeComplete, func(state *State, event *eventsource.Event) error {
 		return applyComplete(state, event)
 	})
-	sm.RegisterHandler(EventTypeMarkDefault, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMarkDefault, func(state *State, event *eventsource.Event) error {
 		return applyMarkDefault(state, event)
 	})
 	return &Aggregate{sm: sm}
@@ -242,96 +240,96 @@ func (a *Aggregate) CanFire(transitionID string) bool {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	return a.sm.Fire(transitionID, data)
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyRunCreditCheck(state *State, event *runtime.Event) error {
+func applyRunCreditCheck(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyAutoApprove(state *State, event *runtime.Event) error {
+func applyAutoApprove(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyFlagForReview(state *State, event *runtime.Event) error {
+func applyFlagForReview(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyUnderwriterApprove(state *State, event *runtime.Event) error {
+func applyUnderwriterApprove(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyUnderwriterDeny(state *State, event *runtime.Event) error {
+func applyUnderwriterDeny(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyAutoDeny(state *State, event *runtime.Event) error {
+func applyAutoDeny(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyFinalizeApproval(state *State, event *runtime.Event) error {
+func applyFinalizeApproval(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyDisburse(state *State, event *runtime.Event) error {
+func applyDisburse(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyStartRepayment(state *State, event *runtime.Event) error {
+func applyStartRepayment(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakePayment(state *State, event *runtime.Event) error {
+func applyMakePayment(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyComplete(state *State, event *runtime.Event) error {
+func applyComplete(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMarkDefault(state *State, event *runtime.Event) error {
+func applyMarkDefault(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -340,11 +338,11 @@ func applyMarkDefault(state *State, event *runtime.Event) error {
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -392,7 +390,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -422,7 +420,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

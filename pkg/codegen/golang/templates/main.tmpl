@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 {{- if or .HasBlobstore .HasAnyFeatures}}
 	_ "modernc.org/sqlite"
 {{- end}}
@@ -23,14 +23,14 @@ import (
 func main() {
 {{- if .HasAdmin}}
 	// Initialize SQLite event store (required for admin functionality)
-	store, err := eventstore.NewSQLiteStore("events.db")
+	store, err := eventsource.NewSQLiteStore("events.db")
 	if err != nil {
 		log.Fatalf("Failed to initialize event store: %v", err)
 	}
 	defer store.Close()
 {{- else}}
 	// Initialize event store (in-memory for development)
-	store := eventstore.NewMemoryStore()
+	store := eventsource.NewMemoryStore()
 	defer store.Close()
 {{- end}}
 

@@ -2,7 +2,7 @@
 // This is a local fork of go-pflow/metamodel, extended for petri-pilot's needs.
 package metamodel
 
-import "github.com/pflow-xyz/petri-pilot/pkg/schema"
+import goflowmodel "github.com/pflow-xyz/go-pflow/metamodel"
 
 // Kind discriminates between token-counting and data-holding states.
 type Kind string
@@ -19,7 +19,7 @@ const (
 	DataState Kind = "data"
 )
 
-// State represents a named container in a schema.
+// State represents a named container in a goflowmodel.
 // The Kind field determines whether this is a countable token state
 // or a structured data state.
 type State struct {
@@ -30,7 +30,7 @@ type State struct {
 	// For DataState: Initial can be any value (map, struct, etc.)
 	Initial any `json:"initial,omitempty"`
 
-	// Type describes the state's type schema.
+	// Type describes the state's type goflowmodel.
 	// For TokenState: typically empty or "int"
 	// For DataState: e.g., "map[string]int64", "string", "int64"
 	Type string `json:"type,omitempty"`
@@ -156,7 +156,7 @@ type Schema struct {
 	Views       []View       `json:"views,omitempty"` // UI views for forms and data display
 }
 
-// NewSchema creates a new empty schema.
+// NewSchema creates a new empty goflowmodel.
 func NewSchema(name string) *Schema {
 	return &Schema{
 		Name:        name,
@@ -169,13 +169,13 @@ func NewSchema(name string) *Schema {
 	}
 }
 
-// AddState adds a state to the schema.
+// AddState adds a state to the goflowmodel.
 func (s *Schema) AddState(st State) *Schema {
 	s.States = append(s.States, st)
 	return s
 }
 
-// AddTokenState adds a token-counting state to the schema.
+// AddTokenState adds a token-counting state to the goflowmodel.
 func (s *Schema) AddTokenState(id string, initial int) *Schema {
 	return s.AddState(State{
 		ID:      id,
@@ -185,7 +185,7 @@ func (s *Schema) AddTokenState(id string, initial int) *Schema {
 	})
 }
 
-// AddDataState adds a data-holding state to the schema.
+// AddDataState adds a data-holding state to the goflowmodel.
 func (s *Schema) AddDataState(id string, typ string, initial any, exported bool) *Schema {
 	return s.AddState(State{
 		ID:       id,
@@ -196,19 +196,19 @@ func (s *Schema) AddDataState(id string, typ string, initial any, exported bool)
 	})
 }
 
-// AddAction adds an action to the schema.
+// AddAction adds an action to the goflowmodel.
 func (s *Schema) AddAction(a Action) *Schema {
 	s.Actions = append(s.Actions, a)
 	return s
 }
 
-// AddArc adds an arc to the schema.
+// AddArc adds an arc to the goflowmodel.
 func (s *Schema) AddArc(a Arc) *Schema {
 	s.Arcs = append(s.Arcs, a)
 	return s
 }
 
-// AddConstraint adds a constraint to the schema.
+// AddConstraint adds a constraint to the goflowmodel.
 func (s *Schema) AddConstraint(c Constraint) *Schema {
 	s.Constraints = append(s.Constraints, c)
 	return s
@@ -286,9 +286,9 @@ func (s *Schema) OutputArcs(actionID string) []Arc {
 	return result
 }
 
-// ToModel converts the local metamodel.Schema to schema.Model for code generation.
-func (s *Schema) ToModel() *schema.Model {
-	model := &schema.Model{
+// ToModel converts the local metamodel.Schema to goflowmodel.Model for code generation.
+func (s *Schema) ToModel() *goflowmodel.Model {
+	model := &goflowmodel.Model{
 		Name:        s.Name,
 		Version:     s.Version,
 		Description: s.Description,
@@ -296,7 +296,7 @@ func (s *Schema) ToModel() *schema.Model {
 
 	// Convert states to places
 	for _, state := range s.States {
-		place := schema.Place{
+		place := goflowmodel.Place{
 			ID:          state.ID,
 			Description: state.Description,
 			Type:        state.Type,
@@ -304,10 +304,10 @@ func (s *Schema) ToModel() *schema.Model {
 		}
 
 		if state.IsToken() {
-			place.Kind = schema.TokenKind
+			place.Kind = goflowmodel.TokenKind
 			place.Initial = state.InitialTokens()
 		} else {
-			place.Kind = schema.DataKind
+			place.Kind = goflowmodel.DataKind
 			place.Initial = 0
 		}
 
@@ -316,7 +316,7 @@ func (s *Schema) ToModel() *schema.Model {
 
 	// Convert actions to transitions
 	for _, action := range s.Actions {
-		transition := schema.Transition{
+		transition := goflowmodel.Transition{
 			ID:          action.ID,
 			Description: action.Description,
 			Guard:       action.Guard,
@@ -327,13 +327,13 @@ func (s *Schema) ToModel() *schema.Model {
 
 	// Convert arcs
 	for _, arc := range s.Arcs {
-		modelArc := schema.Arc{
+		modelArc := goflowmodel.Arc{
 			From:   arc.Source,
 			To:     arc.Target,
 			Weight: arc.Weight,
 			Keys:   arc.Keys,
 			Value:  arc.Value,
-			Type:   schema.ArcType(arc.Type),
+			Type:   goflowmodel.ArcType(arc.Type),
 		}
 		if modelArc.Weight == 0 {
 			modelArc.Weight = 1
@@ -343,7 +343,7 @@ func (s *Schema) ToModel() *schema.Model {
 
 	// Convert constraints
 	for _, constraint := range s.Constraints {
-		model.Constraints = append(model.Constraints, schema.Constraint{
+		model.Constraints = append(model.Constraints, goflowmodel.Constraint{
 			ID:   constraint.ID,
 			Expr: constraint.Expr,
 		})
@@ -352,14 +352,14 @@ func (s *Schema) ToModel() *schema.Model {
 	return model
 }
 
-// mapToBindings converts map[string]string to []schema.Binding.
-func mapToBindings(m map[string]string) []schema.Binding {
+// mapToBindings converts map[string]string to []goflowmodel.Binding.
+func mapToBindings(m map[string]string) []goflowmodel.Binding {
 	if len(m) == 0 {
 		return nil
 	}
-	var result []schema.Binding
+	var result []goflowmodel.Binding
 	for name, typ := range m {
-		result = append(result, schema.Binding{
+		result = append(result, goflowmodel.Binding{
 			Name: name,
 			Type: typ,
 		})

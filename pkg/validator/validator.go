@@ -4,10 +4,10 @@ package validator
 import (
 	"fmt"
 
-	mpetri "github.com/pflow-xyz/go-pflow/tokenmodel/petri"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/go-pflow/petri"
 	"github.com/pflow-xyz/go-pflow/reachability"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	mpetri "github.com/pflow-xyz/go-pflow/tokenmodel/petri"
 )
 
 // Validator performs formal verification on Petri net models.
@@ -46,8 +46,8 @@ func New(opts Options) *Validator {
 }
 
 // Validate performs full validation on a model.
-func (v *Validator) Validate(model *schema.Model) (*schema.ValidationResult, error) {
-	result := &schema.ValidationResult{Valid: true}
+func (v *Validator) Validate(model *metamodel.Model) (*metamodel.ValidationResult, error) {
+	result := &metamodel.ValidationResult{Valid: true}
 
 	// Structural validation
 	if errs := v.validateStructure(model); len(errs) > 0 {
@@ -58,7 +58,7 @@ func (v *Validator) Validate(model *schema.Model) (*schema.ValidationResult, err
 	// Build go-pflow net
 	net, err := v.buildNet(model)
 	if err != nil {
-		result.Errors = append(result.Errors, schema.ValidationError{
+		result.Errors = append(result.Errors, metamodel.ValidationError{
 			Code:    "BUILD_FAILED",
 			Message: err.Error(),
 		})
@@ -69,14 +69,14 @@ func (v *Validator) Validate(model *schema.Model) (*schema.ValidationResult, err
 	// Reachability analysis
 	analysis, err := v.analyzeReachability(net)
 	if err != nil {
-		result.Warnings = append(result.Warnings, schema.ValidationError{
+		result.Warnings = append(result.Warnings, metamodel.ValidationError{
 			Code:    "REACHABILITY_FAILED",
 			Message: err.Error(),
 		})
 	} else {
 		result.Analysis = analysis
 		if analysis.HasDeadlocks {
-			result.Warnings = append(result.Warnings, schema.ValidationError{
+			result.Warnings = append(result.Warnings, metamodel.ValidationError{
 				Code:    "DEADLOCK_DETECTED",
 				Message: fmt.Sprintf("Model has %d deadlock state(s)", len(analysis.Deadlocks)),
 				Fix:     "Add transitions to escape deadlock states or verify this is intended terminal behavior",
@@ -96,19 +96,19 @@ func (v *Validator) Validate(model *schema.Model) (*schema.ValidationResult, err
 	return result, nil
 }
 
-func (v *Validator) validateStructure(model *schema.Model) []schema.ValidationError {
-	var errs []schema.ValidationError
+func (v *Validator) validateStructure(model *metamodel.Model) []metamodel.ValidationError {
+	var errs []metamodel.ValidationError
 
 	// Check for empty model
 	if len(model.Places) == 0 {
-		errs = append(errs, schema.ValidationError{
+		errs = append(errs, metamodel.ValidationError{
 			Code:    "NO_PLACES",
 			Message: "Model has no places",
 			Fix:     "Add at least one place to represent state",
 		})
 	}
 	if len(model.Transitions) == 0 {
-		errs = append(errs, schema.ValidationError{
+		errs = append(errs, metamodel.ValidationError{
 			Code:    "NO_TRANSITIONS",
 			Message: "Model has no transitions",
 			Fix:     "Add at least one transition to represent actions",
@@ -124,7 +124,7 @@ func (v *Validator) validateStructure(model *schema.Model) []schema.ValidationEr
 
 	for _, p := range model.Places {
 		if !connected[p.ID] {
-			errs = append(errs, schema.ValidationError{
+			errs = append(errs, metamodel.ValidationError{
 				Code:    "UNCONNECTED_PLACE",
 				Message: fmt.Sprintf("Place '%s' has no arcs", p.ID),
 				Element: p.ID,
@@ -135,7 +135,7 @@ func (v *Validator) validateStructure(model *schema.Model) []schema.ValidationEr
 
 	for _, t := range model.Transitions {
 		if !connected[t.ID] {
-			errs = append(errs, schema.ValidationError{
+			errs = append(errs, metamodel.ValidationError{
 				Code:    "UNCONNECTED_TRANSITION",
 				Message: fmt.Sprintf("Transition '%s' has no arcs", t.ID),
 				Element: t.ID,
@@ -155,14 +155,14 @@ func (v *Validator) validateStructure(model *schema.Model) []schema.ValidationEr
 
 	for _, arc := range model.Arcs {
 		if !elements[arc.From] {
-			errs = append(errs, schema.ValidationError{
+			errs = append(errs, metamodel.ValidationError{
 				Code:    "INVALID_ARC_SOURCE",
 				Message: fmt.Sprintf("Arc references unknown source '%s'", arc.From),
 				Fix:     "Define the missing place or transition",
 			})
 		}
 		if !elements[arc.To] {
-			errs = append(errs, schema.ValidationError{
+			errs = append(errs, metamodel.ValidationError{
 				Code:    "INVALID_ARC_TARGET",
 				Message: fmt.Sprintf("Arc references unknown target '%s'", arc.To),
 				Fix:     "Define the missing place or transition",
@@ -173,7 +173,7 @@ func (v *Validator) validateStructure(model *schema.Model) []schema.ValidationEr
 	return errs
 }
 
-func (v *Validator) buildNet(model *schema.Model) (*petri.PetriNet, error) {
+func (v *Validator) buildNet(model *metamodel.Model) (*petri.PetriNet, error) {
 	builder := petri.Build()
 
 	for _, p := range model.Places {
@@ -195,11 +195,11 @@ func (v *Validator) buildNet(model *schema.Model) (*petri.PetriNet, error) {
 	return builder.Done(), nil
 }
 
-func (v *Validator) analyzeReachability(net *petri.PetriNet) (*schema.AnalysisResult, error) {
+func (v *Validator) analyzeReachability(net *petri.PetriNet) (*metamodel.AnalysisResult, error) {
 	analyzer := reachability.NewAnalyzer(net).WithMaxStates(v.opts.MaxStates)
 	result := analyzer.Analyze()
 
-	analysis := &schema.AnalysisResult{
+	analysis := &metamodel.AnalysisResult{
 		Bounded:      result.Bounded,
 		Live:         result.Live,
 		HasDeadlocks: result.HasDeadlock,
@@ -214,7 +214,7 @@ func (v *Validator) analyzeReachability(net *petri.PetriNet) (*schema.AnalysisRe
 	return analysis, nil
 }
 
-func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *schema.AnalysisResult {
+func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *metamodel.AnalysisResult {
 	// Build metamodel for sensitivity analysis
 	model := mpetri.FromPetriNet(net)
 
@@ -223,7 +223,7 @@ func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *schema.AnalysisResu
 
 	sensResult := model.AnalyzeSensitivity(opts)
 
-	analysis := &schema.AnalysisResult{}
+	analysis := &metamodel.AnalysisResult{}
 
 	// Group by impact for symmetry detection
 	impactGroups := make(map[float64][]string)
@@ -232,7 +232,7 @@ func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *schema.AnalysisResu
 		roundedImpact := float64(int(elem.Impact*1000)) / 1000
 		impactGroups[roundedImpact] = append(impactGroups[roundedImpact], elem.ID)
 
-		analysis.Importance = append(analysis.Importance, schema.ElementAnalysis{
+		analysis.Importance = append(analysis.Importance, metamodel.ElementAnalysis{
 			ID:         elem.ID,
 			Type:       elem.Type,
 			Importance: elem.Impact,
@@ -247,7 +247,7 @@ func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *schema.AnalysisResu
 	// Build symmetry groups (elements with identical impact)
 	for impact, elements := range impactGroups {
 		if len(elements) > 1 {
-			analysis.SymmetryGroups = append(analysis.SymmetryGroups, schema.SymmetryGroup{
+			analysis.SymmetryGroups = append(analysis.SymmetryGroups, metamodel.SymmetryGroup{
 				Elements: elements,
 				Impact:   impact,
 			})

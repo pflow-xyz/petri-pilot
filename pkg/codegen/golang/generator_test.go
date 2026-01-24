@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
-func loadTestModel(t *testing.T) *schema.Model {
+func loadTestModel(t *testing.T) *metamodel.Model {
 	t.Helper()
 
 	data, err := os.ReadFile("../../../examples/order-processing.json")
@@ -19,7 +19,7 @@ func loadTestModel(t *testing.T) *schema.Model {
 		t.Fatalf("Failed to read example model: %v", err)
 	}
 
-	var model schema.Model
+	var model metamodel.Model
 	if err := json.Unmarshal(data, &model); err != nil {
 		t.Fatalf("Failed to parse example model: %v", err)
 	}
@@ -429,9 +429,9 @@ func TestValidateModel(t *testing.T) {
 	}
 
 	// Invalid model - no places
-	invalidModel := &schema.Model{
+	invalidModel := &metamodel.Model{
 		Name: "invalid",
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "t1"},
 		},
 	}

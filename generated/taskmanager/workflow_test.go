@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 func TestWorkflowConstants(t *testing.T) {
@@ -69,7 +69,7 @@ func TestEnabledTransitions(t *testing.T) {
 }
 
 func TestApplicationCreate(t *testing.T) {
-	store := eventstore.NewMemoryStore()
+	store := eventsource.NewMemoryStore()
 	defer store.Close()
 
 	app := NewApplication(store)
@@ -85,7 +85,7 @@ func TestApplicationCreate(t *testing.T) {
 }
 
 func TestApplicationLoadNewAggregate(t *testing.T) {
-	store := eventstore.NewMemoryStore()
+	store := eventsource.NewMemoryStore()
 	defer store.Close()
 
 	app := NewApplication(store)
@@ -103,7 +103,7 @@ func TestApplicationLoadNewAggregate(t *testing.T) {
 
 
 func TestFirstTransition(t *testing.T) {
-	store := eventstore.NewMemoryStore()
+	store := eventsource.NewMemoryStore()
 	defer store.Close()
 
 	app := NewApplication(store)
@@ -135,7 +135,7 @@ func TestFirstTransition(t *testing.T) {
 
 
 func TestCannotFireDisabledTransition(t *testing.T) {
-	store := eventstore.NewMemoryStore()
+	store := eventsource.NewMemoryStore()
 	defer store.Close()
 
 	app := NewApplication(store)

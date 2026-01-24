@@ -1,11 +1,11 @@
-// Package bridge provides conversion between petri-pilot schema and go-pflow metamodel.
+// Package bridge provides code generation helpers for petri-pilot.
 // This file adds access control extraction for role-based access control (RBAC).
 package bridge
 
 import (
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // AccessSpec describes the access control configuration extracted from a model.
@@ -59,7 +59,7 @@ type AccessRuleSpec struct {
 }
 
 // ExtractAccessSpec extracts access control configuration from a model.
-func ExtractAccessSpec(model *schema.Model) *AccessSpec {
+func ExtractAccessSpec(model *metamodel.Model) *AccessSpec {
 	spec := &AccessSpec{
 		Roles:         make([]RoleSpec, 0, len(model.Roles)),
 		Rules:         make([]AccessRuleSpec, 0, len(model.Access)),
@@ -67,7 +67,7 @@ func ExtractAccessSpec(model *schema.Model) *AccessSpec {
 	}
 
 	// Build role hierarchy first
-	roleMap := make(map[string]*schema.Role)
+	roleMap := make(map[string]*metamodel.Role)
 	for i := range model.Roles {
 		roleMap[model.Roles[i].ID] = &model.Roles[i]
 	}
@@ -109,11 +109,11 @@ func ExtractAccessSpec(model *schema.Model) *AccessSpec {
 
 // ResolveRoleHierarchy flattens role inheritance into a map of role ID to all effective roles.
 // For example, if admin inherits from user, RoleHierarchy["admin"] = ["admin", "user"].
-func ResolveRoleHierarchy(roles []schema.Role) map[string][]string {
+func ResolveRoleHierarchy(roles []metamodel.Role) map[string][]string {
 	hierarchy := make(map[string][]string)
 
 	// Build role map for lookup
-	roleMap := make(map[string]*schema.Role)
+	roleMap := make(map[string]*metamodel.Role)
 	for i := range roles {
 		roleMap[roles[i].ID] = &roles[i]
 	}

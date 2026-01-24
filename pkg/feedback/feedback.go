@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // Builder creates structured feedback for LLM refinement.
 type Builder struct {
 	requirements string
-	model        *schema.Model
-	result       *schema.ValidationResult
+	model        *metamodel.Model
+	result       *metamodel.ValidationResult
 }
 
 // New creates a FeedbackBuilder.
-func New(requirements string, model *schema.Model, result *schema.ValidationResult) *Builder {
+func New(requirements string, model *metamodel.Model, result *metamodel.ValidationResult) *Builder {
 	return &Builder{
 		requirements: requirements,
 		model:        model,
@@ -25,8 +25,8 @@ func New(requirements string, model *schema.Model, result *schema.ValidationResu
 }
 
 // Build generates a FeedbackPrompt for LLM refinement.
-func (b *Builder) Build() *schema.FeedbackPrompt {
-	return &schema.FeedbackPrompt{
+func (b *Builder) Build() *metamodel.FeedbackPrompt {
+	return &metamodel.FeedbackPrompt{
 		OriginalRequirements: b.requirements,
 		CurrentModel:         b.model,
 		ValidationResult:     b.result,
@@ -100,12 +100,12 @@ func (b *Builder) generateInstructions() string {
 }
 
 // NeedsRefinement returns true if the validation result indicates the model needs work.
-func NeedsRefinement(result *schema.ValidationResult) bool {
+func NeedsRefinement(result *metamodel.ValidationResult) bool {
 	return len(result.Errors) > 0 || len(result.Warnings) > 0
 }
 
 // Severity returns a priority level for the validation result.
-func Severity(result *schema.ValidationResult) string {
+func Severity(result *metamodel.ValidationResult) string {
 	if len(result.Errors) > 0 {
 		return "error"
 	}

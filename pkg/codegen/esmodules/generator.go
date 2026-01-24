@@ -6,8 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // Options configures the frontend code generator.
@@ -53,13 +52,13 @@ func New(opts Options) (*Generator, error) {
 }
 
 // Generate generates frontend code files and writes them to the output directory.
-func (g *Generator) Generate(model *schema.Model) ([]string, error) {
+func (g *Generator) Generate(model *metamodel.Model) ([]string, error) {
 	if g.opts.OutputDir == "" {
 		return nil, fmt.Errorf("output directory is required")
 	}
 
 	// Validate model for code generation
-	if issues := bridge.ValidateForCodegen(model); len(issues) > 0 {
+	if issues := metamodel.ValidateForCodegen(model); len(issues) > 0 {
 		return nil, fmt.Errorf("model validation failed: %v", issues)
 	}
 
@@ -103,9 +102,9 @@ func (g *Generator) Generate(model *schema.Model) ([]string, error) {
 }
 
 // GenerateFiles generates frontend code files in memory without writing to disk.
-func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) {
+func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, error) {
 	// Validate model for code generation
-	if issues := bridge.ValidateForCodegen(model); len(issues) > 0 {
+	if issues := metamodel.ValidateForCodegen(model); len(issues) > 0 {
 		return nil, fmt.Errorf("model validation failed: %v", issues)
 	}
 
@@ -150,7 +149,7 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 }
 
 // GenerateToDir is a convenience function that creates a generator and writes files.
-func GenerateToDir(model *schema.Model, outputDir string) ([]string, error) {
+func GenerateToDir(model *metamodel.Model, outputDir string) ([]string, error) {
 	gen, err := New(Options{
 		OutputDir: outputDir,
 	})

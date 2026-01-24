@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // State holds the aggregate state for coffeeshop.
@@ -33,7 +31,7 @@ func NewState() State {
 
 // Aggregate wraps a StateMachine with the coffeeshop state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 }
 
 // NewAggregate creates a new aggregate with initial state.
@@ -41,10 +39,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderEspresso,
 		EventType: EventTypeOrderEspresso,
 		Inputs: map[string]int{
@@ -53,7 +51,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderLatte,
 		EventType: EventTypeOrderLatte,
 		Inputs: map[string]int{
@@ -62,7 +60,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderCappuccino,
 		EventType: EventTypeOrderCappuccino,
 		Inputs: map[string]int{
@@ -71,7 +69,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMakeEspresso,
 		EventType: EventTypeMakeEspresso,
 		Inputs: map[string]int{
@@ -83,7 +81,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceEspressoReady: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMakeLatte,
 		EventType: EventTypeMakeLatte,
 		Inputs: map[string]int{
@@ -96,7 +94,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceLatteReady: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMakeCappuccino,
 		EventType: EventTypeMakeCappuccino,
 		Inputs: map[string]int{
@@ -109,7 +107,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceCappuccinoReady: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionServeEspresso,
 		EventType: EventTypeServeEspresso,
 		Inputs: map[string]int{
@@ -119,7 +117,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersComplete: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionServeLatte,
 		EventType: EventTypeServeLatte,
 		Inputs: map[string]int{
@@ -129,7 +127,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersComplete: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionServeCappuccino,
 		EventType: EventTypeServeCappuccino,
 		Inputs: map[string]int{
@@ -141,31 +139,31 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeOrderEspresso, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeOrderEspresso, func(state *State, event *eventsource.Event) error {
 		return applyOrderEspresso(state, event)
 	})
-	sm.RegisterHandler(EventTypeOrderLatte, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeOrderLatte, func(state *State, event *eventsource.Event) error {
 		return applyOrderLatte(state, event)
 	})
-	sm.RegisterHandler(EventTypeOrderCappuccino, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeOrderCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyOrderCappuccino(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeEspresso, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMakeEspresso, func(state *State, event *eventsource.Event) error {
 		return applyMakeEspresso(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeLatte, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMakeLatte, func(state *State, event *eventsource.Event) error {
 		return applyMakeLatte(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeCappuccino, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMakeCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyMakeCappuccino(state, event)
 	})
-	sm.RegisterHandler(EventTypeServeEspresso, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeServeEspresso, func(state *State, event *eventsource.Event) error {
 		return applyServeEspresso(state, event)
 	})
-	sm.RegisterHandler(EventTypeServeLatte, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeServeLatte, func(state *State, event *eventsource.Event) error {
 		return applyServeLatte(state, event)
 	})
-	sm.RegisterHandler(EventTypeServeCappuccino, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeServeCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyServeCappuccino(state, event)
 	})
 	return &Aggregate{sm: sm}
@@ -206,75 +204,75 @@ func (a *Aggregate) CanFire(transitionID string) bool {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	return a.sm.Fire(transitionID, data)
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyOrderEspresso(state *State, event *runtime.Event) error {
+func applyOrderEspresso(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyOrderLatte(state *State, event *runtime.Event) error {
+func applyOrderLatte(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyOrderCappuccino(state *State, event *runtime.Event) error {
+func applyOrderCappuccino(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakeEspresso(state *State, event *runtime.Event) error {
+func applyMakeEspresso(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakeLatte(state *State, event *runtime.Event) error {
+func applyMakeLatte(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakeCappuccino(state *State, event *runtime.Event) error {
+func applyMakeCappuccino(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyServeEspresso(state *State, event *runtime.Event) error {
+func applyServeEspresso(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyServeLatte(state *State, event *runtime.Event) error {
+func applyServeLatte(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyServeCappuccino(state *State, event *runtime.Event) error {
+func applyServeCappuccino(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -283,11 +281,11 @@ func applyServeCappuccino(state *State, event *runtime.Event) error {
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -335,7 +333,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -365,7 +363,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/pflow-xyz/petri-pilot/generated/orderprocessing/graph"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // GraphQLConfig holds the GraphQL server configuration.
@@ -87,7 +87,7 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 	return a.app.HealthCheck(ctx)
 }
 
-func (a *graphQLApp) GetStore() eventstore.Store {
+func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
 

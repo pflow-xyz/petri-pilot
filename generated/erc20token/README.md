@@ -37,11 +37,11 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Transition | Event | Guard | Description |
 |------------|-------|-------|-------------|
-| `transfer` | `Transfered` | `balances[from] >= amount` | Transfer tokens from sender to recipient |
-| `approve` | `Approveed` | - | Approve spender to transfer tokens on owner's behalf |
-| `transfer_from` | `TransferFromed` | `balances[from] >= amount && allowances[from][caller] >= amount` | Transfer tokens using allowance (delegated transfer) |
-| `mint` | `Minted` | - | Create new tokens and add to recipient balance |
-| `burn` | `Burned` | `balances[from] >= amount` | Destroy tokens from holder's balance |
+| `transfer` | `transfer_event` | `balances[from] >= amount` | Transfer tokens from sender to recipient |
+| `approve` | `approval_event` | - | Approve spender to transfer tokens on owner's behalf |
+| `transfer_from` | `transfer_from_event` | `balances[from] >= amount && allowances[from][caller] >= amount` | Transfer tokens using allowance (delegated transfer) |
+| `mint` | `mint_event` | - | Create new tokens and add to recipient balance |
+| `burn` | `burn_event` | `balances[from] >= amount` | Destroy tokens from holder's balance |
 
 
 ### Petri Net Diagram

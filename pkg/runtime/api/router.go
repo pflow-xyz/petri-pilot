@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // Route defines an API endpoint.
@@ -174,7 +174,7 @@ func (r *Router) Routes() []Route {
 }
 
 // RouterFromModel generates routes from a Petri net model.
-func RouterFromModel(model *schema.Model, transitionHandler func(transitionID string) http.HandlerFunc, stateHandler http.HandlerFunc) *Router {
+func RouterFromModel(model *metamodel.Model, transitionHandler func(transitionID string) http.HandlerFunc, stateHandler http.HandlerFunc) *Router {
 	router := NewRouter()
 
 	// Add state endpoint

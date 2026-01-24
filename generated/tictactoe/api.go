@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // BuildRouter creates an HTTP router for the tic-tac-toe workflow.
@@ -1414,7 +1414,7 @@ return func(w http.ResponseWriter, r *http.Request) {
 ctx := r.Context()
 
 adminStore, ok := app.store.(interface {
-GetStats(ctx context.Context) (*eventstore.Stats, error)
+GetStats(ctx context.Context) (*eventsource.Stats, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -1444,7 +1444,7 @@ perPage := getIntQueryParam(r, "per_page", 50)
 showArchived := r.URL.Query().Get("archived") == "true"
 
 adminStore, ok := app.store.(interface {
-ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -1457,8 +1457,8 @@ api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
 return
 }
 // Filter out archived instances unless explicitly requested
-var filteredInstances []eventstore.Instance
-var archivedInstances []eventstore.Instance
+var filteredInstances []eventsource.Instance
+var archivedInstances []eventsource.Instance
 for _, inst := range instances {
 if softDeleteStore.IsDeleted(inst.ID) {
 archivedInstances = append(archivedInstances, inst)

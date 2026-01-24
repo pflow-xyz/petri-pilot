@@ -5,7 +5,7 @@ package coffeeshop
 import (
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -18,7 +18,7 @@ func init() {
 
 // Service implements serve.Service for the coffeeshop workflow.
 type Service struct {
-	store eventstore.Store
+	store eventsource.Store
 	app   *Application
 	navigation *Navigation
 	debugBroker *DebugBroker
@@ -29,7 +29,7 @@ func NewService() (serve.Service, error) {
 	svc := &Service{}
 
 	// Initialize event store (in-memory for development)
-	svc.store = eventstore.NewMemoryStore()
+	svc.store = eventsource.NewMemoryStore()
 
 	// Create application
 	svc.app = NewApplication(svc.store)

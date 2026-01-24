@@ -23,13 +23,13 @@ const (
 
 // Event type constants
 const (
-	EventTypeCreatePost = "CreatePosted"
-	EventTypeUpdate = "Updateed"
-	EventTypeSubmit = "Submited"
-	EventTypeApprove = "Approveed"
-	EventTypeReject = "Rejected"
-	EventTypeUnpublish = "Unpublished"
-	EventTypeRestore = "Restoreed"
+	EventTypeCreatePost = "post_created"
+	EventTypeUpdate = "post_updated"
+	EventTypeSubmit = "post_submitted"
+	EventTypeApprove = "post_approved"
+	EventTypeReject = "post_rejected"
+	EventTypeUnpublish = "post_unpublished"
+	EventTypeRestore = "post_restored"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.

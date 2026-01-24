@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
 
 // Generator creates Petri net models from natural language requirements.
@@ -48,7 +48,7 @@ func New(client llm.Client, opts Options) *Generator {
 }
 
 // Generate creates a Petri net model from natural language requirements.
-func (g *Generator) Generate(ctx context.Context, requirements string) (*schema.Model, error) {
+func (g *Generator) Generate(ctx context.Context, requirements string) (*metamodel.Model, error) {
 	prompt := buildGenerationPrompt(requirements)
 
 	response, err := g.client.Complete(ctx, llm.Request{
@@ -70,7 +70,7 @@ func (g *Generator) Generate(ctx context.Context, requirements string) (*schema.
 }
 
 // Refine improves a model based on validation feedback.
-func (g *Generator) Refine(ctx context.Context, feedback *schema.FeedbackPrompt) (*schema.Model, error) {
+func (g *Generator) Refine(ctx context.Context, feedback *metamodel.FeedbackPrompt) (*metamodel.Model, error) {
 	prompt := buildRefinementPrompt(feedback)
 
 	response, err := g.client.Complete(ctx, llm.Request{
@@ -136,7 +136,7 @@ OUTPUT FORMAT (strict JSON):
 Generate only the JSON model, no additional text:`, requirements)
 }
 
-func buildRefinementPrompt(feedback *schema.FeedbackPrompt) string {
+func buildRefinementPrompt(feedback *metamodel.FeedbackPrompt) string {
 	currentModelJSON, _ := json.MarshalIndent(feedback.CurrentModel, "", "  ")
 
 	var issues strings.Builder
@@ -178,14 +178,14 @@ Output only the JSON model, no additional text:`,
 }
 
 // parseModelResponse extracts and parses JSON from the LLM response.
-func parseModelResponse(content string) (*schema.Model, error) {
+func parseModelResponse(content string) (*metamodel.Model, error) {
 	// Try to find JSON in the response
 	jsonStr := extractJSON(content)
 	if jsonStr == "" {
 		return nil, fmt.Errorf("no JSON found in response")
 	}
 
-	var model schema.Model
+	var model metamodel.Model
 	if err := json.Unmarshal([]byte(jsonStr), &model); err != nil {
 		return nil, fmt.Errorf("json parse error: %w", err)
 	}

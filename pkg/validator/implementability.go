@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // ImplementabilityResult contains the results of implementability analysis.
@@ -62,7 +62,7 @@ type StateMapping struct {
 }
 
 // ValidateImplementability checks if a model can be successfully code-generated.
-func (v *Validator) ValidateImplementability(model *schema.Model) *ImplementabilityResult {
+func (v *Validator) ValidateImplementability(model *metamodel.Model) *ImplementabilityResult {
 	result := &ImplementabilityResult{
 		Implementable: true,
 	}
@@ -84,7 +84,7 @@ func (v *Validator) ValidateImplementability(model *schema.Model) *Implementabil
 }
 
 // checkEventReferences validates that transition.Event references exist in model.Events.
-func (v *Validator) checkEventReferences(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkEventReferences(model *metamodel.Model, result *ImplementabilityResult) {
 	// Build event lookup
 	eventIDs := make(map[string]bool)
 	eventFields := make(map[string]map[string]bool) // event ID -> field names
@@ -139,7 +139,7 @@ func (v *Validator) checkEventReferences(model *schema.Model, result *Implementa
 }
 
 // checkBindings validates bindings on a transition.
-func (v *Validator) checkBindings(t schema.Transition, placeIDs map[string]bool, eventFields map[string]map[string]bool, result *ImplementabilityResult) {
+func (v *Validator) checkBindings(t metamodel.Transition, placeIDs map[string]bool, eventFields map[string]map[string]bool, result *ImplementabilityResult) {
 	validTypes := map[string]bool{
 		"string": true, "number": true, "integer": true, "boolean": true,
 		"time": true, "int": true, "int64": true, "float64": true, "bool": true,
@@ -196,7 +196,7 @@ func isMapType(typ string) bool {
 }
 
 // checkEventDerivation verifies events can be inferred from transitions.
-func (v *Validator) checkEventDerivation(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkEventDerivation(model *metamodel.Model, result *ImplementabilityResult) {
 	for _, t := range model.Transitions {
 		mapping := EventMapping{
 			TransitionID: t.ID,
@@ -239,7 +239,7 @@ func (v *Validator) checkEventDerivation(model *schema.Model, result *Implementa
 }
 
 // checkStateSchema verifies aggregate state can be generated.
-func (v *Validator) checkStateSchema(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkStateSchema(model *metamodel.Model, result *ImplementabilityResult) {
 	for _, p := range model.Places {
 		mapping := StateMapping{
 			PlaceID:   p.ID,
@@ -278,7 +278,7 @@ func (v *Validator) checkStateSchema(model *schema.Model, result *Implementabili
 }
 
 // checkAPIMappings verifies transitions have valid HTTP semantics.
-func (v *Validator) checkAPIMappings(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkAPIMappings(model *metamodel.Model, result *ImplementabilityResult) {
 	validMethods := map[string]bool{
 		"GET": true, "POST": true, "PUT": true, "DELETE": true, "PATCH": true,
 	}
@@ -309,7 +309,7 @@ func (v *Validator) checkAPIMappings(model *schema.Model, result *Implementabili
 }
 
 // checkTypeConsistency verifies all types are valid Go types.
-func (v *Validator) checkTypeConsistency(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkTypeConsistency(model *metamodel.Model, result *ImplementabilityResult) {
 	// Basic Go types and common patterns
 	validTypePattern := regexp.MustCompile(`^(\*?)(map\[.+\].+|\[\].+|[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?)$`)
 
@@ -328,7 +328,7 @@ func (v *Validator) checkTypeConsistency(model *schema.Model, result *Implementa
 }
 
 // checkGuardParsability verifies guard expressions can be translated.
-func (v *Validator) checkGuardParsability(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkGuardParsability(model *metamodel.Model, result *ImplementabilityResult) {
 	// Simple patterns we can handle
 	simpleGuardPattern := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*\s*(>|<|>=|<=|==|!=)\s*\d+$`)
 	compoundGuardPattern := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_\[\]"'\.]*\s*(>|<|>=|<=|==|!=)\s*[a-zA-Z0-9_\[\]"'\.]+$`)
@@ -354,7 +354,7 @@ func (v *Validator) checkGuardParsability(model *schema.Model, result *Implement
 }
 
 // checkViewBindings validates that view field bindings reference defined event fields.
-func (v *Validator) checkViewBindings(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) checkViewBindings(model *metamodel.Model, result *ImplementabilityResult) {
 	// Skip if no explicit events are defined
 	if len(model.Events) == 0 {
 		return
@@ -390,7 +390,7 @@ func (v *Validator) checkViewBindings(model *schema.Model, result *Implementabil
 }
 
 // detectPattern identifies the model pattern type.
-func (v *Validator) detectPattern(model *schema.Model, result *ImplementabilityResult) {
+func (v *Validator) detectPattern(model *metamodel.Model, result *ImplementabilityResult) {
 	// Count characteristics
 	hasInitialTokens := 0
 	hasDataPlaces := 0

@@ -5,18 +5,26 @@
  * Provides statistics, instance list, and event history viewing
  */
 
+// Import customizable extensions (preserved across regeneration)
+import { adminExtensions, hooks, triggerHook } from '/custom/extensions.js'
+
 // API helpers from main.js
 const API_BASE = window.API_BASE || ''
 const getHeaders = window.getHeaders || (() => ({}))
 const handleResponse = window.handleResponse || (r => r.json())
 const showError = window.showError || console.error
 
+// Status configuration from schema
+const STATUS_PLACES = {}
+const STATUS_DEFAULT = "In Progress"
+
 // Admin state
 let currentStats = null
 let currentInstances = []
 let currentInstance = null
-let currentFilters = { place: '', limit: 50, offset: 0 }
+let currentFilters = { place: '', limit: 50, offset: 0, archived: false }
 let totalInstances = 0
+let hasSoftDelete = false // Will be set from API response
 
 // Admin API client
 const adminAPI = {
@@ -34,6 +42,7 @@ const adminAPI = {
     if (params.place) query.set('place', params.place)
     if (params.limit) query.set('limit', params.limit)
     if (params.offset) query.set('offset', params.offset)
+    if (params.archived) query.set('archived', 'true')
 
     const url = `${API_BASE}/admin/instances${query.toString() ? '?' + query.toString() : ''}`
     const response = await fetch(url, {
@@ -61,6 +70,33 @@ const adminAPI = {
   // Get state at a specific version (time travel)
   async getStateAtVersion(id, version) {
     const response = await fetch(`${API_BASE}/admin/instances/${encodeURIComponent(id)}/at/${version}`, {
+      headers: getHeaders(),
+    })
+    return handleResponse(response)
+  },
+
+  // Delete an instance and all its events (permanent)
+  async deleteInstance(id) {
+    const response = await fetch(`${API_BASE}/admin/instances/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    })
+    return handleResponse(response)
+  },
+
+  // Archive an instance (soft delete)
+  async archiveInstance(id) {
+    const response = await fetch(`${API_BASE}/admin/instances/${encodeURIComponent(id)}/archive`, {
+      method: 'POST',
+      headers: getHeaders(),
+    })
+    return handleResponse(response)
+  },
+
+  // Restore an archived instance
+  async restoreInstance(id) {
+    const response = await fetch(`${API_BASE}/admin/instances/${encodeURIComponent(id)}/restore`, {
+      method: 'POST',
       headers: getHeaders(),
     })
     return handleResponse(response)
@@ -157,6 +193,12 @@ export function renderAdminInstances() {
             <option value="">All Places</option>
           </select>
         </div>
+        <div class="filter-group" id="archived-toggle" style="display: none;">
+          <label>
+            <input type="checkbox" onchange="toggleArchivedFilter()" />
+            Show Archived
+          </label>
+        </div>
         <button onclick="refreshInstances()" class="btn btn-secondary">Refresh</button>
       </div>
 
@@ -180,9 +222,13 @@ export async function loadAdminInstances() {
     const result = await adminAPI.getInstances(currentFilters)
     currentInstances = result.instances || []
     totalInstances = result.total || currentInstances.length
+    hasSoftDelete = result.has_soft_delete || false
 
     // Populate place filter dropdown
     populatePlaceFilter(result.places || [])
+
+    // Update archived toggle visibility
+    updateArchivedToggle()
 
     renderInstancesTable()
     renderPagination()
@@ -216,9 +262,12 @@ function renderInstancesTable() {
   if (!tableContainer) return
 
   if (currentInstances.length === 0) {
+    const message = currentFilters.archived
+      ? 'No archived instances found'
+      : `No instances found${currentFilters.place ? ` in place "${formatPlaceName(currentFilters.place)}"` : ''}`
     tableContainer.innerHTML = `
       <div class="empty-state">
-        <p>No instances found${currentFilters.place ? ` in place "${formatPlaceName(currentFilters.place)}"` : ''}</p>
+        <p>${message}</p>
       </div>
     `
     return
@@ -237,9 +286,10 @@ function renderInstancesTable() {
       </thead>
       <tbody>
         ${currentInstances.map(instance => `
-          <tr class="instance-row" data-id="${escapeHtml(instance.id)}">
+          <tr class="instance-row ${currentFilters.archived ? 'archived' : ''}" data-id="${escapeHtml(instance.id)}">
             <td class="instance-id">
               <code>${escapeHtml(instance.id.substring(0, 8))}...</code>
+              ${currentFilters.archived ? '<span class="archived-badge">Archived</span>' : ''}
             </td>
             <td class="instance-version">v${instance.version || 0}</td>
             <td class="instance-state">
@@ -249,9 +299,15 @@ function renderInstancesTable() {
               ${formatRelativeTime(instance.updated_at)}
             </td>
             <td class="instance-actions">
-              <button onclick="handleAdminNav(event, '/admin/instances/${encodeURIComponent(instance.id)}')" class="btn btn-sm btn-primary">
-                View
-              </button>
+              ${currentFilters.archived ? `
+                <button onclick="handleRestoreInstance('${escapeHtml(instance.id)}')" class="btn btn-sm btn-success">
+                  Restore
+                </button>
+              ` : `
+                <button onclick="handleAdminNav(event, '/admin/instances/${encodeURIComponent(instance.id)}')" class="btn btn-sm btn-primary">
+                  View
+                </button>
+              `}
             </td>
           </tr>
         `).join('')}
@@ -261,23 +317,21 @@ function renderInstancesTable() {
 }
 
 function renderStateSummary(state) {
-  if (!state) return '<span class="muted">No state</span>'
+  if (!state) return `<span class="state-tag">${STATUS_DEFAULT}</span>`
 
-  // If state has places, show active places
+  // If state has places, check for configured status labels
   const places = state.places || state
   if (typeof places === 'object') {
-    const activePlaces = Object.entries(places)
-      .filter(([_, tokens]) => tokens > 0)
-      .map(([place, tokens]) => `<span class="state-tag">${place}: ${tokens}</span>`)
-
-    if (activePlaces.length === 0) return '<span class="muted">Empty</span>'
-    if (activePlaces.length > 3) {
-      return activePlaces.slice(0, 3).join('') + `<span class="state-tag state-tag-more">+${activePlaces.length - 3}</span>`
+    for (const [place, tokens] of Object.entries(places)) {
+      if (tokens > 0 && STATUS_PLACES[place]) {
+        return `<span class="state-tag state-tag-terminal">${STATUS_PLACES[place]}</span>`
+      }
     }
-    return activePlaces.join('')
+    // Default status for active workflows
+    return `<span class="state-tag">${STATUS_DEFAULT}</span>`
   }
 
-  return '<span class="muted">Unknown</span>'
+  return `<span class="state-tag">${STATUS_DEFAULT}</span>`
 }
 
 function renderPagination() {
@@ -382,6 +436,19 @@ function renderInstanceDetail() {
         <button onclick="toggleTimeTravelControls()" class="btn btn-secondary">
           Time Travel
         </button>
+        ${hasSoftDelete ? `
+          <button onclick="handleArchiveInstance('${escapeHtml(instance.id)}')" class="btn btn-warning">
+            Archive
+          </button>
+          <button onclick="handleDeleteInstance('${escapeHtml(instance.id)}')" class="btn btn-danger">
+            Delete Permanently
+          </button>
+        ` : `
+          <button onclick="handleDeleteInstance('${escapeHtml(instance.id)}')" class="btn btn-danger">
+            Delete Instance
+          </button>
+        `}
+        ${renderCustomActions(instance)}
       </div>
     </div>
 
@@ -430,6 +497,25 @@ function renderStateDetails(state) {
 
   // Fallback: show raw JSON
   return `<pre class="state-json">${escapeHtml(JSON.stringify(state, null, 2))}</pre>`
+}
+
+/**
+ * Render custom action buttons from extensions
+ * @param {Object} instance - The current instance
+ * @returns {string} HTML for custom action buttons
+ */
+function renderCustomActions(instance) {
+  if (!adminExtensions.customActions || adminExtensions.customActions.length === 0) {
+    return ''
+  }
+
+  return adminExtensions.customActions.map((action, index) => {
+    const className = action.className || 'btn btn-secondary'
+    const handlerName = `_customAction_${index}`
+    // Register the handler on window for onclick access
+    window[handlerName] = () => action.onClick(instance)
+    return `<button onclick="${handlerName}()" class="${escapeHtml(className)}">${escapeHtml(action.label)}</button>`
+  }).join('')
 }
 
 /**
@@ -502,6 +588,75 @@ window.handlePageChange = async function(pageIndex) {
 
 window.refreshInstances = async function() {
   await loadAdminInstances()
+}
+
+window.handleDeleteInstance = async function(id) {
+  const message = hasSoftDelete
+    ? 'Are you sure you want to PERMANENTLY delete this instance? This cannot be undone. Consider archiving instead.'
+    : 'Are you sure you want to delete this instance? This will permanently remove all events and cannot be undone.'
+
+  if (!confirm(message)) {
+    return
+  }
+
+  try {
+    await adminAPI.deleteInstance(id)
+    triggerHook('onInstanceDeleted', id)
+    // Navigate back to instances list
+    if (typeof window.navigate === 'function') {
+      window.navigate('/admin/instances')
+    } else {
+      window.location.href = '/admin/instances'
+    }
+  } catch (err) {
+    showError('Failed to delete instance: ' + err.message)
+  }
+}
+
+window.handleArchiveInstance = async function(id) {
+  if (!confirm('Archive this instance? It can be restored later from the archived instances view.')) {
+    return
+  }
+
+  try {
+    await adminAPI.archiveInstance(id)
+    triggerHook('onInstanceArchived', id)
+    // Navigate back to instances list
+    if (typeof window.navigate === 'function') {
+      window.navigate('/admin/instances')
+    } else {
+      window.location.href = '/admin/instances'
+    }
+  } catch (err) {
+    showError('Failed to archive instance: ' + err.message)
+  }
+}
+
+window.handleRestoreInstance = async function(id) {
+  try {
+    await adminAPI.restoreInstance(id)
+    triggerHook('onInstanceRestored', id)
+    // Refresh the list
+    await loadAdminInstances()
+  } catch (err) {
+    showError('Failed to restore instance: ' + err.message)
+  }
+}
+
+window.toggleArchivedFilter = async function() {
+  currentFilters.archived = !currentFilters.archived
+  await loadAdminInstances()
+}
+
+function updateArchivedToggle() {
+  const toggle = document.getElementById('archived-toggle')
+  if (toggle) {
+    toggle.style.display = hasSoftDelete ? 'flex' : 'none'
+    const checkbox = toggle.querySelector('input')
+    if (checkbox) {
+      checkbox.checked = currentFilters.archived
+    }
+  }
 }
 
 window.toggleTimeTravelControls = function() {
@@ -983,6 +1138,49 @@ const adminStyles = `
 
 .btn-secondary:hover {
   background: #d0d0d0;
+}
+
+.btn-danger {
+  background: #d32f2f;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+.btn-warning {
+  background: #ff9800;
+  color: #fff;
+}
+
+.btn-warning:hover {
+  background: #f57c00;
+}
+
+.btn-success {
+  background: #4caf50;
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: #388e3c;
+}
+
+.archived-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  background: #9e9e9e;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+}
+
+.instance-row.archived {
+  opacity: 0.7;
+  background: #fafafa;
 }
 
 .btn-link {

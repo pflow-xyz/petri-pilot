@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // State holds the aggregate state for blog-post.
@@ -29,7 +27,7 @@ func NewState() State {
 
 // Aggregate wraps a StateMachine with the blog-post state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 }
 
 // NewAggregate creates a new aggregate with initial state.
@@ -37,10 +35,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionCreatePost,
 		EventType: EventTypeCreatePost,
 		Inputs: map[string]int{
@@ -49,7 +47,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDraft: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionUpdate,
 		EventType: EventTypeUpdate,
 		Inputs: map[string]int{
@@ -59,7 +57,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDraft: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionSubmit,
 		EventType: EventTypeSubmit,
 		Inputs: map[string]int{
@@ -69,7 +67,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceInReview: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionApprove,
 		EventType: EventTypeApprove,
 		Inputs: map[string]int{
@@ -79,7 +77,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePublished: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionReject,
 		EventType: EventTypeReject,
 		Inputs: map[string]int{
@@ -89,7 +87,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceDraft: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionUnpublish,
 		EventType: EventTypeUnpublish,
 		Inputs: map[string]int{
@@ -99,7 +97,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceArchived: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRestore,
 		EventType: EventTypeRestore,
 		Inputs: map[string]int{
@@ -111,25 +109,25 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeCreatePost, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeCreatePost, func(state *State, event *eventsource.Event) error {
 		return applyCreatePost(state, event)
 	})
-	sm.RegisterHandler(EventTypeUpdate, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeUpdate, func(state *State, event *eventsource.Event) error {
 		return applyUpdate(state, event)
 	})
-	sm.RegisterHandler(EventTypeSubmit, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeSubmit, func(state *State, event *eventsource.Event) error {
 		return applySubmit(state, event)
 	})
-	sm.RegisterHandler(EventTypeApprove, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeApprove, func(state *State, event *eventsource.Event) error {
 		return applyApprove(state, event)
 	})
-	sm.RegisterHandler(EventTypeReject, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeReject, func(state *State, event *eventsource.Event) error {
 		return applyReject(state, event)
 	})
-	sm.RegisterHandler(EventTypeUnpublish, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeUnpublish, func(state *State, event *eventsource.Event) error {
 		return applyUnpublish(state, event)
 	})
-	sm.RegisterHandler(EventTypeRestore, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRestore, func(state *State, event *eventsource.Event) error {
 		return applyRestore(state, event)
 	})
 	return &Aggregate{sm: sm}
@@ -170,61 +168,61 @@ func (a *Aggregate) CanFire(transitionID string) bool {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	return a.sm.Fire(transitionID, data)
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyCreatePost(state *State, event *runtime.Event) error {
+func applyCreatePost(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyUpdate(state *State, event *runtime.Event) error {
+func applyUpdate(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applySubmit(state *State, event *runtime.Event) error {
+func applySubmit(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyApprove(state *State, event *runtime.Event) error {
+func applyApprove(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyReject(state *State, event *runtime.Event) error {
+func applyReject(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyUnpublish(state *State, event *runtime.Event) error {
+func applyUnpublish(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyRestore(state *State, event *runtime.Event) error {
+func applyRestore(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -233,11 +231,11 @@ func applyRestore(state *State, event *runtime.Event) error {
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -285,7 +283,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -315,7 +313,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

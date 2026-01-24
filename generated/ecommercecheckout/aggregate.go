@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // State holds the aggregate state for ecommerce-checkout.
@@ -35,7 +33,7 @@ func NewState() State {
 
 // Aggregate wraps a StateMachine with the ecommerce-checkout state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 }
 
 // NewAggregate creates a new aggregate with initial state.
@@ -43,10 +41,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionStartCheckout,
 		EventType: EventTypeStartCheckout,
 		Inputs: map[string]int{
@@ -56,7 +54,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceCheckoutStarted: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionEnterPayment,
 		EventType: EventTypeEnterPayment,
 		Inputs: map[string]int{
@@ -66,7 +64,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaymentPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionProcessPayment,
 		EventType: EventTypeProcessPayment,
 		Inputs: map[string]int{
@@ -76,7 +74,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaymentProcessing: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionPaymentSuccess,
 		EventType: EventTypePaymentSuccess,
 		Inputs: map[string]int{
@@ -86,7 +84,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaid: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionPaymentFail1,
 		EventType: EventTypePaymentFail1,
 		Inputs: map[string]int{
@@ -96,7 +94,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRetry1: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRetryPayment1,
 		EventType: EventTypeRetryPayment1,
 		Inputs: map[string]int{
@@ -106,7 +104,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaymentProcessing: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionPaymentFail2,
 		EventType: EventTypePaymentFail2,
 		Inputs: map[string]int{
@@ -116,7 +114,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRetry2: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRetryPayment2,
 		EventType: EventTypeRetryPayment2,
 		Inputs: map[string]int{
@@ -126,7 +124,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePaymentProcessing: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionPaymentFail3,
 		EventType: EventTypePaymentFail3,
 		Inputs: map[string]int{
@@ -136,7 +134,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRetry3: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionCancelOrder,
 		EventType: EventTypeCancelOrder,
 		Inputs: map[string]int{
@@ -146,7 +144,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceCancelled: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionFulfill,
 		EventType: EventTypeFulfill,
 		Inputs: map[string]int{
@@ -158,37 +156,37 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeStartCheckout, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeStartCheckout, func(state *State, event *eventsource.Event) error {
 		return applyStartCheckout(state, event)
 	})
-	sm.RegisterHandler(EventTypeEnterPayment, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeEnterPayment, func(state *State, event *eventsource.Event) error {
 		return applyEnterPayment(state, event)
 	})
-	sm.RegisterHandler(EventTypeProcessPayment, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeProcessPayment, func(state *State, event *eventsource.Event) error {
 		return applyProcessPayment(state, event)
 	})
-	sm.RegisterHandler(EventTypePaymentSuccess, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypePaymentSuccess, func(state *State, event *eventsource.Event) error {
 		return applyPaymentSuccess(state, event)
 	})
-	sm.RegisterHandler(EventTypePaymentFail1, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypePaymentFail1, func(state *State, event *eventsource.Event) error {
 		return applyPaymentFail1(state, event)
 	})
-	sm.RegisterHandler(EventTypeRetryPayment1, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRetryPayment1, func(state *State, event *eventsource.Event) error {
 		return applyRetryPayment1(state, event)
 	})
-	sm.RegisterHandler(EventTypePaymentFail2, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypePaymentFail2, func(state *State, event *eventsource.Event) error {
 		return applyPaymentFail2(state, event)
 	})
-	sm.RegisterHandler(EventTypeRetryPayment2, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRetryPayment2, func(state *State, event *eventsource.Event) error {
 		return applyRetryPayment2(state, event)
 	})
-	sm.RegisterHandler(EventTypePaymentFail3, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypePaymentFail3, func(state *State, event *eventsource.Event) error {
 		return applyPaymentFail3(state, event)
 	})
-	sm.RegisterHandler(EventTypeCancelOrder, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeCancelOrder, func(state *State, event *eventsource.Event) error {
 		return applyCancelOrder(state, event)
 	})
-	sm.RegisterHandler(EventTypeFulfill, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeFulfill, func(state *State, event *eventsource.Event) error {
 		return applyFulfill(state, event)
 	})
 	return &Aggregate{sm: sm}
@@ -229,89 +227,89 @@ func (a *Aggregate) CanFire(transitionID string) bool {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	return a.sm.Fire(transitionID, data)
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyStartCheckout(state *State, event *runtime.Event) error {
+func applyStartCheckout(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyEnterPayment(state *State, event *runtime.Event) error {
+func applyEnterPayment(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyProcessPayment(state *State, event *runtime.Event) error {
+func applyProcessPayment(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyPaymentSuccess(state *State, event *runtime.Event) error {
+func applyPaymentSuccess(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyPaymentFail1(state *State, event *runtime.Event) error {
+func applyPaymentFail1(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyRetryPayment1(state *State, event *runtime.Event) error {
+func applyRetryPayment1(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyPaymentFail2(state *State, event *runtime.Event) error {
+func applyPaymentFail2(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyRetryPayment2(state *State, event *runtime.Event) error {
+func applyRetryPayment2(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyPaymentFail3(state *State, event *runtime.Event) error {
+func applyPaymentFail3(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyCancelOrder(state *State, event *runtime.Event) error {
+func applyCancelOrder(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyFulfill(state *State, event *runtime.Event) error {
+func applyFulfill(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -320,11 +318,11 @@ func applyFulfill(state *State, event *runtime.Event) error {
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -372,7 +370,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -402,7 +400,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

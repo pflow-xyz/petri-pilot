@@ -20,11 +20,11 @@ const (
 
 // Event type constants
 const (
-	EventTypeTransfer = "Transfered"
-	EventTypeApprove = "Approveed"
-	EventTypeTransferFrom = "TransferFromed"
-	EventTypeMint = "Minted"
-	EventTypeBurn = "Burned"
+	EventTypeTransfer = "transfer_event"
+	EventTypeApprove = "approval_event"
+	EventTypeTransferFrom = "transfer_from_event"
+	EventTypeMint = "mint_event"
+	EventTypeBurn = "burn_event"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.

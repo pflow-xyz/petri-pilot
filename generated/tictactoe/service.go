@@ -6,13 +6,13 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 	_ "modernc.org/sqlite"
 )
 
 // ServiceName is the registered name for this service.
-const ServiceName = "tictactoe"
+const ServiceName = "tic-tac-toe"
 
 func init() {
 	serve.Register(ServiceName, NewService)
@@ -20,10 +20,10 @@ func init() {
 
 // Service implements serve.Service for the tic-tac-toe workflow.
 type Service struct {
-	store           eventstore.Store
-	app             *Application
-	debugBroker     *DebugBroker
-	featuresDB      *sql.DB
+	store eventsource.Store
+	app   *Application
+	debugBroker *DebugBroker
+	featuresDB *sql.DB
 	softDeleteStore *SoftDeleteStore
 }
 
@@ -31,17 +31,14 @@ type Service struct {
 func NewService() (serve.Service, error) {
 	svc := &Service{}
 
-	// Initialize event store with SQLite for persistence
-	var err error
-	svc.store, err = eventstore.NewSQLiteStore("tictactoe.db")
-	if err != nil {
-		return nil, err
-	}
+	// Initialize event store (in-memory for development)
+	svc.store = eventsource.NewMemoryStore()
 
 	// Create application
 	svc.app = NewApplication(svc.store)
 	// Initialize debug broker
 	svc.debugBroker = NewDebugBroker()
+	var err error
 	// Initialize features database
 	svc.featuresDB, err = sql.Open("sqlite", "features.db")
 	if err != nil {

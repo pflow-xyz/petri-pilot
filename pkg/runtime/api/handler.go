@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // TransitionRequest represents a request to fire a transition.
@@ -15,7 +15,7 @@ type TransitionRequest struct {
 	// TransitionID is the transition to fire.
 	TransitionID string `json:"transition_id"`
 
-	// AggregateID is the target aggregate.
+	// AggregateID is the target eventsource.
 	AggregateID string `json:"aggregate_id"`
 
 	// Data is the transition payload.
@@ -27,7 +27,7 @@ type TransitionResult struct {
 	// Success indicates if the transition fired successfully.
 	Success bool `json:"success"`
 
-	// AggregateID is the affected aggregate.
+	// AggregateID is the affected eventsource.
 	AggregateID string `json:"aggregate_id"`
 
 	// Version is the new aggregate version.
@@ -98,11 +98,11 @@ type ErrorResponse struct {
 
 // HTTPHandler wraps handlers with HTTP semantics.
 type HTTPHandler struct {
-	repo aggregate.Repository
+	repo eventsource.Repository
 }
 
 // NewHTTPHandler creates a new HTTP handler.
-func NewHTTPHandler(repo aggregate.Repository) *HTTPHandler {
+func NewHTTPHandler(repo eventsource.Repository) *HTTPHandler {
 	return &HTTPHandler{repo: repo}
 }
 

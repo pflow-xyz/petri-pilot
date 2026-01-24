@@ -12,7 +12,7 @@ import (
 {{- end}}
 {{- if or .HasAdmin .HasEventSourcing}}
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 {{- end}}
 )
 
@@ -25,7 +25,7 @@ type Resolver struct {
 		Execute(ctx context.Context, id, transition string, data map[string]any) (Aggregate, error)
 		HealthCheck(ctx context.Context) error
 {{- if or .HasAdmin .HasEventSourcing}}
-		GetStore() eventstore.Store
+		GetStore() eventsource.Store
 {{- end}}
 	}
 }
@@ -47,7 +47,7 @@ func NewResolver(app interface {
 	Execute(ctx context.Context, id, transition string, data map[string]any) (Aggregate, error)
 	HealthCheck(ctx context.Context) error
 {{- if or .HasAdmin .HasEventSourcing}}
-	GetStore() eventstore.Store
+	GetStore() eventsource.Store
 {{- end}}
 }) *Resolver {
 	return &Resolver{App: app}
@@ -84,7 +84,7 @@ func (r *Resolver) {{pascal .ModelName}}List(ctx context.Context, place *string,
 {{- if .HasAdmin}}
 	store := r.App.GetStore()
 	adminStore, ok := store.(interface {
-		ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+		ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
 	})
 	if !ok {
 		return &AggregateList{
@@ -131,7 +131,7 @@ func (r *Resolver) {{pascal .ModelName}}List(ctx context.Context, place *string,
 func (r *Resolver) AdminStats(ctx context.Context) (*AdminStats, error) {
 	store := r.App.GetStore()
 	adminStore, ok := store.(interface {
-		GetStats(ctx context.Context) (*eventstore.Stats, error)
+		GetStats(ctx context.Context) (*eventsource.Stats, error)
 	})
 	if !ok {
 		return nil, fmt.Errorf("admin operations not supported")

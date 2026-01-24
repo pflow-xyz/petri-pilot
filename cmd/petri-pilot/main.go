@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/examples"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/feedback"
 	"github.com/pflow-xyz/petri-pilot/pkg/generator"
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
-	"github.com/pflow-xyz/petri-pilot/examples"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
 
 	// Register external services
@@ -138,6 +138,28 @@ func cmdGenerate(args []string) {
 	verbose := fs.Bool("v", false, "Verbose output")
 	model := fs.String("model", "claude-sonnet-4-20250514", "Claude model to use")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot generate - Generate a Petri net model from natural language
+
+Usage:
+  petri-pilot generate [options] <requirements>
+
+Arguments:
+  requirements    Natural language description of the workflow
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Environment:
+  ANTHROPIC_API_KEY    API key for Claude (required)
+
+Examples:
+  petri-pilot generate "A simple order processing workflow"
+  petri-pilot generate -auto -o model.json "User registration flow"
+  petri-pilot generate -auto -max-iter 5 "Complex approval workflow"`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -247,6 +269,25 @@ func cmdValidate(args []string) {
 	full := fs.Bool("full", false, "Run full analysis including sensitivity")
 	jsonOutput := fs.Bool("json", false, "Output results as JSON")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot validate - Validate a Petri net model
+
+Usage:
+  petri-pilot validate [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot validate model.json            Basic validation
+  petri-pilot validate -full model.json      Full analysis with sensitivity
+  petri-pilot validate -json model.json      Output results as JSON`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -267,7 +308,7 @@ func cmdValidate(args []string) {
 		os.Exit(1)
 	}
 
-	var model schema.Model
+	var model metamodel.Model
 	if err := json.Unmarshal(data, &model); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
@@ -298,7 +339,7 @@ func cmdValidate(args []string) {
 	}
 }
 
-func printValidationResult(result *schema.ValidationResult) {
+func printValidationResult(result *metamodel.ValidationResult) {
 	if result.Valid {
 		fmt.Println("Validation: PASSED")
 	} else {
@@ -354,6 +395,28 @@ func cmdRefine(args []string) {
 	verbose := fs.Bool("v", false, "Verbose output")
 	model := fs.String("model", "claude-sonnet-4-20250514", "Claude model to use")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot refine - Refine a model based on instructions
+
+Usage:
+  petri-pilot refine [options] <model.json> <instructions>
+
+Arguments:
+  model.json      Path to the Petri net model file
+  instructions    Natural language instructions for refinement
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Environment:
+  ANTHROPIC_API_KEY    API key for Claude (required)
+
+Examples:
+  petri-pilot refine model.json "Add a cancellation state"
+  petri-pilot refine -o refined.json model.json "Add approval workflow"`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -381,7 +444,7 @@ func cmdRefine(args []string) {
 		os.Exit(1)
 	}
 
-	var currentModel schema.Model
+	var currentModel metamodel.Model
 	if err := json.Unmarshal(data, &currentModel); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
@@ -402,7 +465,7 @@ func cmdRefine(args []string) {
 	})
 
 	// Build feedback
-	fb := &schema.FeedbackPrompt{
+	fb := &metamodel.FeedbackPrompt{
 		OriginalRequirements: instructions,
 		CurrentModel:         &currentModel,
 		ValidationResult:     validationResult,
@@ -457,6 +520,26 @@ func cmdCodegen(args []string) {
 	includeFrontend := fs.Bool("frontend", false, "Generate ES modules frontend in frontend/ subdirectory")
 	asSubmodule := fs.Bool("submodule", false, "Skip go.mod generation (treat output as part of parent module)")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot codegen - Generate backend application code from a model
+
+Usage:
+  petri-pilot codegen [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot codegen model.json -o ./myapp
+  petri-pilot codegen -frontend model.json -o ./myapp
+  petri-pilot codegen -api-only model.json -o openapi.yaml
+  petri-pilot codegen -submodule -o generated/myapp model.json`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -477,7 +560,7 @@ func cmdCodegen(args []string) {
 		os.Exit(1)
 	}
 
-	var model schema.Model
+	var model metamodel.Model
 	if err := json.Unmarshal(data, &model); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
@@ -628,6 +711,25 @@ func cmdFrontend(args []string) {
 	project := fs.String("project", "", "Project name for package.json (default: model name)")
 	apiURL := fs.String("api", "http://localhost:8080", "Backend API base URL")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot frontend - Generate vanilla JavaScript ES modules frontend
+
+Usage:
+  petri-pilot frontend [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot frontend model.json
+  petri-pilot frontend -o ./ui model.json
+  petri-pilot frontend -api http://api.example.com model.json`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -648,7 +750,7 @@ func cmdFrontend(args []string) {
 		os.Exit(1)
 	}
 
-	var model schema.Model
+	var model metamodel.Model
 	if err := json.Unmarshal(data, &model); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)

@@ -9,11 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 
 // State holds the aggregate state for erc20-token.
@@ -65,7 +63,7 @@ func (b *Bindings) ToMetamodel() metamodel.Bindings {
 
 // Aggregate wraps a StateMachine with the erc20-token state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 	rt *metamodel.Runtime // Runtime for guard evaluation
 }
 
@@ -74,10 +72,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionTransfer,
 		EventType: EventTypeTransfer,
 		Inputs: map[string]int{
@@ -85,7 +83,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionApprove,
 		EventType: EventTypeApprove,
 		Inputs: map[string]int{
@@ -93,7 +91,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionTransferFrom,
 		EventType: EventTypeTransferFrom,
 		Inputs: map[string]int{
@@ -101,7 +99,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionMint,
 		EventType: EventTypeMint,
 		Inputs: map[string]int{
@@ -109,7 +107,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionBurn,
 		EventType: EventTypeBurn,
 		Inputs: map[string]int{
@@ -119,19 +117,19 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeTransfer, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeTransfer, func(state *State, event *eventsource.Event) error {
 		return applyTransfer(state, event)
 	})
-	sm.RegisterHandler(EventTypeApprove, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeApprove, func(state *State, event *eventsource.Event) error {
 		return applyApprove(state, event)
 	})
-	sm.RegisterHandler(EventTypeTransferFrom, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeTransferFrom, func(state *State, event *eventsource.Event) error {
 		return applyTransferFrom(state, event)
 	})
-	sm.RegisterHandler(EventTypeMint, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeMint, func(state *State, event *eventsource.Event) error {
 		return applyMint(state, event)
 	})
-	sm.RegisterHandler(EventTypeBurn, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeBurn, func(state *State, event *eventsource.Event) error {
 		return applyBurn(state, event)
 	})
 	// Create metamodel runtime for guard evaluation
@@ -225,7 +223,7 @@ func (a *Aggregate) evaluateGuardBurn(bindings *Bindings) (bool, error) {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	// Check guard if bindings are provided
 	if bindings, ok := data.(*Bindings); ok {
 		passed, err := a.CheckGuard(transitionID, bindings)
@@ -240,14 +238,14 @@ func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) 
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyTransfer(state *State, event *runtime.Event) error {
+func applyTransfer(state *State, event *eventsource.Event) error {
 	// Unmarshal event data to get bindings
 	var bindings Bindings
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
@@ -260,7 +258,7 @@ func applyTransfer(state *State, event *runtime.Event) error {
 	return nil
 }
 
-func applyApprove(state *State, event *runtime.Event) error {
+func applyApprove(state *State, event *eventsource.Event) error {
 	// Unmarshal event data to get bindings
 	var bindings Bindings
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
@@ -274,7 +272,7 @@ func applyApprove(state *State, event *runtime.Event) error {
 	return nil
 }
 
-func applyTransferFrom(state *State, event *runtime.Event) error {
+func applyTransferFrom(state *State, event *eventsource.Event) error {
 	// Unmarshal event data to get bindings
 	var bindings Bindings
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
@@ -292,7 +290,7 @@ func applyTransferFrom(state *State, event *runtime.Event) error {
 	return nil
 }
 
-func applyMint(state *State, event *runtime.Event) error {
+func applyMint(state *State, event *eventsource.Event) error {
 	// Unmarshal event data to get bindings
 	var bindings Bindings
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
@@ -305,7 +303,7 @@ func applyMint(state *State, event *runtime.Event) error {
 	return nil
 }
 
-func applyBurn(state *State, event *runtime.Event) error {
+func applyBurn(state *State, event *eventsource.Event) error {
 	// Unmarshal event data to get bindings
 	var bindings Bindings
 	if err := json.Unmarshal(event.Data, &bindings); err != nil {
@@ -440,11 +438,11 @@ func (g *guardEval) EvaluateConstraint(expr string, tokens map[string]int) (bool
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -492,7 +490,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -522,7 +520,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

@@ -12,6 +12,25 @@ func cmdServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	port := fs.Int("port", 0, "Port to run the service on (default: 8080 or PORT env)")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot serve - Run a registered service
+
+Usage:
+  petri-pilot serve [options] [service-name]
+
+  Without a service name, lists all available services.
+  With a service name, starts that service.
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot serve                   List available services
+  petri-pilot serve blog-post         Run the blog-post service
+  petri-pilot serve -port 3000 myapp  Run myapp on port 3000`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

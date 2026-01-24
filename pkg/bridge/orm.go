@@ -1,11 +1,11 @@
-// Package bridge provides conversion between petri-pilot schema and go-pflow metamodel.
+// Package bridge provides code generation helpers for petri-pilot.
 // This file adds ORM pattern extraction for data-centric models.
 package bridge
 
 import (
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // ORMSpec describes the ORM-like patterns extracted from a model.
@@ -118,7 +118,7 @@ type ConstraintSpec struct {
 }
 
 // ExtractORMSpec extracts ORM-like patterns from a model.
-func ExtractORMSpec(model *schema.Model) *ORMSpec {
+func ExtractORMSpec(model *metamodel.Model) *ORMSpec {
 	spec := &ORMSpec{
 		Collections: make([]CollectionSpec, 0),
 		Operations:  make([]OperationSpec, 0),
@@ -126,7 +126,7 @@ func ExtractORMSpec(model *schema.Model) *ORMSpec {
 	}
 
 	// Build place lookup
-	placeMap := make(map[string]*schema.Place)
+	placeMap := make(map[string]*metamodel.Place)
 	for i := range model.Places {
 		placeMap[model.Places[i].ID] = &model.Places[i]
 	}
@@ -157,7 +157,7 @@ func ExtractORMSpec(model *schema.Model) *ORMSpec {
 }
 
 // extractCollection extracts a CollectionSpec from a DataState place.
-func extractCollection(place schema.Place) CollectionSpec {
+func extractCollection(place metamodel.Place) CollectionSpec {
 	coll := CollectionSpec{
 		PlaceID:     place.ID,
 		Name:        toPascalCase(place.ID),
@@ -191,7 +191,7 @@ func extractCollection(place schema.Place) CollectionSpec {
 }
 
 // extractOperation extracts an OperationSpec from a transition.
-func extractOperation(transition schema.Transition, arcs []schema.Arc, placeMap map[string]*schema.Place) OperationSpec {
+func extractOperation(transition metamodel.Transition, arcs []metamodel.Arc, placeMap map[string]*metamodel.Place) OperationSpec {
 	op := OperationSpec{
 		TransitionID: transition.ID,
 		Name:         toPascalCase(transition.ID),
@@ -255,7 +255,7 @@ func extractOperation(transition schema.Transition, arcs []schema.Arc, placeMap 
 }
 
 // extractConstraint extracts a ConstraintSpec from a constraint.
-func extractConstraint(constraint schema.Constraint, collections []CollectionSpec) ConstraintSpec {
+func extractConstraint(constraint metamodel.Constraint, collections []CollectionSpec) ConstraintSpec {
 	cs := ConstraintSpec{
 		ID:          constraint.ID,
 		Expr:        constraint.Expr,

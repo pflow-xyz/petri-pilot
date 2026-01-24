@@ -38,13 +38,13 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Transition | Event | Guard | Description |
 |------------|-------|-------|-------------|
-| `create_post` | `CreatePosted` | - | Create a new blog post |
-| `update` | `Updateed` | - | Update post content |
-| `submit` | `Submited` | - | Submit draft for review |
-| `approve` | `Approveed` | - | Approve and publish the post |
-| `reject` | `Rejected` | - | Reject and return to draft |
-| `unpublish` | `Unpublished` | - | Take down a published post |
-| `restore` | `Restoreed` | - | Restore archived post to draft |
+| `create_post` | `post_created` | - | Create a new blog post |
+| `update` | `post_updated` | - | Update post content |
+| `submit` | `post_submitted` | - | Submit draft for review |
+| `approve` | `post_approved` | - | Approve and publish the post |
+| `reject` | `post_rejected` | - | Reject and return to draft |
+| `unpublish` | `post_unpublished` | - | Take down a published post |
+| `restore` | `post_restored` | - | Restore archived post to draft |
 
 
 ### Petri Net Diagram

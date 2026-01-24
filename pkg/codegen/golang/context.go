@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
 
 // Context holds all data needed for code generation templates.
@@ -122,7 +122,7 @@ type Context struct {
 	SoftDelete *SoftDeleteContext
 
 	// Original model for reference
-	Model *schema.Model
+	Model *metamodel.Model
 
 	// Schema JSON for schema viewer page
 	SchemaJSON string
@@ -655,9 +655,9 @@ type ContextOptions struct {
 }
 
 // NewContext creates a Context from a model with computed template data.
-func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
+func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	// Enrich the model with defaults
-	enriched := bridge.EnrichModel(model)
+	enriched := metamodel.EnrichModel(model)
 
 	// Determine package name
 	packageName := opts.PackageName
@@ -709,15 +709,15 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, placeIDs, dataPlaceIDs)
 
 	// Build event contexts from bridge inference
-	eventDefs := bridge.InferEvents(enriched)
+	eventDefs := metamodel.InferEvents(enriched)
 	ctx.Events = buildEventContexts(eventDefs)
 
 	// Build route contexts from bridge inference
-	apiRoutes := bridge.InferAPIRoutes(enriched)
+	apiRoutes := metamodel.InferAPIRoutes(enriched)
 	ctx.Routes = buildRouteContexts(apiRoutes)
 
 	// Build state field contexts from bridge inference
-	stateFields := bridge.InferAggregateState(enriched)
+	stateFields := metamodel.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
 
 	// Build ORM-specific contexts
@@ -876,7 +876,7 @@ func buildAccessRuleContexts(rules []bridge.AccessRuleSpec) []AccessRuleContext 
 }
 
 // buildViewContexts converts schema Views to ViewContexts.
-func buildViewContexts(views []schema.View) []ViewContext {
+func buildViewContexts(views []metamodel.View) []ViewContext {
 	result := make([]ViewContext, len(views))
 	for i, v := range views {
 		groups := make([]ViewGroupContext, len(v.Groups))
@@ -910,7 +910,7 @@ func buildViewContexts(views []schema.View) []ViewContext {
 	return result
 }
 
-func buildPlaceContexts(places []schema.Place) []PlaceContext {
+func buildPlaceContexts(places []metamodel.Place) []PlaceContext {
 	result := make([]PlaceContext, len(places))
 	for i, p := range places {
 		isToken := p.IsToken()
@@ -939,7 +939,7 @@ func buildPlaceContexts(places []schema.Place) []PlaceContext {
 	return result
 }
 
-func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
+func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamodel.Arc, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
 	// Build arc maps for each transition
 	// Inputs: arcs where arc.To == transition.ID (place -> transition)
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
@@ -1059,7 +1059,7 @@ func sanitizeAPISlug(name string) string {
 	return result
 }
 
-func buildEventContexts(eventDefs []bridge.EventDef) []EventContext {
+func buildEventContexts(eventDefs []metamodel.EventDef) []EventContext {
 	result := make([]EventContext, len(eventDefs))
 	for i, e := range eventDefs {
 		fields := make([]EventFieldContext, len(e.Fields))
@@ -1081,7 +1081,7 @@ func buildEventContexts(eventDefs []bridge.EventDef) []EventContext {
 	return result
 }
 
-func buildRouteContexts(apiRoutes []bridge.APIRoute) []RouteContext {
+func buildRouteContexts(apiRoutes []metamodel.APIRoute) []RouteContext {
 	result := make([]RouteContext, len(apiRoutes))
 	for i, r := range apiRoutes {
 		result[i] = RouteContext{
@@ -1096,7 +1096,7 @@ func buildRouteContexts(apiRoutes []bridge.APIRoute) []RouteContext {
 	return result
 }
 
-func buildStateFieldContexts(stateFields []bridge.StateField) []StateFieldContext {
+func buildStateFieldContexts(stateFields []metamodel.StateField) []StateFieldContext {
 	result := make([]StateFieldContext, len(stateFields))
 	for i, f := range stateFields {
 		result[i] = StateFieldContext{
@@ -1250,7 +1250,7 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 	return result
 }
 
-func buildGuardContexts(transitions []schema.Transition, collections []bridge.CollectionSpec) []GuardContext {
+func buildGuardContexts(transitions []metamodel.Transition, collections []bridge.CollectionSpec) []GuardContext {
 	var result []GuardContext
 
 	// Build collection lookup
@@ -1487,8 +1487,8 @@ func (c *Context) HasViews() bool {
 	return len(c.Views) > 0
 }
 
-// buildNavigationContext converts schema.Navigation to NavigationContext.
-func buildNavigationContext(nav *schema.Navigation) *NavigationContext {
+// buildNavigationContext converts metamodel.Navigation to NavigationContext.
+func buildNavigationContext(nav *metamodel.Navigation) *NavigationContext {
 if nav == nil {
 return nil
 }
@@ -1509,8 +1509,8 @@ Items: items,
 }
 }
 
-// buildAdminContext converts schema.Admin to AdminContext.
-func buildAdminContext(admin *schema.Admin) *AdminContext {
+// buildAdminContext converts metamodel.Admin to AdminContext.
+func buildAdminContext(admin *metamodel.Admin) *AdminContext {
 if admin == nil {
 return nil
 }
@@ -1523,8 +1523,8 @@ Features: admin.Features,
 }
 }
 
-// buildEventSourcingContext converts schema.EventSourcing to EventSourcingContext.
-func buildEventSourcingContext(es *schema.EventSourcing) *EventSourcingContext {
+// buildEventSourcingContext converts metamodel.EventSourcing to EventSourcingContext.
+func buildEventSourcingContext(es *metamodel.EventSourcingConfig) *EventSourcingContext {
 if es == nil {
 return nil
 }
@@ -1548,8 +1548,8 @@ Snapshots: es.Retention.Snapshots,
 return ctx
 }
 
-// buildDebugContext converts schema.Debug to DebugContext.
-func buildDebugContext(debug *schema.Debug) *DebugContext {
+// buildDebugContext converts metamodel.Debug to DebugContext.
+func buildDebugContext(debug *metamodel.Debug) *DebugContext {
 	if debug == nil {
 		return nil
 	}
@@ -1736,8 +1736,8 @@ func (c *Context) ResourcePlaces() []PlaceContext {
 	return result
 }
 
-// buildSLAContext converts schema.SLAConfig to SLAConfigContext.
-func buildSLAContext(sla *schema.SLAConfig) *SLAConfigContext {
+// buildSLAContext converts metamodel.SLAConfig to SLAConfigContext.
+func buildSLAContext(sla *metamodel.SLAConfig) *SLAConfigContext {
 	if sla == nil {
 		return nil
 	}
@@ -1764,8 +1764,8 @@ func buildSLAContext(sla *schema.SLAConfig) *SLAConfigContext {
 	return ctx
 }
 
-// buildPredictionContext converts schema.PredictionConfig to PredictionContext.
-func buildPredictionContext(pred *schema.PredictionConfig) *PredictionContext {
+// buildPredictionContext converts metamodel.PredictionConfig to PredictionContext.
+func buildPredictionContext(pred *metamodel.PredictionConfig) *PredictionContext {
 	if pred == nil {
 		return nil
 	}
@@ -1787,8 +1787,8 @@ func buildPredictionContext(pred *schema.PredictionConfig) *PredictionContext {
 	return ctx
 }
 
-// buildGraphQLContext converts schema.GraphQL to GraphQLContext.
-func buildGraphQLContext(gql *schema.GraphQL) *GraphQLContext {
+// buildGraphQLContext converts metamodel.GraphQL to GraphQLContext.
+func buildGraphQLContext(gql *metamodel.GraphQLConfig) *GraphQLContext {
 	if gql == nil {
 		return nil
 	}
@@ -1807,8 +1807,8 @@ func buildGraphQLContext(gql *schema.GraphQL) *GraphQLContext {
 	return ctx
 }
 
-// buildBlobstoreContext converts schema.Blobstore to BlobstoreContext.
-func buildBlobstoreContext(bs *schema.Blobstore) *BlobstoreContext {
+// buildBlobstoreContext converts metamodel.Blobstore to BlobstoreContext.
+func buildBlobstoreContext(bs *metamodel.BlobstoreConfig) *BlobstoreContext {
 	if bs == nil {
 		return nil
 	}
@@ -1830,8 +1830,8 @@ func buildBlobstoreContext(bs *schema.Blobstore) *BlobstoreContext {
 	return ctx
 }
 
-// buildTimersContext converts schema.Timer slice to TimerContext slice.
-func buildTimersContext(timers []schema.Timer) []TimerContext {
+// buildTimersContext converts metamodel.Timer slice to TimerContext slice.
+func buildTimersContext(timers []metamodel.Timer) []TimerContext {
 	if len(timers) == 0 {
 		return nil
 	}
@@ -1855,8 +1855,8 @@ func buildTimersContext(timers []schema.Timer) []TimerContext {
 	return result
 }
 
-// buildNotificationsContext converts schema.Notification slice to NotificationContext slice.
-func buildNotificationsContext(notifications []schema.Notification) []NotificationContext {
+// buildNotificationsContext converts metamodel.Notification slice to NotificationContext slice.
+func buildNotificationsContext(notifications []metamodel.Notification) []NotificationContext {
 	if len(notifications) == 0 {
 		return nil
 	}
@@ -1882,8 +1882,8 @@ func buildNotificationsContext(notifications []schema.Notification) []Notificati
 	return result
 }
 
-// buildRelationshipsContext converts schema.Relationship slice to RelationshipContext slice.
-func buildRelationshipsContext(relationships []schema.Relationship) []RelationshipContext {
+// buildRelationshipsContext converts metamodel.Relationship slice to RelationshipContext slice.
+func buildRelationshipsContext(relationships []metamodel.Relationship) []RelationshipContext {
 	if len(relationships) == 0 {
 		return nil
 	}
@@ -1905,8 +1905,8 @@ func buildRelationshipsContext(relationships []schema.Relationship) []Relationsh
 	return result
 }
 
-// buildComputedContext converts schema.ComputedField slice to ComputedFieldContext slice.
-func buildComputedContext(computed []schema.ComputedField) []ComputedFieldContext {
+// buildComputedContext converts metamodel.ComputedField slice to ComputedFieldContext slice.
+func buildComputedContext(computed []metamodel.ComputedField) []ComputedFieldContext {
 	if len(computed) == 0 {
 		return nil
 	}
@@ -1937,8 +1937,8 @@ func buildComputedContext(computed []schema.ComputedField) []ComputedFieldContex
 	return result
 }
 
-// buildIndexesContext converts schema.Index slice to IndexContext slice.
-func buildIndexesContext(indexes []schema.Index) []IndexContext {
+// buildIndexesContext converts metamodel.Index slice to IndexContext slice.
+func buildIndexesContext(indexes []metamodel.Index) []IndexContext {
 	if len(indexes) == 0 {
 		return nil
 	}
@@ -1960,7 +1960,7 @@ func buildIndexesContext(indexes []schema.Index) []IndexContext {
 }
 
 // buildApprovalsContext converts schema approval chains to ApprovalChainContext map.
-func buildApprovalsContext(approvals map[string]*schema.ApprovalChain) map[string]*ApprovalChainContext {
+func buildApprovalsContext(approvals map[string]*metamodel.ApprovalChain) map[string]*ApprovalChainContext {
 	if len(approvals) == 0 {
 		return nil
 	}
@@ -1993,8 +1993,8 @@ func buildApprovalsContext(approvals map[string]*schema.ApprovalChain) map[strin
 	return result
 }
 
-// buildTemplatesContext converts schema.Template slice to TemplateContext slice.
-func buildTemplatesContext(templates []schema.Template) []TemplateContext {
+// buildTemplatesContext converts metamodel.Template slice to TemplateContext slice.
+func buildTemplatesContext(templates []metamodel.Template) []TemplateContext {
 	if len(templates) == 0 {
 		return nil
 	}
@@ -2019,8 +2019,8 @@ func buildTemplatesContext(templates []schema.Template) []TemplateContext {
 	return result
 }
 
-// buildBatchContext converts schema.BatchConfig to BatchContext.
-func buildBatchContext(batch *schema.BatchConfig) *BatchContext {
+// buildBatchContext converts metamodel.BatchConfig to BatchContext.
+func buildBatchContext(batch *metamodel.BatchConfig) *BatchContext {
 	if batch == nil {
 		return nil
 	}
@@ -2035,8 +2035,8 @@ func buildBatchContext(batch *schema.BatchConfig) *BatchContext {
 	}
 }
 
-// buildInboundWebhooksContext converts schema.InboundWebhook slice to InboundWebhookContext slice.
-func buildInboundWebhooksContext(webhooks []schema.InboundWebhook) []InboundWebhookContext {
+// buildInboundWebhooksContext converts metamodel.InboundWebhook slice to InboundWebhookContext slice.
+func buildInboundWebhooksContext(webhooks []metamodel.InboundWebhook) []InboundWebhookContext {
 	if len(webhooks) == 0 {
 		return nil
 	}
@@ -2064,8 +2064,8 @@ func buildInboundWebhooksContext(webhooks []schema.InboundWebhook) []InboundWebh
 	return result
 }
 
-// buildDocumentsContext converts schema.Document slice to DocumentContext slice.
-func buildDocumentsContext(documents []schema.Document) []DocumentContext {
+// buildDocumentsContext converts metamodel.Document slice to DocumentContext slice.
+func buildDocumentsContext(documents []metamodel.Document) []DocumentContext {
 	if len(documents) == 0 {
 		return nil
 	}
@@ -2090,8 +2090,8 @@ func buildDocumentsContext(documents []schema.Document) []DocumentContext {
 	return result
 }
 
-// buildCommentsContext converts schema.CommentsConfig to CommentsContext.
-func buildCommentsContext(comments *schema.CommentsConfig) *CommentsContext {
+// buildCommentsContext converts metamodel.CommentsConfig to CommentsContext.
+func buildCommentsContext(comments *metamodel.CommentsConfig) *CommentsContext {
 	if comments == nil {
 		return nil
 	}
@@ -2107,8 +2107,8 @@ func buildCommentsContext(comments *schema.CommentsConfig) *CommentsContext {
 	}
 }
 
-// buildTagsContext converts schema.TagsConfig to TagsContext.
-func buildTagsContext(tags *schema.TagsConfig) *TagsContext {
+// buildTagsContext converts metamodel.TagsConfig to TagsContext.
+func buildTagsContext(tags *metamodel.TagsConfig) *TagsContext {
 	if tags == nil {
 		return nil
 	}
@@ -2129,8 +2129,8 @@ func buildTagsContext(tags *schema.TagsConfig) *TagsContext {
 	}
 }
 
-// buildActivityContext converts schema.ActivityConfig to ActivityContext.
-func buildActivityContext(activity *schema.ActivityConfig) *ActivityContext {
+// buildActivityContext converts metamodel.ActivityConfig to ActivityContext.
+func buildActivityContext(activity *metamodel.ActivityConfig) *ActivityContext {
 	if activity == nil {
 		return nil
 	}
@@ -2146,8 +2146,8 @@ func buildActivityContext(activity *schema.ActivityConfig) *ActivityContext {
 	}
 }
 
-// buildFavoritesContext converts schema.FavoritesConfig to FavoritesContext.
-func buildFavoritesContext(favorites *schema.FavoritesConfig) *FavoritesContext {
+// buildFavoritesContext converts metamodel.FavoritesConfig to FavoritesContext.
+func buildFavoritesContext(favorites *metamodel.FavoritesConfig) *FavoritesContext {
 	if favorites == nil {
 		return nil
 	}
@@ -2162,8 +2162,8 @@ func buildFavoritesContext(favorites *schema.FavoritesConfig) *FavoritesContext 
 	}
 }
 
-// buildExportContext converts schema.ExportConfig to ExportContext.
-func buildExportContext(export *schema.ExportConfig) *ExportContext {
+// buildExportContext converts metamodel.ExportConfig to ExportContext.
+func buildExportContext(export *metamodel.ExportConfig) *ExportContext {
 	if export == nil {
 		return nil
 	}
@@ -2183,8 +2183,8 @@ func buildExportContext(export *schema.ExportConfig) *ExportContext {
 	}
 }
 
-// buildSoftDeleteContext converts schema.SoftDeleteConfig to SoftDeleteContext.
-func buildSoftDeleteContext(softDelete *schema.SoftDeleteConfig) *SoftDeleteContext {
+// buildSoftDeleteContext converts metamodel.SoftDeleteConfig to SoftDeleteContext.
+func buildSoftDeleteContext(softDelete *metamodel.SoftDeleteConfig) *SoftDeleteContext {
 	if softDelete == nil {
 		return nil
 	}

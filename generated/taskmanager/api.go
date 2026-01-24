@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // BuildRouter creates an HTTP router for the task-manager workflow.
@@ -51,6 +51,7 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
 	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
+	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
 
 
 	// Event replay endpoints
@@ -409,7 +410,7 @@ return func(w http.ResponseWriter, r *http.Request) {
 ctx := r.Context()
 
 adminStore, ok := app.store.(interface {
-GetStats(ctx context.Context) (*eventstore.Stats, error)
+GetStats(ctx context.Context) (*eventsource.Stats, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -438,7 +439,7 @@ page := getIntQueryParam(r, "page", 1)
 perPage := getIntQueryParam(r, "per_page", 50)
 
 adminStore, ok := app.store.(interface {
-ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -509,6 +510,24 @@ return
 
 api.JSON(w, http.StatusOK, map[string]interface{}{
 "events": events,
+})
+}
+}
+
+// HandleAdminDeleteInstance deletes an instance and all its events.
+func HandleAdminDeleteInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+if err := app.store.DeleteStream(ctx, id); err != nil {
+api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"deleted": true,
+"id":      id,
 })
 }
 }
@@ -587,7 +606,7 @@ api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 return
 }
 
-snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+snapshotStore, ok := app.store.(eventsource.SnapshotStore)
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
 return
@@ -599,7 +618,7 @@ api.Error(w, http.StatusInternalServerError, "MARSHAL_FAILED", err.Error())
 return
 }
 
-snapshot := &eventstore.Snapshot{
+snapshot := &eventsource.Snapshot{
 StreamID: id,
 Version:  agg.Version(),
 State:    stateBytes,
@@ -623,7 +642,7 @@ func HandleReplay(app *Application) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+		snapshotStore, ok := app.store.(eventsource.SnapshotStore)
 		if !ok {
 			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
 			return

@@ -21,7 +21,7 @@ import (
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
 {{- if or .HasAdmin .HasSnapshots}}
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 {{- end}}
 )
 
@@ -531,7 +531,7 @@ return func(w http.ResponseWriter, r *http.Request) {
 ctx := r.Context()
 
 adminStore, ok := app.store.(interface {
-GetStats(ctx context.Context) (*eventstore.Stats, error)
+GetStats(ctx context.Context) (*eventsource.Stats, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -567,7 +567,7 @@ showArchived := r.URL.Query().Get("archived") == "true"
 {{- end}}
 
 adminStore, ok := app.store.(interface {
-ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
 })
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
@@ -582,8 +582,8 @@ return
 
 {{- if .HasSoftDelete}}
 // Filter out archived instances unless explicitly requested
-var filteredInstances []eventstore.Instance
-var archivedInstances []eventstore.Instance
+var filteredInstances []eventsource.Instance
+var archivedInstances []eventsource.Instance
 for _, inst := range instances {
 if softDeleteStore.IsDeleted(inst.ID) {
 archivedInstances = append(archivedInstances, inst)
@@ -792,7 +792,7 @@ api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 return
 }
 
-snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+snapshotStore, ok := app.store.(eventsource.SnapshotStore)
 if !ok {
 api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
 return
@@ -804,7 +804,7 @@ api.Error(w, http.StatusInternalServerError, "MARSHAL_FAILED", err.Error())
 return
 }
 
-snapshot := &eventstore.Snapshot{
+snapshot := &eventsource.Snapshot{
 StreamID: id,
 Version:  agg.Version(),
 State:    stateBytes,
@@ -828,7 +828,7 @@ func HandleReplay(app *Application) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		snapshotStore, ok := app.store.(eventstore.SnapshotStore)
+		snapshotStore, ok := app.store.(eventsource.SnapshotStore)
 		if !ok {
 			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Snapshots not supported")
 			return

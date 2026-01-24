@@ -12,11 +12,11 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/examples"
-	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
 )
@@ -394,9 +394,9 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	// Return analysis-focused output
 	output := struct {
 		Valid             bool                              `json:"valid"`
-		Analysis          *schema.AnalysisResult            `json:"analysis,omitempty"`
-		Errors            []schema.ValidationError          `json:"errors,omitempty"`
-		Warnings          []schema.ValidationError          `json:"warnings,omitempty"`
+		Analysis          *goflowmetamodel.AnalysisResult            `json:"analysis,omitempty"`
+		Errors            []goflowmetamodel.ValidationError          `json:"errors,omitempty"`
+		Warnings          []goflowmetamodel.ValidationError          `json:"warnings,omitempty"`
 		Implementability  *validator.ImplementabilityResult `json:"implementability,omitempty"`
 	}{
 		Valid:            result.Valid,
@@ -509,7 +509,7 @@ type ModelDiff struct {
 	HasChanges         bool     `json:"has_changes"`
 }
 
-func compareModels(a, b *schema.Model) ModelDiff {
+func compareModels(a, b *goflowmetamodel.Model) ModelDiff {
 	diff := ModelDiff{}
 
 	// Compare places
@@ -553,7 +553,7 @@ func compareModels(a, b *schema.Model) ModelDiff {
 	}
 
 	// Compare arcs
-	arcKey := func(arc schema.Arc) string {
+	arcKey := func(arc goflowmetamodel.Arc) string {
 		return fmt.Sprintf("%s->%s", arc.From, arc.To)
 	}
 	arcsA := make(map[string]bool)
@@ -596,7 +596,7 @@ func compareModels(a, b *schema.Model) ModelDiff {
 	}
 
 	// Compare access rules
-	accessKey := func(acc schema.AccessRule) string {
+	accessKey := func(acc goflowmetamodel.AccessRule) string {
 		return fmt.Sprintf("%s:%v", acc.Transition, acc.Roles)
 	}
 	accessA := make(map[string]bool)
@@ -702,7 +702,7 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 
-func applyOperation(model *schema.Model, opType string, op map[string]any) error {
+func applyOperation(model *goflowmetamodel.Model, opType string, op map[string]any) error {
 	switch opType {
 	case "add_place":
 		id, _ := op["id"].(string)
@@ -711,7 +711,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		}
 		desc, _ := op["description"].(string)
 		initial, _ := op["initial"].(float64)
-		model.Places = append(model.Places, schema.Place{
+		model.Places = append(model.Places, goflowmetamodel.Place{
 			ID:          id,
 			Description: desc,
 			Initial:     int(initial),
@@ -727,7 +727,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		guard, _ := op["guard"].(string)
 
 		// Parse bindings if provided
-		var bindings []schema.Binding
+		var bindings []goflowmetamodel.Binding
 		if bindingsRaw, ok := op["bindings"].([]any); ok {
 			for _, b := range bindingsRaw {
 				if bindingMap, ok := b.(map[string]any); ok {
@@ -739,7 +739,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 			}
 		}
 
-		model.Transitions = append(model.Transitions, schema.Transition{
+		model.Transitions = append(model.Transitions, goflowmetamodel.Transition{
 			ID:          id,
 			Description: desc,
 			Event:       event,
@@ -753,7 +753,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if from == "" || to == "" {
 			return fmt.Errorf("missing 'from' or 'to' for add_arc")
 		}
-		model.Arcs = append(model.Arcs, schema.Arc{
+		model.Arcs = append(model.Arcs, goflowmetamodel.Arc{
 			From: from,
 			To:   to,
 		})
@@ -765,7 +765,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		}
 		name, _ := op["name"].(string)
 		desc, _ := op["description"].(string)
-		model.Roles = append(model.Roles, schema.Role{
+		model.Roles = append(model.Roles, goflowmetamodel.Role{
 			ID:          id,
 			Name:        name,
 			Description: desc,
@@ -786,7 +786,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if len(roles) == 0 {
 			return fmt.Errorf("missing 'roles' for add_access")
 		}
-		model.Access = append(model.Access, schema.AccessRule{
+		model.Access = append(model.Access, goflowmetamodel.AccessRule{
 			Transition: transition,
 			Roles:      roles,
 		})
@@ -796,7 +796,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if id == "" {
 			return fmt.Errorf("missing 'id' for remove_place")
 		}
-		newPlaces := make([]schema.Place, 0, len(model.Places))
+		newPlaces := make([]goflowmetamodel.Place, 0, len(model.Places))
 		for _, p := range model.Places {
 			if p.ID != id {
 				newPlaces = append(newPlaces, p)
@@ -809,7 +809,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if id == "" {
 			return fmt.Errorf("missing 'id' for remove_transition")
 		}
-		newTrans := make([]schema.Transition, 0, len(model.Transitions))
+		newTrans := make([]goflowmetamodel.Transition, 0, len(model.Transitions))
 		for _, t := range model.Transitions {
 			if t.ID != id {
 				newTrans = append(newTrans, t)
@@ -823,7 +823,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if from == "" || to == "" {
 			return fmt.Errorf("missing 'from' or 'to' for remove_arc")
 		}
-		newArcs := make([]schema.Arc, 0, len(model.Arcs))
+		newArcs := make([]goflowmetamodel.Arc, 0, len(model.Arcs))
 		for _, a := range model.Arcs {
 			if a.From != from || a.To != to {
 				newArcs = append(newArcs, a)
@@ -836,7 +836,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if id == "" {
 			return fmt.Errorf("missing 'id' for remove_role")
 		}
-		newRoles := make([]schema.Role, 0, len(model.Roles))
+		newRoles := make([]goflowmetamodel.Role, 0, len(model.Roles))
 		for _, r := range model.Roles {
 			if r.ID != id {
 				newRoles = append(newRoles, r)
@@ -849,7 +849,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if transition == "" {
 			return fmt.Errorf("missing 'transition' for remove_access")
 		}
-		newAccess := make([]schema.AccessRule, 0, len(model.Access))
+		newAccess := make([]goflowmetamodel.AccessRule, 0, len(model.Access))
 		for _, a := range model.Access {
 			if a.Transition != transition {
 				newAccess = append(newAccess, a)
@@ -864,7 +864,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		}
 		name, _ := op["name"].(string)
 		desc, _ := op["description"].(string)
-		var fields []schema.EventField
+		var fields []goflowmetamodel.EventField
 		if fieldsRaw, ok := op["fields"].([]any); ok {
 			for _, f := range fieldsRaw {
 				if fieldMap, ok := f.(map[string]any); ok {
@@ -874,7 +874,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 					fieldRequired, _ := fieldMap["required"].(bool)
 					fieldDesc, _ := fieldMap["description"].(string)
 					if fieldName != "" && fieldType != "" {
-						fields = append(fields, schema.EventField{
+						fields = append(fields, goflowmetamodel.EventField{
 							Name:        fieldName,
 							Type:        fieldType,
 							Of:          fieldOf,
@@ -885,7 +885,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 				}
 			}
 		}
-		model.Events = append(model.Events, schema.Event{
+		model.Events = append(model.Events, goflowmetamodel.Event{
 			ID:          id,
 			Name:        name,
 			Description: desc,
@@ -913,7 +913,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		found := false
 		for i := range model.Events {
 			if model.Events[i].ID == eventID {
-				model.Events[i].Fields = append(model.Events[i].Fields, schema.EventField{
+				model.Events[i].Fields = append(model.Events[i].Fields, goflowmetamodel.EventField{
 					Name:        fieldName,
 					Type:        fieldType,
 					Of:          fieldOf,
@@ -933,7 +933,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		if id == "" {
 			return fmt.Errorf("missing 'id' for remove_event")
 		}
-		newEvents := make([]schema.Event, 0, len(model.Events))
+		newEvents := make([]goflowmetamodel.Event, 0, len(model.Events))
 		for _, e := range model.Events {
 			if e.ID != id {
 				newEvents = append(newEvents, e)
@@ -955,7 +955,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 			return fmt.Errorf("missing 'type' for add_binding")
 		}
 
-		binding := schema.Binding{
+		binding := goflowmetamodel.Binding{
 			Name:  bindingName,
 			Type:  bindingType,
 			Place: getOptString(op, "place"),
@@ -990,7 +990,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 		found := false
 		for i := range model.Transitions {
 			if model.Transitions[i].ID == transitionID {
-				newBindings := make([]schema.Binding, 0, len(model.Transitions[i].Bindings))
+				newBindings := make([]goflowmetamodel.Binding, 0, len(model.Transitions[i].Bindings))
 				for _, b := range model.Transitions[i].Bindings {
 					if b.Name != bindingName {
 						newBindings = append(newBindings, b)
@@ -1013,7 +1013,7 @@ func applyOperation(model *schema.Model, opType string, op map[string]any) error
 }
 
 // parseBinding parses a binding from a map.
-func parseBinding(m map[string]any) schema.Binding {
+func parseBinding(m map[string]any) goflowmetamodel.Binding {
 	name, _ := m["name"].(string)
 	typ, _ := m["type"].(string)
 	place, _ := m["place"].(string)
@@ -1026,7 +1026,7 @@ func parseBinding(m map[string]any) schema.Binding {
 			}
 		}
 	}
-	return schema.Binding{
+	return goflowmetamodel.Binding{
 		Name:  name,
 		Type:  typ,
 		Place: place,
@@ -1220,7 +1220,7 @@ func handleDocs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 }
 
 // generateMarkdownDocs creates markdown documentation with mermaid diagrams
-func generateMarkdownDocs(model *schema.Model, rawJSON string, includeMetadata bool) string {
+func generateMarkdownDocs(model *goflowmetamodel.Model, rawJSON string, includeMetadata bool) string {
 	var sb strings.Builder
 
 	// Title and description
@@ -1546,15 +1546,15 @@ func titleCase(s string) string {
 
 // --- Helpers ---
 
-func parseModel(jsonStr string) (*schema.Model, error) {
-	var model schema.Model
+func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
+	var model goflowmetamodel.Model
 	if err := json.Unmarshal([]byte(jsonStr), &model); err != nil {
 		return nil, err
 	}
 	return &model, nil
 }
 
-func generateSVG(model *schema.Model) string {
+func generateSVG(model *goflowmetamodel.Model) string {
 	// Calculate layout
 	placeY := 50
 	transY := 150
@@ -1667,7 +1667,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	for i, entity := range app.Entities {
 		sb.WriteString(fmt.Sprintf("=== Entity %d: %s ===\n", i+1, entity.ID))
 		
-		// Convert Entity to metamodel.Schema then to schema.Model
+		// Convert Entity to metamodel.Schema then to goflowmetamodel.Model
 		metaSchema := entity.ToSchema()
 		model := metaSchema.ToModel()
 		
@@ -1871,7 +1871,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 }
 
 // Helper to generate backend with access control, workflows, and webhooks
-func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext, webhooks []golang.WebhookContext) ([]golang.GeneratedFile, error) {
+func generateBackendWithAccessControl(gen *golang.Generator, model *goflowmetamodel.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext, webhooks []golang.WebhookContext) ([]golang.GeneratedFile, error) {
 	// Build context with access rules, workflows, and webhooks
 	ctx, err := golang.NewContext(model, golang.ContextOptions{
 		PackageName: model.Name,
@@ -1927,7 +1927,7 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *schema.Model
 }
 
 // Helper to generate frontend with pages
-func generateFrontendWithPages(gen *esmodules.Generator, model *schema.Model, pages []esmodules.PageContext) ([]esmodules.GeneratedFile, error) {
+func generateFrontendWithPages(gen *esmodules.Generator, model *goflowmetamodel.Model, pages []esmodules.PageContext) ([]esmodules.GeneratedFile, error) {
 	// Build context with pages
 	ctx, err := esmodules.NewContext(model, esmodules.ContextOptions{
 		ProjectName: model.Name,

@@ -62,6 +62,21 @@ func cmdServiceList(args []string) {
 	fs := flag.NewFlagSet("service list", flag.ExitOnError)
 	jsonOutput := fs.Bool("json", false, "Output as JSON")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot service list - List all running services
+
+Usage:
+  petri-pilot service list [options]
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot service list            List services in table format
+  petri-pilot service list -json      List services as JSON`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -95,6 +110,19 @@ func cmdServiceList(args []string) {
 func cmdServiceStop(args []string) {
 	fs := flag.NewFlagSet("service stop", flag.ExitOnError)
 
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), `petri-pilot service stop - Stop a running service
+
+Usage:
+  petri-pilot service stop <service-id>
+
+Arguments:
+  service-id    The ID of the service to stop (e.g., svc-1)
+
+Examples:
+  petri-pilot service stop svc-1`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -120,6 +148,25 @@ func cmdServiceLogs(args []string) {
 	fs := flag.NewFlagSet("service logs", flag.ExitOnError)
 	lines := fs.Int("n", 50, "Number of lines to show")
 	stream := fs.String("stream", "both", "Log stream: stdout, stderr, or both")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot service logs - View logs from a service
+
+Usage:
+  petri-pilot service logs [options] <service-id>
+
+Arguments:
+  service-id    The ID of the service (e.g., svc-1)
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot service logs svc-1              Show last 50 lines
+  petri-pilot service logs -n 100 svc-1       Show last 100 lines
+  petri-pilot service logs -stream stderr svc-1  Show only stderr`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -148,6 +195,24 @@ func cmdServiceLogs(args []string) {
 func cmdServiceStats(args []string) {
 	fs := flag.NewFlagSet("service stats", flag.ExitOnError)
 	jsonOutput := fs.Bool("json", false, "Output as JSON")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot service stats - Get runtime statistics for a service
+
+Usage:
+  petri-pilot service stats [options] <service-id>
+
+Arguments:
+  service-id    The ID of the service (e.g., svc-1)
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot service stats svc-1        Show stats in human-readable format
+  petri-pilot service stats -json svc-1  Show stats as JSON`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -189,6 +254,19 @@ func cmdServiceStats(args []string) {
 
 func cmdServiceHealth(args []string) {
 	fs := flag.NewFlagSet("service health", flag.ExitOnError)
+
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), `petri-pilot service health - Check health endpoint of a service
+
+Usage:
+  petri-pilot service health <service-id>
+
+Arguments:
+  service-id    The ID of the service (e.g., svc-1)
+
+Examples:
+  petri-pilot service health svc-1`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

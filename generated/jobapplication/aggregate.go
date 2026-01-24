@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // State holds the aggregate state for job-application.
@@ -38,7 +36,7 @@ func NewState() State {
 
 // Aggregate wraps a StateMachine with the job-application state.
 type Aggregate struct {
-	sm *aggregate.StateMachine[State]
+	sm *eventsource.StateMachine[State]
 }
 
 // NewAggregate creates a new aggregate with initial state.
@@ -46,10 +44,10 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
-	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
+	sm := eventsource.NewStateMachine(id, NewState(), InitialPlaces())
 
 	// Register transitions with their input/output places
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionStartScreening,
 		EventType: EventTypeStartScreening,
 		Inputs: map[string]int{
@@ -59,7 +57,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceScreening: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionBeginChecks,
 		EventType: EventTypeBeginChecks,
 		Inputs: map[string]int{
@@ -70,7 +68,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceReadyForBackgroundCheck: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionSchedulePhoneScreen,
 		EventType: EventTypeSchedulePhoneScreen,
 		Inputs: map[string]int{
@@ -80,7 +78,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePhoneScreenPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionStartBackgroundCheck,
 		EventType: EventTypeStartBackgroundCheck,
 		Inputs: map[string]int{
@@ -90,7 +88,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceBackgroundCheckPending: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionCompletePhoneScreen,
 		EventType: EventTypeCompletePhoneScreen,
 		Inputs: map[string]int{
@@ -100,7 +98,7 @@ func NewAggregate(id string) *Aggregate {
 			PlacePhoneScreenComplete: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionCompleteBackgroundCheck,
 		EventType: EventTypeCompleteBackgroundCheck,
 		Inputs: map[string]int{
@@ -110,7 +108,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceBackgroundCheckComplete: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionAdvanceToInterview,
 		EventType: EventTypeAdvanceToInterview,
 		Inputs: map[string]int{
@@ -121,7 +119,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceReadyForInterview: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionConductInterview,
 		EventType: EventTypeConductInterview,
 		Inputs: map[string]int{
@@ -131,7 +129,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceInterviewing: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionExtendOffer,
 		EventType: EventTypeExtendOffer,
 		Inputs: map[string]int{
@@ -141,7 +139,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOfferExtended: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionAcceptOffer,
 		EventType: EventTypeAcceptOffer,
 		Inputs: map[string]int{
@@ -151,7 +149,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceHired: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRejectAfterScreen,
 		EventType: EventTypeRejectAfterScreen,
 		Inputs: map[string]int{
@@ -161,7 +159,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRejected: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRejectAfterInterview,
 		EventType: EventTypeRejectAfterInterview,
 		Inputs: map[string]int{
@@ -171,7 +169,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceRejected: 1,
 		},
 	})
-	sm.AddTransition(aggregate.Transition{
+	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionDeclineOffer,
 		EventType: EventTypeDeclineOffer,
 		Inputs: map[string]int{
@@ -183,43 +181,43 @@ func NewAggregate(id string) *Aggregate {
 	})
 
 	// Register event handlers for state updates
-	sm.RegisterHandler(EventTypeStartScreening, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeStartScreening, func(state *State, event *eventsource.Event) error {
 		return applyStartScreening(state, event)
 	})
-	sm.RegisterHandler(EventTypeBeginChecks, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeBeginChecks, func(state *State, event *eventsource.Event) error {
 		return applyBeginChecks(state, event)
 	})
-	sm.RegisterHandler(EventTypeSchedulePhoneScreen, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeSchedulePhoneScreen, func(state *State, event *eventsource.Event) error {
 		return applySchedulePhoneScreen(state, event)
 	})
-	sm.RegisterHandler(EventTypeStartBackgroundCheck, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeStartBackgroundCheck, func(state *State, event *eventsource.Event) error {
 		return applyStartBackgroundCheck(state, event)
 	})
-	sm.RegisterHandler(EventTypeCompletePhoneScreen, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeCompletePhoneScreen, func(state *State, event *eventsource.Event) error {
 		return applyCompletePhoneScreen(state, event)
 	})
-	sm.RegisterHandler(EventTypeCompleteBackgroundCheck, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeCompleteBackgroundCheck, func(state *State, event *eventsource.Event) error {
 		return applyCompleteBackgroundCheck(state, event)
 	})
-	sm.RegisterHandler(EventTypeAdvanceToInterview, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeAdvanceToInterview, func(state *State, event *eventsource.Event) error {
 		return applyAdvanceToInterview(state, event)
 	})
-	sm.RegisterHandler(EventTypeConductInterview, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeConductInterview, func(state *State, event *eventsource.Event) error {
 		return applyConductInterview(state, event)
 	})
-	sm.RegisterHandler(EventTypeExtendOffer, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeExtendOffer, func(state *State, event *eventsource.Event) error {
 		return applyExtendOffer(state, event)
 	})
-	sm.RegisterHandler(EventTypeAcceptOffer, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeAcceptOffer, func(state *State, event *eventsource.Event) error {
 		return applyAcceptOffer(state, event)
 	})
-	sm.RegisterHandler(EventTypeRejectAfterScreen, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRejectAfterScreen, func(state *State, event *eventsource.Event) error {
 		return applyRejectAfterScreen(state, event)
 	})
-	sm.RegisterHandler(EventTypeRejectAfterInterview, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeRejectAfterInterview, func(state *State, event *eventsource.Event) error {
 		return applyRejectAfterInterview(state, event)
 	})
-	sm.RegisterHandler(EventTypeDeclineOffer, func(state *State, event *runtime.Event) error {
+	sm.RegisterHandler(EventTypeDeclineOffer, func(state *State, event *eventsource.Event) error {
 		return applyDeclineOffer(state, event)
 	})
 	return &Aggregate{sm: sm}
@@ -260,103 +258,103 @@ func (a *Aggregate) CanFire(transitionID string) bool {
 }
 
 // Fire executes a transition and returns the resulting event.
-func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) {
+func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
 	return a.sm.Fire(transitionID, data)
 }
 
 // Apply applies an event to update the aggregate state.
-func (a *Aggregate) Apply(event *runtime.Event) error {
+func (a *Aggregate) Apply(event *eventsource.Event) error {
 	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
 }
 
 // Event application functions
 
-func applyStartScreening(state *State, event *runtime.Event) error {
+func applyStartScreening(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyBeginChecks(state *State, event *runtime.Event) error {
+func applyBeginChecks(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applySchedulePhoneScreen(state *State, event *runtime.Event) error {
+func applySchedulePhoneScreen(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyStartBackgroundCheck(state *State, event *runtime.Event) error {
+func applyStartBackgroundCheck(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyCompletePhoneScreen(state *State, event *runtime.Event) error {
+func applyCompletePhoneScreen(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyCompleteBackgroundCheck(state *State, event *runtime.Event) error {
+func applyCompleteBackgroundCheck(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyAdvanceToInterview(state *State, event *runtime.Event) error {
+func applyAdvanceToInterview(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyConductInterview(state *State, event *runtime.Event) error {
+func applyConductInterview(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyExtendOffer(state *State, event *runtime.Event) error {
+func applyExtendOffer(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyAcceptOffer(state *State, event *runtime.Event) error {
+func applyAcceptOffer(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyRejectAfterScreen(state *State, event *runtime.Event) error {
+func applyRejectAfterScreen(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyRejectAfterInterview(state *State, event *runtime.Event) error {
+func applyRejectAfterInterview(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyDeclineOffer(state *State, event *runtime.Event) error {
+func applyDeclineOffer(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -365,11 +363,11 @@ func applyDeclineOffer(state *State, event *runtime.Event) error {
 
 // Application wires together the aggregate and event store.
 type Application struct {
-	store eventstore.Store
+	store eventsource.Store
 }
 
 // NewApplication creates a new application instance.
-func NewApplication(store eventstore.Store) *Application {
+func NewApplication(store eventsource.Store) *Application {
 	return &Application{store: store}
 }
 
@@ -417,7 +415,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
+	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -447,7 +445,7 @@ func (app *Application) HealthCheck(ctx context.Context) error {
 }
 
 // Helper to unmarshal event data
-func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
 	var data T
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return nil, err

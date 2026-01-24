@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // Resolver is the root resolver for GraphQL queries and mutations.
@@ -18,7 +18,7 @@ type Resolver struct {
 		GetState(ctx context.Context, id string) (Aggregate, error)
 		Execute(ctx context.Context, id, transition string, data map[string]any) (Aggregate, error)
 		HealthCheck(ctx context.Context) error
-		GetStore() eventstore.Store
+		GetStore() eventsource.Store
 	}
 }
 
@@ -38,7 +38,7 @@ func NewResolver(app interface {
 	GetState(ctx context.Context, id string) (Aggregate, error)
 	Execute(ctx context.Context, id, transition string, data map[string]any) (Aggregate, error)
 	HealthCheck(ctx context.Context) error
-	GetStore() eventstore.Store
+	GetStore() eventsource.Store
 }) *Resolver {
 	return &Resolver{App: app}
 }
@@ -72,7 +72,7 @@ func (r *Resolver) Erc20TokenList(ctx context.Context, place *string, page *int,
 	}
 	store := r.App.GetStore()
 	adminStore, ok := store.(interface {
-		ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+		ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
 	})
 	if !ok {
 		return &AggregateList{
@@ -109,7 +109,7 @@ func (r *Resolver) Erc20TokenList(ctx context.Context, place *string, page *int,
 func (r *Resolver) AdminStats(ctx context.Context) (*AdminStats, error) {
 	store := r.App.GetStore()
 	adminStore, ok := store.(interface {
-		GetStats(ctx context.Context) (*eventstore.Stats, error)
+		GetStats(ctx context.Context) (*eventsource.Stats, error)
 	})
 	if !ok {
 		return nil, fmt.Errorf("admin operations not supported")

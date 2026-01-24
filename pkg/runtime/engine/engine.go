@@ -9,17 +9,16 @@ import (
 	"maps"
 	"sync"
 
+	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime"
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 )
 
 // Engine wraps metamodel.Runtime with event sourcing.
 // It provides the execution layer for generated applications.
 type Engine struct {
 	schema *metamodel.Schema
-	store  eventstore.Store
+	store  eventsource.Store
 
 	// runtimes holds per-aggregate runtime instances
 	runtimes map[string]*metamodel.Runtime
@@ -27,7 +26,7 @@ type Engine struct {
 }
 
 // NewEngine creates a new engine from a metamodel schema and event store.
-func NewEngine(schema *metamodel.Schema, store eventstore.Store) *Engine {
+func NewEngine(schema *metamodel.Schema, store eventsource.Store) *Engine {
 	return &Engine{
 		schema:   schema,
 		store:    store,
@@ -72,7 +71,7 @@ func (e *Engine) LoadState(ctx context.Context, aggregateID string) (*metamodel.
 
 	// Read events from store
 	events, err := e.store.Read(ctx, aggregateID, 0)
-	if err != nil && err != eventstore.ErrStreamNotFound {
+	if err != nil && err != eventsource.ErrStreamNotFound {
 		return nil, fmt.Errorf("reading events: %w", err)
 	}
 
@@ -122,19 +121,19 @@ func (e *Engine) Execute(ctx context.Context, aggregateID, actionID string, bind
 
 	// Create and persist event
 	eventType := actionIDToEventType(actionID)
-	event, err := runtime.NewEvent(aggregateID, eventType, bindings)
+	event, err := eventsource.NewEvent(aggregateID, eventType, bindings)
 	if err != nil {
 		return fmt.Errorf("creating event: %w", err)
 	}
 
 	// Get current version for optimistic concurrency
 	version, err := e.store.StreamVersion(ctx, aggregateID)
-	if err != nil && err != eventstore.ErrStreamNotFound {
+	if err != nil && err != eventsource.ErrStreamNotFound {
 		return fmt.Errorf("getting stream version: %w", err)
 	}
 
 	// Append event
-	_, err = e.store.Append(ctx, aggregateID, version, []*runtime.Event{event})
+	_, err = e.store.Append(ctx, aggregateID, version, []*eventsource.Event{event})
 	if err != nil {
 		return fmt.Errorf("appending event: %w", err)
 	}
@@ -205,7 +204,7 @@ func (e *Engine) CheckGuard(ctx context.Context, aggregateID, guardExpr string, 
 }
 
 // eventToBindings converts an event's data to metamodel.Bindings.
-func eventToBindings(event *runtime.Event) (metamodel.Bindings, error) {
+func eventToBindings(event *eventsource.Event) (metamodel.Bindings, error) {
 	bindings := make(metamodel.Bindings)
 	if len(event.Data) == 0 {
 		return bindings, nil

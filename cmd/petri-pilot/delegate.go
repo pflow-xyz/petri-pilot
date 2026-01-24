@@ -70,6 +70,24 @@ func cmdDelegateApp(args []string) {
 	owner := fs.String("owner", "pflow-xyz", "GitHub repository owner")
 	repo := fs.String("repo", "petri-pilot", "GitHub repository name")
 
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot delegate app - Request a new application to be generated
+
+Usage:
+  petri-pilot delegate app [options] <name>
+
+Arguments:
+  name    Short name for the app (lowercase, hyphens allowed)
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot delegate app my-app -d "A task management workflow"
+  petri-pilot delegate app blog -d "A blog with comments" -f auth,admin -c medium`)
+	}
+
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -119,6 +137,24 @@ func cmdDelegateRoadmap(args []string) {
 	fs := flag.NewFlagSet("delegate roadmap", flag.ExitOnError)
 	owner := fs.String("owner", "pflow-xyz", "GitHub repository owner")
 	repo := fs.String("repo", "petri-pilot", "GitHub repository name")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot delegate roadmap - Delegate all tasks from a roadmap file
+
+Usage:
+  petri-pilot delegate roadmap [options] [filename]
+
+Arguments:
+  filename    Path to roadmap file (default: ROADMAP.md)
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot delegate roadmap                 Delegate tasks from ROADMAP.md
+  petri-pilot delegate roadmap TODO.md         Delegate tasks from TODO.md`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -175,6 +211,21 @@ func cmdDelegateStatus(args []string) {
 	owner := fs.String("owner", "pflow-xyz", "GitHub repository owner")
 	repo := fs.String("repo", "petri-pilot", "GitHub repository name")
 	jsonOutput := fs.Bool("json", false, "Output as JSON")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot delegate status - Check status of Copilot agents
+
+Usage:
+  petri-pilot delegate status [options]
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot delegate status            Show status in human-readable format
+  petri-pilot delegate status -json      Show status as JSON`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -234,6 +285,22 @@ func cmdDelegateWait(args []string) {
 	repo := fs.String("repo", "petri-pilot", "GitHub repository name")
 	timeout := fs.Duration("timeout", 30*time.Minute, "Maximum time to wait")
 	jsonOutput := fs.Bool("json", false, "Output as JSON when complete")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot delegate wait - Wait for all Copilot agents to complete
+
+Usage:
+  petri-pilot delegate wait [options]
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot delegate wait                 Wait with 30m timeout
+  petri-pilot delegate wait -timeout 1h     Wait up to 1 hour
+  petri-pilot delegate wait -json           Output final status as JSON`)
+	}
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

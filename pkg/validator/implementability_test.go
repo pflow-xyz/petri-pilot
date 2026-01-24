@@ -3,23 +3,23 @@ package validator_test
 import (
 	"testing"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 )
 
 func TestValidateImplementability_ValidModel(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "order-processing",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "received", Initial: 1},
 			{ID: "validated", Initial: 0},
 			{ID: "shipped", Initial: 0},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "validate"},
 			{ID: "ship"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "received", To: "validate"},
 			{From: "validate", To: "validated"},
 			{From: "validated", To: "ship"},
@@ -51,16 +51,16 @@ func TestValidateImplementability_ValidModel(t *testing.T) {
 }
 
 func TestValidateImplementability_DataPlaceWithoutType(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "ready", Initial: 1},
-			{ID: "data", Kind: schema.DataKind}, // No type specified
+			{ID: "data", Kind: metamodel.DataKind}, // No type specified
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "process"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "ready", To: "process"},
 			{From: "data", To: "process"},
 		},
@@ -88,15 +88,15 @@ func TestValidateImplementability_DataPlaceWithoutType(t *testing.T) {
 }
 
 func TestValidateImplementability_InvalidIdentifier(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "123-invalid", Initial: 1}, // Invalid identifier
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "process"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "123-invalid", To: "process"},
 			{From: "process", To: "123-invalid"},
 		},
@@ -119,15 +119,15 @@ func TestValidateImplementability_InvalidIdentifier(t *testing.T) {
 }
 
 func TestValidateImplementability_ComplexGuard(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "ready", Initial: 1},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "process", Guard: "balance[from] >= amount && balance[to] + amount <= maxBalance"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "ready", To: "process"},
 			{From: "process", To: "ready"},
 		},
@@ -150,15 +150,15 @@ func TestValidateImplementability_ComplexGuard(t *testing.T) {
 }
 
 func TestValidateImplementability_SimpleGuard(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "tokens", Initial: 5},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "consume", Guard: "tokens > 0"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "tokens", To: "consume"},
 			{From: "consume", To: "tokens"},
 		},
@@ -176,15 +176,15 @@ func TestValidateImplementability_SimpleGuard(t *testing.T) {
 }
 
 func TestValidateImplementability_InvalidHTTPMethod(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "ready", Initial: 1},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "process", HTTPMethod: "INVALID"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "ready", To: "process"},
 			{From: "process", To: "ready"},
 		},
@@ -208,20 +208,20 @@ func TestValidateImplementability_InvalidHTTPMethod(t *testing.T) {
 
 func TestPatternDetection_Workflow(t *testing.T) {
 	// Linear workflow: start -> a -> b -> c -> end
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "linear-workflow",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "start", Initial: 1},
 			{ID: "step1", Initial: 0},
 			{ID: "step2", Initial: 0},
 			{ID: "end", Initial: 0},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "do_step1"},
 			{ID: "do_step2"},
 			{ID: "finish"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "start", To: "do_step1"},
 			{From: "do_step1", To: "step1"},
 			{From: "step1", To: "do_step2"},
@@ -241,17 +241,17 @@ func TestPatternDetection_Workflow(t *testing.T) {
 
 func TestPatternDetection_StateMachine(t *testing.T) {
 	// State machine with cycles: idle <-> active
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "state-machine",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "idle", Initial: 1},
 			{ID: "active", Initial: 0},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "activate"},
 			{ID: "deactivate"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "idle", To: "activate"},
 			{From: "activate", To: "active"},
 			{From: "active", To: "deactivate"},
@@ -269,16 +269,16 @@ func TestPatternDetection_StateMachine(t *testing.T) {
 
 func TestPatternDetection_ResourcePool(t *testing.T) {
 	// Resource pool: data state with cycles (like token balances)
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "token-transfer",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "ready", Initial: 1},
-			{ID: "balances", Kind: schema.DataKind, Type: "map[string]int"},
+			{ID: "balances", Kind: metamodel.DataKind, Type: "map[string]int"},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "transfer"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "ready", To: "transfer"},
 			{From: "transfer", To: "ready"},
 			{From: "balances", To: "transfer", Keys: []string{"from"}, Value: "amount"},
@@ -295,16 +295,16 @@ func TestPatternDetection_ResourcePool(t *testing.T) {
 }
 
 func TestEventMapping(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "a", Initial: 1},
 			{ID: "b", Initial: 0},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "transfer", EventType: "TransferCompleted"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "a", To: "transfer", Keys: []string{"from"}, Value: "amount"},
 			{From: "transfer", To: "b", Keys: []string{"to"}},
 		},
@@ -345,16 +345,16 @@ func TestEventMapping(t *testing.T) {
 }
 
 func TestStateMapping(t *testing.T) {
-	model := &schema.Model{
+	model := &metamodel.Model{
 		Name: "test",
-		Places: []schema.Place{
+		Places: []metamodel.Place{
 			{ID: "token_count", Initial: 5},
-			{ID: "user_data", Kind: schema.DataKind, Type: "map[string]User"},
+			{ID: "user_data", Kind: metamodel.DataKind, Type: "map[string]User"},
 		},
-		Transitions: []schema.Transition{
+		Transitions: []metamodel.Transition{
 			{ID: "process"},
 		},
-		Arcs: []schema.Arc{
+		Arcs: []metamodel.Arc{
 			{From: "token_count", To: "process"},
 			{From: "user_data", To: "process"},
 		},

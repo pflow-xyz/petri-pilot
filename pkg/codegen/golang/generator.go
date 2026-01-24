@@ -5,8 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 )
 
 // Options configures the Go code generator.
@@ -72,13 +71,13 @@ func New(opts Options) (*Generator, error) {
 
 // Generate generates Go code files and writes them to the output directory.
 // Returns the list of generated file paths.
-func (g *Generator) Generate(model *schema.Model) ([]string, error) {
+func (g *Generator) Generate(model *metamodel.Model) ([]string, error) {
 	if g.opts.OutputDir == "" {
 		return nil, fmt.Errorf("output directory is required")
 	}
 
 	// Validate model for code generation
-	if issues := bridge.ValidateForCodegen(model); len(issues) > 0 {
+	if issues := metamodel.ValidateForCodegen(model); len(issues) > 0 {
 		return nil, fmt.Errorf("model validation failed: %v", issues)
 	}
 
@@ -115,9 +114,9 @@ func (g *Generator) Generate(model *schema.Model) ([]string, error) {
 
 // GenerateFiles generates Go code files in memory without writing to disk.
 // Useful for testing and preview functionality.
-func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) {
+func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, error) {
 	// Validate model for code generation
-	if issues := bridge.ValidateForCodegen(model); len(issues) > 0 {
+	if issues := metamodel.ValidateForCodegen(model); len(issues) > 0 {
 		return nil, fmt.Errorf("model validation failed: %v", issues)
 	}
 
@@ -256,7 +255,7 @@ func (g *Generator) GenerateFiles(model *schema.Model) ([]GeneratedFile, error) 
 }
 
 // Preview generates a preview of a single template without writing to disk.
-func (g *Generator) Preview(model *schema.Model, templateName string) ([]byte, error) {
+func (g *Generator) Preview(model *metamodel.Model, templateName string) ([]byte, error) {
 	ctx, err := NewContext(model, ContextOptions{
 		ModulePath:  g.opts.ModulePath,
 		PackageName: g.opts.PackageName,
@@ -274,13 +273,13 @@ func (g *Generator) GetTemplates() *Templates {
 }
 
 // ValidateModel checks if a model is suitable for Go code generation.
-func ValidateModel(model *schema.Model) []string {
-	return bridge.ValidateForCodegen(model)
+func ValidateModel(model *metamodel.Model) []string {
+	return metamodel.ValidateForCodegen(model)
 }
 
 // GenerateToDir is a convenience function that creates a generator and writes files.
 // Generated code is always a submodule (no go.mod) to be part of the parent module.
-func GenerateToDir(model *schema.Model, outputDir string, includeTests bool) ([]string, error) {
+func GenerateToDir(model *metamodel.Model, outputDir string, includeTests bool) ([]string, error) {
 	gen, err := New(Options{
 		OutputDir:    outputDir,
 		IncludeTests: includeTests,

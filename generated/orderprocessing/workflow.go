@@ -23,11 +23,11 @@ const (
 
 // Event type constants
 const (
-	EventTypeValidate = "Validateed"
-	EventTypeReject = "Rejected"
-	EventTypeProcessPayment = "ProcessPaymented"
-	EventTypeShip = "Shiped"
-	EventTypeConfirm = "Confirmed"
+	EventTypeValidate = "order_validated"
+	EventTypeReject = "order_rejected"
+	EventTypeProcessPayment = "payment_processed"
+	EventTypeShip = "order_shipped"
+	EventTypeConfirm = "order_completed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.

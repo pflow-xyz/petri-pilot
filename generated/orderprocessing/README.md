@@ -40,11 +40,11 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Transition | Event | Guard | Description |
 |------------|-------|-------|-------------|
-| `validate` | `Validateed` | - | Check order validity |
-| `reject` | `Rejected` | - | Mark order as invalid |
-| `process_payment` | `ProcessPaymented` | - | Charge customer payment |
-| `ship` | `Shiped` | - | Send order to shipping |
-| `confirm` | `Confirmed` | - | Mark order as complete |
+| `validate` | `order_validated` | - | Check order validity |
+| `reject` | `order_rejected` | - | Mark order as invalid |
+| `process_payment` | `payment_processed` | - | Charge customer payment |
+| `ship` | `order_shipped` | - | Send order to shipping |
+| `confirm` | `order_completed` | - | Mark order as complete |
 
 
 ### Petri Net Diagram

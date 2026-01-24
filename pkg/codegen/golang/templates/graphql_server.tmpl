@@ -9,7 +9,7 @@ import (
 
 	"{{.ModulePath}}/graph"
 {{- if or .HasAdmin .HasEventSourcing}}
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 {{- end}}
 )
 
@@ -89,7 +89,7 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 	return a.app.HealthCheck(ctx)
 }
 {{if or .HasAdmin .HasEventSourcing}}
-func (a *graphQLApp) GetStore() eventstore.Store {
+func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
 {{end}}

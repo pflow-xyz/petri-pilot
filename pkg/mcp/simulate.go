@@ -17,9 +17,8 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/pflow-xyz/go-pflow/metamodel"
 	pflowTokenmodel "github.com/pflow-xyz/go-pflow/tokenmodel"
-	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
-	"github.com/pflow-xyz/petri-pilot/pkg/schema"
 )
 
 // SimulationStep represents a single step in a simulation.
@@ -63,9 +62,9 @@ type StepResult struct {
 }
 
 // simulate executes a simulation given a model and a list of steps.
-func simulate(model *schema.Model, steps []SimulationStep) SimulationResult {
-	// Convert to go-pflow metamodel
-	metaSchema := bridge.ToMetamodel(model)
+func simulate(model *metamodel.Model, steps []SimulationStep) SimulationResult {
+	// Convert to go-pflow tokenmodel
+	metaSchema := metamodel.ToTokenModel(model)
 
 	// Create runtime
 	runtime := pflowTokenmodel.NewRuntime(metaSchema)
