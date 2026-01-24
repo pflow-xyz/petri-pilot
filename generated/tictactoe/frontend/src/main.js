@@ -887,10 +887,12 @@ function renderEvents() {
     const type = event.type || ''
     let description = type
 
-    if (type.startsWith('XPlayed') || type.startsWith('OPlayed')) {
+    // Event types are like "XPlay11ed" or "OPlay00ed"
+    // Format: {player}Play{row}{col}ed
+    if (type.startsWith('XPlay') || type.startsWith('OPlay')) {
       const player = type.charAt(0)
-      const row = type.charAt(7)
-      const col = type.charAt(8)
+      const row = type.charAt(5)
+      const col = type.charAt(6)
       description = `${player} played at (${row}, ${col})`
     } else if (type === 'GameReset') {
       description = 'Game reset'
@@ -924,10 +926,12 @@ async function revertToMove(moveIndex) {
     const event = gameState.events[i]
     const type = event.type || ''
 
-    if (type.startsWith('XPlayed') || type.startsWith('OPlayed')) {
+    // Event types are like "XPlay11ed" or "OPlay00ed"
+    // Format: {player}Play{row}{col}ed
+    if (type.startsWith('XPlay') || type.startsWith('OPlay')) {
       const player = type.charAt(0)
-      const row = parseInt(type.charAt(7))
-      const col = parseInt(type.charAt(8))
+      const row = parseInt(type.charAt(5))
+      const col = parseInt(type.charAt(6))
       newBoard[row][col] = player
     }
   }
