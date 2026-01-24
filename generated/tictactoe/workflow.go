@@ -2,9 +2,8 @@
 
 package tictactoe
 
-// Place constants - Board positions
+// Place constants
 const (
-	// Empty cell positions (consume when placing a piece)
 	PlaceP00 = "p00"
 	PlaceP01 = "p01"
 	PlaceP02 = "p02"
@@ -14,15 +13,33 @@ const (
 	PlaceP20 = "p20"
 	PlaceP21 = "p21"
 	PlaceP22 = "p22"
-
-	// Turn control
+	PlaceX00 = "x00"
+	PlaceX01 = "x01"
+	PlaceX02 = "x02"
+	PlaceX10 = "x10"
+	PlaceX11 = "x11"
+	PlaceX12 = "x12"
+	PlaceX20 = "x20"
+	PlaceX21 = "x21"
+	PlaceX22 = "x22"
+	PlaceO00 = "o00"
+	PlaceO01 = "o01"
+	PlaceO02 = "o02"
+	PlaceO10 = "o10"
+	PlaceO11 = "o11"
+	PlaceO12 = "o12"
+	PlaceO20 = "o20"
+	PlaceO21 = "o21"
+	PlaceO22 = "o22"
 	PlaceXTurn = "x_turn"
 	PlaceOTurn = "o_turn"
+	PlaceWinX = "win_x"
+	PlaceWinO = "win_o"
+	PlaceCanReset = "can_reset"
 )
 
 // Transition constants
 const (
-	// X moves
 	TransitionXPlay00 = "x_play_00"
 	TransitionXPlay01 = "x_play_01"
 	TransitionXPlay02 = "x_play_02"
@@ -32,8 +49,6 @@ const (
 	TransitionXPlay20 = "x_play_20"
 	TransitionXPlay21 = "x_play_21"
 	TransitionXPlay22 = "x_play_22"
-
-	// O moves
 	TransitionOPlay00 = "o_play_00"
 	TransitionOPlay01 = "o_play_01"
 	TransitionOPlay02 = "o_play_02"
@@ -43,69 +58,156 @@ const (
 	TransitionOPlay20 = "o_play_20"
 	TransitionOPlay21 = "o_play_21"
 	TransitionOPlay22 = "o_play_22"
-
-	// Game control
 	TransitionReset = "reset"
+	TransitionXWinRow0 = "x_win_row0"
+	TransitionXWinRow1 = "x_win_row1"
+	TransitionXWinRow2 = "x_win_row2"
+	TransitionXWinCol0 = "x_win_col0"
+	TransitionXWinCol1 = "x_win_col1"
+	TransitionXWinCol2 = "x_win_col2"
+	TransitionXWinDiag = "x_win_diag"
+	TransitionXWinAnti = "x_win_anti"
+	TransitionOWinRow0 = "o_win_row0"
+	TransitionOWinRow1 = "o_win_row1"
+	TransitionOWinRow2 = "o_win_row2"
+	TransitionOWinCol0 = "o_win_col0"
+	TransitionOWinCol1 = "o_win_col1"
+	TransitionOWinCol2 = "o_win_col2"
+	TransitionOWinDiag = "o_win_diag"
+	TransitionOWinAnti = "o_win_anti"
 )
 
 // Event type constants
 const (
-	EventTypeReset = "GameReset"
+	EventTypeXPlay00 = "XPlay00ed"
+	EventTypeXPlay01 = "XPlay01ed"
+	EventTypeXPlay02 = "XPlay02ed"
+	EventTypeXPlay10 = "XPlay10ed"
+	EventTypeXPlay11 = "XPlay11ed"
+	EventTypeXPlay12 = "XPlay12ed"
+	EventTypeXPlay20 = "XPlay20ed"
+	EventTypeXPlay21 = "XPlay21ed"
+	EventTypeXPlay22 = "XPlay22ed"
+	EventTypeOPlay00 = "OPlay00ed"
+	EventTypeOPlay01 = "OPlay01ed"
+	EventTypeOPlay02 = "OPlay02ed"
+	EventTypeOPlay10 = "OPlay10ed"
+	EventTypeOPlay11 = "OPlay11ed"
+	EventTypeOPlay12 = "OPlay12ed"
+	EventTypeOPlay20 = "OPlay20ed"
+	EventTypeOPlay21 = "OPlay21ed"
+	EventTypeOPlay22 = "OPlay22ed"
+	EventTypeReset = "Reseted"
+	EventTypeXWinRow0 = "XWinRow0ed"
+	EventTypeXWinRow1 = "XWinRow1ed"
+	EventTypeXWinRow2 = "XWinRow2ed"
+	EventTypeXWinCol0 = "XWinCol0ed"
+	EventTypeXWinCol1 = "XWinCol1ed"
+	EventTypeXWinCol2 = "XWinCol2ed"
+	EventTypeXWinDiag = "XWinDiaged"
+	EventTypeXWinAnti = "XWinAntied"
+	EventTypeOWinRow0 = "OWinRow0ed"
+	EventTypeOWinRow1 = "OWinRow1ed"
+	EventTypeOWinRow2 = "OWinRow2ed"
+	EventTypeOWinCol0 = "OWinCol0ed"
+	EventTypeOWinCol1 = "OWinCol1ed"
+	EventTypeOWinCol2 = "OWinCol2ed"
+	EventTypeOWinDiag = "OWinDiaged"
+	EventTypeOWinAnti = "OWinAntied"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
-		// All cells empty
-		PlaceP00: 1, PlaceP01: 1, PlaceP02: 1,
-		PlaceP10: 1, PlaceP11: 1, PlaceP12: 1,
-		PlaceP20: 1, PlaceP21: 1, PlaceP22: 1,
-		// X goes first
+		PlaceP00: 1,
+		PlaceP01: 1,
+		PlaceP02: 1,
+		PlaceP10: 1,
+		PlaceP11: 1,
+		PlaceP12: 1,
+		PlaceP20: 1,
+		PlaceP21: 1,
+		PlaceP22: 1,
 		PlaceXTurn: 1,
-		PlaceOTurn: 0,
+		PlaceCanReset: 1,
 	}
 }
 
 // AllPlaces returns all place IDs in the workflow.
 func AllPlaces() []string {
 	return []string{
-		PlaceP00, PlaceP01, PlaceP02,
-		PlaceP10, PlaceP11, PlaceP12,
-		PlaceP20, PlaceP21, PlaceP22,
-		PlaceXTurn, PlaceOTurn,
+		PlaceP00,
+		PlaceP01,
+		PlaceP02,
+		PlaceP10,
+		PlaceP11,
+		PlaceP12,
+		PlaceP20,
+		PlaceP21,
+		PlaceP22,
+		PlaceX00,
+		PlaceX01,
+		PlaceX02,
+		PlaceX10,
+		PlaceX11,
+		PlaceX12,
+		PlaceX20,
+		PlaceX21,
+		PlaceX22,
+		PlaceO00,
+		PlaceO01,
+		PlaceO02,
+		PlaceO10,
+		PlaceO11,
+		PlaceO12,
+		PlaceO20,
+		PlaceO21,
+		PlaceO22,
+		PlaceXTurn,
+		PlaceOTurn,
+		PlaceWinX,
+		PlaceWinO,
+		PlaceCanReset,
 	}
 }
 
 // AllTransitions returns all transition IDs in the workflow.
 func AllTransitions() []string {
 	return []string{
-		TransitionXPlay00, TransitionXPlay01, TransitionXPlay02,
-		TransitionXPlay10, TransitionXPlay11, TransitionXPlay12,
-		TransitionXPlay20, TransitionXPlay21, TransitionXPlay22,
-		TransitionOPlay00, TransitionOPlay01, TransitionOPlay02,
-		TransitionOPlay10, TransitionOPlay11, TransitionOPlay12,
-		TransitionOPlay20, TransitionOPlay21, TransitionOPlay22,
+		TransitionXPlay00,
+		TransitionXPlay01,
+		TransitionXPlay02,
+		TransitionXPlay10,
+		TransitionXPlay11,
+		TransitionXPlay12,
+		TransitionXPlay20,
+		TransitionXPlay21,
+		TransitionXPlay22,
+		TransitionOPlay00,
+		TransitionOPlay01,
+		TransitionOPlay02,
+		TransitionOPlay10,
+		TransitionOPlay11,
+		TransitionOPlay12,
+		TransitionOPlay20,
+		TransitionOPlay21,
+		TransitionOPlay22,
 		TransitionReset,
+		TransitionXWinRow0,
+		TransitionXWinRow1,
+		TransitionXWinRow2,
+		TransitionXWinCol0,
+		TransitionXWinCol1,
+		TransitionXWinCol2,
+		TransitionXWinDiag,
+		TransitionXWinAnti,
+		TransitionOWinRow0,
+		TransitionOWinRow1,
+		TransitionOWinRow2,
+		TransitionOWinCol0,
+		TransitionOWinCol1,
+		TransitionOWinCol2,
+		TransitionOWinDiag,
+		TransitionOWinAnti,
 	}
-}
-
-// Win patterns - each pattern is a set of 3 positions that form a winning line
-// Used by the frontend for visualization
-var WinPatterns = [][]int{
-	{0, 1, 2},   // top row
-	{3, 4, 5},   // middle row
-	{6, 7, 8},   // bottom row
-	{0, 3, 6},   // left column
-	{1, 4, 7},   // center column
-	{2, 5, 8},   // right column
-	{0, 4, 8},   // diagonal
-	{2, 4, 6},   // anti-diagonal
-}
-
-// StrategicValues contains the ODE-derived strategic values for each position
-// Center (1,1) participates in 4 patterns, corners in 3, edges in 2
-var StrategicValues = map[string]float64{
-	"00": 0.316, "01": 0.218, "02": 0.316,
-	"10": 0.218, "11": 0.430, "12": 0.218,
-	"20": 0.316, "21": 0.218, "22": 0.316,
 }

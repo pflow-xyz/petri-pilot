@@ -241,6 +241,8 @@ func HandleListSessions(broker *DebugBroker) http.HandlerFunc {
 	}
 }
 
+
+
 // HandleSessionEval sends code to a browser session for evaluation.
 func HandleSessionEval(broker *DebugBroker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

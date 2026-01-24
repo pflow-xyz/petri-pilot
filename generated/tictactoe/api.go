@@ -5,7 +5,6 @@ package tictactoe
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"io/fs"
 	"net/http"
 	"os"
@@ -18,69 +17,108 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the tic-tac-toe workflow.
-func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
+func BuildRouter(app *Application, debugBroker *DebugBroker, softDeleteStore *SoftDeleteStore) http.Handler {
 	r := api.NewRouter()
 
-	// Health check
+	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
 		api.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	// Readiness check
+	// Readiness check - verifies dependencies (database, etc.)
 	r.GET("/ready", "Readiness check", HandleReady(app))
 
-	// Create new game
-	r.POST("/api/tictactoe", "Create new game", HandleCreate(app))
+	// Create new aggregate
+	r.POST("/api/tictactoe", "Create new tic-tac-toe", HandleCreate(app))
 
-	// Get game state
-	r.GET("/api/tictactoe/{id}", "Get game state", HandleGetState(app))
+	// Get aggregate state
+	r.GET("/api/tictactoe/{id}", "Get tic-tac-toe state", HandleGetState(app))
 
-	// Get events
-	r.GET("/api/tictactoe/{id}/events", "Get event history", HandleGetEvents(app))
 
-	// Schema endpoint
+	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
 
-	// Simulation endpoint
-	r.GET("/api/simulation", "Get simulation data", HandleGetSimulation())
-
-	// ODE Heatmap endpoint - computes strategic values using go-pflow ODE solver
-	r.GET("/api/heatmap", "Get ODE heatmap for empty board", HandleHeatmap())
-	r.POST("/api/heatmap", "Get ODE heatmap for board state", HandleHeatmap())
 
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
-	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
+	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app, softDeleteStore))
+	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
+	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
+	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
+	r.POST("/admin/instances/{id}/archive", "Archive instance (soft delete)", HandleAdminArchiveInstance(softDeleteStore))
+	r.POST("/admin/instances/{id}/restore", "Restore archived instance", HandleAdminRestoreInstance(softDeleteStore))
 
-	// Debug WebSocket
+
+	// Event replay endpoints
+	r.GET("/api/tictactoe/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/tictactoe/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+
+
+
+
+
+
+	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
-	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code", HandleSessionEval(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-	// Transition endpoints - X moves
-	r.Transition("x_play_00", "/api/x_play_00", "X plays position (0,0)", HandleTransition(app, TransitionXPlay00))
-	r.Transition("x_play_01", "/api/x_play_01", "X plays position (0,1)", HandleTransition(app, TransitionXPlay01))
-	r.Transition("x_play_02", "/api/x_play_02", "X plays position (0,2)", HandleTransition(app, TransitionXPlay02))
-	r.Transition("x_play_10", "/api/x_play_10", "X plays position (1,0)", HandleTransition(app, TransitionXPlay10))
-	r.Transition("x_play_11", "/api/x_play_11", "X plays position (1,1)", HandleTransition(app, TransitionXPlay11))
-	r.Transition("x_play_12", "/api/x_play_12", "X plays position (1,2)", HandleTransition(app, TransitionXPlay12))
-	r.Transition("x_play_20", "/api/x_play_20", "X plays position (2,0)", HandleTransition(app, TransitionXPlay20))
-	r.Transition("x_play_21", "/api/x_play_21", "X plays position (2,1)", HandleTransition(app, TransitionXPlay21))
-	r.Transition("x_play_22", "/api/x_play_22", "X plays position (2,2)", HandleTransition(app, TransitionXPlay22))
 
-	// Transition endpoints - O moves
-	r.Transition("o_play_00", "/api/o_play_00", "O plays position (0,0)", HandleTransition(app, TransitionOPlay00))
-	r.Transition("o_play_01", "/api/o_play_01", "O plays position (0,1)", HandleTransition(app, TransitionOPlay01))
-	r.Transition("o_play_02", "/api/o_play_02", "O plays position (0,2)", HandleTransition(app, TransitionOPlay02))
-	r.Transition("o_play_10", "/api/o_play_10", "O plays position (1,0)", HandleTransition(app, TransitionOPlay10))
-	r.Transition("o_play_11", "/api/o_play_11", "O plays position (1,1)", HandleTransition(app, TransitionOPlay11))
-	r.Transition("o_play_12", "/api/o_play_12", "O plays position (1,2)", HandleTransition(app, TransitionOPlay12))
-	r.Transition("o_play_20", "/api/o_play_20", "O plays position (2,0)", HandleTransition(app, TransitionOPlay20))
-	r.Transition("o_play_21", "/api/o_play_21", "O plays position (2,1)", HandleTransition(app, TransitionOPlay21))
-	r.Transition("o_play_22", "/api/o_play_22", "O plays position (2,2)", HandleTransition(app, TransitionOPlay22))
 
-	// Reset game
-	r.Transition("reset", "/api/reset", "Reset game", HandleTransition(app, TransitionReset))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Soft delete endpoints
+	r.Handle("DELETE", "/api/tictactoe/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
+	r.POST("/api/tictactoe/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
+
+	// Transition endpoints
+	r.Transition("x_play_00", "/api/x_play_00", "X plays at (0,0)", HandleXPlay00(app))
+	r.Transition("x_play_01", "/api/x_play_01", "X plays at (0,1)", HandleXPlay01(app))
+	r.Transition("x_play_02", "/api/x_play_02", "X plays at (0,2)", HandleXPlay02(app))
+	r.Transition("x_play_10", "/api/x_play_10", "X plays at (1,0)", HandleXPlay10(app))
+	r.Transition("x_play_11", "/api/x_play_11", "X plays at (1,1) - center", HandleXPlay11(app))
+	r.Transition("x_play_12", "/api/x_play_12", "X plays at (1,2)", HandleXPlay12(app))
+	r.Transition("x_play_20", "/api/x_play_20", "X plays at (2,0)", HandleXPlay20(app))
+	r.Transition("x_play_21", "/api/x_play_21", "X plays at (2,1)", HandleXPlay21(app))
+	r.Transition("x_play_22", "/api/x_play_22", "X plays at (2,2)", HandleXPlay22(app))
+	r.Transition("o_play_00", "/api/o_play_00", "O plays at (0,0)", HandleOPlay00(app))
+	r.Transition("o_play_01", "/api/o_play_01", "O plays at (0,1)", HandleOPlay01(app))
+	r.Transition("o_play_02", "/api/o_play_02", "O plays at (0,2)", HandleOPlay02(app))
+	r.Transition("o_play_10", "/api/o_play_10", "O plays at (1,0)", HandleOPlay10(app))
+	r.Transition("o_play_11", "/api/o_play_11", "O plays at (1,1) - center", HandleOPlay11(app))
+	r.Transition("o_play_12", "/api/o_play_12", "O plays at (1,2)", HandleOPlay12(app))
+	r.Transition("o_play_20", "/api/o_play_20", "O plays at (2,0)", HandleOPlay20(app))
+	r.Transition("o_play_21", "/api/o_play_21", "O plays at (2,1)", HandleOPlay21(app))
+	r.Transition("o_play_22", "/api/o_play_22", "O plays at (2,2)", HandleOPlay22(app))
+	r.Transition("reset", "/api/reset", "Reset game to initial state", HandleReset(app))
+	r.Transition("x_win_row0", "/api/x_win_row0", "X wins top row (0,0)-(0,1)-(0,2)", HandleXWinRow0(app))
+	r.Transition("x_win_row1", "/api/x_win_row1", "X wins middle row (1,0)-(1,1)-(1,2)", HandleXWinRow1(app))
+	r.Transition("x_win_row2", "/api/x_win_row2", "X wins bottom row (2,0)-(2,1)-(2,2)", HandleXWinRow2(app))
+	r.Transition("x_win_col0", "/api/x_win_col0", "X wins left column (0,0)-(1,0)-(2,0)", HandleXWinCol0(app))
+	r.Transition("x_win_col1", "/api/x_win_col1", "X wins center column (0,1)-(1,1)-(2,1)", HandleXWinCol1(app))
+	r.Transition("x_win_col2", "/api/x_win_col2", "X wins right column (0,2)-(1,2)-(2,2)", HandleXWinCol2(app))
+	r.Transition("x_win_diag", "/api/x_win_diag", "X wins main diagonal (0,0)-(1,1)-(2,2)", HandleXWinDiag(app))
+	r.Transition("x_win_anti", "/api/x_win_anti", "X wins anti-diagonal (0,2)-(1,1)-(2,0)", HandleXWinAnti(app))
+	r.Transition("o_win_row0", "/api/o_win_row0", "O wins top row (0,0)-(0,1)-(0,2)", HandleOWinRow0(app))
+	r.Transition("o_win_row1", "/api/o_win_row1", "O wins middle row (1,0)-(1,1)-(1,2)", HandleOWinRow1(app))
+	r.Transition("o_win_row2", "/api/o_win_row2", "O wins bottom row (2,0)-(2,1)-(2,2)", HandleOWinRow2(app))
+	r.Transition("o_win_col0", "/api/o_win_col0", "O wins left column (0,0)-(1,0)-(2,0)", HandleOWinCol0(app))
+	r.Transition("o_win_col1", "/api/o_win_col1", "O wins center column (0,1)-(1,1)-(2,1)", HandleOWinCol1(app))
+	r.Transition("o_win_col2", "/api/o_win_col2", "O wins right column (0,2)-(1,2)-(2,2)", HandleOWinCol2(app))
+	r.Transition("o_win_diag", "/api/o_win_diag", "O wins main diagonal (0,0)-(1,1)-(2,2)", HandleOWinDiag(app))
+	r.Transition("o_win_anti", "/api/o_win_anti", "O wins anti-diagonal (0,2)-(1,1)-(2,0)", HandleOWinAnti(app))
 
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())
@@ -89,22 +127,30 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 }
 
 // StaticFileHandler returns an http.Handler that serves static files from frontend/.
+// It supports SPA routing by returning index.html for paths that don't match static files.
 func StaticFileHandler() http.HandlerFunc {
+	// Find frontend directory
 	frontendPath := "frontend"
 	if _, err := os.Stat(frontendPath); os.IsNotExist(err) {
+		// Try relative to executable
 		exe, _ := os.Executable()
 		frontendPath = filepath.Join(filepath.Dir(exe), "frontend")
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Clean the path
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path == "" {
 			path = "index.html"
 		}
 
+		// Try to serve the file
 		fullPath := filepath.Join(frontendPath, path)
+
+		// Check if file exists
 		info, err := os.Stat(fullPath)
 		if err != nil || info.IsDir() {
+			// File doesn't exist, serve index.html for SPA routing
 			http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
 			return
 		}
@@ -113,12 +159,12 @@ func StaticFileHandler() http.HandlerFunc {
 	}
 }
 
-// StaticFS interface for embedding static files
+// StaticFS is a helper interface for embedding static files (optional).
 type StaticFS interface {
 	fs.FS
 }
 
-// HandleCreate creates a new game instance.
+// HandleCreate creates a new aggregate instance.
 func HandleCreate(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -129,6 +175,7 @@ func HandleCreate(app *Application) http.HandlerFunc {
 			return
 		}
 
+		// Load the new aggregate to get initial state
 		agg, err := app.Load(ctx, id)
 		if err != nil {
 			api.Error(w, http.StatusInternalServerError, "LOAD_FAILED", err.Error())
@@ -145,13 +192,13 @@ func HandleCreate(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleGetState returns the current state of a game.
+// HandleGetState returns the current state of an aggregate.
 func HandleGetState(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		id := r.PathValue("id")
 		if id == "" {
-			api.Error(w, http.StatusBadRequest, "MISSING_ID", "game ID is required")
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate ID is required")
 			return
 		}
 
@@ -171,12 +218,14 @@ func HandleGetState(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleReady checks if the application is ready.
+// HandleReady checks if the application is ready to serve requests.
+// Returns 200 if all dependencies are available, 503 otherwise.
 func HandleReady(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		checks := make(map[string]string)
 		ready := true
 
+		// Check event store connectivity
 		if err := app.HealthCheck(r.Context()); err != nil {
 			checks["eventstore"] = err.Error()
 			ready = false
@@ -198,8 +247,9 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleTransition handles any transition execution.
-func HandleTransition(app *Application, transitionID string) http.HandlerFunc {
+
+// HandleXPlay00 handles the x_play_00 transition.
+func HandleXPlay00(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -214,15 +264,7 @@ func HandleTransition(app *Application, transitionID string) http.HandlerFunc {
 			return
 		}
 
-		// Parse the data as a generic map
-		var data map[string]interface{}
-		if len(req.Data) > 0 {
-			if err := json.Unmarshal(req.Data, &data); err != nil {
-				data = nil
-			}
-		}
-
-		agg, err := app.Execute(ctx, req.AggregateID, transitionID, data)
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay00, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
 			return
@@ -238,7 +280,1316 @@ func HandleTransition(app *Application, transitionID string) http.HandlerFunc {
 	}
 }
 
-// HandleGetEvents returns the event history for a game.
+
+// HandleXPlay01 handles the x_play_01 transition.
+func HandleXPlay01(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay01, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay02 handles the x_play_02 transition.
+func HandleXPlay02(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay02, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay10 handles the x_play_10 transition.
+func HandleXPlay10(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay10, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay11 handles the x_play_11 transition.
+func HandleXPlay11(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay11, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay12 handles the x_play_12 transition.
+func HandleXPlay12(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay12, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay20 handles the x_play_20 transition.
+func HandleXPlay20(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay20, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay21 handles the x_play_21 transition.
+func HandleXPlay21(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay21, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXPlay22 handles the x_play_22 transition.
+func HandleXPlay22(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXPlay22, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay00 handles the o_play_00 transition.
+func HandleOPlay00(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay00, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay01 handles the o_play_01 transition.
+func HandleOPlay01(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay01, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay02 handles the o_play_02 transition.
+func HandleOPlay02(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay02, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay10 handles the o_play_10 transition.
+func HandleOPlay10(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay10, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay11 handles the o_play_11 transition.
+func HandleOPlay11(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay11, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay12 handles the o_play_12 transition.
+func HandleOPlay12(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay12, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay20 handles the o_play_20 transition.
+func HandleOPlay20(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay20, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay21 handles the o_play_21 transition.
+func HandleOPlay21(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay21, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOPlay22 handles the o_play_22 transition.
+func HandleOPlay22(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOPlay22, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleReset handles the reset transition.
+func HandleReset(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		// This transition clears event history, resetting to initial state
+		agg, err := app.ResetStream(ctx, req.AggregateID)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "RESET_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinRow0 handles the x_win_row0 transition.
+func HandleXWinRow0(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinRow0, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinRow1 handles the x_win_row1 transition.
+func HandleXWinRow1(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinRow1, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinRow2 handles the x_win_row2 transition.
+func HandleXWinRow2(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinRow2, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinCol0 handles the x_win_col0 transition.
+func HandleXWinCol0(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinCol0, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinCol1 handles the x_win_col1 transition.
+func HandleXWinCol1(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinCol1, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinCol2 handles the x_win_col2 transition.
+func HandleXWinCol2(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinCol2, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinDiag handles the x_win_diag transition.
+func HandleXWinDiag(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinDiag, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleXWinAnti handles the x_win_anti transition.
+func HandleXWinAnti(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionXWinAnti, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinRow0 handles the o_win_row0 transition.
+func HandleOWinRow0(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinRow0, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinRow1 handles the o_win_row1 transition.
+func HandleOWinRow1(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinRow1, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinRow2 handles the o_win_row2 transition.
+func HandleOWinRow2(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinRow2, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinCol0 handles the o_win_col0 transition.
+func HandleOWinCol0(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinCol0, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinCol1 handles the o_win_col1 transition.
+func HandleOWinCol1(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinCol1, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinCol2 handles the o_win_col2 transition.
+func HandleOWinCol2(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinCol2, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinDiag handles the o_win_diag transition.
+func HandleOWinDiag(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinDiag, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleOWinAnti handles the o_win_anti transition.
+func HandleOWinAnti(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionOWinAnti, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+
+
+
+
+// HandleAdminStats wraps the admin stats handler.
+func HandleAdminStats(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+adminStore, ok := app.store.(interface {
+GetStats(ctx context.Context) (*eventstore.Stats, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+stats, err := adminStore.GetStats(ctx)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, stats)
+}
+}
+
+// HandleAdminListInstances wraps the admin list instances handler.
+func HandleAdminListInstances(app *Application, softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+place := r.URL.Query().Get("place")
+from := r.URL.Query().Get("from")
+to := r.URL.Query().Get("to")
+page := getIntQueryParam(r, "page", 1)
+perPage := getIntQueryParam(r, "per_page", 50)
+showArchived := r.URL.Query().Get("archived") == "true"
+
+adminStore, ok := app.store.(interface {
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+return
+}
+// Filter out archived instances unless explicitly requested
+var filteredInstances []eventstore.Instance
+var archivedInstances []eventstore.Instance
+for _, inst := range instances {
+if softDeleteStore.IsDeleted(inst.ID) {
+archivedInstances = append(archivedInstances, inst)
+} else {
+filteredInstances = append(filteredInstances, inst)
+}
+}
+if showArchived {
+instances = archivedInstances
+} else {
+instances = filteredInstances
+}
+
+// Load state for each instance by replaying events
+// Note: This loads aggregates individually which may be slow for large lists.
+// The perPage parameter limits the number of instances processed.
+for i := range instances {
+agg, err := app.Load(ctx, instances[i].ID)
+if err != nil {
+// Log error but continue processing other instances
+// The state will remain as initialized by ListInstances
+continue
+}
+// Get the Petri net places (token distribution)
+instances[i].State = agg.Places()
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"instances": instances,
+"total":     total,
+"page":      page,
+"per_page":  perPage,
+"has_soft_delete": true,
+})
+}
+}
+
+// HandleAdminGetInstance wraps the admin get instance handler.
+func HandleAdminGetInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+agg, err := app.Load(ctx, id)
+if err != nil {
+api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"id":      agg.ID(),
+"version": agg.Version(),
+"state":   agg.State(),
+})
+}
+}
+
+// HandleAdminGetEvents wraps the admin get events handler.
+func HandleAdminGetEvents(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+from := getIntQueryParam(r, "from", 0)
+
+events, err := app.store.Read(ctx, id, from)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"events": events,
+})
+}
+}
+
+// HandleAdminDeleteInstance deletes an instance and all its events.
+func HandleAdminDeleteInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+if err := app.store.DeleteStream(ctx, id); err != nil {
+api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"deleted": true,
+"id":      id,
+})
+}
+}
+// HandleAdminArchiveInstance soft-deletes an instance (marks as archived).
+func HandleAdminArchiveInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+id := r.PathValue("id")
+userID := getSoftDeleteUserID(r)
+
+if err := softDeleteStore.SoftDelete(id, userID); err != nil {
+api.Error(w, http.StatusInternalServerError, "ARCHIVE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"archived": true,
+"id":       id,
+})
+}
+}
+
+// HandleAdminRestoreInstance restores a soft-deleted instance.
+func HandleAdminRestoreInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+id := r.PathValue("id")
+
+if err := softDeleteStore.Restore(id); err != nil {
+api.Error(w, http.StatusInternalServerError, "RESTORE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"restored": true,
+"id":       id,
+})
+}
+}
+
+
+
+// HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -257,208 +1608,83 @@ func HandleGetEvents(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleAdminStats returns admin statistics.
-func HandleAdminStats(app *Application) http.HandlerFunc {
+// HandleGetStateAtVersion returns the aggregate state at a specific version.
+func HandleGetStateAtVersion(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		id := r.PathValue("id")
+		versionStr := r.PathValue("version")
 
-		adminStore, ok := app.store.(interface {
-			GetStats(ctx context.Context) (*eventstore.Stats, error)
-		})
-		if !ok {
-			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+		version := getInt(versionStr, 0)
+		if version <= 0 {
+			api.Error(w, http.StatusBadRequest, "INVALID_VERSION", "version must be a positive integer")
 			return
 		}
 
-		stats, err := adminStore.GetStats(ctx)
+		events, err := app.store.Read(ctx, id, 0)
 		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
 			return
 		}
 
-		api.JSON(w, http.StatusOK, stats)
-	}
-}
-
-// HandleAdminListInstances lists all game instances.
-func HandleAdminListInstances(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		place := r.URL.Query().Get("place")
-		from := r.URL.Query().Get("from")
-		to := r.URL.Query().Get("to")
-		page := getIntQueryParam(r, "page", 1)
-		perPage := getIntQueryParam(r, "per_page", 50)
-
-		adminStore, ok := app.store.(interface {
-			ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
-		})
-		if !ok {
-			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
-			return
-		}
-
-		instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
-		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
-			return
-		}
-
-		for i := range instances {
-			agg, err := app.Load(ctx, instances[i].ID)
-			if err != nil {
-				continue
+		// Create temporary aggregate and replay up to version
+		agg := NewAggregate(id)
+		for _, evt := range events {
+			if evt.Version > version {
+				break
 			}
-			instances[i].State = agg.Places()
+			if err := agg.Apply(evt); err != nil {
+				api.Error(w, http.StatusInternalServerError, "APPLY_FAILED", err.Error())
+				return
+			}
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"instances": instances,
-			"total":     total,
-			"page":      page,
-			"per_page":  perPage,
+			"id":      agg.ID(),
+			"version": version,
+			"state":   agg.State(),
 		})
 	}
 }
 
-// HandleGetSchema returns the model schema.
-func HandleGetSchema() http.HandlerFunc {
-	schemaJSON := `{
-  "name": "tic-tac-toe",
-  "description": "Tic-Tac-Toe game modeled as a Petri net",
-  "places": [
-    {"id": "p00", "description": "Empty cell (0,0)", "initial": 1},
-    {"id": "p01", "description": "Empty cell (0,1)", "initial": 1},
-    {"id": "p02", "description": "Empty cell (0,2)", "initial": 1},
-    {"id": "p10", "description": "Empty cell (1,0)", "initial": 1},
-    {"id": "p11", "description": "Empty cell (1,1) - center", "initial": 1},
-    {"id": "p12", "description": "Empty cell (1,2)", "initial": 1},
-    {"id": "p20", "description": "Empty cell (2,0)", "initial": 1},
-    {"id": "p21", "description": "Empty cell (2,1)", "initial": 1},
-    {"id": "p22", "description": "Empty cell (2,2)", "initial": 1},
-    {"id": "x_turn", "description": "X's turn", "initial": 1},
-    {"id": "o_turn", "description": "O's turn", "initial": 0},
-    {"id": "x00", "description": "X at (0,0)", "initial": 0},
-    {"id": "x01", "description": "X at (0,1)", "initial": 0},
-    {"id": "x02", "description": "X at (0,2)", "initial": 0},
-    {"id": "x10", "description": "X at (1,0)", "initial": 0},
-    {"id": "x11", "description": "X at (1,1)", "initial": 0},
-    {"id": "x12", "description": "X at (1,2)", "initial": 0},
-    {"id": "x20", "description": "X at (2,0)", "initial": 0},
-    {"id": "x21", "description": "X at (2,1)", "initial": 0},
-    {"id": "x22", "description": "X at (2,2)", "initial": 0},
-    {"id": "o00", "description": "O at (0,0)", "initial": 0},
-    {"id": "o01", "description": "O at (0,1)", "initial": 0},
-    {"id": "o02", "description": "O at (0,2)", "initial": 0},
-    {"id": "o10", "description": "O at (1,0)", "initial": 0},
-    {"id": "o11", "description": "O at (1,1)", "initial": 0},
-    {"id": "o12", "description": "O at (1,2)", "initial": 0},
-    {"id": "o20", "description": "O at (2,0)", "initial": 0},
-    {"id": "o21", "description": "O at (2,1)", "initial": 0},
-    {"id": "o22", "description": "O at (2,2)", "initial": 0},
-    {"id": "x_wins", "description": "X wins", "initial": 0},
-    {"id": "o_wins", "description": "O wins", "initial": 0},
-    {"id": "draw", "description": "Game is a draw", "initial": 0},
-    {"id": "game_over", "description": "Game has ended", "initial": 0}
-  ],
-  "transitions": [
-    {"id": "x_play_00", "description": "X plays (0,0)"},
-    {"id": "x_play_01", "description": "X plays (0,1)"},
-    {"id": "x_play_02", "description": "X plays (0,2)"},
-    {"id": "x_play_10", "description": "X plays (1,0)"},
-    {"id": "x_play_11", "description": "X plays (1,1)"},
-    {"id": "x_play_12", "description": "X plays (1,2)"},
-    {"id": "x_play_20", "description": "X plays (2,0)"},
-    {"id": "x_play_21", "description": "X plays (2,1)"},
-    {"id": "x_play_22", "description": "X plays (2,2)"},
-    {"id": "o_play_00", "description": "O plays (0,0)"},
-    {"id": "o_play_01", "description": "O plays (0,1)"},
-    {"id": "o_play_02", "description": "O plays (0,2)"},
-    {"id": "o_play_10", "description": "O plays (1,0)"},
-    {"id": "o_play_11", "description": "O plays (1,1)"},
-    {"id": "o_play_12", "description": "O plays (1,2)"},
-    {"id": "o_play_20", "description": "O plays (2,0)"},
-    {"id": "o_play_21", "description": "O plays (2,1)"},
-    {"id": "o_play_22", "description": "O plays (2,2)"},
-    {"id": "reset", "description": "Reset game"}
-  ],
-  "strategic_values": {
-    "description": "Strategic position values derived from Petri net topology (ODE simulation)",
-    "center": 0.430,
-    "corners": 0.316,
-    "edges": 0.218,
-    "positions": {
-      "00": 0.316, "01": 0.218, "02": 0.316,
-      "10": 0.218, "11": 0.430, "12": 0.218,
-      "20": 0.316, "21": 0.218, "22": 0.316
-    }
-  }
-}`
 
-	schemaBase64 := base64.StdEncoding.EncodeToString([]byte(schemaJSON))
+
+
+
+// Helper functions
+
+func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
+	val := r.URL.Query().Get(name)
+	return getInt(val, defaultVal)
+}
+
+func getInt(s string, defaultVal int) int {
+	if s == "" {
+		return defaultVal
+	}
+
+	intVal, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+
+	return intVal
+}
+
+
+// HandleGetSchema returns the model schema JSON for the schema viewer.
+func HandleGetSchema() http.HandlerFunc {
+	// Schema JSON is embedded at generation time (base64 encoded)
+	schemaBase64 := "ewogICJuYW1lIjogInRpYy10YWMtdG9lIiwKICAidmVyc2lvbiI6ICIyLjAuMCIsCiAgImRlc2NyaXB0aW9uIjogIlRpYy10YWMtdG9lIGdhbWUgbW9kZWxlZCBhcyBhIFBldHJpIG5ldCB3aXRoIHdpbiBwYXR0ZXJucyBhcyB0cmFuc2l0aW9ucyBmb3IgT0RFLWJhc2VkIHN0cmF0ZWdpYyBhbmFseXNpcyIsCiAgInBsYWNlcyI6IFsKICAgIHsKICAgICAgImlkIjogInAwMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJDZWxsICgwLDApIGVtcHR5IiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJwMDEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ2VsbCAoMCwxKSBlbXB0eSIsCiAgICAgICJpbml0aWFsIjogMSwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAicDAyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNlbGwgKDAsMikgZW1wdHkiLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInAxMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJDZWxsICgxLDApIGVtcHR5IiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJwMTEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ2VsbCAoMSwxKSBlbXB0eSAtIGNlbnRlciIsCiAgICAgICJpbml0aWFsIjogMSwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAicDEyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNlbGwgKDEsMikgZW1wdHkiLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInAyMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJDZWxsICgyLDApIGVtcHR5IiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJwMjEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ2VsbCAoMiwxKSBlbXB0eSIsCiAgICAgICJpbml0aWFsIjogMSwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAicDIyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNlbGwgKDIsMikgZW1wdHkiLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIngwMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBpZWNlIGF0ICgwLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4MDEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwaWVjZSBhdCAoMCwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAieDAyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGllY2UgYXQgKDAsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIngxMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBpZWNlIGF0ICgxLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4MTEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwaWVjZSBhdCAoMSwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAieDEyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGllY2UgYXQgKDEsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIngyMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBpZWNlIGF0ICgyLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4MjEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwaWVjZSBhdCAoMiwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAieDIyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGllY2UgYXQgKDIsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm8wMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBpZWNlIGF0ICgwLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvMDEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwaWVjZSBhdCAoMCwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAibzAyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGllY2UgYXQgKDAsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm8xMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBpZWNlIGF0ICgxLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvMTEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwaWVjZSBhdCAoMSwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAibzEyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGllY2UgYXQgKDEsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm8yMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBpZWNlIGF0ICgyLDApIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvMjEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwaWVjZSBhdCAoMiwxKSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAibzIyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGllY2UgYXQgKDIsMikiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfdHVybiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYJ3MgdHVybiB0byBwbGF5IiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3R1cm4iLAogICAgICAiZGVzY3JpcHRpb24iOiAiTydzIHR1cm4gdG8gcGxheSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAid2luX3giLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBoYXMgd29uIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ3aW5fbyIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIGhhcyB3b24iLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogImNhbl9yZXNldCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJUb2tlbiBlbmFibGluZyByZXNldCBhY3Rpb24iLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfQogIF0sCiAgInRyYW5zaXRpb25zIjogWwogICAgewogICAgICAiaWQiOiAieF9wbGF5XzAwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGxheXMgYXQgKDAsMCkiLAogICAgICAiZXZlbnQiOiAiWFBsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfcGxheV8wMCIsCiAgICAgICJldmVudF90eXBlIjogIlhQbGF5MDBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4X3BsYXlfMDEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwbGF5cyBhdCAoMCwxKSIsCiAgICAgICJldmVudCI6ICJYUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF9wbGF5XzAxIiwKICAgICAgImV2ZW50X3R5cGUiOiAiWFBsYXkwMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfcGxheV8wMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBsYXlzIGF0ICgwLDIpIiwKICAgICAgImV2ZW50IjogIlhQbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS94X3BsYXlfMDIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYUGxheTAyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAieF9wbGF5XzEwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGxheXMgYXQgKDEsMCkiLAogICAgICAiZXZlbnQiOiAiWFBsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfcGxheV8xMCIsCiAgICAgICJldmVudF90eXBlIjogIlhQbGF5MTBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4X3BsYXlfMTEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwbGF5cyBhdCAoMSwxKSAtIGNlbnRlciIsCiAgICAgICJldmVudCI6ICJYUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF9wbGF5XzExIiwKICAgICAgImV2ZW50X3R5cGUiOiAiWFBsYXkxMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfcGxheV8xMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBsYXlzIGF0ICgxLDIpIiwKICAgICAgImV2ZW50IjogIlhQbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS94X3BsYXlfMTIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYUGxheTEyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAieF9wbGF5XzIwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGxheXMgYXQgKDIsMCkiLAogICAgICAiZXZlbnQiOiAiWFBsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfcGxheV8yMCIsCiAgICAgICJldmVudF90eXBlIjogIlhQbGF5MjBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4X3BsYXlfMjEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCBwbGF5cyBhdCAoMiwxKSIsCiAgICAgICJldmVudCI6ICJYUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF9wbGF5XzIxIiwKICAgICAgImV2ZW50X3R5cGUiOiAiWFBsYXkyMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfcGxheV8yMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHBsYXlzIGF0ICgyLDIpIiwKICAgICAgImV2ZW50IjogIlhQbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS94X3BsYXlfMjIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYUGxheTIyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib19wbGF5XzAwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGxheXMgYXQgKDAsMCkiLAogICAgICAiZXZlbnQiOiAiT1BsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29fcGxheV8wMCIsCiAgICAgICJldmVudF90eXBlIjogIk9QbGF5MDBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3BsYXlfMDEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwbGF5cyBhdCAoMCwxKSIsCiAgICAgICJldmVudCI6ICJPUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb19wbGF5XzAxIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1BsYXkwMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9fcGxheV8wMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBsYXlzIGF0ICgwLDIpIiwKICAgICAgImV2ZW50IjogIk9QbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3BsYXlfMDIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJPUGxheTAyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib19wbGF5XzEwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGxheXMgYXQgKDEsMCkiLAogICAgICAiZXZlbnQiOiAiT1BsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29fcGxheV8xMCIsCiAgICAgICJldmVudF90eXBlIjogIk9QbGF5MTBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3BsYXlfMTEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwbGF5cyBhdCAoMSwxKSAtIGNlbnRlciIsCiAgICAgICJldmVudCI6ICJPUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb19wbGF5XzExIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1BsYXkxMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9fcGxheV8xMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBsYXlzIGF0ICgxLDIpIiwKICAgICAgImV2ZW50IjogIk9QbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3BsYXlfMTIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJPUGxheTEyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib19wbGF5XzIwIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gcGxheXMgYXQgKDIsMCkiLAogICAgICAiZXZlbnQiOiAiT1BsYXllZCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29fcGxheV8yMCIsCiAgICAgICJldmVudF90eXBlIjogIk9QbGF5MjBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3BsYXlfMjEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwbGF5cyBhdCAoMiwxKSIsCiAgICAgICJldmVudCI6ICJPUGxheWVkIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb19wbGF5XzIxIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1BsYXkyMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9fcGxheV8yMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHBsYXlzIGF0ICgyLDIpIiwKICAgICAgImV2ZW50IjogIk9QbGF5ZWQiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3BsYXlfMjIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJPUGxheTIyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAicmVzZXQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiUmVzZXQgZ2FtZSB0byBpbml0aWFsIHN0YXRlIiwKICAgICAgImV2ZW50IjogIkdhbWVSZXNldCIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3Jlc2V0IiwKICAgICAgImNsZWFyc0hpc3RvcnkiOiB0cnVlLAogICAgICAiZXZlbnRfdHlwZSI6ICJSZXNldGVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfd2luX3JvdzAiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCB3aW5zIHRvcCByb3cgKDAsMCktKDAsMSktKDAsMikiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS94X3dpbl9yb3cwIiwKICAgICAgImV2ZW50X3R5cGUiOiAiWFdpblJvdzBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4X3dpbl9yb3cxIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggd2lucyBtaWRkbGUgcm93ICgxLDApLSgxLDEpLSgxLDIpIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF93aW5fcm93MSIsCiAgICAgICJldmVudF90eXBlIjogIlhXaW5Sb3cxZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAieF93aW5fcm93MiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHdpbnMgYm90dG9tIHJvdyAoMiwwKS0oMiwxKS0oMiwyKSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfd2luX3JvdzIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYV2luUm93MmVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfd2luX2NvbDAiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCB3aW5zIGxlZnQgY29sdW1uICgwLDApLSgxLDApLSgyLDApIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF93aW5fY29sMCIsCiAgICAgICJldmVudF90eXBlIjogIlhXaW5Db2wwZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAieF93aW5fY29sMSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJYIHdpbnMgY2VudGVyIGNvbHVtbiAoMCwxKS0oMSwxKS0oMiwxKSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfd2luX2NvbDEiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYV2luQ29sMWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfd2luX2NvbDIiLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCB3aW5zIHJpZ2h0IGNvbHVtbiAoMCwyKS0oMSwyKS0oMiwyKSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3hfd2luX2NvbDIiLAogICAgICAiZXZlbnRfdHlwZSI6ICJYV2luQ29sMmVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInhfd2luX2RpYWciLAogICAgICAiZGVzY3JpcHRpb24iOiAiWCB3aW5zIG1haW4gZGlhZ29uYWwgKDAsMCktKDEsMSktKDIsMikiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS94X3dpbl9kaWFnIiwKICAgICAgImV2ZW50X3R5cGUiOiAiWFdpbkRpYWdlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJ4X3dpbl9hbnRpIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggd2lucyBhbnRpLWRpYWdvbmFsICgwLDIpLSgxLDEpLSgyLDApIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkveF93aW5fYW50aSIsCiAgICAgICJldmVudF90eXBlIjogIlhXaW5BbnRpZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib193aW5fcm93MCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHdpbnMgdG9wIHJvdyAoMCwwKS0oMCwxKS0oMCwyKSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29fd2luX3JvdzAiLAogICAgICAiZXZlbnRfdHlwZSI6ICJPV2luUm93MGVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9fd2luX3JvdzEiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyB3aW5zIG1pZGRsZSByb3cgKDEsMCktKDEsMSktKDEsMikiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3dpbl9yb3cxIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1dpblJvdzFlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3dpbl9yb3cyIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gd2lucyBib3R0b20gcm93ICgyLDApLSgyLDEpLSgyLDIpIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb193aW5fcm93MiIsCiAgICAgICJldmVudF90eXBlIjogIk9XaW5Sb3cyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib193aW5fY29sMCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHdpbnMgbGVmdCBjb2x1bW4gKDAsMCktKDEsMCktKDIsMCkiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3dpbl9jb2wwIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1dpbkNvbDBlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvX3dpbl9jb2wxIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk8gd2lucyBjZW50ZXIgY29sdW1uICgwLDEpLSgxLDEpLSgyLDEpIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb193aW5fY29sMSIsCiAgICAgICJldmVudF90eXBlIjogIk9XaW5Db2wxZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib193aW5fY29sMiIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHdpbnMgcmlnaHQgY29sdW1uICgwLDIpLSgxLDIpLSgyLDIpIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvb193aW5fY29sMiIsCiAgICAgICJldmVudF90eXBlIjogIk9XaW5Db2wyZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAib193aW5fZGlhZyIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJPIHdpbnMgbWFpbiBkaWFnb25hbCAoMCwwKS0oMSwxKS0oMiwyKSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29fd2luX2RpYWciLAogICAgICAiZXZlbnRfdHlwZSI6ICJPV2luRGlhZ2VkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9fd2luX2FudGkiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyB3aW5zIGFudGktZGlhZ29uYWwgKDAsMiktKDEsMSktKDIsMCkiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vX3dpbl9hbnRpIiwKICAgICAgImV2ZW50X3R5cGUiOiAiT1dpbkFudGllZCIKICAgIH0KICBdLAogICJhcmNzIjogWwogICAgewogICAgICAiZnJvbSI6ICJwMDAiLAogICAgICAidG8iOiAieF9wbGF5XzAwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF90dXJuIiwKICAgICAgInRvIjogInhfcGxheV8wMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8wMCIsCiAgICAgICJ0byI6ICJ4MDAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMDAiLAogICAgICAidG8iOiAib190dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDAxIiwKICAgICAgInRvIjogInhfcGxheV8wMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfdHVybiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMDEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMDEiLAogICAgICAidG8iOiAieDAxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzAxIiwKICAgICAgInRvIjogIm9fdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAwMiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMDIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3R1cm4iLAogICAgICAidG8iOiAieF9wbGF5XzAyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzAyIiwKICAgICAgInRvIjogIngwMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8wMiIsCiAgICAgICJ0byI6ICJvX3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJwMTAiLAogICAgICAidG8iOiAieF9wbGF5XzEwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF90dXJuIiwKICAgICAgInRvIjogInhfcGxheV8xMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8xMCIsCiAgICAgICJ0byI6ICJ4MTAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMTAiLAogICAgICAidG8iOiAib190dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDExIiwKICAgICAgInRvIjogInhfcGxheV8xMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfdHVybiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMTEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMTEiLAogICAgICAidG8iOiAieDExIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzExIiwKICAgICAgInRvIjogIm9fdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAxMiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMTIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3R1cm4iLAogICAgICAidG8iOiAieF9wbGF5XzEyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzEyIiwKICAgICAgInRvIjogIngxMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8xMiIsCiAgICAgICJ0byI6ICJvX3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJwMjAiLAogICAgICAidG8iOiAieF9wbGF5XzIwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF90dXJuIiwKICAgICAgInRvIjogInhfcGxheV8yMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8yMCIsCiAgICAgICJ0byI6ICJ4MjAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMjAiLAogICAgICAidG8iOiAib190dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDIxIiwKICAgICAgInRvIjogInhfcGxheV8yMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfdHVybiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMjEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3BsYXlfMjEiLAogICAgICAidG8iOiAieDIxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzIxIiwKICAgICAgInRvIjogIm9fdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAyMiIsCiAgICAgICJ0byI6ICJ4X3BsYXlfMjIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3R1cm4iLAogICAgICAidG8iOiAieF9wbGF5XzIyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF9wbGF5XzIyIiwKICAgICAgInRvIjogIngyMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfcGxheV8yMiIsCiAgICAgICJ0byI6ICJvX3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJwMDAiLAogICAgICAidG8iOiAib19wbGF5XzAwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib190dXJuIiwKICAgICAgInRvIjogIm9fcGxheV8wMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8wMCIsCiAgICAgICJ0byI6ICJvMDAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMDAiLAogICAgICAidG8iOiAieF90dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDAxIiwKICAgICAgInRvIjogIm9fcGxheV8wMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fdHVybiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMDEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMDEiLAogICAgICAidG8iOiAibzAxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzAxIiwKICAgICAgInRvIjogInhfdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAwMiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMDIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3R1cm4iLAogICAgICAidG8iOiAib19wbGF5XzAyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzAyIiwKICAgICAgInRvIjogIm8wMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8wMiIsCiAgICAgICJ0byI6ICJ4X3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJwMTAiLAogICAgICAidG8iOiAib19wbGF5XzEwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib190dXJuIiwKICAgICAgInRvIjogIm9fcGxheV8xMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8xMCIsCiAgICAgICJ0byI6ICJvMTAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMTAiLAogICAgICAidG8iOiAieF90dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDExIiwKICAgICAgInRvIjogIm9fcGxheV8xMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fdHVybiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMTEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMTEiLAogICAgICAidG8iOiAibzExIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzExIiwKICAgICAgInRvIjogInhfdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAxMiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMTIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3R1cm4iLAogICAgICAidG8iOiAib19wbGF5XzEyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzEyIiwKICAgICAgInRvIjogIm8xMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8xMiIsCiAgICAgICJ0byI6ICJ4X3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJwMjAiLAogICAgICAidG8iOiAib19wbGF5XzIwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib190dXJuIiwKICAgICAgInRvIjogIm9fcGxheV8yMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8yMCIsCiAgICAgICJ0byI6ICJvMjAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMjAiLAogICAgICAidG8iOiAieF90dXJuIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicDIxIiwKICAgICAgInRvIjogIm9fcGxheV8yMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fdHVybiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMjEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3BsYXlfMjEiLAogICAgICAidG8iOiAibzIxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzIxIiwKICAgICAgInRvIjogInhfdHVybiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInAyMiIsCiAgICAgICJ0byI6ICJvX3BsYXlfMjIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3R1cm4iLAogICAgICAidG8iOiAib19wbGF5XzIyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib19wbGF5XzIyIiwKICAgICAgInRvIjogIm8yMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fcGxheV8yMiIsCiAgICAgICJ0byI6ICJ4X3R1cm4iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MDAiLAogICAgICAidG8iOiAieF93aW5fcm93MCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngwMSIsCiAgICAgICJ0byI6ICJ4X3dpbl9yb3cwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDAyIiwKICAgICAgInRvIjogInhfd2luX3JvdzAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3dpbl9yb3cwIiwKICAgICAgInRvIjogIndpbl94IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDEwIiwKICAgICAgInRvIjogInhfd2luX3JvdzEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MTEiLAogICAgICAidG8iOiAieF93aW5fcm93MSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngxMiIsCiAgICAgICJ0byI6ICJ4X3dpbl9yb3cxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF93aW5fcm93MSIsCiAgICAgICJ0byI6ICJ3aW5feCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngyMCIsCiAgICAgICJ0byI6ICJ4X3dpbl9yb3cyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDIxIiwKICAgICAgInRvIjogInhfd2luX3JvdzIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MjIiLAogICAgICAidG8iOiAieF93aW5fcm93MiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfd2luX3JvdzIiLAogICAgICAidG8iOiAid2luX3giCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MDAiLAogICAgICAidG8iOiAieF93aW5fY29sMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngxMCIsCiAgICAgICJ0byI6ICJ4X3dpbl9jb2wwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDIwIiwKICAgICAgInRvIjogInhfd2luX2NvbDAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3dpbl9jb2wwIiwKICAgICAgInRvIjogIndpbl94IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDAxIiwKICAgICAgInRvIjogInhfd2luX2NvbDEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MTEiLAogICAgICAidG8iOiAieF93aW5fY29sMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngyMSIsCiAgICAgICJ0byI6ICJ4X3dpbl9jb2wxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF93aW5fY29sMSIsCiAgICAgICJ0byI6ICJ3aW5feCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngwMiIsCiAgICAgICJ0byI6ICJ4X3dpbl9jb2wyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDEyIiwKICAgICAgInRvIjogInhfd2luX2NvbDIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MjIiLAogICAgICAidG8iOiAieF93aW5fY29sMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInhfd2luX2NvbDIiLAogICAgICAidG8iOiAid2luX3giCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MDAiLAogICAgICAidG8iOiAieF93aW5fZGlhZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngxMSIsCiAgICAgICJ0byI6ICJ4X3dpbl9kaWFnIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDIyIiwKICAgICAgInRvIjogInhfd2luX2RpYWciCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4X3dpbl9kaWFnIiwKICAgICAgInRvIjogIndpbl94IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieDAyIiwKICAgICAgInRvIjogInhfd2luX2FudGkiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJ4MTEiLAogICAgICAidG8iOiAieF93aW5fYW50aSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIngyMCIsCiAgICAgICJ0byI6ICJ4X3dpbl9hbnRpIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAieF93aW5fYW50aSIsCiAgICAgICJ0byI6ICJ3aW5feCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8wMCIsCiAgICAgICJ0byI6ICJvX3dpbl9yb3cwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzAxIiwKICAgICAgInRvIjogIm9fd2luX3JvdzAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMDIiLAogICAgICAidG8iOiAib193aW5fcm93MCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fd2luX3JvdzAiLAogICAgICAidG8iOiAid2luX28iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMTAiLAogICAgICAidG8iOiAib193aW5fcm93MSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8xMSIsCiAgICAgICJ0byI6ICJvX3dpbl9yb3cxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzEyIiwKICAgICAgInRvIjogIm9fd2luX3JvdzEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3dpbl9yb3cxIiwKICAgICAgInRvIjogIndpbl9vIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzIwIiwKICAgICAgInRvIjogIm9fd2luX3JvdzIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMjEiLAogICAgICAidG8iOiAib193aW5fcm93MiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8yMiIsCiAgICAgICJ0byI6ICJvX3dpbl9yb3cyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib193aW5fcm93MiIsCiAgICAgICJ0byI6ICJ3aW5fbyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8wMCIsCiAgICAgICJ0byI6ICJvX3dpbl9jb2wwIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzEwIiwKICAgICAgInRvIjogIm9fd2luX2NvbDAiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMjAiLAogICAgICAidG8iOiAib193aW5fY29sMCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fd2luX2NvbDAiLAogICAgICAidG8iOiAid2luX28iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMDEiLAogICAgICAidG8iOiAib193aW5fY29sMSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8xMSIsCiAgICAgICJ0byI6ICJvX3dpbl9jb2wxIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzIxIiwKICAgICAgInRvIjogIm9fd2luX2NvbDEiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3dpbl9jb2wxIiwKICAgICAgInRvIjogIndpbl9vIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzAyIiwKICAgICAgInRvIjogIm9fd2luX2NvbDIiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMTIiLAogICAgICAidG8iOiAib193aW5fY29sMiIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8yMiIsCiAgICAgICJ0byI6ICJvX3dpbl9jb2wyIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib193aW5fY29sMiIsCiAgICAgICJ0byI6ICJ3aW5fbyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8wMCIsCiAgICAgICJ0byI6ICJvX3dpbl9kaWFnIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzExIiwKICAgICAgInRvIjogIm9fd2luX2RpYWciCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMjIiLAogICAgICAidG8iOiAib193aW5fZGlhZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9fd2luX2RpYWciLAogICAgICAidG8iOiAid2luX28iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvMDIiLAogICAgICAidG8iOiAib193aW5fYW50aSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm8xMSIsCiAgICAgICJ0byI6ICJvX3dpbl9hbnRpIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibzIwIiwKICAgICAgInRvIjogIm9fd2luX2FudGkiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvX3dpbl9hbnRpIiwKICAgICAgInRvIjogIndpbl9vIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiY2FuX3Jlc2V0IiwKICAgICAgInRvIjogInJlc2V0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVzZXQiLAogICAgICAidG8iOiAiY2FuX3Jlc2V0IgogICAgfQogIF0sCiAgImV2ZW50cyI6IFsKICAgIHsKICAgICAgImlkIjogIlhQbGF5ZWQiLAogICAgICAibmFtZSI6ICJYUGxheWVkIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlggcGxhY2VkIGEgcGllY2Ugb24gdGhlIGJvYXJkIiwKICAgICAgImZpZWxkcyI6IFsKICAgICAgICB7CiAgICAgICAgICAibmFtZSI6ICJyb3ciLAogICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIsCiAgICAgICAgICAicmVxdWlyZWQiOiB0cnVlCiAgICAgICAgfSwKICAgICAgICB7CiAgICAgICAgICAibmFtZSI6ICJjb2wiLAogICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIsCiAgICAgICAgICAicmVxdWlyZWQiOiB0cnVlCiAgICAgICAgfQogICAgICBdCiAgICB9LAogICAgewogICAgICAiaWQiOiAiT1BsYXllZCIsCiAgICAgICJuYW1lIjogIk9QbGF5ZWQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTyBwbGFjZWQgYSBwaWVjZSBvbiB0aGUgYm9hcmQiLAogICAgICAiZmllbGRzIjogWwogICAgICAgIHsKICAgICAgICAgICJuYW1lIjogInJvdyIsCiAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIiwKICAgICAgICAgICJyZXF1aXJlZCI6IHRydWUKICAgICAgICB9LAogICAgICAgIHsKICAgICAgICAgICJuYW1lIjogImNvbCIsCiAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIiwKICAgICAgICAgICJyZXF1aXJlZCI6IHRydWUKICAgICAgICB9CiAgICAgIF0KICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJHYW1lUmVzZXQiLAogICAgICAibmFtZSI6ICJHYW1lUmVzZXQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiR2FtZSB3YXMgcmVzZXQgdG8gaW5pdGlhbCBzdGF0ZSIsCiAgICAgICJmaWVsZHMiOiBudWxsCiAgICB9CiAgXSwKICAiYWRtaW4iOiB7CiAgICAiZW5hYmxlZCI6IHRydWUsCiAgICAicGF0aCI6ICIiLAogICAgInJvbGVzIjogbnVsbCwKICAgICJmZWF0dXJlcyI6IG51bGwKICB9LAogICJkZWJ1ZyI6IHsKICAgICJlbmFibGVkIjogdHJ1ZSwKICAgICJldmFsIjogdHJ1ZQogIH0sCiAgInNvZnREZWxldGUiOiB7CiAgICAiZW5hYmxlZCI6IHRydWUsCiAgICAicmV0ZW50aW9uRGF5cyI6IDMwCiAgfSwKICAic3RhdHVzIjogewogICAgInBsYWNlcyI6IHsKICAgICAgIndpbl9vIjogIk8gV2lucyIsCiAgICAgICJ3aW5feCI6ICJYIFdpbnMiCiAgICB9LAogICAgImRlZmF1bHQiOiAiSW4gUHJvZ3Jlc3MiCiAgfQp9"
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		decoded, err := base64.StdEncoding.DecodeString(schemaBase64)
+		schemaJSON, err := base64.StdEncoding.DecodeString(schemaBase64)
 		if err != nil {
 			api.Error(w, http.StatusInternalServerError, "schema_decode_error", "Failed to decode schema")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(decoded)
+		w.Write(schemaJSON)
 	}
 }
-
-// HandleGetSimulation returns simulation data for the tic-tac-toe game.
-func HandleGetSimulation() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Strategic values from ODE simulation
-		// Based on the blog post: center participates in 4 winning patterns,
-		// corners in 3, edges in 2
-		simulation := map[string]interface{}{
-			"description": "Petri net ODE-based strategic evaluation",
-			"method":      "Continuous dynamics approximating minimax evaluation",
-			"positions": []map[string]interface{}{
-				{"row": 0, "col": 0, "type": "corner", "value": 0.316, "patterns": 3},
-				{"row": 0, "col": 1, "type": "edge", "value": 0.218, "patterns": 2},
-				{"row": 0, "col": 2, "type": "corner", "value": 0.316, "patterns": 3},
-				{"row": 1, "col": 0, "type": "edge", "value": 0.218, "patterns": 2},
-				{"row": 1, "col": 1, "type": "center", "value": 0.430, "patterns": 4},
-				{"row": 1, "col": 2, "type": "edge", "value": 0.218, "patterns": 2},
-				{"row": 2, "col": 0, "type": "corner", "value": 0.316, "patterns": 3},
-				{"row": 2, "col": 1, "type": "edge", "value": 0.218, "patterns": 2},
-				{"row": 2, "col": 2, "type": "corner", "value": 0.316, "patterns": 3},
-			},
-			"win_patterns": [][]int{
-				{0, 1, 2},    // top row
-				{3, 4, 5},    // middle row
-				{6, 7, 8},    // bottom row
-				{0, 3, 6},    // left column
-				{1, 4, 7},    // center column
-				{2, 5, 8},    // right column
-				{0, 4, 8},    // diagonal
-				{2, 4, 6},    // anti-diagonal
-			},
-		}
-
-		api.JSON(w, http.StatusOK, simulation)
-	}
-}
-
-// Helper functions
-
-func getIntQueryParam(r *http.Request, name string, defaultVal int) int {
-	val := r.URL.Query().Get(name)
-	if val == "" {
-		return defaultVal
-	}
-	intVal, err := strconv.Atoi(val)
-	if err != nil {
-		return defaultVal
-	}
-	return intVal
-}
-
-// Ensure eventstore is used (for compiler)
-var _ = json.Marshal

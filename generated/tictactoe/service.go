@@ -3,14 +3,16 @@
 package tictactoe
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
+	_ "modernc.org/sqlite"
 )
 
 // ServiceName is the registered name for this service.
-const ServiceName = "tic-tac-toe"
+const ServiceName = "tictactoe"
 
 func init() {
 	serve.Register(ServiceName, NewService)
@@ -18,9 +20,11 @@ func init() {
 
 // Service implements serve.Service for the tic-tac-toe workflow.
 type Service struct {
-	store       eventstore.Store
-	app         *Application
+	store eventstore.Store
+	app   *Application
 	debugBroker *DebugBroker
+	featuresDB *sql.DB
+	softDeleteStore *SoftDeleteStore
 }
 
 // NewService creates a new tic-tac-toe service instance.
@@ -32,9 +36,19 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-
 	// Initialize debug broker
 	svc.debugBroker = NewDebugBroker()
+	var err error
+	// Initialize features database
+	svc.featuresDB, err = sql.Open("sqlite", "features.db")
+	if err != nil {
+		return nil, err
+	}
+	// Initialize soft delete store
+	svc.softDeleteStore = NewSoftDeleteStore(svc.featuresDB, 30)
+	if err := svc.softDeleteStore.InitSchema(); err != nil {
+		return nil, err
+	}
 
 	return svc, nil
 }
@@ -46,11 +60,14 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.debugBroker)
+	return BuildRouter(s.app, s.debugBroker, s.softDeleteStore)
 }
 
 // Close cleans up resources used by the service.
 func (s *Service) Close() error {
+	if s.featuresDB != nil {
+		s.featuresDB.Close()
+	}
 	if s.store != nil {
 		return s.store.Close()
 	}

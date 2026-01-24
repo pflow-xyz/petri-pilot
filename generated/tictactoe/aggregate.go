@@ -4,6 +4,7 @@ package tictactoe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -14,15 +15,43 @@ import (
 
 // State holds the aggregate state for tic-tac-toe.
 type State struct {
-	Board    [3][3]string `json:"board"`     // "X", "O", or ""
-	Winner   string       `json:"winner"`    // "X", "O", "draw", or ""
-	GameOver bool         `json:"game_over"`
+	P00 int `json:"p00"`
+	P01 int `json:"p01"`
+	P02 int `json:"p02"`
+	P10 int `json:"p10"`
+	P11 int `json:"p11"`
+	P12 int `json:"p12"`
+	P20 int `json:"p20"`
+	P21 int `json:"p21"`
+	P22 int `json:"p22"`
+	X00 int `json:"x00"`
+	X01 int `json:"x01"`
+	X02 int `json:"x02"`
+	X10 int `json:"x10"`
+	X11 int `json:"x11"`
+	X12 int `json:"x12"`
+	X20 int `json:"x20"`
+	X21 int `json:"x21"`
+	X22 int `json:"x22"`
+	O00 int `json:"o00"`
+	O01 int `json:"o01"`
+	O02 int `json:"o02"`
+	O10 int `json:"o10"`
+	O11 int `json:"o11"`
+	O12 int `json:"o12"`
+	O20 int `json:"o20"`
+	O21 int `json:"o21"`
+	O22 int `json:"o22"`
+	XTurn int `json:"x_turn"`
+	OTurn int `json:"o_turn"`
+	WinX int `json:"win_x"`
+	WinO int `json:"win_o"`
+	CanReset int `json:"can_reset"`
 }
 
-// NewState creates a new State with initialized board.
+// NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
-		Board: [3][3]string{},
 	}
 }
 
@@ -36,165 +65,535 @@ func NewAggregate(id string) *Aggregate {
 	if id == "" {
 		id = uuid.New().String()
 	}
+	sm := aggregate.NewStateMachine(id, NewState(), InitialPlaces())
 
-	// Simplified initial places - just track empty cells and turns
-	initialPlaces := map[string]int{
-		PlaceP00: 1, PlaceP01: 1, PlaceP02: 1,
-		PlaceP10: 1, PlaceP11: 1, PlaceP12: 1,
-		PlaceP20: 1, PlaceP21: 1, PlaceP22: 1,
-		PlaceXTurn: 1,
-		PlaceOTurn: 0,
-	}
-
-	sm := aggregate.NewStateMachine(id, NewState(), initialPlaces)
-
-	// Guard function to check if game is still active
-	gameActiveGuard := func(state any) bool {
-		s := state.(State)
-		return !s.GameOver
-	}
-
-	// Register X move transitions
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
-			transID := fmt.Sprintf("x_play_%d%d", row, col)
-			eventType := fmt.Sprintf("XPlayed%d%d", row, col)
-			emptyPlace := fmt.Sprintf("p%d%d", row, col)
-			xPlace := fmt.Sprintf("x%d%d", row, col)
-
-			sm.AddTransition(aggregate.Transition{
-				ID:        transID,
-				EventType: eventType,
-				Inputs: map[string]int{
-					emptyPlace: 1,
-					PlaceXTurn: 1,
-				},
-				Outputs: map[string]int{
-					xPlace:     1,
-					PlaceOTurn: 1,
-				},
-				Guard: gameActiveGuard,
-			})
-		}
-	}
-
-	// Register O move transitions
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
-			transID := fmt.Sprintf("o_play_%d%d", row, col)
-			eventType := fmt.Sprintf("OPlayed%d%d", row, col)
-			emptyPlace := fmt.Sprintf("p%d%d", row, col)
-			oPlace := fmt.Sprintf("o%d%d", row, col)
-
-			sm.AddTransition(aggregate.Transition{
-				ID:        transID,
-				EventType: eventType,
-				Inputs: map[string]int{
-					emptyPlace: 1,
-					PlaceOTurn: 1,
-				},
-				Outputs: map[string]int{
-					oPlace:     1,
-					PlaceXTurn: 1,
-				},
-				Guard: gameActiveGuard,
-			})
-		}
-	}
-
-	// Reset transition - requires game to be over (checked via guard)
+	// Register transitions with their input/output places
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay00,
+		EventType: EventTypeXPlay00,
+		Inputs: map[string]int{
+			PlaceP00: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX00: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay01,
+		EventType: EventTypeXPlay01,
+		Inputs: map[string]int{
+			PlaceP01: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX01: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay02,
+		EventType: EventTypeXPlay02,
+		Inputs: map[string]int{
+			PlaceP02: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX02: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay10,
+		EventType: EventTypeXPlay10,
+		Inputs: map[string]int{
+			PlaceP10: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX10: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay11,
+		EventType: EventTypeXPlay11,
+		Inputs: map[string]int{
+			PlaceP11: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX11: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay12,
+		EventType: EventTypeXPlay12,
+		Inputs: map[string]int{
+			PlaceP12: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX12: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay20,
+		EventType: EventTypeXPlay20,
+		Inputs: map[string]int{
+			PlaceP20: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX20: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay21,
+		EventType: EventTypeXPlay21,
+		Inputs: map[string]int{
+			PlaceP21: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX21: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXPlay22,
+		EventType: EventTypeXPlay22,
+		Inputs: map[string]int{
+			PlaceP22: 1,
+			PlaceXTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX22: 1,
+			PlaceOTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay00,
+		EventType: EventTypeOPlay00,
+		Inputs: map[string]int{
+			PlaceP00: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO00: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay01,
+		EventType: EventTypeOPlay01,
+		Inputs: map[string]int{
+			PlaceP01: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO01: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay02,
+		EventType: EventTypeOPlay02,
+		Inputs: map[string]int{
+			PlaceP02: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO02: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay10,
+		EventType: EventTypeOPlay10,
+		Inputs: map[string]int{
+			PlaceP10: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO10: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay11,
+		EventType: EventTypeOPlay11,
+		Inputs: map[string]int{
+			PlaceP11: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO11: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay12,
+		EventType: EventTypeOPlay12,
+		Inputs: map[string]int{
+			PlaceP12: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO12: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay20,
+		EventType: EventTypeOPlay20,
+		Inputs: map[string]int{
+			PlaceP20: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO20: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay21,
+		EventType: EventTypeOPlay21,
+		Inputs: map[string]int{
+			PlaceP21: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO21: 1,
+			PlaceXTurn: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOPlay22,
+		EventType: EventTypeOPlay22,
+		Inputs: map[string]int{
+			PlaceP22: 1,
+			PlaceOTurn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceO22: 1,
+			PlaceXTurn: 1,
+		},
+	})
 	sm.AddTransition(aggregate.Transition{
 		ID:        TransitionReset,
 		EventType: EventTypeReset,
-		Inputs:    map[string]int{},
-		Outputs:   map[string]int{},
-		Guard: func(state any) bool {
-			s := state.(State)
-			return s.GameOver
+		Inputs: map[string]int{
+			PlaceCanReset: 1,
+		},
+		Outputs: map[string]int{
+			PlaceCanReset: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinRow0,
+		EventType: EventTypeXWinRow0,
+		Inputs: map[string]int{
+			PlaceX00: 1,
+			PlaceX01: 1,
+			PlaceX02: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinRow1,
+		EventType: EventTypeXWinRow1,
+		Inputs: map[string]int{
+			PlaceX10: 1,
+			PlaceX11: 1,
+			PlaceX12: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinRow2,
+		EventType: EventTypeXWinRow2,
+		Inputs: map[string]int{
+			PlaceX20: 1,
+			PlaceX21: 1,
+			PlaceX22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinCol0,
+		EventType: EventTypeXWinCol0,
+		Inputs: map[string]int{
+			PlaceX00: 1,
+			PlaceX10: 1,
+			PlaceX20: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinCol1,
+		EventType: EventTypeXWinCol1,
+		Inputs: map[string]int{
+			PlaceX01: 1,
+			PlaceX11: 1,
+			PlaceX21: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinCol2,
+		EventType: EventTypeXWinCol2,
+		Inputs: map[string]int{
+			PlaceX02: 1,
+			PlaceX12: 1,
+			PlaceX22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinDiag,
+		EventType: EventTypeXWinDiag,
+		Inputs: map[string]int{
+			PlaceX00: 1,
+			PlaceX11: 1,
+			PlaceX22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionXWinAnti,
+		EventType: EventTypeXWinAnti,
+		Inputs: map[string]int{
+			PlaceX02: 1,
+			PlaceX11: 1,
+			PlaceX20: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinX: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinRow0,
+		EventType: EventTypeOWinRow0,
+		Inputs: map[string]int{
+			PlaceO00: 1,
+			PlaceO01: 1,
+			PlaceO02: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinRow1,
+		EventType: EventTypeOWinRow1,
+		Inputs: map[string]int{
+			PlaceO10: 1,
+			PlaceO11: 1,
+			PlaceO12: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinRow2,
+		EventType: EventTypeOWinRow2,
+		Inputs: map[string]int{
+			PlaceO20: 1,
+			PlaceO21: 1,
+			PlaceO22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinCol0,
+		EventType: EventTypeOWinCol0,
+		Inputs: map[string]int{
+			PlaceO00: 1,
+			PlaceO10: 1,
+			PlaceO20: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinCol1,
+		EventType: EventTypeOWinCol1,
+		Inputs: map[string]int{
+			PlaceO01: 1,
+			PlaceO11: 1,
+			PlaceO21: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinCol2,
+		EventType: EventTypeOWinCol2,
+		Inputs: map[string]int{
+			PlaceO02: 1,
+			PlaceO12: 1,
+			PlaceO22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinDiag,
+		EventType: EventTypeOWinDiag,
+		Inputs: map[string]int{
+			PlaceO00: 1,
+			PlaceO11: 1,
+			PlaceO22: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
+	sm.AddTransition(aggregate.Transition{
+		ID:        TransitionOWinAnti,
+		EventType: EventTypeOWinAnti,
+		Inputs: map[string]int{
+			PlaceO02: 1,
+			PlaceO11: 1,
+			PlaceO20: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
 		},
 	})
 
 	// Register event handlers for state updates
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
-			r, c := row, col // capture for closure
-			eventTypeX := fmt.Sprintf("XPlayed%d%d", row, col)
-			eventTypeO := fmt.Sprintf("OPlayed%d%d", row, col)
-
-			sm.RegisterHandler(eventTypeX, func(state *State, event *runtime.Event) error {
-				state.Board[r][c] = "X"
-				checkWinCondition(state)
-				return nil
-			})
-			sm.RegisterHandler(eventTypeO, func(state *State, event *runtime.Event) error {
-				state.Board[r][c] = "O"
-				checkWinCondition(state)
-				return nil
-			})
-		}
-	}
-
-	sm.RegisterHandler(EventTypeReset, func(state *State, event *runtime.Event) error {
-		*state = NewState()
-		return nil
+	sm.RegisterHandler(EventTypeXPlay00, func(state *State, event *runtime.Event) error {
+		return applyXPlay00(state, event)
 	})
-
+	sm.RegisterHandler(EventTypeXPlay01, func(state *State, event *runtime.Event) error {
+		return applyXPlay01(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay02, func(state *State, event *runtime.Event) error {
+		return applyXPlay02(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay10, func(state *State, event *runtime.Event) error {
+		return applyXPlay10(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay11, func(state *State, event *runtime.Event) error {
+		return applyXPlay11(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay12, func(state *State, event *runtime.Event) error {
+		return applyXPlay12(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay20, func(state *State, event *runtime.Event) error {
+		return applyXPlay20(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay21, func(state *State, event *runtime.Event) error {
+		return applyXPlay21(state, event)
+	})
+	sm.RegisterHandler(EventTypeXPlay22, func(state *State, event *runtime.Event) error {
+		return applyXPlay22(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay00, func(state *State, event *runtime.Event) error {
+		return applyOPlay00(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay01, func(state *State, event *runtime.Event) error {
+		return applyOPlay01(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay02, func(state *State, event *runtime.Event) error {
+		return applyOPlay02(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay10, func(state *State, event *runtime.Event) error {
+		return applyOPlay10(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay11, func(state *State, event *runtime.Event) error {
+		return applyOPlay11(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay12, func(state *State, event *runtime.Event) error {
+		return applyOPlay12(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay20, func(state *State, event *runtime.Event) error {
+		return applyOPlay20(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay21, func(state *State, event *runtime.Event) error {
+		return applyOPlay21(state, event)
+	})
+	sm.RegisterHandler(EventTypeOPlay22, func(state *State, event *runtime.Event) error {
+		return applyOPlay22(state, event)
+	})
+	sm.RegisterHandler(EventTypeReset, func(state *State, event *runtime.Event) error {
+		return applyReset(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinRow0, func(state *State, event *runtime.Event) error {
+		return applyXWinRow0(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinRow1, func(state *State, event *runtime.Event) error {
+		return applyXWinRow1(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinRow2, func(state *State, event *runtime.Event) error {
+		return applyXWinRow2(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinCol0, func(state *State, event *runtime.Event) error {
+		return applyXWinCol0(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinCol1, func(state *State, event *runtime.Event) error {
+		return applyXWinCol1(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinCol2, func(state *State, event *runtime.Event) error {
+		return applyXWinCol2(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinDiag, func(state *State, event *runtime.Event) error {
+		return applyXWinDiag(state, event)
+	})
+	sm.RegisterHandler(EventTypeXWinAnti, func(state *State, event *runtime.Event) error {
+		return applyXWinAnti(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinRow0, func(state *State, event *runtime.Event) error {
+		return applyOWinRow0(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinRow1, func(state *State, event *runtime.Event) error {
+		return applyOWinRow1(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinRow2, func(state *State, event *runtime.Event) error {
+		return applyOWinRow2(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinCol0, func(state *State, event *runtime.Event) error {
+		return applyOWinCol0(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinCol1, func(state *State, event *runtime.Event) error {
+		return applyOWinCol1(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinCol2, func(state *State, event *runtime.Event) error {
+		return applyOWinCol2(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinDiag, func(state *State, event *runtime.Event) error {
+		return applyOWinDiag(state, event)
+	})
+	sm.RegisterHandler(EventTypeOWinAnti, func(state *State, event *runtime.Event) error {
+		return applyOWinAnti(state, event)
+	})
 	return &Aggregate{sm: sm}
-}
-
-// checkWinCondition checks if the game is over and updates state accordingly.
-func checkWinCondition(state *State) {
-	// Check rows
-	for row := 0; row < 3; row++ {
-		if state.Board[row][0] != "" &&
-			state.Board[row][0] == state.Board[row][1] &&
-			state.Board[row][1] == state.Board[row][2] {
-			state.Winner = state.Board[row][0]
-			state.GameOver = true
-			return
-		}
-	}
-
-	// Check columns
-	for col := 0; col < 3; col++ {
-		if state.Board[0][col] != "" &&
-			state.Board[0][col] == state.Board[1][col] &&
-			state.Board[1][col] == state.Board[2][col] {
-			state.Winner = state.Board[0][col]
-			state.GameOver = true
-			return
-		}
-	}
-
-	// Check diagonals
-	if state.Board[0][0] != "" &&
-		state.Board[0][0] == state.Board[1][1] &&
-		state.Board[1][1] == state.Board[2][2] {
-		state.Winner = state.Board[0][0]
-		state.GameOver = true
-		return
-	}
-	if state.Board[0][2] != "" &&
-		state.Board[0][2] == state.Board[1][1] &&
-		state.Board[1][1] == state.Board[2][0] {
-		state.Winner = state.Board[0][2]
-		state.GameOver = true
-		return
-	}
-
-	// Check for draw (all cells filled, no winner)
-	emptyCells := 0
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
-			if state.Board[row][col] == "" {
-				emptyCells++
-			}
-		}
-	}
-	if emptyCells == 0 {
-		state.Winner = "draw"
-		state.GameOver = true
-	}
 }
 
 // ID returns the aggregate identifier.
@@ -214,7 +613,11 @@ func (a *Aggregate) State() any {
 
 // Places returns current token distribution.
 func (a *Aggregate) Places() map[string]int {
-	return a.sm.Places()
+	places := make(map[string]int)
+	for _, p := range AllPlaces() {
+		places[p] = a.sm.Tokens(p)
+	}
+	return places
 }
 
 // EnabledTransitions returns transitions that can fire.
@@ -234,7 +637,255 @@ func (a *Aggregate) Fire(transitionID string, data any) (*runtime.Event, error) 
 
 // Apply applies an event to update the aggregate state.
 func (a *Aggregate) Apply(event *runtime.Event) error {
+	// Update state machine (this calls the registered handlers)
 	return a.sm.Apply(event)
+}
+
+// Event application functions
+
+func applyXPlay00(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay01(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay02(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay10(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay11(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay12(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay20(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay21(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXPlay22(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay00(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay01(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay02(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay10(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay11(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay12(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay20(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay21(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOPlay22(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyReset(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinRow0(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinRow1(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinRow2(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinCol0(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinCol1(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinCol2(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinDiag(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyXWinAnti(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinRow0(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinRow1(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinRow2(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinCol0(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinCol1(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinCol2(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinDiag(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyOWinAnti(state *State, event *runtime.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
 }
 
 // Application wires together the aggregate and event store.
@@ -272,25 +923,31 @@ func (app *Application) Load(ctx context.Context, id string) (*Aggregate, error)
 
 // Execute fires a transition on an aggregate and persists the event.
 func (app *Application) Execute(ctx context.Context, id, transitionID string, data any) (*Aggregate, error) {
+	// Load current state
 	agg, err := app.Load(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if transition can fire
 	if !agg.CanFire(transitionID) {
 		return nil, fmt.Errorf("transition %s cannot fire from current state", transitionID)
 	}
 
+	// Fire transition (this updates token counts but not version)
 	event, err := agg.Fire(transitionID, data)
 	if err != nil {
 		return nil, fmt.Errorf("firing transition: %w", err)
 	}
 
+	// Persist event (this assigns the event version)
+	// The expected version should match the current stream version (-1 for new streams)
 	_, err = app.store.Append(ctx, id, agg.Version(), []*runtime.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
 
+	// Apply the event to update the aggregate's version
 	if err := agg.Apply(event); err != nil {
 		return nil, fmt.Errorf("applying event: %w", err)
 	}
@@ -303,11 +960,31 @@ func (app *Application) GetState(ctx context.Context, id string) (*Aggregate, er
 	return app.Load(ctx, id)
 }
 
+// ResetStream deletes all events for an aggregate, returning it to its initial state.
+// This is used by transitions marked with clearsHistory: true.
+func (app *Application) ResetStream(ctx context.Context, id string) (*Aggregate, error) {
+	if err := app.store.DeleteStream(ctx, id); err != nil {
+		return nil, fmt.Errorf("deleting stream: %w", err)
+	}
+	return NewAggregate(id), nil
+}
+
 // HealthCheck verifies the event store is accessible.
 func (app *Application) HealthCheck(ctx context.Context) error {
+	// Try to read from a non-existent stream - this exercises the store connection
 	_, err := app.store.Read(ctx, "__health_check__", 0)
+	// Ignore "not found" errors - we just want to verify connectivity
 	if err != nil && err.Error() != "stream not found" {
 		return err
 	}
 	return nil
+}
+
+// Helper to unmarshal event data
+func unmarshalEventData[T any](event *runtime.Event) (*T, error) {
+	var data T
+	if err := json.Unmarshal(event.Data, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
