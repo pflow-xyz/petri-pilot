@@ -237,6 +237,86 @@ Each generated app contains:
 - `auth.go`, `middleware.go`, `permissions.go` - Auth (if roles defined)
 - `navigation.go` - Navigation (if navigation defined)
 
+### Frontend File Structure
+
+```
+frontend/
+├── src/              # REGENERATED - core application code
+│   ├── main.js       # Entry point, routing
+│   ├── admin.js      # Admin dashboard
+│   ├── views.js      # Instance views
+│   └── ...
+└── custom/           # PRESERVED - user customizations (SkipIfExists)
+    ├── extensions.js # Hooks, custom actions, renderers
+    ├── components.js # Custom web components
+    └── theme.css     # Custom styling
+```
+
+## Customizing Generated Apps
+
+Generated code supports customization without modifying regenerated files. The `custom/` directory contains files that are generated once and preserved across regeneration.
+
+### Extension Points (`custom/extensions.js`)
+
+Add custom functionality that survives regeneration:
+
+```javascript
+// Add custom action buttons to admin
+adminExtensions.customActions.push({
+  label: 'Export JSON',
+  className: 'btn btn-secondary',
+  onClick: (instance) => {
+    const blob = new Blob([JSON.stringify(instance, null, 2)])
+    // ... download logic
+  }
+})
+
+// React to lifecycle events
+registerHook('onInstanceDeleted', (id) => {
+  console.log(`Instance ${id} was deleted`)
+})
+
+registerHook('onInstanceArchived', (id) => {
+  analytics.track('instance_archived', { id })
+})
+
+// Custom state renderers
+viewExtensions.stateRenderers['balance'] = (value) =>
+  `<span class="currency">$${(value/100).toFixed(2)}</span>`
+```
+
+### Available Extension Points
+
+| Extension | Purpose |
+|-----------|---------|
+| `adminExtensions.customActions` | Add buttons to admin instance detail |
+| `adminExtensions.customColumns` | Add columns to instance table |
+| `viewExtensions.stateRenderers` | Custom rendering for specific places |
+| `viewExtensions.customSections` | Add sections to instance view |
+| `hooks.onInstanceCreated` | Callback after instance creation |
+| `hooks.onInstanceDeleted` | Callback after permanent deletion |
+| `hooks.onInstanceArchived` | Callback after soft delete |
+| `hooks.onInstanceRestored` | Callback after restore |
+| `hooks.onTransitionExecuted` | Callback after transition fires |
+
+### When to Use Each Approach
+
+| Scenario | Approach |
+|----------|----------|
+| Generic feature for all apps | Modify templates in `pkg/codegen/` |
+| App-specific customization | Use `custom/extensions.js` |
+| Visual styling | Use `custom/theme.css` |
+| Custom UI components | Use `custom/components.js` |
+
+### Workflow for Adding Customizations
+
+1. Generate the app: `petri_codegen(model='...', package='myapp')`
+2. Edit `custom/extensions.js` to add your customizations
+3. Regenerate when model changes - customizations are preserved
+4. For universal features, add to templates instead
+
+See `docs/CUSTOMIZATION_ARCHITECTURE.md` for detailed architecture documentation.
+
 ## SQLite Only
 
 This project uses SQLite exclusively. Do not add support for other databases.
