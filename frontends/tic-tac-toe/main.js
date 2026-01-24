@@ -626,7 +626,14 @@ async function makeMove(row, col) {
     // Update current player based on enabled transitions
     updateCurrentPlayer()
 
-    // Check for game over from full state
+    // Check for win condition locally (backend may not track this)
+    checkWinCondition()
+
+    if (gameState.gameOver) {
+      document.getElementById('reset-btn').classList.remove('hidden')
+    }
+
+    // Also check for game over from full state (if backend supports it)
     const stateResponse = await getGameState(gameState.id)
     const state = stateResponse.state
     if (state && state.game_over) {
