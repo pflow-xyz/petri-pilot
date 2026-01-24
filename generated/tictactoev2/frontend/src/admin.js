@@ -5,6 +5,9 @@
  * Provides statistics, instance list, and event history viewing
  */
 
+// Import customizable extensions (preserved across regeneration)
+import { adminExtensions, hooks, triggerHook } from '/custom/extensions.js'
+
 // API helpers from main.js
 const API_BASE = window.API_BASE || ''
 const getHeaders = window.getHeaders || (() => ({}))
@@ -445,6 +448,7 @@ function renderInstanceDetail() {
             Delete Instance
           </button>
         `}
+        ${renderCustomActions(instance)}
       </div>
     </div>
 
@@ -493,6 +497,25 @@ function renderStateDetails(state) {
 
   // Fallback: show raw JSON
   return `<pre class="state-json">${escapeHtml(JSON.stringify(state, null, 2))}</pre>`
+}
+
+/**
+ * Render custom action buttons from extensions
+ * @param {Object} instance - The current instance
+ * @returns {string} HTML for custom action buttons
+ */
+function renderCustomActions(instance) {
+  if (!adminExtensions.customActions || adminExtensions.customActions.length === 0) {
+    return ''
+  }
+
+  return adminExtensions.customActions.map((action, index) => {
+    const className = action.className || 'btn btn-secondary'
+    const handlerName = `_customAction_${index}`
+    // Register the handler on window for onclick access
+    window[handlerName] = () => action.onClick(instance)
+    return `<button onclick="${handlerName}()" class="${escapeHtml(className)}">${escapeHtml(action.label)}</button>`
+  }).join('')
 }
 
 /**
@@ -578,6 +601,7 @@ window.handleDeleteInstance = async function(id) {
 
   try {
     await adminAPI.deleteInstance(id)
+    triggerHook('onInstanceDeleted', id)
     // Navigate back to instances list
     if (typeof window.navigate === 'function') {
       window.navigate('/admin/instances')
@@ -596,6 +620,7 @@ window.handleArchiveInstance = async function(id) {
 
   try {
     await adminAPI.archiveInstance(id)
+    triggerHook('onInstanceArchived', id)
     // Navigate back to instances list
     if (typeof window.navigate === 'function') {
       window.navigate('/admin/instances')
@@ -610,6 +635,7 @@ window.handleArchiveInstance = async function(id) {
 window.handleRestoreInstance = async function(id) {
   try {
     await adminAPI.restoreInstance(id)
+    triggerHook('onInstanceRestored', id)
     // Refresh the list
     await loadAdminInstances()
   } catch (err) {

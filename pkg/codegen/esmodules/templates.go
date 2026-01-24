@@ -27,6 +27,7 @@ const (
 	TemplateWallet      = "wallet"
 	TemplateComponents  = "components"
 	TemplateTheme       = "theme"
+	TemplateExtensions  = "extensions"
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -50,6 +51,7 @@ var templateInfo = map[string]struct {
 	TemplateWallet:      {File: "wallet.tmpl", Output: "src/wallet.js"},
 	TemplateComponents:  {File: "components.tmpl", Output: "custom/components.js", SkipIfExists: true},
 	TemplateTheme:       {File: "theme.tmpl", Output: "custom/theme.css", SkipIfExists: true},
+	TemplateExtensions:  {File: "extensions.tmpl", Output: "custom/extensions.js", SkipIfExists: true},
 }
 
 // Templates holds parsed templates for code generation.
@@ -128,5 +130,6 @@ func AllTemplateNames() []string {
 		TemplateSimulation,
 		TemplateComponents,
 		TemplateTheme,
+		TemplateExtensions,
 	}
 }
