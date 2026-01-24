@@ -39,6 +39,10 @@ type Store interface {
 	// The subscription receives events matching the filter as they are appended.
 	Subscribe(ctx context.Context, filter runtime.EventFilter) (runtime.Subscription, error)
 
+	// DeleteStream removes all events for a stream.
+	// Use this for "reset" operations that need to clear event history.
+	DeleteStream(ctx context.Context, streamID string) error
+
 	// Close releases any resources held by the store.
 	Close() error
 }

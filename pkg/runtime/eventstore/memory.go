@@ -173,6 +173,19 @@ func (s *MemoryStore) Subscribe(ctx context.Context, filter runtime.EventFilter)
 	return sub, nil
 }
 
+// DeleteStream removes all events for a stream.
+func (s *MemoryStore) DeleteStream(ctx context.Context, streamID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return ErrStoreClosed
+	}
+
+	delete(s.streams, streamID)
+	return nil
+}
+
 // Close releases resources.
 func (s *MemoryStore) Close() error {
 	s.mu.Lock()

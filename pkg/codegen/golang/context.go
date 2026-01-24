@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
 	"github.com/pflow-xyz/petri-pilot/pkg/schema"
@@ -15,6 +16,7 @@ type Context struct {
 	PackageName      string
 	ModulePath       string
 	LocalReplacePath string // Optional: path for replace directive in go.mod
+	APISlug          string // URL-safe name for API paths, derived from model name
 
 	// Model metadata
 	ModelName        string
@@ -529,6 +531,10 @@ type TransitionContext struct {
 	// Prediction/simulation fields
 	Rate float64 // Firing rate for ODE simulation (events/minute)
 
+	// ClearsHistory when true causes this transition to delete all events,
+	// resetting the aggregate to its initial state
+	ClearsHistory bool
+
 	// Computed names
 	ConstName   string // e.g., "TransitionValidate"
 	HandlerName string // e.g., "HandleValidate"
@@ -668,10 +674,14 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	// Check for local replace path from environment variable
 	localReplacePath := os.Getenv("PETRI_PILOT_LOCAL_PATH")
 
+	// APISlug is derived from model name for consistent API paths
+	apiSlug := sanitizeAPISlug(enriched.Name)
+
 	ctx := &Context{
 		PackageName:      packageName,
 		ModulePath:       modulePath,
 		LocalReplacePath: localReplacePath,
+		APISlug:          apiSlug,
 		ModelName:        enriched.Name,
 		ModelDescription: enriched.Description,
 		Model:            enriched,
@@ -1008,9 +1018,10 @@ func buildTransitionContexts(transitions []schema.Transition, arcs []schema.Arc,
 			Duration:     t.Duration,
 			MinDuration:  t.MinDuration,
 			MaxDuration:  t.MaxDuration,
-			HasSLATiming: hasSLATiming,
-			Rate:         t.Rate,
-			ConstName:    ToConstName("Transition", t.ID),
+			HasSLATiming:  hasSLATiming,
+			Rate:          t.Rate,
+			ClearsHistory: t.ClearsHistory,
+			ConstName:     ToConstName("Transition", t.ID),
 			HandlerName:  ToHandlerName(t.ID),
 			EventName:    ToEventStructName(eventType),
 			FuncName:     ToPascalCase(t.ID),
@@ -1036,6 +1047,16 @@ func bindingTypeToGo(typ string) string {
 		// Pass through Go types and map types as-is
 		return typ
 	}
+}
+
+// sanitizeAPISlug converts a model name to a URL-safe slug for API paths.
+// This removes hyphens, underscores, and spaces to create a consistent identifier.
+func sanitizeAPISlug(name string) string {
+	result := strings.ToLower(name)
+	result = strings.ReplaceAll(result, "-", "")
+	result = strings.ReplaceAll(result, "_", "")
+	result = strings.ReplaceAll(result, " ", "")
+	return result
 }
 
 func buildEventContexts(eventDefs []bridge.EventDef) []EventContext {
@@ -1579,6 +1600,16 @@ func (c *Context) HasSLAs() bool {
 func (c *Context) HasTransitionSLAs() bool {
 	for _, t := range c.Transitions {
 		if t.HasSLATiming {
+			return true
+		}
+	}
+	return false
+}
+
+// HasClearsHistoryTransitions returns true if any transition clears event history.
+func (c *Context) HasClearsHistoryTransitions() bool {
+	for _, t := range c.Transitions {
+		if t.ClearsHistory {
 			return true
 		}
 	}

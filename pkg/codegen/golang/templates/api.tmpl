@@ -41,10 +41,10 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.GET("/ready", "Readiness check", HandleReady(app))
 
 	// Create new aggregate
-	r.POST("/api/{{.PackageName}}", "Create new {{.ModelName}}", HandleCreate(app))
+	r.POST("/api/{{.APISlug}}", "Create new {{.ModelName}}", HandleCreate(app))
 
 	// Get aggregate state
-	r.GET("/api/{{.PackageName}}/{id}", "Get {{.ModelName}} state", HandleGetState(app))
+	r.GET("/api/{{.APISlug}}/{id}", "Get {{.ModelName}} state", HandleGetState(app))
 {{if .HasViews}}
 	// View definitions
 	r.GET("/api/views", "Get view definitions", HandleGetViews())
@@ -65,21 +65,21 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 {{if .HasEventSourcing}}
 	// Event replay endpoints
-	r.GET("/api/{{.PackageName}}/{id}/events", "Get event history", HandleGetEvents(app))
-	r.GET("/api/{{.PackageName}}/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
+	r.GET("/api/{{.APISlug}}/{id}/events", "Get event history", HandleGetEvents(app))
+	r.GET("/api/{{.APISlug}}/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 {{end}}
 {{if .HasSLAs}}
 	// SLA status endpoint
-	r.GET("/api/{{.PackageName}}/{id}/sla", "Get SLA status", HandleGetSLA(app))
+	r.GET("/api/{{.APISlug}}/{id}/sla", "Get SLA status", HandleGetSLA(app))
 {{end}}
 {{if .HasPrediction}}
 	// Prediction endpoints
-	r.GET("/api/{{.PackageName}}/predict", "Run simulation prediction", HandlePredict(app))
-	r.GET("/api/{{.PackageName}}/runout", "Get runout predictions", HandleRunout(app))
+	r.GET("/api/{{.APISlug}}/predict", "Run simulation prediction", HandlePredict(app))
+	r.GET("/api/{{.APISlug}}/runout", "Get runout predictions", HandleRunout(app))
 {{end}}
 {{if .HasSnapshots}}
-	r.POST("/api/{{.PackageName}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
-	r.POST("/api/{{.PackageName}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
+	r.POST("/api/{{.APISlug}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
+	r.POST("/api/{{.APISlug}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
 {{end}}
 {{if .HasGraphQL}}
 	// GraphQL API
@@ -117,24 +117,24 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 {{if .HasComments}}
 	// Comment endpoints
-	r.GET("/api/{{.PackageName}}/{id}/comments", "List comments", commentStore.HandleListComments)
-	r.POST("/api/{{.PackageName}}/{id}/comments", "Add comment", commentStore.HandleAddComment)
+	r.GET("/api/{{.APISlug}}/{id}/comments", "List comments", commentStore.HandleListComments)
+	r.POST("/api/{{.APISlug}}/{id}/comments", "Add comment", commentStore.HandleAddComment)
 	r.Handle("DELETE", "/api/comments/{commentId}", "Delete comment", commentStore.HandleDeleteComment)
 {{end}}
 {{if .HasTags}}
 	// Tag endpoints
-	r.GET("/api/{{.PackageName}}/{id}/tags", "List entity tags", tagStore.HandleListTags)
-	r.POST("/api/{{.PackageName}}/{id}/tags", "Add tag", tagStore.HandleAddTag)
-	r.Handle("DELETE", "/api/{{.PackageName}}/{id}/tags/{name}", "Remove tag", tagStore.HandleRemoveTag)
+	r.GET("/api/{{.APISlug}}/{id}/tags", "List entity tags", tagStore.HandleListTags)
+	r.POST("/api/{{.APISlug}}/{id}/tags", "Add tag", tagStore.HandleAddTag)
+	r.Handle("DELETE", "/api/{{.APISlug}}/{id}/tags/{name}", "Remove tag", tagStore.HandleRemoveTag)
 {{end}}
 {{if .HasFavorites}}
 	// Favorites endpoints
 	r.GET("/api/favorites", "List user favorites", favoriteStore.HandleListFavorites)
-	r.POST("/api/{{.PackageName}}/{id}/favorite", "Toggle favorite", favoriteStore.HandleToggleFavorite)
+	r.POST("/api/{{.APISlug}}/{id}/favorite", "Toggle favorite", favoriteStore.HandleToggleFavorite)
 {{end}}
 {{if .HasActivity}}
 	// Activity feed endpoints
-	r.GET("/api/{{.PackageName}}/{id}/activity", "Get entity activity", activityStore.HandleGetActivity)
+	r.GET("/api/{{.APISlug}}/{id}/activity", "Get entity activity", activityStore.HandleGetActivity)
 {{end}}
 {{if .HasExport}}
 	// Export endpoints
@@ -163,8 +163,8 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 {{if .HasRelationships}}
 	// Relationship endpoints
-	r.GET("/api/{{.PackageName}}/{id}/related/{name}", "Get related entities", relationshipStore.HandleGetRelated)
-	r.POST("/api/{{.PackageName}}/{id}/related/{name}", "Create link", relationshipStore.HandleLink)
+	r.GET("/api/{{.APISlug}}/{id}/related/{name}", "Get related entities", relationshipStore.HandleGetRelated)
+	r.POST("/api/{{.APISlug}}/{id}/related/{name}", "Create link", relationshipStore.HandleLink)
 {{end}}
 {{if .HasDocuments}}
 	// Document generation endpoints
@@ -173,8 +173,8 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 {{if .HasSoftDelete}}
 	// Soft delete endpoints
-	r.Handle("DELETE", "/api/{{.PackageName}}/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
-	r.POST("/api/{{.PackageName}}/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
+	r.Handle("DELETE", "/api/{{.APISlug}}/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
+	r.POST("/api/{{.APISlug}}/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
 {{end}}
 	// Transition endpoints
 {{- range .Routes}}
@@ -349,11 +349,20 @@ func {{.HandlerName}}(app *Application) http.HandlerFunc {
 			}
 		}
 {{end}}
+{{- if .ClearsHistory}}
+		// This transition clears event history, resetting to initial state
+		agg, err := app.ResetStream(ctx, req.AggregateID)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "RESET_FAILED", err.Error())
+			return
+		}
+{{- else}}
 		agg, err := app.Execute(ctx, req.AggregateID, {{.ConstName}}, req.Data)
 		if err != nil {
 			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
 			return
 		}
+{{- end}}
 
 		api.JSON(w, http.StatusOK, api.TransitionResult{
 			Success:            true,

@@ -54,6 +54,9 @@ type Context struct {
 	// Wallet configuration
 	Wallet *WalletContext
 
+	// Status configuration for human-readable status labels
+	Status *StatusContext
+
 	// Original model for reference
 	Model *schema.Model
 }
@@ -81,6 +84,16 @@ type WalletAccountContext struct {
 	Roles          []string
 	RolesJSON      string // JSON array for template
 	InitialBalance string
+}
+
+// StatusContext provides template-friendly access to status configuration.
+type StatusContext struct {
+	// Places maps place IDs to human-readable status labels (as JSON for template)
+	PlacesJSON string
+	// Default is the status label shown when no place-specific label matches
+	Default string
+	// HasConfig is true if any status configuration is provided
+	HasConfig bool
 }
 
 // RoleContext provides template-friendly access to role data for login selector.
@@ -242,6 +255,9 @@ func NewContext(model *schema.Model, opts ContextOptions) (*Context, error) {
 	if enriched.Wallet != nil && enriched.Wallet.Enabled {
 		ctx.Wallet = buildWalletContext(enriched.Wallet)
 	}
+
+	// Build status context
+	ctx.Status = buildStatusContext(enriched.Status)
 
 	// Build place contexts
 	ctx.Places = buildPlaceContexts(enriched.Places)
@@ -426,6 +442,35 @@ func buildRoleContexts(roles []schema.Role) []RoleContext {
 		}
 	}
 	return result
+}
+
+func buildStatusContext(status *schema.StatusConfig) *StatusContext {
+	ctx := &StatusContext{
+		PlacesJSON: "{}",
+		Default:    "In Progress",
+		HasConfig:  false,
+	}
+
+	if status == nil {
+		return ctx
+	}
+
+	ctx.HasConfig = true
+
+	// Build JSON object for places map
+	if len(status.Places) > 0 {
+		pairs := make([]string, 0, len(status.Places))
+		for placeID, label := range status.Places {
+			pairs = append(pairs, `"`+placeID+`": "`+label+`"`)
+		}
+		ctx.PlacesJSON = "{" + strings.Join(pairs, ", ") + "}"
+	}
+
+	if status.Default != "" {
+		ctx.Default = status.Default
+	}
+
+	return ctx
 }
 
 func buildWalletContext(wallet *schema.WalletConfig) *WalletContext {

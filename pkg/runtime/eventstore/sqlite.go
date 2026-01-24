@@ -441,6 +441,43 @@ func (s *SQLiteStore) DeleteSnapshot(ctx context.Context, streamID string) error
 	return err
 }
 
+// DeleteStream removes all events for a stream.
+// This is used for "reset" operations that need to clear event history.
+func (s *SQLiteStore) DeleteStream(ctx context.Context, streamID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return ErrStoreClosed
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete all events for the stream
+	_, err = tx.ExecContext(ctx, "DELETE FROM events WHERE stream_id = ?", streamID)
+	if err != nil {
+		return fmt.Errorf("failed to delete events: %w", err)
+	}
+
+	// Also delete from search index
+	_, err = tx.ExecContext(ctx, "DELETE FROM search_index WHERE stream_id = ?", streamID)
+	if err != nil {
+		return fmt.Errorf("failed to delete search index: %w", err)
+	}
+
+	// Delete any snapshots
+	_, err = tx.ExecContext(ctx, "DELETE FROM snapshots WHERE stream_id = ?", streamID)
+	if err != nil {
+		return fmt.Errorf("failed to delete snapshots: %w", err)
+	}
+
+	return tx.Commit()
+}
+
 // sqliteSubscription implements runtime.Subscription.
 type sqliteSubscription struct {
 	id     string

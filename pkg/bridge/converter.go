@@ -326,6 +326,7 @@ func InferEvents(model *schema.Model) []EventDef {
 }
 
 // buildEventsFromSchema builds EventDefs from explicit schema.Event definitions.
+// Multiple transitions can reference the same event, so we deduplicate by event type.
 func buildEventsFromSchema(model *schema.Model) []EventDef {
 	// Build event lookup map
 	eventMap := make(map[string]*schema.Event)
@@ -333,44 +334,43 @@ func buildEventsFromSchema(model *schema.Model) []EventDef {
 		eventMap[model.Events[i].ID] = &model.Events[i]
 	}
 
+	// Track seen event types to avoid duplicates
+	seen := make(map[string]bool)
 	var events []EventDef
 
 	for _, t := range model.Transitions {
-		var event EventDef
+		var eventType string
+		var fields []EventField
 
 		// Check if transition references an explicit event
 		if t.Event != "" {
 			if schemaEvent, ok := eventMap[t.Event]; ok {
-				event = EventDef{
-					Type:         eventIDToType(schemaEvent.ID),
-					TransitionID: t.ID,
-					Fields:       convertEventFields(schemaEvent.Fields),
-				}
+				eventType = eventIDToType(schemaEvent.ID)
+				fields = convertEventFields(schemaEvent.Fields)
 			} else {
 				// Event reference not found, fall back to inference
-				event = EventDef{
-					Type:         toEventType(t.ID),
-					TransitionID: t.ID,
-					Fields:       inferEventFields(model, t),
-				}
+				eventType = toEventType(t.ID)
+				fields = inferEventFields(model, t)
 			}
 		} else if t.EventType != "" {
 			// Legacy: use explicit event_type (deprecated)
-			event = EventDef{
-				Type:         t.EventType,
-				TransitionID: t.ID,
-				Fields:       inferEventFields(model, t),
-			}
+			eventType = t.EventType
+			fields = inferEventFields(model, t)
 		} else {
 			// No event reference, infer from transition ID
-			event = EventDef{
-				Type:         toEventType(t.ID),
-				TransitionID: t.ID,
-				Fields:       inferEventFields(model, t),
-			}
+			eventType = toEventType(t.ID)
+			fields = inferEventFields(model, t)
 		}
 
-		events = append(events, event)
+		// Only add if we haven't seen this event type
+		if !seen[eventType] {
+			seen[eventType] = true
+			events = append(events, EventDef{
+				Type:         eventType,
+				TransitionID: t.ID, // First transition that uses this event
+				Fields:       fields,
+			})
+		}
 	}
 
 	return events

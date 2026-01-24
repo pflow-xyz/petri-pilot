@@ -6,18 +6,6 @@
 *.so
 *.dylib
 
-# Generated app binaries (all binaries matching directory or model name)
-/generated/*/blog-post
-/generated/*/coffeeshop
-/generated/*/ecommerce-checkout
-/generated/*/erc20-token
-/generated/*/job-application
-/generated/*/loan-application
-/generated/*/order-processing
-/generated/*/support-ticket
-/generated/*/task-manager
-/generated/*/access-test
-
 # Test binary
 *.test
 
@@ -38,18 +26,42 @@ Thumbs.db
 *.tmp
 *.temp
 
-# generated files
-out
-node_modules
+# Generated/build artifacts
+out/
+node_modules/
+**/dist/
+generated/*/frontend/assets/
 
-# Generated app binaries (without leading slash)
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Headless chrome
+.playwright-mcp
+
+# Root-level generated files (should only exist in subdirectories)
+generated/*.go
+!generated/imports.go
+generated/*.yaml
+generated/*.mod
+generated/*.sum
+
+# Go binaries in generated directories (match directory name as binary)
 generated/*/blog-post
 generated/*/coffeeshop
 generated/*/ecommerce-checkout
 generated/*/erc20-token
+generated/*/erc20token
 generated/*/job-application
 generated/*/loan-application
 generated/*/order-processing
+generated/*/orderprocessing
 generated/*/support-ticket
 generated/*/task-manager
 generated/*/access-test
+generated/*/testaccess
+generated/*/tictactoe
+generated/*/tictactoev2
+generated/*/tic-tac-toe*
+generated/*/vet-clinic

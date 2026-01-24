@@ -3,10 +3,6 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
-{{- if .HasWallet}}
-import wallet from './wallet.js'
-window.wallet = wallet
-{{- end}}
 
 // API client
 const API_BASE = ''
@@ -14,11 +10,11 @@ const API_BASE = ''
 // ============================================================================
 // Token Amount Scaling
 // ============================================================================
-// Decimals: {{.Decimals}} (0 = no scaling)
-// Unit: {{if .Unit}}"{{.Unit}}"{{else}}""{{end}}
+// Decimals: 0 (0 = no scaling)
+// Unit: ""
 
-const TOKEN_DECIMALS = {{.Decimals}}
-const TOKEN_UNIT = {{if .Unit}}"{{.Unit}}"{{else}}""{{end}}
+const TOKEN_DECIMALS = 0
+const TOKEN_UNIT = ""
 const TOKEN_SCALE = TOKEN_DECIMALS > 0 ? Math.pow(10, TOKEN_DECIMALS) : 1
 
 // Convert from smallest unit (wei) to display unit (ETH)
@@ -131,18 +127,251 @@ let currentInstance = null
 
 // Transition definitions with fields (populated in renderInstanceDetail)
 const TRANSITION_DEFS = [
-{{- range .Transitions}}
   {
-    id: '{{.ID}}',
-    name: '{{.DisplayName}}',
-    description: "{{.Description}}",
+    id: 'x_play_00',
+    name: 'X Play 00',
+    description: "X plays at (0,0)",
     fields: [
-{{- range .Fields}}
-      { name: '{{.Name}}', label: '{{.Label}}', type: '{{.Type}}', required: {{.Required}}, autoFill: '{{.AutoFill}}', placeholder: '{{.Placeholder}}', defaultValue: '{{.Default}}' },
-{{- end}}
     ]
   },
-{{- end}}
+  {
+    id: 'x_play_01',
+    name: 'X Play 01',
+    description: "X plays at (0,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_02',
+    name: 'X Play 02',
+    description: "X plays at (0,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_10',
+    name: 'X Play 10',
+    description: "X plays at (1,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_11',
+    name: 'X Play 11',
+    description: "X plays at (1,1) - center",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_12',
+    name: 'X Play 12',
+    description: "X plays at (1,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_20',
+    name: 'X Play 20',
+    description: "X plays at (2,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_21',
+    name: 'X Play 21',
+    description: "X plays at (2,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_play_22',
+    name: 'X Play 22',
+    description: "X plays at (2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_00',
+    name: 'O Play 00',
+    description: "O plays at (0,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_01',
+    name: 'O Play 01',
+    description: "O plays at (0,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_02',
+    name: 'O Play 02',
+    description: "O plays at (0,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_10',
+    name: 'O Play 10',
+    description: "O plays at (1,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_11',
+    name: 'O Play 11',
+    description: "O plays at (1,1) - center",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_12',
+    name: 'O Play 12',
+    description: "O plays at (1,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_20',
+    name: 'O Play 20',
+    description: "O plays at (2,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_21',
+    name: 'O Play 21',
+    description: "O plays at (2,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_play_22',
+    name: 'O Play 22',
+    description: "O plays at (2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'reset',
+    name: 'Reset',
+    description: "Reset game to initial state",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_row0',
+    name: 'X Win Row0',
+    description: "X wins top row (0,0)-(0,1)-(0,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_row1',
+    name: 'X Win Row1',
+    description: "X wins middle row (1,0)-(1,1)-(1,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_row2',
+    name: 'X Win Row2',
+    description: "X wins bottom row (2,0)-(2,1)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_col0',
+    name: 'X Win Col0',
+    description: "X wins left column (0,0)-(1,0)-(2,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_col1',
+    name: 'X Win Col1',
+    description: "X wins center column (0,1)-(1,1)-(2,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_col2',
+    name: 'X Win Col2',
+    description: "X wins right column (0,2)-(1,2)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_diag',
+    name: 'X Win Diag',
+    description: "X wins main diagonal (0,0)-(1,1)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'x_win_anti',
+    name: 'X Win Anti',
+    description: "X wins anti-diagonal (0,2)-(1,1)-(2,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_row0',
+    name: 'O Win Row0',
+    description: "O wins top row (0,0)-(0,1)-(0,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_row1',
+    name: 'O Win Row1',
+    description: "O wins middle row (1,0)-(1,1)-(1,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_row2',
+    name: 'O Win Row2',
+    description: "O wins bottom row (2,0)-(2,1)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_col0',
+    name: 'O Win Col0',
+    description: "O wins left column (0,0)-(1,0)-(2,0)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_col1',
+    name: 'O Win Col1',
+    description: "O wins center column (0,1)-(1,1)-(2,1)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_col2',
+    name: 'O Win Col2',
+    description: "O wins right column (0,2)-(1,2)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_diag',
+    name: 'O Win Diag',
+    description: "O wins main diagonal (0,0)-(1,1)-(2,2)",
+    fields: [
+    ]
+  },
+  {
+    id: 'o_win_anti',
+    name: 'O Win Anti',
+    description: "O wins anti-diagonal (0,2)-(1,1)-(2,0)",
+    fields: [
+    ]
+  },
 ]
 
 // ============================================================================
@@ -246,12 +475,12 @@ const api = {
   },
 
   async getInstance(id) {
-    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${id}`, { headers: getHeaders() })
+    const response = await fetch(`${API_BASE}/api/tictactoe/${id}`, { headers: getHeaders() })
     return handleResponse(response)
   },
 
   async createInstance(data = {}) {
-    const response = await fetch(`${API_BASE}/api/{{.PackageName}}`, {
+    const response = await fetch(`${API_BASE}/api/tictactoe`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -321,9 +550,10 @@ function showSuccess(message) {
   setTimeout(() => alert.remove(), 3000)
 }
 
+// Get human-readable status from places
 // Status configuration from schema
-const STATUS_PLACES = {{.Status.PlacesJSON}}
-const STATUS_DEFAULT = "{{.Status.Default}}"
+const STATUS_PLACES = {"win_x": "X Wins", "win_o": "O Wins"}
+const STATUS_DEFAULT = "In Progress"
 
 // Get human-readable status from places
 function getStatus(places) {
@@ -354,7 +584,7 @@ async function renderListPage() {
   app.innerHTML = `
     <div class="page">
       <div class="page-header">
-        <h1>{{.ModelName}}</h1>
+        <h1>tic-tac-toe</h1>
         <button class="btn btn-primary" onclick="handleCreateNew()">+ New</button>
       </div>
       <div id="instances-list" class="entity-list">
@@ -396,7 +626,7 @@ function renderInstancesList() {
   container.innerHTML = instances.map(inst => {
     const status = getStatus(inst.state || inst.places)
     return `
-      <div class="entity-card" onclick="navigate('/{{.ModelName}}/${inst.id}')">
+      <div class="entity-card" onclick="navigate('/tic-tac-toe/${inst.id}')">
         <div class="entity-info">
           <h3>${inst.id}</h3>
           <div class="entity-meta">
@@ -404,7 +634,7 @@ function renderInstancesList() {
           </div>
         </div>
         <div class="entity-actions">
-          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/{{.ModelName}}/${inst.id}')">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigate('/tic-tac-toe/${inst.id}')">
             View
           </button>
         </div>
@@ -423,7 +653,7 @@ async function renderDetailPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/{{.ModelName}}')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/tic-tac-toe')" style="margin-left: -0.5rem">
             &larr; Back to List
           </button>
           <h1 style="margin-top: 0.5rem">Instance: ${id}</h1>
@@ -965,7 +1195,7 @@ async function renderFormPage() {
     <div class="page">
       <div class="page-header">
         <div>
-          <button class="btn btn-link" onclick="navigate('/{{.ModelName}}')" style="margin-left: -0.5rem">
+          <button class="btn btn-link" onclick="navigate('/tic-tac-toe')" style="margin-left: -0.5rem">
             &larr; Cancel
           </button>
           <h1 style="margin-top: 0.5rem">Create New</h1>
@@ -976,7 +1206,7 @@ async function renderFormPage() {
           <p style="color: #666; margin-bottom: 1rem;">Create a new workflow instance. The instance will start in the initial state.</p>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Create</button>
-            <button type="button" class="btn btn-secondary" onclick="navigate('/{{.ModelName}}')">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('/tic-tac-toe')">Cancel</button>
           </div>
         </form>
       </div>
@@ -1305,7 +1535,7 @@ async function renderAdminPage() {
                     <td><code>${inst.id}</code></td>
                     <td>${formatStatus(status)}</td>
                     <td>${inst.version || 0}</td>
-                    <td><button class="btn btn-sm btn-link" onclick="navigate('/{{.ModelName}}/${inst.id}')">View</button></td>
+                    <td><button class="btn btn-sm btn-link" onclick="navigate('/tic-tac-toe/${inst.id}')">View</button></td>
                   </tr>
                 `
               }).join('')}
@@ -1325,7 +1555,7 @@ async function renderAdminPage() {
 window.navigate = navigate
 
 window.handleCreateNew = async function() {
-  navigate('/{{.ModelName}}/new')
+  navigate('/tic-tac-toe/new')
 }
 
 window.handleSubmitCreate = async function(event) {
@@ -1333,7 +1563,7 @@ window.handleSubmitCreate = async function(event) {
   try {
     const result = await api.createInstance({})
     showSuccess('Instance created successfully!')
-    navigate(`/{{.ModelName}}/${result.aggregate_id || result.id}`)
+    navigate(`/tic-tac-toe/${result.aggregate_id || result.id}`)
   } catch (err) {
     showError('Failed to create: ' + err.message)
   }
@@ -1381,11 +1611,11 @@ function handleRouteChange(event) {
   }
 
   const path = route.path
-  if (path === '/{{.ModelName}}' || path === '/') {
+  if (path === '/tic-tac-toe' || path === '/') {
     renderListPage()
-  } else if (path === '/{{.ModelName}}/new') {
+  } else if (path === '/tic-tac-toe/new') {
     renderFormPage()
-  } else if (path === '/{{.ModelName}}/:id') {
+  } else if (path === '/tic-tac-toe/:id') {
     renderDetailPage()
   } else if (path === '/schema') {
     renderSchemaPage()
@@ -1450,7 +1680,7 @@ async function init() {
   handleRouteChange({ detail: { route: getCurrentRoute() } })
 }
 
-{{if .HasDebug}}
+
 // ============================================================================
 // Debug WebSocket Client
 // ============================================================================
@@ -1549,7 +1779,7 @@ window.pilot = {
 
   /** Navigate to the list page */
   async list() {
-    navigate('/{{.ModelName}}')
+    navigate('/tic-tac-toe')
     // Wait for instances to load
     await this.waitFor('.entity-card, .empty-state', 5000).catch(() => {})
     return instances
@@ -1557,13 +1787,13 @@ window.pilot = {
 
   /** Navigate to create new instance form */
   newForm() {
-    navigate('/{{.ModelName}}/new')
+    navigate('/tic-tac-toe/new')
     return this.waitForRender()
   },
 
   /** Navigate to view a specific instance */
   async view(id) {
-    navigate(`/{{.ModelName}}/${id}`)
+    navigate(`/tic-tac-toe/${id}`)
     await this.waitForRender()
     return currentInstance
   },
@@ -1580,7 +1810,7 @@ window.pilot = {
   async create(data = {}) {
     const result = await api.createInstance(data)
     const id = result.aggregate_id || result.id
-    navigate(`/{{.ModelName}}/${id}`)
+    navigate(`/tic-tac-toe/${id}`)
     await this.waitForRender()
     return { id, ...result }
   },
@@ -1776,7 +2006,7 @@ window.pilot = {
   /** Get event history for current instance */
   async getEvents() {
     if (!currentInstance) throw new Error('No current instance')
-    const response = await fetch(`${API_BASE}/api/{{.PackageName}}/${currentInstance.id}/events`, {
+    const response = await fetch(`${API_BASE}/api/tictactoe/${currentInstance.id}/events`, {
       headers: getHeaders()
     })
     const data = await handleResponse(response)
@@ -1910,18 +2140,79 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-{{- range .Transitions}}
-      { id: '{{.ID}}', name: '{{.DisplayName}}', description: "{{.Description}}", requiredRoles: {{.RequiredRolesJSON}}, apiPath: '{{.APIPath}}' },
-{{- end}}
+      { id: 'x_play_00', name: 'X Play 00', description: "X plays at (0,0)", requiredRoles: [], apiPath: '/api/x_play_00' },
+      { id: 'x_play_01', name: 'X Play 01', description: "X plays at (0,1)", requiredRoles: [], apiPath: '/api/x_play_01' },
+      { id: 'x_play_02', name: 'X Play 02', description: "X plays at (0,2)", requiredRoles: [], apiPath: '/api/x_play_02' },
+      { id: 'x_play_10', name: 'X Play 10', description: "X plays at (1,0)", requiredRoles: [], apiPath: '/api/x_play_10' },
+      { id: 'x_play_11', name: 'X Play 11', description: "X plays at (1,1) - center", requiredRoles: [], apiPath: '/api/x_play_11' },
+      { id: 'x_play_12', name: 'X Play 12', description: "X plays at (1,2)", requiredRoles: [], apiPath: '/api/x_play_12' },
+      { id: 'x_play_20', name: 'X Play 20', description: "X plays at (2,0)", requiredRoles: [], apiPath: '/api/x_play_20' },
+      { id: 'x_play_21', name: 'X Play 21', description: "X plays at (2,1)", requiredRoles: [], apiPath: '/api/x_play_21' },
+      { id: 'x_play_22', name: 'X Play 22', description: "X plays at (2,2)", requiredRoles: [], apiPath: '/api/x_play_22' },
+      { id: 'o_play_00', name: 'O Play 00', description: "O plays at (0,0)", requiredRoles: [], apiPath: '/api/o_play_00' },
+      { id: 'o_play_01', name: 'O Play 01', description: "O plays at (0,1)", requiredRoles: [], apiPath: '/api/o_play_01' },
+      { id: 'o_play_02', name: 'O Play 02', description: "O plays at (0,2)", requiredRoles: [], apiPath: '/api/o_play_02' },
+      { id: 'o_play_10', name: 'O Play 10', description: "O plays at (1,0)", requiredRoles: [], apiPath: '/api/o_play_10' },
+      { id: 'o_play_11', name: 'O Play 11', description: "O plays at (1,1) - center", requiredRoles: [], apiPath: '/api/o_play_11' },
+      { id: 'o_play_12', name: 'O Play 12', description: "O plays at (1,2)", requiredRoles: [], apiPath: '/api/o_play_12' },
+      { id: 'o_play_20', name: 'O Play 20', description: "O plays at (2,0)", requiredRoles: [], apiPath: '/api/o_play_20' },
+      { id: 'o_play_21', name: 'O Play 21', description: "O plays at (2,1)", requiredRoles: [], apiPath: '/api/o_play_21' },
+      { id: 'o_play_22', name: 'O Play 22', description: "O plays at (2,2)", requiredRoles: [], apiPath: '/api/o_play_22' },
+      { id: 'reset', name: 'Reset', description: "Reset game to initial state", requiredRoles: [], apiPath: '/api/reset' },
+      { id: 'x_win_row0', name: 'X Win Row0', description: "X wins top row (0,0)-(0,1)-(0,2)", requiredRoles: [], apiPath: '/api/x_win_row0' },
+      { id: 'x_win_row1', name: 'X Win Row1', description: "X wins middle row (1,0)-(1,1)-(1,2)", requiredRoles: [], apiPath: '/api/x_win_row1' },
+      { id: 'x_win_row2', name: 'X Win Row2', description: "X wins bottom row (2,0)-(2,1)-(2,2)", requiredRoles: [], apiPath: '/api/x_win_row2' },
+      { id: 'x_win_col0', name: 'X Win Col0', description: "X wins left column (0,0)-(1,0)-(2,0)", requiredRoles: [], apiPath: '/api/x_win_col0' },
+      { id: 'x_win_col1', name: 'X Win Col1', description: "X wins center column (0,1)-(1,1)-(2,1)", requiredRoles: [], apiPath: '/api/x_win_col1' },
+      { id: 'x_win_col2', name: 'X Win Col2', description: "X wins right column (0,2)-(1,2)-(2,2)", requiredRoles: [], apiPath: '/api/x_win_col2' },
+      { id: 'x_win_diag', name: 'X Win Diag', description: "X wins main diagonal (0,0)-(1,1)-(2,2)", requiredRoles: [], apiPath: '/api/x_win_diag' },
+      { id: 'x_win_anti', name: 'X Win Anti', description: "X wins anti-diagonal (0,2)-(1,1)-(2,0)", requiredRoles: [], apiPath: '/api/x_win_anti' },
+      { id: 'o_win_row0', name: 'O Win Row0', description: "O wins top row (0,0)-(0,1)-(0,2)", requiredRoles: [], apiPath: '/api/o_win_row0' },
+      { id: 'o_win_row1', name: 'O Win Row1', description: "O wins middle row (1,0)-(1,1)-(1,2)", requiredRoles: [], apiPath: '/api/o_win_row1' },
+      { id: 'o_win_row2', name: 'O Win Row2', description: "O wins bottom row (2,0)-(2,1)-(2,2)", requiredRoles: [], apiPath: '/api/o_win_row2' },
+      { id: 'o_win_col0', name: 'O Win Col0', description: "O wins left column (0,0)-(1,0)-(2,0)", requiredRoles: [], apiPath: '/api/o_win_col0' },
+      { id: 'o_win_col1', name: 'O Win Col1', description: "O wins center column (0,1)-(1,1)-(2,1)", requiredRoles: [], apiPath: '/api/o_win_col1' },
+      { id: 'o_win_col2', name: 'O Win Col2', description: "O wins right column (0,2)-(1,2)-(2,2)", requiredRoles: [], apiPath: '/api/o_win_col2' },
+      { id: 'o_win_diag', name: 'O Win Diag', description: "O wins main diagonal (0,0)-(1,1)-(2,2)", requiredRoles: [], apiPath: '/api/o_win_diag' },
+      { id: 'o_win_anti', name: 'O Win Anti', description: "O wins anti-diagonal (0,2)-(1,1)-(2,0)", requiredRoles: [], apiPath: '/api/o_win_anti' },
     ]
   },
 
   /** Get all place definitions */
   getPlaces() {
     return [
-{{- range .Places}}
-      { id: '{{.ID}}', name: '{{.PascalName}}', initial: {{.Initial}} },
-{{- end}}
+      { id: 'p00', name: 'P00', initial: 1 },
+      { id: 'p01', name: 'P01', initial: 1 },
+      { id: 'p02', name: 'P02', initial: 1 },
+      { id: 'p10', name: 'P10', initial: 1 },
+      { id: 'p11', name: 'P11', initial: 1 },
+      { id: 'p12', name: 'P12', initial: 1 },
+      { id: 'p20', name: 'P20', initial: 1 },
+      { id: 'p21', name: 'P21', initial: 1 },
+      { id: 'p22', name: 'P22', initial: 1 },
+      { id: 'x00', name: 'X00', initial: 0 },
+      { id: 'x01', name: 'X01', initial: 0 },
+      { id: 'x02', name: 'X02', initial: 0 },
+      { id: 'x10', name: 'X10', initial: 0 },
+      { id: 'x11', name: 'X11', initial: 0 },
+      { id: 'x12', name: 'X12', initial: 0 },
+      { id: 'x20', name: 'X20', initial: 0 },
+      { id: 'x21', name: 'X21', initial: 0 },
+      { id: 'x22', name: 'X22', initial: 0 },
+      { id: 'o00', name: 'O00', initial: 0 },
+      { id: 'o01', name: 'O01', initial: 0 },
+      { id: 'o02', name: 'O02', initial: 0 },
+      { id: 'o10', name: 'O10', initial: 0 },
+      { id: 'o11', name: 'O11', initial: 0 },
+      { id: 'o12', name: 'O12', initial: 0 },
+      { id: 'o20', name: 'O20', initial: 0 },
+      { id: 'o21', name: 'O21', initial: 0 },
+      { id: 'o22', name: 'O22', initial: 0 },
+      { id: 'x_turn', name: 'XTurn', initial: 1 },
+      { id: 'o_turn', name: 'OTurn', initial: 0 },
+      { id: 'win_x', name: 'WinX', initial: 0 },
+      { id: 'win_o', name: 'WinO', initial: 0 },
+      { id: 'can_reset', name: 'CanReset', initial: 1 },
     ]
   },
 
@@ -2005,12 +2296,12 @@ window.pilot = {
     }
   },
 }
-{{end}}
+
 
 // Start the app
 init()
-{{if .HasDebug}}
+
 
 // Initialize debug WebSocket after app init
 initDebugWebSocket()
-{{end}}
+

@@ -114,6 +114,9 @@ type Model struct {
 
 	// Wallet configuration for MetaMask-like debug wallet
 	Wallet *WalletConfig `json:"wallet,omitempty"`
+
+	// Status configuration for human-readable status labels
+	Status *StatusConfig `json:"status,omitempty"`
 }
 
 // WalletConfig configures the debug wallet mockup for testing
@@ -353,6 +356,10 @@ type Transition struct {
 
 	// Prediction/simulation fields
 	Rate float64 `json:"rate,omitempty"` // Firing rate for ODE simulation (events/minute)
+
+	// ClearsHistory when true causes this transition to delete all events from the stream,
+	// resetting the aggregate to its initial state. Use for "reset" or "restart" transitions.
+	ClearsHistory bool `json:"clearsHistory,omitempty"`
 
 	// Deprecated fields (for backward compatibility)
 	EventType      string            `json:"event_type,omitempty"`      // Use Event instead
@@ -675,7 +682,19 @@ type ExportConfig struct {
 
 // SoftDeleteConfig represents soft delete configuration.
 type SoftDeleteConfig struct {
-	Enabled       bool   `json:"enabled"`                 // Enable soft delete
-	RetentionDays int    `json:"retentionDays,omitempty"` // Days to retain before permanent delete (0 = forever)
+	Enabled       bool     `json:"enabled"`                 // Enable soft delete
+	RetentionDays int      `json:"retentionDays,omitempty"` // Days to retain before permanent delete (0 = forever)
 	RestoreRoles  []string `json:"restoreRoles,omitempty"`  // Roles that can restore deleted items
+}
+
+// StatusConfig represents human-readable status labels for workflow states.
+// This allows models to define custom display labels for place states.
+type StatusConfig struct {
+	// Places maps place IDs to human-readable status labels
+	// Example: {"win_x": "X Wins", "win_o": "O Wins", "draw": "Draw"}
+	Places map[string]string `json:"places,omitempty"`
+
+	// Default is the status label shown when no place-specific label matches
+	// Example: "In Progress"
+	Default string `json:"default,omitempty"`
 }

@@ -1,0 +1,324 @@
+{
+  "name": "tic-tac-toe",
+  "version": "2.0.0",
+  "description": "Tic-tac-toe game modeled as a Petri net with win patterns as transitions for ODE-based strategic analysis",
+  "debug": {
+    "enabled": true,
+    "eval": true
+  },
+  "admin": {
+    "enabled": true
+  },
+  "status": {
+    "places": {
+      "win_x": "X Wins",
+      "win_o": "O Wins"
+    },
+    "default": "In Progress"
+  },
+  "places": [
+    {"id": "p00", "initial": 1, "description": "Cell (0,0) empty"},
+    {"id": "p01", "initial": 1, "description": "Cell (0,1) empty"},
+    {"id": "p02", "initial": 1, "description": "Cell (0,2) empty"},
+    {"id": "p10", "initial": 1, "description": "Cell (1,0) empty"},
+    {"id": "p11", "initial": 1, "description": "Cell (1,1) empty - center"},
+    {"id": "p12", "initial": 1, "description": "Cell (1,2) empty"},
+    {"id": "p20", "initial": 1, "description": "Cell (2,0) empty"},
+    {"id": "p21", "initial": 1, "description": "Cell (2,1) empty"},
+    {"id": "p22", "initial": 1, "description": "Cell (2,2) empty"},
+    {"id": "x00", "initial": 0, "description": "X piece at (0,0)"},
+    {"id": "x01", "initial": 0, "description": "X piece at (0,1)"},
+    {"id": "x02", "initial": 0, "description": "X piece at (0,2)"},
+    {"id": "x10", "initial": 0, "description": "X piece at (1,0)"},
+    {"id": "x11", "initial": 0, "description": "X piece at (1,1)"},
+    {"id": "x12", "initial": 0, "description": "X piece at (1,2)"},
+    {"id": "x20", "initial": 0, "description": "X piece at (2,0)"},
+    {"id": "x21", "initial": 0, "description": "X piece at (2,1)"},
+    {"id": "x22", "initial": 0, "description": "X piece at (2,2)"},
+    {"id": "o00", "initial": 0, "description": "O piece at (0,0)"},
+    {"id": "o01", "initial": 0, "description": "O piece at (0,1)"},
+    {"id": "o02", "initial": 0, "description": "O piece at (0,2)"},
+    {"id": "o10", "initial": 0, "description": "O piece at (1,0)"},
+    {"id": "o11", "initial": 0, "description": "O piece at (1,1)"},
+    {"id": "o12", "initial": 0, "description": "O piece at (1,2)"},
+    {"id": "o20", "initial": 0, "description": "O piece at (2,0)"},
+    {"id": "o21", "initial": 0, "description": "O piece at (2,1)"},
+    {"id": "o22", "initial": 0, "description": "O piece at (2,2)"},
+    {"id": "x_turn", "initial": 1, "description": "X's turn to play"},
+    {"id": "o_turn", "initial": 0, "description": "O's turn to play"},
+    {"id": "win_x", "initial": 0, "description": "X has won"},
+    {"id": "win_o", "initial": 0, "description": "O has won"},
+    {"id": "can_reset", "initial": 1, "description": "Token enabling reset action"}
+  ],
+  "transitions": [
+    {"id": "x_play_00", "description": "X plays at (0,0)", "event": "XPlayed"},
+    {"id": "x_play_01", "description": "X plays at (0,1)", "event": "XPlayed"},
+    {"id": "x_play_02", "description": "X plays at (0,2)", "event": "XPlayed"},
+    {"id": "x_play_10", "description": "X plays at (1,0)", "event": "XPlayed"},
+    {"id": "x_play_11", "description": "X plays at (1,1) - center", "event": "XPlayed"},
+    {"id": "x_play_12", "description": "X plays at (1,2)", "event": "XPlayed"},
+    {"id": "x_play_20", "description": "X plays at (2,0)", "event": "XPlayed"},
+    {"id": "x_play_21", "description": "X plays at (2,1)", "event": "XPlayed"},
+    {"id": "x_play_22", "description": "X plays at (2,2)", "event": "XPlayed"},
+    {"id": "o_play_00", "description": "O plays at (0,0)", "event": "OPlayed"},
+    {"id": "o_play_01", "description": "O plays at (0,1)", "event": "OPlayed"},
+    {"id": "o_play_02", "description": "O plays at (0,2)", "event": "OPlayed"},
+    {"id": "o_play_10", "description": "O plays at (1,0)", "event": "OPlayed"},
+    {"id": "o_play_11", "description": "O plays at (1,1) - center", "event": "OPlayed"},
+    {"id": "o_play_12", "description": "O plays at (1,2)", "event": "OPlayed"},
+    {"id": "o_play_20", "description": "O plays at (2,0)", "event": "OPlayed"},
+    {"id": "o_play_21", "description": "O plays at (2,1)", "event": "OPlayed"},
+    {"id": "o_play_22", "description": "O plays at (2,2)", "event": "OPlayed"},
+    {"id": "reset", "description": "Reset game to initial state", "event": "GameReset", "clearsHistory": true},
+    {"id": "x_win_row0", "description": "X wins top row (0,0)-(0,1)-(0,2)"},
+    {"id": "x_win_row1", "description": "X wins middle row (1,0)-(1,1)-(1,2)"},
+    {"id": "x_win_row2", "description": "X wins bottom row (2,0)-(2,1)-(2,2)"},
+    {"id": "x_win_col0", "description": "X wins left column (0,0)-(1,0)-(2,0)"},
+    {"id": "x_win_col1", "description": "X wins center column (0,1)-(1,1)-(2,1)"},
+    {"id": "x_win_col2", "description": "X wins right column (0,2)-(1,2)-(2,2)"},
+    {"id": "x_win_diag", "description": "X wins main diagonal (0,0)-(1,1)-(2,2)"},
+    {"id": "x_win_anti", "description": "X wins anti-diagonal (0,2)-(1,1)-(2,0)"},
+    {"id": "o_win_row0", "description": "O wins top row (0,0)-(0,1)-(0,2)"},
+    {"id": "o_win_row1", "description": "O wins middle row (1,0)-(1,1)-(1,2)"},
+    {"id": "o_win_row2", "description": "O wins bottom row (2,0)-(2,1)-(2,2)"},
+    {"id": "o_win_col0", "description": "O wins left column (0,0)-(1,0)-(2,0)"},
+    {"id": "o_win_col1", "description": "O wins center column (0,1)-(1,1)-(2,1)"},
+    {"id": "o_win_col2", "description": "O wins right column (0,2)-(1,2)-(2,2)"},
+    {"id": "o_win_diag", "description": "O wins main diagonal (0,0)-(1,1)-(2,2)"},
+    {"id": "o_win_anti", "description": "O wins anti-diagonal (0,2)-(1,1)-(2,0)"}
+  ],
+  "arcs": [
+    {"from": "p00", "to": "x_play_00"},
+    {"from": "x_turn", "to": "x_play_00"},
+    {"from": "x_play_00", "to": "x00"},
+    {"from": "x_play_00", "to": "o_turn"},
+
+    {"from": "p01", "to": "x_play_01"},
+    {"from": "x_turn", "to": "x_play_01"},
+    {"from": "x_play_01", "to": "x01"},
+    {"from": "x_play_01", "to": "o_turn"},
+
+    {"from": "p02", "to": "x_play_02"},
+    {"from": "x_turn", "to": "x_play_02"},
+    {"from": "x_play_02", "to": "x02"},
+    {"from": "x_play_02", "to": "o_turn"},
+
+    {"from": "p10", "to": "x_play_10"},
+    {"from": "x_turn", "to": "x_play_10"},
+    {"from": "x_play_10", "to": "x10"},
+    {"from": "x_play_10", "to": "o_turn"},
+
+    {"from": "p11", "to": "x_play_11"},
+    {"from": "x_turn", "to": "x_play_11"},
+    {"from": "x_play_11", "to": "x11"},
+    {"from": "x_play_11", "to": "o_turn"},
+
+    {"from": "p12", "to": "x_play_12"},
+    {"from": "x_turn", "to": "x_play_12"},
+    {"from": "x_play_12", "to": "x12"},
+    {"from": "x_play_12", "to": "o_turn"},
+
+    {"from": "p20", "to": "x_play_20"},
+    {"from": "x_turn", "to": "x_play_20"},
+    {"from": "x_play_20", "to": "x20"},
+    {"from": "x_play_20", "to": "o_turn"},
+
+    {"from": "p21", "to": "x_play_21"},
+    {"from": "x_turn", "to": "x_play_21"},
+    {"from": "x_play_21", "to": "x21"},
+    {"from": "x_play_21", "to": "o_turn"},
+
+    {"from": "p22", "to": "x_play_22"},
+    {"from": "x_turn", "to": "x_play_22"},
+    {"from": "x_play_22", "to": "x22"},
+    {"from": "x_play_22", "to": "o_turn"},
+
+    {"from": "p00", "to": "o_play_00"},
+    {"from": "o_turn", "to": "o_play_00"},
+    {"from": "o_play_00", "to": "o00"},
+    {"from": "o_play_00", "to": "x_turn"},
+
+    {"from": "p01", "to": "o_play_01"},
+    {"from": "o_turn", "to": "o_play_01"},
+    {"from": "o_play_01", "to": "o01"},
+    {"from": "o_play_01", "to": "x_turn"},
+
+    {"from": "p02", "to": "o_play_02"},
+    {"from": "o_turn", "to": "o_play_02"},
+    {"from": "o_play_02", "to": "o02"},
+    {"from": "o_play_02", "to": "x_turn"},
+
+    {"from": "p10", "to": "o_play_10"},
+    {"from": "o_turn", "to": "o_play_10"},
+    {"from": "o_play_10", "to": "o10"},
+    {"from": "o_play_10", "to": "x_turn"},
+
+    {"from": "p11", "to": "o_play_11"},
+    {"from": "o_turn", "to": "o_play_11"},
+    {"from": "o_play_11", "to": "o11"},
+    {"from": "o_play_11", "to": "x_turn"},
+
+    {"from": "p12", "to": "o_play_12"},
+    {"from": "o_turn", "to": "o_play_12"},
+    {"from": "o_play_12", "to": "o12"},
+    {"from": "o_play_12", "to": "x_turn"},
+
+    {"from": "p20", "to": "o_play_20"},
+    {"from": "o_turn", "to": "o_play_20"},
+    {"from": "o_play_20", "to": "o20"},
+    {"from": "o_play_20", "to": "x_turn"},
+
+    {"from": "p21", "to": "o_play_21"},
+    {"from": "o_turn", "to": "o_play_21"},
+    {"from": "o_play_21", "to": "o21"},
+    {"from": "o_play_21", "to": "x_turn"},
+
+    {"from": "p22", "to": "o_play_22"},
+    {"from": "o_turn", "to": "o_play_22"},
+    {"from": "o_play_22", "to": "o22"},
+    {"from": "o_play_22", "to": "x_turn"},
+
+    {"from": "x00", "to": "x_win_row0"},
+    {"from": "x01", "to": "x_win_row0"},
+    {"from": "x02", "to": "x_win_row0"},
+    {"from": "x_win_row0", "to": "win_x"},
+
+    {"from": "x10", "to": "x_win_row1"},
+    {"from": "x11", "to": "x_win_row1"},
+    {"from": "x12", "to": "x_win_row1"},
+    {"from": "x_win_row1", "to": "win_x"},
+
+    {"from": "x20", "to": "x_win_row2"},
+    {"from": "x21", "to": "x_win_row2"},
+    {"from": "x22", "to": "x_win_row2"},
+    {"from": "x_win_row2", "to": "win_x"},
+
+    {"from": "x00", "to": "x_win_col0"},
+    {"from": "x10", "to": "x_win_col0"},
+    {"from": "x20", "to": "x_win_col0"},
+    {"from": "x_win_col0", "to": "win_x"},
+
+    {"from": "x01", "to": "x_win_col1"},
+    {"from": "x11", "to": "x_win_col1"},
+    {"from": "x21", "to": "x_win_col1"},
+    {"from": "x_win_col1", "to": "win_x"},
+
+    {"from": "x02", "to": "x_win_col2"},
+    {"from": "x12", "to": "x_win_col2"},
+    {"from": "x22", "to": "x_win_col2"},
+    {"from": "x_win_col2", "to": "win_x"},
+
+    {"from": "x00", "to": "x_win_diag"},
+    {"from": "x11", "to": "x_win_diag"},
+    {"from": "x22", "to": "x_win_diag"},
+    {"from": "x_win_diag", "to": "win_x"},
+
+    {"from": "x02", "to": "x_win_anti"},
+    {"from": "x11", "to": "x_win_anti"},
+    {"from": "x20", "to": "x_win_anti"},
+    {"from": "x_win_anti", "to": "win_x"},
+
+    {"from": "o00", "to": "o_win_row0"},
+    {"from": "o01", "to": "o_win_row0"},
+    {"from": "o02", "to": "o_win_row0"},
+    {"from": "o_win_row0", "to": "win_o"},
+
+    {"from": "o10", "to": "o_win_row1"},
+    {"from": "o11", "to": "o_win_row1"},
+    {"from": "o12", "to": "o_win_row1"},
+    {"from": "o_win_row1", "to": "win_o"},
+
+    {"from": "o20", "to": "o_win_row2"},
+    {"from": "o21", "to": "o_win_row2"},
+    {"from": "o22", "to": "o_win_row2"},
+    {"from": "o_win_row2", "to": "win_o"},
+
+    {"from": "o00", "to": "o_win_col0"},
+    {"from": "o10", "to": "o_win_col0"},
+    {"from": "o20", "to": "o_win_col0"},
+    {"from": "o_win_col0", "to": "win_o"},
+
+    {"from": "o01", "to": "o_win_col1"},
+    {"from": "o11", "to": "o_win_col1"},
+    {"from": "o21", "to": "o_win_col1"},
+    {"from": "o_win_col1", "to": "win_o"},
+
+    {"from": "o02", "to": "o_win_col2"},
+    {"from": "o12", "to": "o_win_col2"},
+    {"from": "o22", "to": "o_win_col2"},
+    {"from": "o_win_col2", "to": "win_o"},
+
+    {"from": "o00", "to": "o_win_diag"},
+    {"from": "o11", "to": "o_win_diag"},
+    {"from": "o22", "to": "o_win_diag"},
+    {"from": "o_win_diag", "to": "win_o"},
+
+    {"from": "o02", "to": "o_win_anti"},
+    {"from": "o11", "to": "o_win_anti"},
+    {"from": "o20", "to": "o_win_anti"},
+    {"from": "o_win_anti", "to": "win_o"},
+
+    {"from": "can_reset", "to": "reset"},
+    {"from": "reset", "to": "can_reset"}
+  ],
+  "events": [
+    {
+      "id": "XPlayed",
+      "name": "XPlayed",
+      "description": "X placed a piece on the board",
+      "fields": [
+        {"name": "row", "type": "integer", "required": true},
+        {"name": "col", "type": "integer", "required": true}
+      ]
+    },
+    {
+      "id": "OPlayed",
+      "name": "OPlayed",
+      "description": "O placed a piece on the board",
+      "fields": [
+        {"name": "row", "type": "integer", "required": true},
+        {"name": "col", "type": "integer", "required": true}
+      ]
+    },
+    {
+      "id": "GameReset",
+      "name": "GameReset",
+      "description": "Game was reset to initial state"
+    }
+  ],
+  "metadata": {
+    "winPatterns": {
+      "description": "Win patterns are modeled as transitions that consume from piece places and produce to win_x/win_o",
+      "patterns": [
+        {"name": "row0", "cells": [[0,0], [0,1], [0,2]], "type": "row"},
+        {"name": "row1", "cells": [[1,0], [1,1], [1,2]], "type": "row"},
+        {"name": "row2", "cells": [[2,0], [2,1], [2,2]], "type": "row"},
+        {"name": "col0", "cells": [[0,0], [1,0], [2,0]], "type": "column"},
+        {"name": "col1", "cells": [[0,1], [1,1], [2,1]], "type": "column"},
+        {"name": "col2", "cells": [[0,2], [1,2], [2,2]], "type": "column"},
+        {"name": "diag", "cells": [[0,0], [1,1], [2,2]], "type": "diagonal"},
+        {"name": "anti", "cells": [[0,2], [1,1], [2,0]], "type": "anti-diagonal"}
+      ]
+    },
+    "strategicValues": {
+      "description": "Values derived from Petri net topology - positions connected to more win transitions have higher values",
+      "positions": {
+        "00": {"value": 0.316, "type": "corner", "winTransitions": 3},
+        "01": {"value": 0.218, "type": "edge", "winTransitions": 2},
+        "02": {"value": 0.316, "type": "corner", "winTransitions": 3},
+        "10": {"value": 0.218, "type": "edge", "winTransitions": 2},
+        "11": {"value": 0.430, "type": "center", "winTransitions": 4},
+        "12": {"value": 0.218, "type": "edge", "winTransitions": 2},
+        "20": {"value": 0.316, "type": "corner", "winTransitions": 3},
+        "21": {"value": 0.218, "type": "edge", "winTransitions": 2},
+        "22": {"value": 0.316, "type": "corner", "winTransitions": 3}
+      }
+    },
+    "odeSimulation": {
+      "description": "Strategic values computed from ODE simulation of token flow through Petri net",
+      "solver": "pflow.xyz",
+      "methodology": "Each position's value is proportional to the number of win pattern transitions it feeds into",
+      "interpretation": "Higher values = more winning potential (center > corners > edges)"
+    }
+  }
+}

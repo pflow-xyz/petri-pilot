@@ -441,6 +441,17 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 func (app *Application) GetState(ctx context.Context, id string) (*Aggregate, error) {
 	return app.Load(ctx, id)
 }
+{{- if .HasClearsHistoryTransitions}}
+
+// ResetStream deletes all events for an aggregate, returning it to its initial state.
+// This is used by transitions marked with clearsHistory: true.
+func (app *Application) ResetStream(ctx context.Context, id string) (*Aggregate, error) {
+	if err := app.store.DeleteStream(ctx, id); err != nil {
+		return nil, fmt.Errorf("deleting stream: %w", err)
+	}
+	return NewAggregate(id), nil
+}
+{{- end}}
 
 // HealthCheck verifies the event store is accessible.
 func (app *Application) HealthCheck(ctx context.Context) error {
