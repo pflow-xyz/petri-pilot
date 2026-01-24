@@ -3,7 +3,10 @@
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
 
-const API_BASE = ''
+// Read API_BASE dynamically to avoid race condition with inline script
+function getApiBase() {
+  return window.API_BASE || ''
+}
 
 // ODE simulation results cache
 let odeValues = null
@@ -463,7 +466,7 @@ async function runAPIHeatmap(board = null) {
   try {
     const apiBoard = board ? board.map(row => [...row]) : [['','',''],['','',''],['','','']]
 
-    const response = await fetch(`${API_BASE}/api/heatmap`, {
+    const response = await fetch(`${getApiBase()}/api/heatmap`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ board: apiBoard })
@@ -528,7 +531,7 @@ let valueChart = null
 
 // API functions
 async function createGame() {
-  const response = await fetch(`${API_BASE}/api/tictactoe`, {
+  const response = await fetch(`${getApiBase()}/api/tictactoe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   })
@@ -536,17 +539,17 @@ async function createGame() {
 }
 
 async function getGameState(id) {
-  const response = await fetch(`${API_BASE}/api/tictactoe/${id}`)
+  const response = await fetch(`${getApiBase()}/api/tictactoe/${id}`)
   return response.json()
 }
 
 async function getGameEvents(id) {
-  const response = await fetch(`${API_BASE}/api/tictactoe/${id}/events`)
+  const response = await fetch(`${getApiBase()}/api/tictactoe/${id}/events`)
   return response.json()
 }
 
 async function executeTransition(transitionId, aggregateId) {
-  const response = await fetch(`${API_BASE}/api/${transitionId}`, {
+  const response = await fetch(`${getApiBase()}/api/${transitionId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ aggregate_id: aggregateId, data: {} }),

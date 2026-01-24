@@ -688,6 +688,14 @@
     </div>
   </div>
 
+  <!-- Detect base path for API calls when mounted at a prefix -->
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/[^\/]+)\//);
+      window.API_BASE = match ? match[1] : '';
+    })();
+  </script>
   <script type="module" src="./main.js"></script>
 </body>
 </html>
