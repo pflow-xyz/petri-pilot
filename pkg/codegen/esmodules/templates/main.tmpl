@@ -3,6 +3,9 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
+{{- if .HasAdmin}}
+import { initAdmin, renderAdminDashboard, loadAdminStats, renderAdminInstances, loadAdminInstances, renderAdminInstance, loadAdminInstance } from './admin.js'
+{{- end}}
 {{- if .HasWallet}}
 import wallet from './wallet.js'
 window.wallet = wallet
@@ -1242,7 +1245,32 @@ window.showSchemaTab = function(tabName) {
   }
 }
 
-// Admin dashboard
+{{if .HasAdmin}}
+// Admin dashboard - uses admin.js module
+async function renderAdminDashboardPage() {
+  initAdmin()
+  const app = document.getElementById('app')
+  app.innerHTML = renderAdminDashboard()
+  await loadAdminStats()
+}
+
+// Admin instances list
+async function renderAdminInstancesPage() {
+  initAdmin()
+  const app = document.getElementById('app')
+  app.innerHTML = renderAdminInstances()
+  await loadAdminInstances()
+}
+
+// Admin instance detail
+async function renderAdminInstancePage(id) {
+  initAdmin()
+  const app = document.getElementById('app')
+  app.innerHTML = renderAdminInstance(id)
+  await loadAdminInstance(id)
+}
+{{else}}
+// Admin dashboard (fallback when admin module not available)
 async function renderAdminPage() {
   const app = document.getElementById('app')
   app.innerHTML = `
@@ -1317,6 +1345,7 @@ async function renderAdminPage() {
     showError('Failed to load admin data: ' + err.message)
   }
 }
+{{end}}
 
 // ============================================================================
 // Event Handlers
@@ -1389,8 +1418,16 @@ function handleRouteChange(event) {
     renderDetailPage()
   } else if (path === '/schema') {
     renderSchemaPage()
-  } else if (path === '/admin' || path.startsWith('/admin')) {
-    renderAdminPage()
+{{- if .HasAdmin}}
+  } else if (path === '/admin') {
+    renderAdminDashboardPage()
+  } else if (path === '/admin/instances') {
+    renderAdminInstancesPage()
+  } else if (path === '/admin/instances/:id') {
+    const actualPath = window.location.pathname
+    const id = actualPath.replace('/admin/instances/', '')
+    renderAdminInstancePage(id)
+{{- end}}
   } else {
     renderListPage()
   }

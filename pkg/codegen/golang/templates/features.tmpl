@@ -9,8 +9,12 @@ import (
 	"encoding/hex"
 {{- end}}
 	"database/sql"
+{{- if or .HasTimers .HasNotifications .HasBatch .HasExport .HasInboundWebhooks .HasTags .HasComments .HasActivity .HasFavorites .HasTemplates .HasApprovals .HasRelationships .HasDocuments}}
 	"encoding/json"
+{{- end}}
+{{- if or .HasTimers .HasTags .HasComments .HasActivity .HasFavorites .HasTemplates .HasApprovals .HasRelationships .HasNotifications .HasDocuments (and .HasSoftDelete .HasAccessControl)}}
 	"fmt"
+{{- end}}
 	"net/http"
 {{- if .HasExport}}
 	"encoding/csv"

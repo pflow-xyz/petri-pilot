@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -26,9 +28,20 @@ func main() {
 	app := NewApplication(store)
 	// Initialize debug broker
 	debugBroker := NewDebugBroker()
+	// Initialize features database
+	featuresDB, err := sql.Open("sqlite", "features.db")
+	if err != nil {
+		log.Fatalf("Failed to open features database: %v", err)
+	}
+	defer featuresDB.Close()
+	// Initialize soft delete store
+	softDeleteStore := NewSoftDeleteStore(featuresDB, 30)
+	if err := softDeleteStore.InitSchema(); err != nil {
+		log.Fatalf("Failed to initialize soft delete store: %v", err)
+	}
 
 	// Build HTTP router
-	router := BuildRouter(app, debugBroker)
+	router := BuildRouter(app, debugBroker, softDeleteStore)
 
 	// Configure server
 	port := os.Getenv("PORT")

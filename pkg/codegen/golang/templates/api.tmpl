@@ -59,9 +59,14 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{if .HasAdmin}}
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
-	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
+	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app{{if .HasSoftDelete}}, softDeleteStore{{end}}))
 	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
+	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
+{{- if .HasSoftDelete}}
+	r.POST("/admin/instances/{id}/archive", "Archive instance (soft delete)", HandleAdminArchiveInstance(softDeleteStore))
+	r.POST("/admin/instances/{id}/restore", "Restore archived instance", HandleAdminRestoreInstance(softDeleteStore))
+{{- end}}
 {{end}}
 {{if .HasEventSourcing}}
 	// Event replay endpoints
@@ -544,7 +549,11 @@ api.JSON(w, http.StatusOK, stats)
 }
 
 // HandleAdminListInstances wraps the admin list instances handler.
+{{- if .HasSoftDelete}}
+func HandleAdminListInstances(app *Application, softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+{{- else}}
 func HandleAdminListInstances(app *Application) http.HandlerFunc {
+{{- end}}
 return func(w http.ResponseWriter, r *http.Request) {
 ctx := r.Context()
 
@@ -553,6 +562,9 @@ from := r.URL.Query().Get("from")
 to := r.URL.Query().Get("to")
 page := getIntQueryParam(r, "page", 1)
 perPage := getIntQueryParam(r, "per_page", 50)
+{{- if .HasSoftDelete}}
+showArchived := r.URL.Query().Get("archived") == "true"
+{{- end}}
 
 adminStore, ok := app.store.(interface {
 ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventstore.Instance, int, error)
@@ -567,6 +579,24 @@ if err != nil {
 api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
 return
 }
+
+{{- if .HasSoftDelete}}
+// Filter out archived instances unless explicitly requested
+var filteredInstances []eventstore.Instance
+var archivedInstances []eventstore.Instance
+for _, inst := range instances {
+if softDeleteStore.IsDeleted(inst.ID) {
+archivedInstances = append(archivedInstances, inst)
+} else {
+filteredInstances = append(filteredInstances, inst)
+}
+}
+if showArchived {
+instances = archivedInstances
+} else {
+instances = filteredInstances
+}
+{{- end}}
 
 // Load state for each instance by replaying events
 // Note: This loads aggregates individually which may be slow for large lists.
@@ -587,6 +617,9 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 "total":     total,
 "page":      page,
 "per_page":  perPage,
+{{- if .HasSoftDelete}}
+"has_soft_delete": true,
+{{- end}}
 })
 }
 }
@@ -629,6 +662,61 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 })
 }
 }
+
+// HandleAdminDeleteInstance deletes an instance and all its events.
+func HandleAdminDeleteInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+if err := app.store.DeleteStream(ctx, id); err != nil {
+api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"deleted": true,
+"id":      id,
+})
+}
+}
+
+{{- if .HasSoftDelete}}
+// HandleAdminArchiveInstance soft-deletes an instance (marks as archived).
+func HandleAdminArchiveInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+id := r.PathValue("id")
+userID := getSoftDeleteUserID(r)
+
+if err := softDeleteStore.SoftDelete(id, userID); err != nil {
+api.Error(w, http.StatusInternalServerError, "ARCHIVE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"archived": true,
+"id":       id,
+})
+}
+}
+
+// HandleAdminRestoreInstance restores a soft-deleted instance.
+func HandleAdminRestoreInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+id := r.PathValue("id")
+
+if err := softDeleteStore.Restore(id); err != nil {
+api.Error(w, http.StatusInternalServerError, "RESTORE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"restored": true,
+"id":       id,
+})
+}
+}
+{{- end}}
 {{end}}
 
 {{if .HasEventSourcing}}

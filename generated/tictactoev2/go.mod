@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pflow-xyz/petri-pilot v0.2.0
+	modernc.org/sqlite v1.44.1
 )
 
 require (
@@ -18,7 +19,6 @@ require (
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.44.1 // indirect
 )
 
 replace github.com/pflow-xyz/petri-pilot => ../..

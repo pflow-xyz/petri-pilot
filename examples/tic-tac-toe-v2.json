@@ -9,6 +9,10 @@
   "admin": {
     "enabled": true
   },
+  "softDelete": {
+    "enabled": true,
+    "retentionDays": 30
+  },
   "status": {
     "places": {
       "win_x": "X Wins",

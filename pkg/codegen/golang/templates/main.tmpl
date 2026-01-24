@@ -75,7 +75,7 @@ func main() {
 
 	{{- if .HasBlobstore}}
 	// Initialize blobstore
-	blobDB, err := sql.Open("sqlite3", "blobs.db")
+	blobDB, err := sql.Open("sqlite", "blobs.db")
 	if err != nil {
 		log.Fatalf("Failed to open blob database: %v", err)
 	}
@@ -89,7 +89,7 @@ func main() {
 
 	{{- if .HasAnyFeatures}}
 	// Initialize features database
-	featuresDB, err := sql.Open("sqlite3", "features.db")
+	featuresDB, err := sql.Open("sqlite", "features.db")
 	if err != nil {
 		log.Fatalf("Failed to open features database: %v", err)
 	}

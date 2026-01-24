@@ -783,6 +783,10 @@ classDiagram
 | GET | `/ready` | Readiness check |
 | POST | `/api/tic-tac-toe` | Create new instance |
 | GET | `/api/tic-tac-toe/{id}` | Get instance state |
+| GET | `/admin/stats` | Admin statistics |
+| GET | `/admin/instances` | List all instances |
+| GET | `/admin/instances/{id}` | Get instance detail |
+| GET | `/admin/instances/{id}/events` | Get instance events |
 
 
 ### Transition Endpoints
@@ -881,6 +885,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
+├── admin.go          # Admin handlers
 ├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
