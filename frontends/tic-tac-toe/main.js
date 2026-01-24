@@ -524,6 +524,7 @@ let gameState = {
   gameOver: false,
   enabled: [],
   events: [],
+  revertedToIndex: null, // Track if we've reverted to an earlier state
 }
 
 let showHeatmap = false
@@ -613,6 +614,30 @@ async function makeMove(row, col) {
   }
 
   try {
+    // If we've reverted to an earlier state, create a new game and replay moves
+    if (gameState.revertedToIndex !== null) {
+      const eventsToReplay = gameState.events.slice(0, gameState.revertedToIndex + 1)
+
+      // Create new game
+      const newGame = await createGame()
+      gameState.id = newGame.aggregate_id
+
+      // Replay events up to the revert point
+      for (const event of eventsToReplay) {
+        const type = event.type || ''
+        if (type.startsWith('XPlayed') || type.startsWith('OPlayed')) {
+          const player = type.charAt(0).toLowerCase()
+          const eventRow = parseInt(type.charAt(7))
+          const eventCol = parseInt(type.charAt(8))
+          await executeTransition(`${player}_play_${eventRow}${eventCol}`, gameState.id)
+        }
+      }
+
+      // Clear revert state and truncate local events
+      gameState.events = eventsToReplay
+      gameState.revertedToIndex = null
+    }
+
     const result = await executeTransition(transitionId, gameState.id)
 
     // Update board from state (places)
@@ -947,6 +972,7 @@ async function revertToMove(moveIndex) {
   gameState.board = newBoard
   gameState.gameOver = false
   gameState.winner = null
+  gameState.revertedToIndex = moveIndex // Track that we've reverted
 
   // Determine current player (alternates, X starts)
   const moveCount = moveIndex + 1
