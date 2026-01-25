@@ -400,3 +400,77 @@ Requires `GITHUB_TOKEN` environment variable for status commands.
 ```bash
 export GITHUB_TOKEN=$(gh auth token)
 ```
+
+## Deploying to pflow.dev
+
+The pflow.dev server runs multiple services in tmux. To update a service:
+
+### Tmux Session Structure
+
+```bash
+ssh pflow.dev "tmux list-windows -t servers"
+# 0: pflow-pilot      - petri-pilot MCP server
+# 1: tens-city        - tens-city webserver
+# 2: pflow-xyz        - pflow.xyz frontend
+# 3: blog-stackdump-com - blog.stackdump.com
+```
+
+### Updating a Service
+
+```bash
+# 1. Kill the running process
+ssh pflow.dev "tmux send-keys -t servers:3 C-c"
+
+# 2. Pull updates and restart
+ssh pflow.dev "tmux send-keys -t servers:3 'git pull && ./webserver -addr :8082' Enter"
+
+# 3. Verify it started
+ssh pflow.dev "tmux capture-pane -t servers:3 -p | tail -10"
+```
+
+### Service Ports (nginx proxy)
+
+| Service | Internal Port | Public URL |
+|---------|---------------|------------|
+| blog-stackdump-com | 8082 | blog.stackdump.com |
+| pflow-xyz | 8081 | pflow.xyz |
+| tens-city | 8080 | stackdump.com |
+
+### Start Script
+
+All services are started via `~/start_servers.sh` which creates the tmux session with proper env vars:
+
+```bash
+ssh pflow.dev "~/start_servers.sh"
+```
+
+### Environment Variables
+
+Each service requires specific environment variables (set in start_servers.sh):
+
+| Service | Required Env Vars |
+|---------|-------------------|
+| pflow-pilot | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
+| tens-city | `GOOGLE_ANALYTICS_ID`, `SUPABASE_JWT_SECRET` |
+| pflow-xyz | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SUPABASE_JWT_SECRET` |
+| blog-stackdump-com | `GOOGLE_ANALYTICS_ID` |
+
+When restarting a single service, ensure env vars are set:
+
+```bash
+# Restart blog with env var
+ssh pflow.dev "tmux send-keys -t servers:3 'export GOOGLE_ANALYTICS_ID=G-YDKYWYGHZ2 && ./webserver -addr :8082' Enter"
+```
+
+### Quick Reference
+
+```bash
+# Kill process on specific port if stuck
+ssh pflow.dev "fuser -k 8082/tcp"
+
+# Check nginx config for a site
+ssh pflow.dev "cat /etc/nginx/sites-enabled/blog.stackdump.com"
+
+# Test nginx config and reload
+ssh pflow.dev "sudo nginx -t && sudo systemctl reload nginx"
+```
