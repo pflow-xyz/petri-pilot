@@ -355,6 +355,25 @@
       "description": "Game was reset to initial state"
     }
   ],
+  "simulation": {
+    "objective": "win_x - win_o",
+    "players": {
+      "x": {
+        "maximizes": true,
+        "turnPlace": "x_turn",
+        "transitions": ["x_play_00", "x_play_01", "x_play_02", "x_play_10", "x_play_11", "x_play_12", "x_play_20", "x_play_21", "x_play_22"]
+      },
+      "o": {
+        "maximizes": false,
+        "turnPlace": "o_turn",
+        "transitions": ["o_play_00", "o_play_01", "o_play_02", "o_play_10", "o_play_11", "o_play_12", "o_play_20", "o_play_21", "o_play_22"]
+      }
+    },
+    "solver": {
+      "tspan": [0, 10],
+      "dt": 0.01
+    }
+  },
   "metadata": {
     "winPatterns": {
       "description": "Win patterns are modeled as transitions that consume from piece places and produce to win_x/win_o",

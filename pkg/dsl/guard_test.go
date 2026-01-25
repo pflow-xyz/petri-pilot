@@ -1,6 +1,9 @@
 package dsl
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestHasRole(t *testing.T) {
 	tests := []struct {
@@ -153,6 +156,168 @@ func TestIncludes(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("Evaluate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEvaluateObjective(t *testing.T) {
+	tests := []struct {
+		name    string
+		expr    string
+		marking Marking
+		want    float64
+		wantErr bool
+	}{
+		{
+			name:    "simple difference - X wins",
+			expr:    "win_x - win_o",
+			marking: Marking{"win_x": 1, "win_o": 0},
+			want:    1.0,
+		},
+		{
+			name:    "simple difference - O wins",
+			expr:    "win_x - win_o",
+			marking: Marking{"win_x": 0, "win_o": 1},
+			want:    -1.0,
+		},
+		{
+			name:    "simple difference - tie",
+			expr:    "win_x - win_o",
+			marking: Marking{"win_x": 0, "win_o": 0},
+			want:    0.0,
+		},
+		{
+			name:    "weighted objective",
+			expr:    "win_x * 10 - win_o * 10",
+			marking: Marking{"win_x": 1, "win_o": 0},
+			want:    10.0,
+		},
+		{
+			name:    "using tokens function",
+			expr:    "tokens('goal')",
+			marking: Marking{"goal": 5, "other": 3},
+			want:    5.0,
+		},
+		{
+			name:    "using sum function",
+			expr:    "sum('score')",
+			marking: Marking{"score_a": 10, "score_b": 20, "other": 5},
+			want:    30.0, // score_a + score_b
+		},
+		{
+			name:    "complex objective with arithmetic",
+			expr:    "(win_x - win_o) * 100 + center",
+			marking: Marking{"win_x": 0, "win_o": 0, "center": 1},
+			want:    1.0,
+		},
+		{
+			name:    "tic-tac-toe mid-game",
+			expr:    "win_x - win_o",
+			marking: Marking{"win_x": 0, "win_o": 0, "x_turn": 1, "o_turn": 0, "x00": 1, "o11": 1},
+			want:    0.0,
+		},
+		{
+			name:    "places with zero tokens",
+			expr:    "win_x - win_o",
+			marking: Marking{"win_x": 0, "win_o": 0}, // explicit zeros
+			want:    0.0,
+		},
+		{
+			name:    "missing places cause error",
+			expr:    "win_x - win_o",
+			marking: Marking{}, // empty marking - referenced places not bound
+			wantErr: true,
+		},
+		{
+			name:    "empty expression",
+			expr:    "",
+			marking: Marking{"win_x": 1},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := EvaluateObjective(tt.expr, tt.marking)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EvaluateObjective() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && math.Abs(got-tt.want) > 0.0001 {
+				t.Errorf("EvaluateObjective() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEvaluateNumeric(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		bindings map[string]any
+		want     float64
+		wantErr  bool
+	}{
+		{
+			name:     "simple addition",
+			expr:     "a + b",
+			bindings: map[string]any{"a": int64(3), "b": int64(4)},
+			want:     7.0,
+		},
+		{
+			name:     "subtraction",
+			expr:     "x - y",
+			bindings: map[string]any{"x": int64(10), "y": int64(3)},
+			want:     7.0,
+		},
+		{
+			name:     "multiplication",
+			expr:     "a * b",
+			bindings: map[string]any{"a": float64(2.5), "b": float64(4)},
+			want:     10.0,
+		},
+		{
+			name:     "division",
+			expr:     "total / count",
+			bindings: map[string]any{"total": int64(100), "count": int64(4)},
+			want:     25.0,
+		},
+		{
+			name:     "complex expression",
+			expr:     "(a + b) * c - d",
+			bindings: map[string]any{"a": int64(2), "b": int64(3), "c": int64(4), "d": int64(5)},
+			want:     15.0, // (2+3)*4 - 5 = 20 - 5 = 15
+		},
+		{
+			name:     "boolean expression returns error",
+			expr:     "a > b",
+			bindings: map[string]any{"a": int64(5), "b": int64(3)},
+			wantErr:  true, // returns bool, not number
+		},
+		{
+			name:     "literal number",
+			expr:     "42",
+			bindings: map[string]any{},
+			want:     42.0,
+		},
+		{
+			name:     "negative number",
+			expr:     "-score",
+			bindings: map[string]any{"score": int64(10)},
+			want:     -10.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := EvaluateNumeric(tt.expr, tt.bindings, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EvaluateNumeric() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && math.Abs(got-tt.want) > 0.0001 {
+				t.Errorf("EvaluateNumeric() = %v, want %v", got, tt.want)
 			}
 		})
 	}

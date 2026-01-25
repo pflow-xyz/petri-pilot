@@ -68,6 +68,10 @@
     "eventSourcing": {
       "$ref": "#/$defs/eventSourcing",
       "description": "Event sourcing configuration for snapshots and retention."
+    },
+    "simulation": {
+      "$ref": "#/$defs/simulation",
+      "description": "ODE simulation configuration for AI move evaluation and strategic analysis."
     }
   },
   "$defs": {
@@ -451,6 +455,70 @@
           "type": "string",
           "description": "How long to retain snapshots (e.g., '1y', '5y').",
           "pattern": "^\\d+[dwmy]$"
+        }
+      }
+    },
+    "simulation": {
+      "type": "object",
+      "description": "ODE simulation configuration for AI move evaluation. Uses Guard DSL for objective functions.",
+      "properties": {
+        "objective": {
+          "type": "string",
+          "description": "Numeric expression evaluated against the marking to score positions. Uses Guard DSL syntax with arithmetic (+, -, *, /), comparisons, and aggregate functions (sum, count, tokens, minOf, maxOf).",
+          "examples": ["win_x - win_o", "tokens('goal')", "sum('score') - sum('penalty')"]
+        },
+        "players": {
+          "type": "object",
+          "description": "Players/agents in the simulation with their goals.",
+          "additionalProperties": { "$ref": "#/$defs/player" }
+        },
+        "solver": {
+          "$ref": "#/$defs/solverConfig",
+          "description": "ODE solver parameters."
+        }
+      }
+    },
+    "player": {
+      "type": "object",
+      "description": "A player/agent in the simulation.",
+      "properties": {
+        "maximizes": {
+          "type": "boolean",
+          "description": "Whether this player tries to maximize the objective (true) or minimize it (false).",
+          "default": true
+        },
+        "turnPlace": {
+          "type": "string",
+          "description": "Place ID that indicates it's this player's turn. Used for turn-based games."
+        },
+        "transitions": {
+          "type": "array",
+          "description": "Transitions this player can fire. If empty, inferred from turnPlace.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "solverConfig": {
+      "type": "object",
+      "description": "ODE solver configuration.",
+      "properties": {
+        "tspan": {
+          "type": "array",
+          "description": "Simulation time span [start, end]. Default: [0, 10].",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "default": [0, 10]
+        },
+        "dt": {
+          "type": "number",
+          "description": "Initial time step. Default: 0.01.",
+          "default": 0.01
+        },
+        "rates": {
+          "type": "object",
+          "description": "Transition firing rates. Default: all 1.0.",
+          "additionalProperties": { "type": "number" }
         }
       }
     }

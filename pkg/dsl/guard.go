@@ -298,6 +298,77 @@ func addBuiltins(ctx *Context) {
 	}
 }
 
+// EvaluateNumeric evaluates an expression and returns a numeric result.
+// Unlike Evaluate (which returns bool), this is used for objective functions.
+// Examples: "win_x - win_o", "tokens('goal') * 10", "sum('score')"
+func EvaluateNumeric(expr string, bindings map[string]any, funcs map[string]GuardFunc) (float64, error) {
+	if expr == "" {
+		return 0, fmt.Errorf("empty expression")
+	}
+
+	compiled, err := Compile(expr)
+	if err != nil {
+		return 0, err
+	}
+
+	return EvalNumericCompiled(compiled, bindings, funcs)
+}
+
+// EvalNumericCompiled evaluates a pre-compiled expression and returns a numeric result.
+func EvalNumericCompiled(compiled *Compiled, bindings map[string]any, funcs map[string]GuardFunc) (float64, error) {
+	if compiled == nil || compiled.ast == nil {
+		return 0, fmt.Errorf("nil compiled expression")
+	}
+
+	ctx := &Context{
+		Bindings: bindings,
+		Funcs:    funcs,
+	}
+
+	if ctx.Bindings == nil {
+		ctx.Bindings = make(map[string]any)
+	}
+	if ctx.Funcs == nil {
+		ctx.Funcs = make(map[string]GuardFunc)
+	}
+
+	// Add built-in functions
+	addBuiltins(ctx)
+
+	result, err := Eval(compiled.ast, ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	// Result must be numeric
+	n, ok := toNumber(result)
+	if !ok {
+		return 0, fmt.Errorf("expression must evaluate to number, got %T: %v", result, result)
+	}
+
+	return n, nil
+}
+
+// EvaluateObjective evaluates an objective expression against a marking.
+// This is the primary function for AI move evaluation.
+// It provides aggregate functions (sum, count, tokens) and place values as bindings.
+func EvaluateObjective(expr string, marking Marking) (float64, error) {
+	if expr == "" {
+		return 0, fmt.Errorf("empty objective expression")
+	}
+
+	// Create bindings from marking (place values accessible directly)
+	bindings := make(map[string]any)
+	for placeID, count := range marking {
+		bindings[placeID] = int64(count)
+	}
+
+	// Create aggregate functions bound to this marking
+	funcs := MakeAggregates(marking)
+
+	return EvaluateNumeric(expr, bindings, funcs)
+}
+
 // Marking is a type alias for token state values.
 type Marking map[string]int
 
