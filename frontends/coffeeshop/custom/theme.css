@@ -116,6 +116,14 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.charts-section {
+  margin-bottom: 1.5rem;
+}
+
+.recipes-section {
+  margin-bottom: 1.5rem;
+}
+
 /* Responsive layouts */
 @media (max-width: 1024px) {
   .config-section {
@@ -197,6 +205,67 @@ body {
 .btn-cappuccino {
   background: linear-gradient(to bottom, var(--cappuccino-light), var(--latte-brown));
   color: white;
+}
+
+/* ============================================================================
+   Coffee Themed Sliders
+   ============================================================================ */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: linear-gradient(to right, var(--foam), var(--cappuccino-light));
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--coffee-brown), var(--espresso-dark));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--cream);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+  background: linear-gradient(to bottom, var(--espresso-dark), #2C1810);
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: linear-gradient(to right, var(--foam), var(--cappuccino-light));
+  border-radius: var(--radius-sm);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--coffee-brown), var(--espresso-dark));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--cream);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
 }
 
 /* ============================================================================

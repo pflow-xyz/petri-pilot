@@ -21,9 +21,6 @@ let solverParams = {
   reltol: 1e-3
 }
 
-// Last run stats
-let lastRunStats = { time: 0, center: 0 }
-
 // Win patterns as position indices (derived from Petri net topology)
 // These are encoded as transitions in the net - each pattern is a transition
 // that consumes tokens from the 3 piece places in the winning line
@@ -1448,72 +1445,188 @@ function updateSimulationChart() {
   }
 }
 
-// Solver parameter controls
-function updateSolverParams() {
-  const tspanSlider = document.getElementById('tspan-slider')
-  const dtSlider = document.getElementById('dt-slider')
-  const adaptiveToggle = document.getElementById('adaptive-toggle')
-  const tspanValue = document.getElementById('tspan-value')
-  const dtValue = document.getElementById('dt-value')
+// Generate SVG snapshot of current game state
+function downloadSnapshot() {
+  const svgWidth = 600
+  const svgHeight = 500
+  const cellSize = 80
+  const boardSize = cellSize * 3
+  const boardX = 30
+  const boardY = 80
 
-  if (tspanSlider && dtSlider && adaptiveToggle) {
-    solverParams.tspan = parseFloat(tspanSlider.value)
-    solverParams.dt = parseFloat(dtSlider.value)
-    solverParams.adaptive = adaptiveToggle.checked
-
-    if (tspanValue) tspanValue.textContent = solverParams.tspan.toFixed(1)
-    if (dtValue) dtValue.textContent = solverParams.dt.toFixed(2)
-  }
-}
-
-function applyPreset(preset) {
-  const tspanSlider = document.getElementById('tspan-slider')
-  const dtSlider = document.getElementById('dt-slider')
-  const adaptiveToggle = document.getElementById('adaptive-toggle')
-
-  if (preset === 'fast') {
-    solverParams = { tspan: 2.0, dt: 0.2, adaptive: false, abstol: 1e-4, reltol: 1e-3 }
-  } else if (preset === 'balanced') {
-    solverParams = { tspan: 2.0, dt: 0.2, adaptive: true, abstol: 1e-4, reltol: 1e-3 }
-  } else if (preset === 'accurate') {
-    solverParams = { tspan: 3.0, dt: 0.1, adaptive: true, abstol: 1e-6, reltol: 1e-4 }
+  // Helper to get heat color
+  function getHeatColorForSVG(value) {
+    if (!odeValues || value === 0) return '#e0e0e0'
+    const vals = Object.values(odeValues).filter(v => v !== 0)
+    if (vals.length === 0) return '#e0e0e0'
+    const minVal = Math.min(...vals)
+    const maxVal = Math.max(...vals)
+    const range = maxVal - minVal
+    const normalized = range > 0 ? Math.max(0, Math.min(1, (value - minVal) / range)) : 0.5
+    const r = Math.round(255 * normalized)
+    const g = Math.round(100 - 50 * normalized)
+    const b = Math.round(255 * (1 - normalized))
+    return `rgb(${r}, ${g}, ${b})`
   }
 
-  // Update UI
-  if (tspanSlider) tspanSlider.value = solverParams.tspan
-  if (dtSlider) dtSlider.value = solverParams.dt
-  if (adaptiveToggle) adaptiveToggle.checked = solverParams.adaptive
-  updateSolverParams()
+  // Build board cells SVG
+  let boardCells = ''
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const x = boardX + col * cellSize + 4
+      const y = boardY + row * cellSize + 4
+      const piece = gameState.board[row][col]
+      const pos = `${row}${col}`
+      const isWinningCell = gameState.winner && gameState.winner !== 'draw' &&
+        WIN_PATTERNS.some(pattern => {
+          const cells = pattern.map(i => gameState.board[Math.floor(i/3)][i%3])
+          return cells[0] && cells[0] === cells[1] && cells[1] === cells[2] && pattern.includes(row * 3 + col)
+        })
 
-  // Re-run simulation
-  rerunSimulation()
-}
+      // Cell background
+      let cellFill = '#f0f0f0'
+      if (isWinningCell) {
+        cellFill = '#90EE90'
+      } else if (showHeatmap && !piece && odeValues) {
+        cellFill = getHeatColorForSVG(odeValues[pos] || 0)
+      }
 
-async function rerunSimulation() {
-  const statsEl = document.getElementById('solver-stats')
-  if (statsEl) {
-    statsEl.textContent = 'Running simulation...'
-  }
+      boardCells += `
+        <rect x="${x}" y="${y}" width="${cellSize - 8}" height="${cellSize - 8}" rx="6" fill="${cellFill}" stroke="#ccc" stroke-width="1"/>
+      `
 
-  const startTime = performance.now()
-  const board = simMode === 'current' ? gameState.board : null
-  const result = runLocalODESimulation(board)
-  const elapsed = performance.now() - startTime
-
-  if (result) {
-    odeValues = result.values
-    lastRunStats = {
-      time: elapsed.toFixed(0),
-      center: result.values['11']?.toFixed(4) || '--'
+      if (piece) {
+        // Draw X or O
+        const centerX = x + (cellSize - 8) / 2
+        const centerY = y + (cellSize - 8) / 2
+        if (piece === 'X') {
+          boardCells += `
+            <text x="${centerX}" y="${centerY + 12}" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#e74c3c" text-anchor="middle">${piece}</text>
+          `
+        } else {
+          boardCells += `
+            <text x="${centerX}" y="${centerY + 12}" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#3498db" text-anchor="middle">${piece}</text>
+          `
+        }
+      } else if (showHeatmap && odeValues && odeValues[pos] !== undefined) {
+        // Show heat value
+        const centerX = x + (cellSize - 8) / 2
+        const centerY = y + (cellSize - 8) / 2
+        boardCells += `
+          <text x="${centerX}" y="${centerY + 5}" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${odeValues[pos].toFixed(3)}</text>
+          <text x="${centerX}" y="${centerY + 20}" font-family="Arial, sans-serif" font-size="9" fill="rgba(255,255,255,0.8)" text-anchor="middle">ODE</text>
+        `
+      }
     }
   }
 
-  if (statsEl) {
-    statsEl.textContent = `Last run: ${lastRunStats.time}ms | Center: ${lastRunStats.center} | tspan=${solverParams.tspan} dt=${solverParams.dt} adaptive=${solverParams.adaptive}`
+  // Build move history
+  let historyItems = ''
+  const historyX = boardX + boardSize + 40
+  const historyY = boardY
+
+  if (gameState.events && gameState.events.length > 0) {
+    gameState.events.forEach((event, index) => {
+      const type = event.type || ''
+      let description = type
+      let player = ''
+
+      if (type.startsWith('XPlayed') || type.startsWith('OPlayed')) {
+        player = type.charAt(0)
+        const row = type.charAt(7)
+        const col = type.charAt(8)
+        description = `(${row},${col})`
+      }
+
+      const itemY = historyY + index * 28
+      const playerColor = player === 'X' ? '#e74c3c' : '#3498db'
+
+      historyItems += `
+        <rect x="${historyX}" y="${itemY}" width="24" height="24" rx="12" fill="${playerColor}"/>
+        <text x="${historyX + 12}" y="${itemY + 16}" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white" text-anchor="middle">${index + 1}</text>
+        <text x="${historyX + 32}" y="${itemY + 16}" font-family="Arial, sans-serif" font-size="13" fill="#333">${player} → ${description}</text>
+      `
+    })
+  } else {
+    historyItems = `<text x="${historyX}" y="${historyY + 16}" font-family="Arial, sans-serif" font-size="13" fill="#999">No moves yet</text>`
   }
 
-  renderSimulationGrid()
-  updateSimulationChart()
+  // Status text
+  let statusText = ''
+  if (gameState.gameOver) {
+    if (gameState.winner === 'draw') {
+      statusText = `<text x="${boardX + boardSize/2}" y="${boardY + boardSize + 35}" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#f39c12" text-anchor="middle">Draw!</text>`
+    } else {
+      const winnerColor = gameState.winner === 'X' ? '#e74c3c' : '#3498db'
+      statusText = `<text x="${boardX + boardSize/2}" y="${boardY + boardSize + 35}" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="${winnerColor}" text-anchor="middle">${gameState.winner} Wins!</text>`
+    }
+  } else if (gameState.id) {
+    const turnColor = gameState.currentPlayer === 'X' ? '#e74c3c' : '#3498db'
+    statusText = `<text x="${boardX + boardSize/2}" y="${boardY + boardSize + 35}" font-family="Arial, sans-serif" font-size="16" fill="#666" text-anchor="middle">Current turn: <tspan font-weight="bold" fill="${turnColor}">${gameState.currentPlayer}</tspan></text>`
+  }
+
+  // Heatmap indicator
+  const heatmapIndicator = showHeatmap
+    ? `<rect x="${svgWidth - 120}" y="15" width="100" height="24" rx="12" fill="#667eea"/>
+       <text x="${svgWidth - 70}" y="32" font-family="Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">Heat Map ON</text>`
+    : ''
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f8f9fa"/>
+
+  <!-- Header -->
+  <rect width="100%" height="55" fill="url(#headerGrad)"/>
+  <text x="20" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="white">Tic-Tac-Toe</text>
+  ${heatmapIndicator}
+
+  <!-- Board background -->
+  <rect x="${boardX - 4}" y="${boardY - 4}" width="${boardSize + 8}" height="${boardSize + 8}" rx="10" fill="#333"/>
+
+  <!-- Board cells -->
+  ${boardCells}
+
+  <!-- Status -->
+  ${statusText}
+
+  <!-- Move History -->
+  <text x="${historyX}" y="${historyY - 15}" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">Move History</text>
+  ${historyItems}
+
+  <!-- Legend (if heatmap) -->
+  ${showHeatmap ? `
+  <text x="${boardX}" y="${boardY + boardSize + 70}" font-family="Arial, sans-serif" font-size="11" fill="#666">Heat Map: Blue (worst) → Red (best)</text>
+  <rect x="${boardX}" y="${boardY + boardSize + 80}" width="100" height="10" rx="3" fill="url(#heatGrad)"/>
+  <defs>
+    <linearGradient id="heatGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:rgb(0,75,255)"/>
+      <stop offset="100%" style="stop-color:rgb(255,50,0)"/>
+    </linearGradient>
+  </defs>
+  ` : ''}
+
+  <!-- Footer -->
+  <text x="${svgWidth / 2}" y="${svgHeight - 15}" font-family="Arial, sans-serif" font-size="10" fill="#999" text-anchor="middle">Generated by Tic-Tac-Toe Simulator • ${new Date().toLocaleString()}</text>
+</svg>`
+
+  // Download
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `tictactoe-snapshot-${Date.now()}.svg`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // Export functions for onclick handlers
@@ -1523,14 +1636,11 @@ window.resetGame = resetGame
 window.toggleHeatmap = toggleHeatmap
 window.setSimMode = setSimMode
 window.revertToMove = revertToMove
-window.updateSolverParams = updateSolverParams
-window.applyPreset = applyPreset
-window.rerunSimulation = rerunSimulation
+window.downloadSnapshot = downloadSnapshot
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   renderGame()
   renderEvents()
   renderSimulationGrid()
-  updateSolverParams() // Initialize solver params from UI
 })

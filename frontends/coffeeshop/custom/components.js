@@ -34,7 +34,7 @@ class CoffeeShopComponent extends HTMLElement {
 // ============================================================================
 class CoffeeShopScene extends CoffeeShopComponent {
   static get observedAttributes() {
-    return ['customers', 'barista-busy', 'ready-drinks'];
+    return ['customers', 'barista-busy', 'ready-drinks', 'brew-progress', 'mood'];
   }
 
   connectedCallback() {
@@ -54,7 +54,7 @@ class CoffeeShopScene extends CoffeeShopComponent {
           border-radius: 12px;
           padding: 2rem;
           position: relative;
-          min-height: 300px;
+          min-height: 340px;
           overflow: hidden;
         }
 
@@ -64,6 +64,7 @@ class CoffeeShopScene extends CoffeeShopComponent {
           gap: 2rem;
           align-items: center;
           height: 100%;
+          padding-bottom: 3.5rem; /* Make room for inventory bar */
         }
 
         .queue-area {
@@ -124,11 +125,137 @@ class CoffeeShopScene extends CoffeeShopComponent {
 
         .coffee-machine {
           width: 80%;
-          height: 60px;
+          height: 80px;
           background: linear-gradient(to bottom, #424242, #212121);
           border-radius: 8px;
           position: relative;
           margin-top: 0.5rem;
+          overflow: hidden;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .brew-progress-container {
+          position: absolute;
+          bottom: 8px;
+          left: 8px;
+          right: 8px;
+          height: 20px;
+          background: #1a1a1a;
+          border-radius: 4px;
+          overflow: hidden;
+          border: 1px solid #333;
+        }
+
+        .brew-progress-bar {
+          height: 100%;
+          width: 0%;
+          background: linear-gradient(to right, #6D4C41, #8D6E63, #A1887F);
+          border-radius: 3px;
+          transition: width 0.3s ease;
+          position: relative;
+        }
+
+        .brew-progress-bar.active {
+          animation: brew-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes brew-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+
+        .brew-progress-text {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 10px;
+          font-weight: bold;
+          color: #FFF8E1;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+          z-index: 1;
+        }
+
+        .machine-display {
+          position: absolute;
+          top: 8px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #1a1a1a;
+          padding: 4px 12px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-family: monospace;
+          color: #4CAF50;
+          border: 1px solid #333;
+        }
+
+        .machine-display.brewing {
+          color: #FFD54F;
+          animation: display-blink 0.5s ease-in-out infinite;
+        }
+
+        @keyframes display-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+
+        .mood-indicator {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background: white;
+          border-radius: 20px;
+          padding: 4px 10px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.3s ease;
+        }
+
+        .mood-indicator.relaxed {
+          background: #E8F5E9;
+          color: #2E7D32;
+        }
+
+        .mood-indicator.normal {
+          background: #FFF8E1;
+          color: #6D4C41;
+        }
+
+        .mood-indicator.busy {
+          background: #FFF3E0;
+          color: #E65100;
+        }
+
+        .mood-indicator.stressed {
+          background: #FFEBEE;
+          color: #C62828;
+          animation: mood-pulse 1s ease-in-out infinite;
+        }
+
+        .mood-indicator.overwhelmed {
+          background: #F44336;
+          color: white;
+          animation: mood-shake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes mood-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+
+        @keyframes mood-shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-2px); }
+          75% { transform: translateX(2px); }
+        }
+
+        .mood-emoji {
+          font-size: 1rem;
         }
 
         .steam {
@@ -221,9 +348,19 @@ class CoffeeShopScene extends CoffeeShopComponent {
         </div>
 
         <div class="barista-station">
+          <div class="mood-indicator normal" id="mood-indicator">
+            <span class="mood-emoji">😊</span>
+            <span class="mood-text">Relaxed</span>
+          </div>
           <div class="barista" id="barista">👨‍🍳</div>
           <div class="steam">💨</div>
-          <div class="coffee-machine"></div>
+          <div class="coffee-machine">
+            <div class="machine-display" id="machine-display">READY</div>
+            <div class="brew-progress-container">
+              <div class="brew-progress-bar" id="brew-progress"></div>
+              <div class="brew-progress-text" id="brew-text">0%</div>
+            </div>
+          </div>
         </div>
 
         <div class="serving-counter">
@@ -273,6 +410,31 @@ class CoffeeShopScene extends CoffeeShopComponent {
       }
     }
 
+    // Update brew progress
+    const brewProgress = parseInt(this.getAttribute('brew-progress') || '0');
+    const progressBar = this.$('#brew-progress');
+    const progressText = this.$('#brew-text');
+    const machineDisplay = this.$('#machine-display');
+
+    if (progressBar && progressText && machineDisplay) {
+      progressBar.style.width = `${brewProgress}%`;
+      progressText.textContent = `${brewProgress}%`;
+
+      if (baristaBusy && brewProgress > 0) {
+        progressBar.classList.add('active');
+        machineDisplay.classList.add('brewing');
+        machineDisplay.textContent = 'BREWING...';
+      } else if (brewProgress >= 100) {
+        progressBar.classList.remove('active');
+        machineDisplay.classList.remove('brewing');
+        machineDisplay.textContent = 'DONE!';
+      } else {
+        progressBar.classList.remove('active');
+        machineDisplay.classList.remove('brewing');
+        machineDisplay.textContent = 'READY';
+      }
+    }
+
     // Update ready drinks
     const drinksEl = this.$('#ready-drinks');
     if (drinksEl) {
@@ -280,6 +442,26 @@ class CoffeeShopScene extends CoffeeShopComponent {
         .fill('☕')
         .map(icon => `<div class="drink">${icon}</div>`)
         .join('');
+    }
+
+    // Update mood indicator
+    const mood = this.getAttribute('mood') || 'relaxed';
+    const moodIndicator = this.$('#mood-indicator');
+    if (moodIndicator) {
+      const moods = {
+        relaxed: { emoji: '😊', text: 'Relaxed', class: 'relaxed' },
+        normal: { emoji: '🙂', text: 'Normal', class: 'normal' },
+        busy: { emoji: '😅', text: 'Busy', class: 'busy' },
+        stressed: { emoji: '😰', text: 'Stressed', class: 'stressed' },
+        overwhelmed: { emoji: '🤯', text: 'Overwhelmed!', class: 'overwhelmed' }
+      };
+      const moodData = moods[mood] || moods.normal;
+
+      moodIndicator.className = `mood-indicator ${moodData.class}`;
+      moodIndicator.innerHTML = `
+        <span class="mood-emoji">${moodData.emoji}</span>
+        <span class="mood-text">${moodData.text}</span>
+      `;
     }
   }
 
@@ -533,19 +715,7 @@ class OrderFlowBoard extends CoffeeShopComponent {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          animation: order-slide 0.3s ease-out;
           cursor: grab;
-        }
-
-        @keyframes order-slide {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
         }
 
         .order-icon {
@@ -562,6 +732,21 @@ class OrderFlowBoard extends CoffeeShopComponent {
           font-size: 0.75rem;
           color: #666;
           margin-left: auto;
+        }
+
+        .order-card.fresh {
+          background: #E8F5E9;
+          border-left: 3px solid #4CAF50;
+        }
+
+        .order-card.warning {
+          background: #FFF3E0;
+          border-left: 3px solid #FF9800;
+        }
+
+        .order-card.critical {
+          background: #FFEBEE;
+          border-left: 3px solid #F44336;
         }
       </style>
 
@@ -586,11 +771,12 @@ class OrderFlowBoard extends CoffeeShopComponent {
     `;
   }
 
-  addOrder(type, lane = 'pending') {
+  addOrder(type, lane = 'pending', simTime = null) {
     const order = {
-      id: Date.now(),
+      id: Date.now() + Math.random(), // Unique ID
       type,
-      timestamp: Date.now(),
+      simTime: simTime, // Simulation time when order was placed
+      timestamp: Date.now(), // Real time for display updates
       icon: this.getOrderIcon(type)
     };
 
@@ -618,21 +804,94 @@ class OrderFlowBoard extends CoffeeShopComponent {
     return icons[type] || '☕';
   }
 
-  renderLane(lane) {
+  renderLane(lane, currentSimTime = null, patienceWarning = 180, patienceCritical = 240, patienceThreshold = 300) {
     const container = this.$(`#lane-${lane}`);
     if (!container) return;
 
     const orders = this.orders[lane].slice(-5); // Show max 5
     container.innerHTML = orders.map(order => {
-      const elapsed = Math.floor((Date.now() - order.timestamp) / 1000);
+      let waitTime = 0;
+      let patienceClass = 'fresh';
+      let displayTime = '';
+
+      if (order.simTime !== null && currentSimTime !== null) {
+        // Use simulation time for wait calculation
+        waitTime = currentSimTime - order.simTime;
+        if (waitTime >= patienceCritical) {
+          patienceClass = 'critical';
+        } else if (waitTime >= patienceWarning) {
+          patienceClass = 'warning';
+        }
+        // Format wait time in minutes:seconds
+        const mins = Math.floor(waitTime / 60);
+        const secs = Math.floor(waitTime % 60);
+        displayTime = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      } else {
+        // Fallback to real time
+        const elapsed = Math.floor((Date.now() - order.timestamp) / 1000);
+        displayTime = `${elapsed}s`;
+      }
+
       return `
-        <div class="order-card" data-id="${order.id}">
+        <div class="order-card ${patienceClass}" data-id="${order.id}">
           <span class="order-icon">${order.icon}</span>
           <span class="order-type">${order.type}</span>
-          <span class="order-time">${elapsed}s</span>
+          <span class="order-time">${displayTime}</span>
         </div>
       `;
     }).join('');
+  }
+
+  removeOrder(orderId, lane) {
+    const orderIndex = this.orders[lane].findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return;
+
+    this.orders[lane].splice(orderIndex, 1);
+    this.renderLane(lane);
+  }
+
+  updatePatience(currentSimTime, patienceWarning, patienceCritical, patienceThreshold) {
+    // Update patience styling in place without re-rendering (avoids animation flicker)
+    const container = this.$('#lane-pending');
+    if (!container) return;
+
+    const cards = container.querySelectorAll('.order-card');
+    const pendingOrders = this.orders.pending.slice(-5); // Match what's displayed
+
+    cards.forEach((card, index) => {
+      const order = pendingOrders[index];
+      if (!order || order.simTime === null) return;
+
+      const waitTime = currentSimTime - order.simTime;
+
+      // Update patience class
+      card.classList.remove('fresh', 'warning', 'critical');
+      if (waitTime >= patienceCritical) {
+        card.classList.add('critical');
+      } else if (waitTime >= patienceWarning) {
+        card.classList.add('warning');
+      } else {
+        card.classList.add('fresh');
+      }
+
+      // Update time display
+      const timeEl = card.querySelector('.order-time');
+      if (timeEl) {
+        const mins = Math.floor(waitTime / 60);
+        const secs = Math.floor(waitTime % 60);
+        timeEl.textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      }
+    });
+  }
+
+  reset() {
+    this.orders = {
+      pending: [],
+      preparing: [],
+      ready: [],
+      served: []
+    };
+    ['pending', 'preparing', 'ready', 'served'].forEach(lane => this.renderLane(lane));
   }
 }
 
@@ -652,6 +911,7 @@ class RateConfigPanel extends CoffeeShopComponent {
       serve_latte: 30,
       serve_cappuccino: 30
     };
+    this.patienceMinutes = 5; // Default 5 minutes before customers leave
     this.render();
   }
 
@@ -715,6 +975,47 @@ class RateConfigPanel extends CoffeeShopComponent {
         input[type="range"] {
           flex: 1;
           min-width: 100px;
+          -webkit-appearance: none;
+          appearance: none;
+          height: 8px;
+          background: linear-gradient(to right, #FFECB3, #A1887F);
+          border-radius: 4px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          background: linear-gradient(to bottom, #6D4C41, #3E2723);
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(62, 39, 35, 0.3);
+          border: 2px solid #FFF8E1;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 8px rgba(62, 39, 35, 0.4);
+        }
+
+        input[type="range"]::-moz-range-track {
+          height: 8px;
+          background: linear-gradient(to right, #FFECB3, #A1887F);
+          border-radius: 4px;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          background: linear-gradient(to bottom, #6D4C41, #3E2723);
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(62, 39, 35, 0.3);
+          border: 2px solid #FFF8E1;
         }
 
         .presets {
@@ -767,6 +1068,21 @@ class RateConfigPanel extends CoffeeShopComponent {
           ${this.renderSlider('serve_cappuccino', 'Cappuccino', 0, 60)}
         </div>
 
+        <div class="rate-group">
+          <div class="group-title">🚶 Customer Patience</div>
+          <div class="rate-slider">
+            <label class="rate-label">Walk out after</label>
+            <input type="range"
+              class="rate-input"
+              id="patience"
+              min="1"
+              max="15"
+              value="${this.patienceMinutes}"
+              step="1">
+            <span class="rate-value" id="patience-value">${this.patienceMinutes} min</span>
+          </div>
+        </div>
+
         <div class="presets">
           <button class="preset-btn" data-preset="slow">☕ Slow Day</button>
           <button class="preset-btn" data-preset="normal">📊 Normal</button>
@@ -810,6 +1126,18 @@ class RateConfigPanel extends CoffeeShopComponent {
         });
       }
     });
+
+    // Patience slider
+    const patienceSlider = this.$('#patience');
+    if (patienceSlider) {
+      patienceSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        this.patienceMinutes = value;
+        const valueEl = this.$('#patience-value');
+        if (valueEl) valueEl.textContent = `${value} min`;
+        this.emit('patience-change', { minutes: value });
+      });
+    }
 
     // Presets
     this.$$('.preset-btn').forEach(btn => {
@@ -860,6 +1188,10 @@ class RateConfigPanel extends CoffeeShopComponent {
 
   getRates() {
     return { ...this.rates };
+  }
+
+  getPatienceMinutes() {
+    return this.patienceMinutes;
   }
 }
 
@@ -972,8 +1304,19 @@ class SimulationControls extends CoffeeShopComponent {
           transition: background 0.2s;
         }
 
-        .jump-btn:hover {
-          background: #E65100;
+        .report-btn {
+          background: #2E7D32;
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+
+        .report-btn:hover {
+          background: #1B5E20;
         }
       </style>
 
@@ -992,7 +1335,7 @@ class SimulationControls extends CoffeeShopComponent {
           <button class="speed-btn" data-speed="10">10x</button>
         </div>
 
-        <button class="jump-btn" id="jump-runout">⏩ Jump to Runout</button>
+        <button class="report-btn" id="download-report">📊 Download Report</button>
       </div>
     `;
 
@@ -1027,10 +1370,10 @@ class SimulationControls extends CoffeeShopComponent {
       });
     });
 
-    const jumpBtn = this.$('#jump-runout');
-    if (jumpBtn) {
-      jumpBtn.addEventListener('click', () => {
-        this.emit('jump-runout');
+    const reportBtn = this.$('#download-report');
+    if (reportBtn) {
+      reportBtn.addEventListener('click', () => {
+        this.emit('download-report');
       });
     }
   }
@@ -1211,9 +1554,24 @@ class StatsDashboard extends CoffeeShopComponent {
       ordersPerHour: { espresso: 0, latte: 0, cappuccino: 0 },
       averageWaitTime: 0,
       drinksServed: 0,
-      resourceEfficiency: 100
+      resourceEfficiency: 100,
+      waitTimeSampleCount: 0
     };
+    this.selectedWindow = 'all';
     this.render();
+    this.attachListeners();
+  }
+
+  attachListeners() {
+    const select = this.$('#wait-time-window');
+    if (select) {
+      select.addEventListener('change', (e) => {
+        this.selectedWindow = e.target.value;
+        this.dispatchEvent(new CustomEvent('wait-time-window-change', {
+          detail: { window: this.selectedWindow }
+        }));
+      });
+    }
   }
 
   render() {
@@ -1278,6 +1636,38 @@ class StatsDashboard extends CoffeeShopComponent {
           border-radius: 2px 2px 0 0;
           transition: height 0.3s ease;
         }
+
+        .abandoned-card .stat-value {
+          color: #F44336;
+        }
+
+        .stat-subtext {
+          font-size: 0.75rem;
+          color: #999;
+          margin-top: 0.25rem;
+        }
+
+        .window-select {
+          margin-top: 0.5rem;
+          padding: 0.25rem 0.5rem;
+          border: 1px solid #A1887F;
+          border-radius: 4px;
+          background: #FFF8E1;
+          color: #5D4037;
+          font-size: 0.75rem;
+          cursor: pointer;
+        }
+
+        .window-select:focus {
+          outline: none;
+          border-color: #6D4C41;
+        }
+
+        .sample-count {
+          font-size: 0.7rem;
+          color: #999;
+          margin-top: 0.25rem;
+        }
       </style>
 
       <div class="stats-container">
@@ -1295,11 +1685,25 @@ class StatsDashboard extends CoffeeShopComponent {
         <div class="stat-card">
           <div class="stat-value" id="wait-time">0s</div>
           <div class="stat-label">Avg Wait Time</div>
+          <select class="window-select" id="wait-time-window">
+            <option value="all">All Time</option>
+            <option value="1h">Last Hour</option>
+            <option value="30m">Last 30 Min</option>
+            <option value="10m">Last 10 Min</option>
+            <option value="5m">Last 5 Min</option>
+          </select>
+          <div class="sample-count" id="sample-count">0 samples</div>
         </div>
 
         <div class="stat-card">
           <div class="stat-value" id="efficiency">100%</div>
           <div class="stat-label">Efficiency</div>
+        </div>
+
+        <div class="stat-card abandoned-card">
+          <div class="stat-value" id="abandoned-count">0</div>
+          <div class="stat-label">Abandoned</div>
+          <div class="stat-subtext" id="abandonment-rate">0% rate</div>
         </div>
       </div>
     `;
@@ -1334,12 +1738,38 @@ class StatsDashboard extends CoffeeShopComponent {
 
     if (stats.averageWaitTime !== undefined) {
       const el = this.$('#wait-time');
-      if (el) el.textContent = `${Math.round(stats.averageWaitTime)}s`;
+      if (el) {
+        const seconds = Math.round(stats.averageWaitTime);
+        if (seconds >= 60) {
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          el.textContent = `${mins}m ${secs}s`;
+        } else {
+          el.textContent = `${seconds}s`;
+        }
+      }
+    }
+
+    if (stats.waitTimeSampleCount !== undefined) {
+      const el = this.$('#sample-count');
+      if (el) {
+        el.textContent = `${stats.waitTimeSampleCount} sample${stats.waitTimeSampleCount !== 1 ? 's' : ''}`;
+      }
     }
 
     if (stats.resourceEfficiency !== undefined) {
       const el = this.$('#efficiency');
       if (el) el.textContent = `${Math.round(stats.resourceEfficiency)}%`;
+    }
+
+    if (stats.abandonedCount !== undefined) {
+      const countEl = this.$('#abandoned-count');
+      if (countEl) countEl.textContent = stats.abandonedCount;
+    }
+
+    if (stats.abandonmentRate !== undefined) {
+      const rateEl = this.$('#abandonment-rate');
+      if (rateEl) rateEl.textContent = `${stats.abandonmentRate.toFixed(1)}% rate`;
     }
   }
 
@@ -1362,6 +1792,571 @@ class StatsDashboard extends CoffeeShopComponent {
 }
 
 // ============================================================================
+// Simulation Charts Component
+// ============================================================================
+class SimulationCharts extends CoffeeShopComponent {
+  connectedCallback() {
+    this.queueChart = null;
+    this.waitTimeChart = null;
+    this.render();
+    // Defer chart initialization until Chart.js is available
+    this.initChartsWhenReady();
+  }
+
+  disconnectedCallback() {
+    if (this.queueChart) {
+      this.queueChart.destroy();
+      this.queueChart = null;
+    }
+    if (this.waitTimeChart) {
+      this.waitTimeChart.destroy();
+      this.waitTimeChart = null;
+    }
+  }
+
+  render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+
+        .charts-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1rem;
+        }
+
+        .chart-card {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .chart-header {
+          font-weight: 600;
+          color: #3E2723;
+          margin-bottom: 1rem;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .chart-wrapper {
+          position: relative;
+          height: 200px;
+        }
+
+        canvas {
+          width: 100% !important;
+          height: 100% !important;
+        }
+
+        .no-data {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
+          color: #999;
+          font-size: 0.9rem;
+        }
+      </style>
+
+      <div class="charts-container">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span>📊</span>
+            <span>Queue Length Over Time</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="queue-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span>⏱️</span>
+            <span>Average Wait Time</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="wait-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  initChartsWhenReady() {
+    // Wait for Chart.js to be available
+    const checkChart = () => {
+      if (typeof Chart !== 'undefined') {
+        this.initCharts();
+      } else {
+        setTimeout(checkChart, 100);
+      }
+    };
+    checkChart();
+  }
+
+  initCharts() {
+    const queueCanvas = this.$('#queue-chart');
+    const waitCanvas = this.$('#wait-chart');
+
+    if (!queueCanvas || !waitCanvas) return;
+
+    // Store timestamps and abandonment times for drawing markers
+    this.timestamps = [];
+    this.abandonmentTimes = [];
+
+    // Vertical line crosshair plugin
+    const crosshairPlugin = {
+      id: 'crosshair',
+      afterDraw: (chart) => {
+        if (chart.tooltip._active && chart.tooltip._active.length) {
+          const ctx = chart.ctx;
+          const activePoint = chart.tooltip._active[0];
+          const x = activePoint.element.x;
+          const topY = chart.scales.y.top;
+          const bottomY = chart.scales.y.bottom;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    };
+
+    // Abandonment marker plugin - draws red vertical lines when customers leave
+    const self = this;
+    const abandonmentPlugin = {
+      id: 'abandonmentMarkers',
+      afterDraw: (chart) => {
+        if (!self.abandonmentTimes || self.abandonmentTimes.length === 0) return;
+        if (!self.timestamps || self.timestamps.length < 2) return;
+
+        const ctx = chart.ctx;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+
+        const minTime = self.timestamps[0];
+        const maxTime = self.timestamps[self.timestamps.length - 1];
+        const timeRange = maxTime - minTime;
+
+        if (timeRange <= 0) return;
+
+        self.abandonmentTimes.forEach(simTime => {
+          // Only draw if within the visible range
+          if (simTime < minTime || simTime > maxTime) return;
+
+          // Calculate position as fraction of the x-axis
+          const fraction = (simTime - minTime) / timeRange;
+          const labelCount = self.timestamps.length - 1;
+          const x = xScale.getPixelForValue(fraction * labelCount);
+
+          const topY = yScale.top;
+          const bottomY = yScale.bottom;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(244, 67, 54, 0.7)';
+          ctx.stroke();
+
+          // Draw small triangle marker at top
+          ctx.beginPath();
+          ctx.moveTo(x - 5, topY);
+          ctx.lineTo(x + 5, topY);
+          ctx.lineTo(x, topY + 8);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(244, 67, 54, 0.9)';
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+    };
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 300
+      },
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Time',
+            color: '#666'
+          },
+          ticks: {
+            color: '#666',
+            maxTicksLimit: 8
+          },
+          grid: {
+            color: 'rgba(0,0,0,0.05)'
+          }
+        },
+        y: {
+          display: true,
+          beginAtZero: true,
+          ticks: {
+            color: '#666'
+          },
+          grid: {
+            color: 'rgba(0,0,0,0.05)'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(62, 39, 35, 0.9)',
+          titleColor: '#FFF8E1',
+          bodyColor: '#FFF8E1',
+          borderColor: '#8D6E63',
+          borderWidth: 1,
+          cornerRadius: 8,
+          displayColors: false,
+          callbacks: {
+            title: (items) => `Time: ${items[0].label}`,
+            label: (item) => `${item.dataset.label}: ${item.parsed.y}`
+          }
+        }
+      }
+    };
+
+    // Queue Length Chart
+    this.queueChart = new Chart(queueCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Queue Length',
+          data: [],
+          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 4
+        }]
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          ...commonOptions.scales,
+          y: {
+            ...commonOptions.scales.y,
+            title: {
+              display: true,
+              text: 'Orders',
+              color: '#666'
+            }
+          }
+        }
+      },
+      plugins: [crosshairPlugin]
+    });
+
+    // Wait Time Chart (with abandonment markers)
+    this.waitTimeChart = new Chart(waitCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Avg Wait Time',
+          data: [],
+          borderColor: '#FF9800',
+          backgroundColor: 'rgba(255, 152, 0, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 4
+        }]
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          ...commonOptions.scales,
+          y: {
+            ...commonOptions.scales.y,
+            title: {
+              display: true,
+              text: 'Seconds',
+              color: '#666'
+            }
+          }
+        }
+      },
+      plugins: [crosshairPlugin, abandonmentPlugin]
+    });
+  }
+
+  formatTime(simSeconds) {
+    const mins = Math.floor(simSeconds / 60);
+    const secs = Math.floor(simSeconds % 60);
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  updateData(historicalData) {
+    if (!this.queueChart || !this.waitTimeChart) return;
+
+    const labels = historicalData.timestamps.map(t => this.formatTime(t));
+
+    // Store raw timestamps and abandonment times for the marker plugin
+    this.timestamps = historicalData.timestamps || [];
+    this.abandonmentTimes = historicalData.abandonmentTimes || [];
+
+    // Update Queue Chart
+    this.queueChart.data.labels = labels;
+    this.queueChart.data.datasets[0].data = historicalData.queueLength;
+    this.queueChart.update('none');
+
+    // Update Wait Time Chart
+    this.waitTimeChart.data.labels = labels;
+    this.waitTimeChart.data.datasets[0].data = historicalData.waitTime;
+    this.waitTimeChart.update('none');
+  }
+
+  reset() {
+    this.timestamps = [];
+    this.abandonmentTimes = [];
+    if (this.queueChart) {
+      this.queueChart.data.labels = [];
+      this.queueChart.data.datasets[0].data = [];
+      this.queueChart.update();
+    }
+    if (this.waitTimeChart) {
+      this.waitTimeChart.data.labels = [];
+      this.waitTimeChart.data.datasets[0].data = [];
+      this.waitTimeChart.update();
+    }
+  }
+}
+
+// ============================================================================
+// Recipe Display Component - Shows Petri Net Resource Requirements
+// ============================================================================
+class RecipeDisplay extends CoffeeShopComponent {
+  constructor() {
+    super();
+    // Recipe data derived from Petri net model arcs:
+    // - make_espresso: coffee_beans (20g), cups (1)
+    // - make_latte: coffee_beans (15g), milk (50ml), cups (1)
+    // - make_cappuccino: coffee_beans (15g), milk (30ml), cups (1)
+    this.recipes = [
+      {
+        id: 'espresso',
+        name: 'Espresso',
+        icon: '☕',
+        rate: 20, // transitions rate from model
+        ingredients: [
+          { resource: 'coffee_beans', amount: 20, unit: 'g' },
+          { resource: 'cups', amount: 1, unit: '' }
+        ]
+      },
+      {
+        id: 'latte',
+        name: 'Latte',
+        icon: '🥛',
+        rate: 12,
+        ingredients: [
+          { resource: 'coffee_beans', amount: 15, unit: 'g' },
+          { resource: 'milk', amount: 50, unit: 'ml' },
+          { resource: 'cups', amount: 1, unit: '' }
+        ]
+      },
+      {
+        id: 'cappuccino',
+        name: 'Cappuccino',
+        icon: '☕',
+        rate: 10,
+        ingredients: [
+          { resource: 'coffee_beans', amount: 15, unit: 'g' },
+          { resource: 'milk', amount: 30, unit: 'ml' },
+          { resource: 'cups', amount: 1, unit: '' }
+        ]
+      }
+    ];
+  }
+
+  connectedCallback() {
+    this.render();
+  }
+
+  render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+        .recipes-container {
+          background: var(--milk-white, #FFFEF7);
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 4px 8px rgba(62, 39, 35, 0.15);
+        }
+        .recipes-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 2px solid #FFECB3;
+        }
+        .recipes-icon {
+          font-size: 1.5rem;
+        }
+        .recipes-title {
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #3E2723;
+        }
+        .recipes-subtitle {
+          font-size: 0.85rem;
+          color: #8D6E63;
+          margin-left: auto;
+        }
+        .recipes-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+        .recipe-card {
+          background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
+          border-radius: 10px;
+          padding: 1rem;
+          border: 1px solid #A1887F;
+        }
+        .recipe-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+        .recipe-icon {
+          font-size: 1.5rem;
+        }
+        .recipe-name {
+          font-weight: 600;
+          color: #3E2723;
+          font-size: 1.1rem;
+        }
+        .recipe-rate {
+          margin-left: auto;
+          font-size: 0.75rem;
+          background: #6D4C41;
+          color: white;
+          padding: 0.2rem 0.5rem;
+          border-radius: 10px;
+        }
+        .ingredients-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+        .ingredient {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          color: #5D4037;
+        }
+        .ingredient-icon {
+          width: 20px;
+          text-align: center;
+        }
+        .ingredient-amount {
+          font-weight: 600;
+          color: #3E2723;
+        }
+        .ingredient-name {
+          color: #6D4C41;
+        }
+        .petri-note {
+          margin-top: 1rem;
+          padding-top: 0.75rem;
+          border-top: 1px dashed #A1887F;
+          font-size: 0.8rem;
+          color: #8D6E63;
+          text-align: center;
+        }
+        .petri-note code {
+          background: #EFEBE9;
+          padding: 0.1rem 0.3rem;
+          border-radius: 3px;
+          font-family: monospace;
+        }
+      </style>
+      <div class="recipes-container">
+        <div class="recipes-header">
+          <span class="recipes-icon">📋</span>
+          <span class="recipes-title">Drink Recipes</span>
+          <span class="recipes-subtitle">Resource requirements from Petri net</span>
+        </div>
+        <div class="recipes-grid">
+          ${this.recipes.map(recipe => this.renderRecipe(recipe)).join('')}
+        </div>
+        <div class="petri-note">
+          Derived from <code>coffeeshop.json</code> transitions:
+          <code>make_espresso</code>, <code>make_latte</code>, <code>make_cappuccino</code>
+        </div>
+      </div>
+    `;
+  }
+
+  renderRecipe(recipe) {
+    const resourceIcons = {
+      coffee_beans: '☕',
+      milk: '🥛',
+      cups: '🥤'
+    };
+    const resourceNames = {
+      coffee_beans: 'Coffee Beans',
+      milk: 'Milk',
+      cups: 'Cup'
+    };
+
+    return `
+      <div class="recipe-card">
+        <div class="recipe-header">
+          <span class="recipe-icon">${recipe.icon}</span>
+          <span class="recipe-name">${recipe.name}</span>
+          <span class="recipe-rate">${recipe.rate}/hr</span>
+        </div>
+        <div class="ingredients-list">
+          ${recipe.ingredients.map(ing => `
+            <div class="ingredient">
+              <span class="ingredient-icon">${resourceIcons[ing.resource]}</span>
+              <span class="ingredient-amount">${ing.amount}${ing.unit}</span>
+              <span class="ingredient-name">${resourceNames[ing.resource]}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ============================================================================
 // Register Custom Elements
 // ============================================================================
 customElements.define('coffee-shop-scene', CoffeeShopScene);
@@ -1371,6 +2366,8 @@ customElements.define('rate-config-panel', RateConfigPanel);
 customElements.define('simulation-controls', SimulationControls);
 customElements.define('stress-indicator', StressIndicator);
 customElements.define('stats-dashboard', StatsDashboard);
+customElements.define('simulation-charts', SimulationCharts);
+customElements.define('recipe-display', RecipeDisplay);
 
 export {
   CoffeeShopScene,
@@ -1379,5 +2376,7 @@ export {
   RateConfigPanel,
   SimulationControls,
   StressIndicator,
-  StatsDashboard
+  StatsDashboard,
+  SimulationCharts,
+  RecipeDisplay
 };

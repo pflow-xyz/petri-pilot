@@ -580,6 +580,9 @@
               <button id="reset-btn" class="btn btn-secondary hidden" onclick="resetGame()">
                 Play Again
               </button>
+              <button id="snapshot-btn" class="btn btn-secondary" onclick="downloadSnapshot()" title="Download SVG snapshot">
+                📷 Snapshot
+              </button>
             </div>
             <div id="events-section" class="sim-card" style="margin-top: 1.5rem;">
               <h3>Move History</h3>
@@ -665,65 +668,6 @@
             <h3>Position Value Distribution</h3>
             <div class="chart-container">
               <canvas id="value-chart"></canvas>
-            </div>
-          </div>
-
-          <div class="sim-card">
-            <h3>ODE Solver Parameters</h3>
-            <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
-              Adjust solver parameters to trade speed vs accuracy.
-            </p>
-            <div style="display: grid; gap: 1rem;">
-              <div>
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-                  Time Span: <span id="tspan-value">2.0</span>
-                </label>
-                <input type="range" id="tspan-slider" min="0.5" max="5" step="0.5" value="2.0"
-                       style="width: 100%;" onchange="updateSolverParams()">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
-                  <span>0.5 (fast)</span><span>5.0 (accurate)</span>
-                </div>
-              </div>
-              <div>
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-                  Step Size (dt): <span id="dt-value">0.2</span>
-                </label>
-                <input type="range" id="dt-slider" min="0.05" max="0.5" step="0.05" value="0.2"
-                       style="width: 100%;" onchange="updateSolverParams()">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
-                  <span>0.05 (accurate)</span><span>0.5 (fast)</span>
-                </div>
-              </div>
-              <div>
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
-                  <input type="checkbox" id="adaptive-toggle" onchange="updateSolverParams()">
-                  Adaptive Stepping
-                </label>
-                <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
-                  Enable for higher accuracy (slower)
-                </p>
-              </div>
-              <div id="solver-stats" style="background: #f0f0f0; padding: 0.75rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
-                Last run: --ms | Values: center=--
-              </div>
-              <button class="btn btn-primary" onclick="rerunSimulation()" style="margin-top: 0.5rem;">
-                Re-run Simulation
-              </button>
-            </div>
-          </div>
-
-          <div class="sim-card">
-            <h3>Presets</h3>
-            <div style="display: grid; gap: 0.5rem;">
-              <button class="btn btn-secondary" onclick="applyPreset('fast')">
-                Fast (26ms, ±0.05 diff)
-              </button>
-              <button class="btn btn-secondary" onclick="applyPreset('balanced')">
-                Balanced (455ms, ±0.05 diff)
-              </button>
-              <button class="btn btn-secondary" onclick="applyPreset('accurate')">
-                Accurate (11s, ±0.0001 diff)
-              </button>
             </div>
           </div>
 
