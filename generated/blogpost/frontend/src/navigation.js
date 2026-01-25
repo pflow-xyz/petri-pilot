@@ -21,10 +21,10 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'blog-post',
   items: [
-    { label: 'blog-post', path: '/blog-post', icon: '' },
-    { label: 'New', path: '/blog-post/new', icon: '+' },
-    { label: 'Schema', path: '/schema', icon: '⚙' },
-    { label: 'Admin', path: '/admin', icon: '' },
+    { label: 'blog-post', path: `${API_BASE}/blog-post`, icon: '' },
+    { label: 'New', path: `${API_BASE}/blog-post/new`, icon: '+' },
+    { label: 'Schema', path: `${API_BASE}/schema`, icon: '⚙' },
+    { label: 'Admin', path: `${API_BASE}/admin`, icon: '' },
   ]
 }
 
@@ -76,17 +76,19 @@ export async function createNavigation() {
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/blog-post" onclick="handleNavClick(event, '/blog-post')">
+        <a href="${API_BASE}/blog-post" onclick="handleNavClick(event, '${API_BASE}/blog-post')">
           ${brand}
         </a>
       </div>
       <ul class="nav-menu">
         ${items.map(item => {
-          const isActive = currentPath === item.path ||
-            (item.path !== '/' && currentPath.startsWith(item.path))
+          // Prepend API_BASE if path doesn't already include it
+          const itemPath = item.path.startsWith(API_BASE) ? item.path : `${API_BASE}${item.path}`
+          const isActive = currentPath === itemPath ||
+            (itemPath !== '/' && itemPath !== API_BASE && currentPath.startsWith(itemPath))
           return `
             <li class="${isActive ? 'active' : ''}">
-              <a href="${item.path}" onclick="handleNavClick(event, '${item.path}')">
+              <a href="${itemPath}" onclick="handleNavClick(event, '${itemPath}')">
                 ${item.icon ? `<span class="icon">${item.icon}</span>` : ''}
                 ${item.label}
               </a>
@@ -334,7 +336,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/blog-post')
+  navigate(`${API_BASE}/blog-post`)
 }
 
 // Helper functions
@@ -387,7 +389,8 @@ window.addEventListener('route-change', () => {
   // Find and highlight active link
   document.querySelectorAll('.nav-menu a').forEach(a => {
     const href = a.getAttribute('href')
-    if (href === currentPath || (href !== '/' && currentPath.startsWith(href))) {
+    const basePath = API_BASE || ''
+    if (href === currentPath || (href !== '/' && href !== basePath && currentPath.startsWith(href))) {
       a.parentElement.classList.add('active')
     }
   })

@@ -1,0 +1,407 @@
+/**
+ * Coffee Shop Dashboard Theme
+ * Warm, cozy coffee shop aesthetic
+ */
+
+:root {
+  /* Coffee Shop Colors */
+  --espresso-dark: #3E2723;
+  --coffee-brown: #6D4C41;
+  --latte-brown: #8D6E63;
+  --cappuccino-light: #A1887F;
+  --cream: #FFF8E1;
+  --milk-white: #FFFEF7;
+  --foam: #FFECB3;
+  --caramel: #FFD54F;
+  
+  /* Accent Colors */
+  --steam-gray: #B0BEC5;
+  --bean-green: #4CAF50;
+  --warning-orange: #FF9800;
+  --alert-red: #F44336;
+  
+  /* Shadows & Effects */
+  --shadow-sm: 0 2px 4px rgba(62, 39, 35, 0.1);
+  --shadow-md: 0 4px 8px rgba(62, 39, 35, 0.15);
+  --shadow-lg: 0 8px 16px rgba(62, 39, 35, 0.2);
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* ============================================================================
+   Global Overrides for Coffee Shop Theme
+   ============================================================================ */
+
+body {
+  background: linear-gradient(135deg, var(--cream) 0%, var(--foam) 100%);
+  background-attachment: fixed;
+}
+
+.navigation {
+  background: linear-gradient(to right, var(--espresso-dark), var(--coffee-brown));
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================================================
+   Dashboard Layout
+   ============================================================================ */
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--espresso-dark);
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-subtitle {
+  font-size: 1.1rem;
+  color: var(--coffee-brown);
+  font-weight: 500;
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* ============================================================================
+   Section Layouts
+   ============================================================================ */
+
+.scene-section {
+  margin-bottom: 1.5rem;
+}
+
+.gauges-section {
+  margin-bottom: 1.5rem;
+}
+
+.flow-section {
+  margin-bottom: 1.5rem;
+}
+
+.config-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.controls-section {
+  margin-bottom: 1.5rem;
+}
+
+.stats-section {
+  margin-bottom: 1.5rem;
+}
+
+/* Responsive layouts */
+@media (max-width: 1024px) {
+  .config-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   Coffee Shop Themed Cards
+   ============================================================================ */
+
+.coffee-card {
+  background: var(--milk-white);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.coffee-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--foam);
+}
+
+.card-icon {
+  font-size: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--espresso-dark);
+}
+
+/* ============================================================================
+   Coffee Themed Buttons
+   ============================================================================ */
+
+.btn-coffee {
+  background: linear-gradient(to bottom, var(--coffee-brown), var(--espresso-dark));
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-coffee:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-coffee:active {
+  transform: translateY(0);
+}
+
+.btn-espresso {
+  background: linear-gradient(to bottom, var(--espresso-dark), #2C1810);
+  color: white;
+}
+
+.btn-latte {
+  background: linear-gradient(to bottom, var(--latte-brown), var(--coffee-brown));
+  color: white;
+}
+
+.btn-cappuccino {
+  background: linear-gradient(to bottom, var(--cappuccino-light), var(--latte-brown));
+  color: white;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes steam-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.2);
+  }
+}
+
+@keyframes pour-coffee {
+  0% {
+    height: 0%;
+  }
+  100% {
+    height: 100%;
+  }
+}
+
+@keyframes bubble-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.8);
+  }
+}
+
+/* ============================================================================
+   Loading States
+   ============================================================================ */
+
+.coffee-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--coffee-brown);
+}
+
+.coffee-spinner {
+  font-size: 3rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 1rem;
+  font-weight: 600;
+  color: var(--espresso-dark);
+}
+
+/* ============================================================================
+   Stressed State Styling
+   ============================================================================ */
+
+.stressed {
+  animation: stressed-pulse 1s ease-in-out infinite;
+}
+
+@keyframes stressed-pulse {
+  0%, 100% {
+    border-color: var(--alert-red);
+    box-shadow: 0 0 0 rgba(244, 67, 54, 0.4);
+  }
+  50% {
+    border-color: var(--warning-orange);
+    box-shadow: 0 0 20px rgba(244, 67, 54, 0.6);
+  }
+}
+
+.warning-border {
+  border: 3px solid var(--warning-orange);
+}
+
+.critical-border {
+  border: 3px solid var(--alert-red);
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+.coffee-heading {
+  font-family: 'Georgia', serif;
+  color: var(--espresso-dark);
+  font-weight: 700;
+}
+
+.coffee-text {
+  color: var(--coffee-brown);
+  line-height: 1.6;
+}
+
+.coffee-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--latte-brown);
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+.text-espresso {
+  color: var(--espresso-dark);
+}
+
+.text-coffee {
+  color: var(--coffee-brown);
+}
+
+.text-latte {
+  color: var(--latte-brown);
+}
+
+.bg-cream {
+  background-color: var(--cream);
+}
+
+.bg-foam {
+  background-color: var(--foam);
+}
+
+.bg-milk {
+  background-color: var(--milk-white);
+}
+
+.rounded-coffee {
+  border-radius: var(--radius-lg);
+}
+
+.shadow-coffee {
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+  
+  .dashboard-title {
+    font-size: 2rem;
+  }
+  
+  .dashboard-subtitle {
+    font-size: 1rem;
+  }
+  
+  .dashboard-grid {
+    gap: 1rem;
+  }
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+  body {
+    background: white;
+  }
+  
+  .navigation,
+  .controls-section,
+  stress-indicator {
+    display: none;
+  }
+  
+  .coffee-card {
+    box-shadow: none;
+    border: 1px solid var(--espresso-dark);
+  }
+}

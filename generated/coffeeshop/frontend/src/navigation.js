@@ -18,10 +18,10 @@ const availableRoles = [
 const defaultNavigation = {
   brand: 'coffeeshop',
   items: [
-    { label: 'coffeeshop', path: '/coffeeshop', icon: '' },
-    { label: 'New', path: '/coffeeshop/new', icon: '+' },
-    { label: 'Schema', path: '/schema', icon: '⚙' },
-    { label: 'Admin', path: '/admin', icon: '' },
+    { label: 'coffeeshop', path: `${API_BASE}/coffeeshop`, icon: '' },
+    { label: 'New', path: `${API_BASE}/coffeeshop/new`, icon: '+' },
+    { label: 'Schema', path: `${API_BASE}/schema`, icon: '⚙' },
+    { label: 'Admin', path: `${API_BASE}/admin`, icon: '' },
   ]
 }
 
@@ -56,6 +56,23 @@ async function fetchNavigation() {
   }
 }
 
+// Compute the custom frontend URL (non-dash view)
+// If we're at /~service/, link to /service/
+function getCustomFrontendUrl() {
+  const path = window.location.pathname
+  const match = path.match(/^\/~([^\/]+)\//)
+  if (match) {
+    return '/' + match[1] + '/'
+  }
+  // Not in dash view, just link to root
+  return API_BASE + '/coffeeshop'
+}
+
+// Check if we're in dash view (~ prefix)
+function isInDashView() {
+  return window.location.pathname.match(/^\/~[^\/]+\//) !== null
+}
+
 // Create navigation HTML
 export async function createNavigation() {
   // Fetch navigation if not already loaded
@@ -70,20 +87,26 @@ export async function createNavigation() {
   const items = navigationData?.items || defaultNavigation.items
   const brand = navigationData?.brand || defaultNavigation.brand
 
+  // Brand link: if in dash view, link to custom frontend; otherwise stay in dash
+  const brandUrl = getCustomFrontendUrl()
+  const brandOnClick = isInDashView() ? '' : `onclick="handleNavClick(event, '${API_BASE}/coffeeshop')"`
+
   const html = `
     <nav class="navigation">
       <div class="nav-brand">
-        <a href="/coffeeshop" onclick="handleNavClick(event, '/coffeeshop')">
+        <a href="${brandUrl}" ${brandOnClick}>
           ${brand}
         </a>
       </div>
       <ul class="nav-menu">
         ${items.map(item => {
-          const isActive = currentPath === item.path ||
-            (item.path !== '/' && currentPath.startsWith(item.path))
+          // Prepend API_BASE if path doesn't already include it
+          const itemPath = item.path.startsWith(API_BASE) ? item.path : `${API_BASE}${item.path}`
+          const isActive = currentPath === itemPath ||
+            (itemPath !== '/' && itemPath !== API_BASE && currentPath.startsWith(itemPath))
           return `
             <li class="${isActive ? 'active' : ''}">
-              <a href="${item.path}" onclick="handleNavClick(event, '${item.path}')">
+              <a href="${itemPath}" onclick="handleNavClick(event, '${itemPath}')">
                 ${item.icon ? `<span class="icon">${item.icon}</span>` : ''}
                 ${item.label}
               </a>
@@ -331,7 +354,7 @@ window.handleLogout = async function() {
 
   // Refresh navigation and redirect
   await refreshNavigation()
-  navigate('/coffeeshop')
+  navigate(`${API_BASE}/coffeeshop`)
 }
 
 // Helper functions
@@ -384,7 +407,8 @@ window.addEventListener('route-change', () => {
   // Find and highlight active link
   document.querySelectorAll('.nav-menu a').forEach(a => {
     const href = a.getAttribute('href')
-    if (href === currentPath || (href !== '/' && currentPath.startsWith(href))) {
+    const basePath = API_BASE || ''
+    if (href === currentPath || (href !== '/' && href !== basePath && currentPath.startsWith(href))) {
       a.parentElement.classList.add('active')
     }
   })

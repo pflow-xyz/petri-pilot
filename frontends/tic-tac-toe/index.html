@@ -20,6 +20,27 @@
       color: #333;
     }
 
+    .top-nav {
+      background: rgba(0,0,0,0.2);
+      padding: 0.5rem 2rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+
+    .top-nav a {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .top-nav a:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
     .app-container {
       max-width: 1200px;
       margin: 0 auto;
@@ -489,6 +510,19 @@
   </style>
 </head>
 <body>
+  <nav class="top-nav">
+    <a id="dash-link" href="/~tic-tac-toe/">Dashboard</a>
+  </nav>
+  <script>
+    // Set dash link based on current path
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^\/([^\/]+)\//);
+      if (match) {
+        document.getElementById('dash-link').href = '/~' + match[1] + '/';
+      }
+    })();
+  </script>
   <div class="app-container">
     <div class="header">
       <h1>Tic-Tac-Toe Simulator</h1>

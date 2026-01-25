@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffee Shop Simulator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+    .top-nav {
+      background: #5D4037;
+      padding: 0.5rem 2rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+    .top-nav a {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .top-nav a:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-size: 1.2rem;
+      color: #6D4C41;
+    }
+  </style>
+  <link rel="stylesheet" href="custom/theme.css">
+</head>
+<body>
+  <nav class="top-nav">
+    <a id="dash-link" href="/~coffeeshop/">Dashboard</a>
+  </nav>
+  <script>
+    // Set dash link based on current path
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^\/([^\/]+)\//);
+      if (match) {
+        document.getElementById('dash-link').href = '/~' + match[1] + '/';
+      }
+    })();
+  </script>
+  <div id="app">
+    <div class="loading">Loading Coffee Shop...</div>
+  </div>
+
+  <!-- Detect base path for API calls when mounted at a prefix -->
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/[^\/]+)\//);
+      window.API_BASE = match ? match[1] : '';
+    })();
+  </script>
+
+  <!-- Custom components -->
+  <script type="module" src="custom/components.js"></script>
+
+  <!-- Main application -->
+  <script type="module">
+    import { renderDashboard, initDashboard, cleanupDashboard } from './src/dashboard.js';
+
+    // Wait for components to be defined
+    await customElements.whenDefined('coffee-shop-scene');
+    await customElements.whenDefined('simulation-controls');
+    await customElements.whenDefined('resource-gauges');
+    await customElements.whenDefined('order-flow-board');
+
+    // Render dashboard
+    const app = document.getElementById('app');
+    app.innerHTML = renderDashboard();
+
+    // Initialize dashboard
+    initDashboard();
+  </script>
+</body>
+</html>

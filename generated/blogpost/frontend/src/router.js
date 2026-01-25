@@ -5,6 +5,17 @@
  * Provides client-side routing with dynamic route matching
  */
 
+// API base path for when service is mounted at a prefix
+const API_BASE = window.API_BASE || ''
+
+// Helper to strip API_BASE from a path for route matching
+function stripBase(path) {
+  if (API_BASE && path.startsWith(API_BASE)) {
+    return path.slice(API_BASE.length) || '/'
+  }
+  return path
+}
+
 // Route definitions - order matters! More specific routes first
 export const routes = [
   // Root redirects to list
@@ -94,17 +105,19 @@ export function navigate(path, state = {}) {
     path = '/' + path
   }
 
-  const match = matchRoute(path)
+  // Strip API_BASE if present for route matching
+  const routePath = stripBase(path)
+  const match = matchRoute(routePath)
 
   if (!match) {
     // Fallback to list page for unknown routes
     console.warn(`No route found for path: ${path}, falling back to list`)
-    path = '/blog-post'
-    const fallback = matchRoute(path)
+    const fallbackPath = '/blog-post'
+    const fallback = matchRoute(fallbackPath)
     if (fallback) {
       currentRoute = fallback.route
       currentParams = fallback.params
-      window.history.pushState(state, '', path)
+      window.history.pushState(state, '', `${API_BASE}${fallbackPath}`)
       renderCurrentRoute()
     }
     return
@@ -115,7 +128,7 @@ export function navigate(path, state = {}) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate('/blog-post')
+      navigate(`${API_BASE}/blog-post`)
       return
     }
   }
@@ -123,8 +136,9 @@ export function navigate(path, state = {}) {
   currentRoute = match.route
   currentParams = match.params
 
-  // Update browser history
-  window.history.pushState(state, '', path)
+  // Update browser history - use full path with API_BASE
+  const historyPath = path.startsWith(API_BASE) ? path : `${API_BASE}${routePath}`
+  window.history.pushState(state, '', historyPath)
 
   // Trigger render
   renderCurrentRoute()
@@ -132,7 +146,7 @@ export function navigate(path, state = {}) {
 
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
-  const path = window.location.pathname
+  const path = stripBase(window.location.pathname)
   const match = matchRoute(path)
   if (match) {
     currentRoute = match.route
@@ -140,7 +154,7 @@ window.addEventListener('popstate', () => {
     renderCurrentRoute()
   } else {
     // Fallback to list
-    navigate('/blog-post')
+    navigate(`${API_BASE}/blog-post`)
   }
 })
 
@@ -188,7 +202,7 @@ export function getCurrentRoute() {
 
 // Initialize router
 export function initRouter() {
-  const path = window.location.pathname
+  const path = stripBase(window.location.pathname)
   const match = matchRoute(path)
 
   if (match) {

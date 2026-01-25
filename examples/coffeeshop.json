@@ -15,7 +15,8 @@
       {"label": "Dashboard", "path": "/", "icon": "home"},
       {"label": "Orders", "path": "/orders", "icon": "list"},
       {"label": "Inventory", "path": "/inventory", "icon": "archive"},
-      {"label": "Simulation", "path": "/simulation", "icon": "chart"}
+      {"label": "Simulation", "path": "/simulation", "icon": "chart"},
+      {"label": "Schema", "path": "/schema", "icon": "settings"}
     ]
   },
   "places": [

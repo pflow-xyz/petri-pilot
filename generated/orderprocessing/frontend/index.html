@@ -411,7 +411,7 @@
       (function() {
         const path = window.location.pathname;
         const match = path.match(/^(\/[^\/]+)\//);
-        window.API_BASE = match ? match[1] : '';
+        window.API_BASE = match ? '/' + match[2] : '';
       })();
     </script>
 

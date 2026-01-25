@@ -18,13 +18,19 @@ export async function loadViews() {
   try {
     const response = await fetch(`${API_BASE}/api/views`)
     if (!response.ok) {
-      console.warn('Failed to load view definitions, using defaults')
+      // Endpoint doesn't exist or returned error
+      return []
+    }
+    // Check content-type to avoid parsing HTML as JSON
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      // SPA returned HTML fallback, no views defined
       return []
     }
     viewDefinitions = await response.json()
     return viewDefinitions
   } catch (err) {
-    console.error('Error loading views:', err)
+    // Silently fail - views are optional
     return []
   }
 }

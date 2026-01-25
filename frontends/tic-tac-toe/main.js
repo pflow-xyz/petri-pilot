@@ -398,26 +398,32 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   ]
   const patternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
 
-  // X win transitions
+  // X win transitions (use read arcs: consume and produce back to preserve pieces)
   winPatterns.forEach((pattern, idx) => {
     const tid = `X${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
     pattern.forEach(cellIdx => {
       const r = Math.floor(cellIdx / 3)
       const c = cellIdx % 3
+      // Consume from X place
       arcs.push({ '@type': 'Arrow', source: `X${r}${c}`, target: tid, weight: [1] })
+      // Produce back to X place (read arc pattern)
+      arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
     })
     arcs.push({ '@type': 'Arrow', source: tid, target: 'WinX', weight: [1] })
   })
 
-  // O win transitions
+  // O win transitions (use read arcs: consume and produce back to preserve pieces)
   winPatterns.forEach((pattern, idx) => {
     const tid = `O${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
     pattern.forEach(cellIdx => {
       const r = Math.floor(cellIdx / 3)
       const c = cellIdx % 3
+      // Consume from O place
       arcs.push({ '@type': 'Arrow', source: `O${r}${c}`, target: tid, weight: [1] })
+      // Produce back to O place (read arc pattern)
+      arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
     })
     arcs.push({ '@type': 'Arrow', source: tid, target: 'WinO', weight: [1] })
   })

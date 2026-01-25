@@ -335,6 +335,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 | Orders | `/orders` | list | * |
 | Inventory | `/inventory` | archive | * |
 | Simulation | `/simulation` | chart | * |
+| Schema | `/schema` | settings | * |
 
 
 

@@ -27,12 +27,12 @@ paths:
                     type: string
                     example: "ok"
 
-  /api/coffeeshop:
+  /api/main:
     post:
       summary: Create new coffeeshop
       operationId: createCoffeeshop
       tags:
-        - coffeeshop
+        - main
       responses:
         "201":
           description: Created successfully
@@ -47,12 +47,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/coffeeshop/{id}:
+  /api/main/{id}:
     get:
       summary: Get coffeeshop state
       operationId: getCoffeeshop
       tags:
-        - coffeeshop
+        - main
       parameters:
         - name: id
           in: path
@@ -472,7 +472,7 @@ components:
 tags:
   - name: system
     description: System endpoints
-  - name: coffeeshop
+  - name: main
     description: coffeeshop aggregate operations
   - name: transitions
     description: Petri net transition endpoints

@@ -41,6 +41,7 @@ func NewService() (serve.Service, error) {
 			{Label: "Orders", Path: "/orders", Icon: "list", Roles: []string{ }},
 			{Label: "Inventory", Path: "/inventory", Icon: "archive", Roles: []string{ }},
 			{Label: "Simulation", Path: "/simulation", Icon: "chart", Roles: []string{ }},
+			{Label: "Schema", Path: "/schema", Icon: "settings", Roles: []string{ }},
 		},
 	}
 	// Initialize debug broker

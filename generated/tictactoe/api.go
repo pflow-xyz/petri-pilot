@@ -136,8 +136,8 @@ func StaticFileHandler() http.HandlerFunc {
 	candidates := []string{
 		"frontends/tic-tac-toe",                    // Custom frontend (top priority)
 		"frontend",                                    // Running from service directory
-		"generated/tictactoe/frontend",         // Generated frontend from repo root
-		filepath.Join("generated", "tictactoe", "frontend"), // Platform-safe
+		"generated/main/frontend",         // Generated frontend from repo root
+		filepath.Join("generated", "main", "frontend"), // Platform-safe
 	}
 
 	// Also try relative to executable
@@ -146,7 +146,7 @@ func StaticFileHandler() http.HandlerFunc {
 		candidates = append(candidates,
 			filepath.Join(exeDir, "frontends", "tic-tac-toe"),
 			filepath.Join(exeDir, "frontend"),
-			filepath.Join(exeDir, "generated", "tictactoe", "frontend"),
+			filepath.Join(exeDir, "generated", "main", "frontend"),
 		)
 	}
 

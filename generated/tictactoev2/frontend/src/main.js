@@ -1233,6 +1233,9 @@ async function renderSchemaPage() {
     const response = await fetch(`${API_BASE}/api/schema`)
     const schema = await response.json()
 
+    // Store schema for petri-view
+    _currentSchema = schema
+
     const schemaContent = document.getElementById('schema-content')
     schemaContent.innerHTML = `
       <div class="schema-viewer">
@@ -1241,6 +1244,7 @@ async function renderSchemaPage() {
           <button class="schema-tab" onclick="showSchemaTab('places')">Places (${schema.places?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('transitions')">Transitions (${schema.transitions?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('arcs')">Arcs (${schema.arcs?.length || 0})</button>
+          <button class="schema-tab" onclick="showSchemaTab('petrinet')">Petri Net</button>
           <button class="schema-tab" onclick="showSchemaTab('raw')">Raw JSON</button>
         </div>
 
@@ -1338,6 +1342,12 @@ async function renderSchemaPage() {
               `).join('')}
             </tbody>
           </table>
+        </div>
+
+        <div id="schema-tab-petrinet" class="schema-tab-content" style="display: none;">
+          <div class="petrinet-container">
+            <petri-view id="schema-petri-view"></petri-view>
+          </div>
         </div>
 
         <div id="schema-tab-raw" class="schema-tab-content" style="display: none;">
@@ -1442,6 +1452,18 @@ async function renderSchemaPage() {
           font-size: 0.85rem;
           line-height: 1.5;
         }
+        .petrinet-container {
+          width: 100%;
+          height: calc(100vh - 280px);
+          min-height: 500px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .petrinet-container petri-view {
+          width: 100%;
+          height: 100%;
+        }
       </style>
     `
   } catch (err) {
@@ -1450,6 +1472,149 @@ async function renderSchemaPage() {
       <div class="error">Failed to load schema: ${err.message}</div>
     `
   }
+}
+
+// Store schema globally for petri-view
+let _currentSchema = null
+
+// Convert schema to pflow.xyz format
+function schemaToPflowModel(schema) {
+  const places = {}
+  const transitions = {}
+  const arcs = []
+
+  // Layout: auto-arrange places and transitions
+  const placeCount = schema.places?.length || 0
+  const transitionCount = schema.transitions?.length || 0
+
+  // Create places with positions
+  ;(schema.places || []).forEach((p, i) => {
+    const col = i % 6
+    const row = Math.floor(i / 6)
+    const initial = p.initial || 0
+    // Capacity: use explicit capacity if set, otherwise use a large number for "unlimited"
+    // petri-view treats capacity as a hard limit, so 0 means "can hold 0 tokens"
+    const capacity = p.capacity || 0
+    places[p.id] = {
+      '@type': 'Place',
+      initial: [initial],
+      capacity: [capacity],
+      x: 80 + col * 120,
+      y: 80 + row * 100
+    }
+  })
+
+  // Create transitions with positions
+  ;(schema.transitions || []).forEach((t, i) => {
+    const col = i % 6
+    const row = Math.floor(i / 6)
+    transitions[t.id] = {
+      '@type': 'Transition',
+      x: 80 + col * 120,
+      y: 300 + row * 100
+    }
+  })
+
+  // Create arcs
+  ;(schema.arcs || []).forEach(a => {
+    arcs.push({
+      '@type': 'Arrow',
+      source: a.from,
+      target: a.to,
+      weight: [a.weight || 1],
+      inhibit: a.type === 'inhibitor'
+    })
+  })
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    name: schema.name || 'Model',
+    description: schema.description || '',
+    places,
+    transitions,
+    arcs
+  }
+}
+
+// Load petri-view component from CDN
+let petriViewLoaded = false
+async function loadPetriView() {
+  if (petriViewLoaded) return
+
+  // Load CSS
+  if (!document.querySelector('link[href*="petri-view.css"]')) {
+    const css = document.createElement('link')
+    css.rel = 'stylesheet'
+    css.href = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.css'
+    document.head.appendChild(css)
+  }
+
+  // Load JS as ES module (petri-view.js uses export)
+  if (!customElements.get('petri-view')) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.type = 'module'
+      script.src = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.js'
+      script.onload = resolve
+      script.onerror = reject
+      document.head.appendChild(script)
+    })
+    // Wait for custom element to be defined
+    await customElements.whenDefined('petri-view')
+  }
+
+  petriViewLoaded = true
+}
+
+// Initialize petri-view with schema
+async function initPetriView() {
+  if (!_currentSchema) return
+
+  await loadPetriView()
+
+  const petriView = document.getElementById('schema-petri-view')
+  if (!petriView) return
+
+  // Wait for component to be ready with setModel
+  const waitForReady = async (maxAttempts = 20) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      if (petriView.setModel) {
+        const model = schemaToPflowModel(_currentSchema)
+        petriView.setModel(model)
+        // Start simulation mode so transitions can be fired by clicking
+        // Wait a frame for the model to be processed
+        await new Promise(r => requestAnimationFrame(r))
+        if (petriView._toggleSim && !petriView._simRunning) {
+          petriView._toggleSim()
+        }
+        // Move toolbar to top by injecting CSS into shadow DOM
+        moveToolbarToTop(petriView)
+        return
+      }
+      await new Promise(r => setTimeout(r, 50))
+    }
+    console.warn('petri-view setModel not available after waiting')
+  }
+
+  await waitForReady()
+}
+
+// Move petri-view toolbar to top of canvas (no shadow DOM, inject into document)
+function moveToolbarToTop(petriView) {
+  // Check if we already injected our styles
+  if (document.getElementById('petri-toolbar-override')) return
+
+  const style = document.createElement('style')
+  style.id = 'petri-toolbar-override'
+  style.textContent = `
+    /* Move petri-view toolbar from bottom to top of canvas, aligned with hamburger menu */
+    .pv-menu.pv-mode-menu {
+      bottom: auto !important;
+      top: 260px !important;
+    }
+  `
+  document.head.appendChild(style)
 }
 
 // Schema tab switching
@@ -1469,6 +1634,16 @@ window.showSchemaTab = function(tabName) {
   if (targetContent) {
     targetContent.style.display = 'block'
     targetContent.classList.add('active')
+  }
+
+  // Initialize petri-view when tab is shown
+  if (tabName === 'petrinet') {
+    initPetriView()
+  } else {
+    // Restore scroll behavior when leaving petri-view tab
+    // petri-view sets overflow:hidden on body/html for pan/zoom
+    document.body.style.overflow = 'auto'
+    document.documentElement.style.overflow = 'auto'
   }
 }
 
@@ -1646,7 +1821,8 @@ let debugSessionId = null
 
 function initDebugWebSocket() {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${wsProtocol}//${window.location.host}/ws`
+  // Use API_BASE for multi-service mode support
+  const wsUrl = `${wsProtocol}//${window.location.host}${API_BASE}/ws`
 
   debugWs = new WebSocket(wsUrl)
 
