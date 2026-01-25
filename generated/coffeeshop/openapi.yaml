@@ -27,12 +27,12 @@ paths:
                     type: string
                     example: "ok"
 
-  /api/main:
+  /api/coffeeshop:
     post:
       summary: Create new coffeeshop
       operationId: createCoffeeshop
       tags:
-        - main
+        - coffeeshop
       responses:
         "201":
           description: Created successfully
@@ -47,12 +47,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/main/{id}:
+  /api/coffeeshop/{id}:
     get:
       summary: Get coffeeshop state
       operationId: getCoffeeshop
       tags:
-        - main
+        - coffeeshop
       parameters:
         - name: id
           in: path
@@ -381,6 +381,108 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
+  /api/restock_coffee_beans:
+    post:
+      summary: "Restock coffee beans inventory"
+      operationId: restockCoffeeBeans
+      tags:
+        - transitions
+      x-transition-id: restock_coffee_beans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/restock_milk:
+    post:
+      summary: "Restock milk inventory"
+      operationId: restockMilk
+      tags:
+        - transitions
+      x-transition-id: restock_milk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/restock_cups:
+    post:
+      summary: "Restock cup inventory"
+      operationId: restockCups
+      tags:
+        - transitions
+      x-transition-id: restock_cups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
 components:
   schemas:
     TransitionRequest:
@@ -472,7 +574,7 @@ components:
 tags:
   - name: system
     description: System endpoints
-  - name: main
+  - name: coffeeshop
     description: coffeeshop aggregate operations
   - name: transitions
     description: Petri net transition endpoints

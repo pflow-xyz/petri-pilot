@@ -16,7 +16,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the coffeeshop workflow.
-func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBroker) http.Handler {
+func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
 
 	// Health check - always returns ok if server is running
@@ -33,9 +33,6 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 	// Get aggregate state
 	r.GET("/api/coffeeshop/{id}", "Get coffeeshop state", HandleGetState(app))
 
-
-	// Navigation endpoint
-	r.GET("/api/navigation", "Get navigation menu", HandleNavigation(navigation))
 
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
@@ -60,6 +57,8 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Guest login endpoint (debug mode without access control)
+	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
 
 
 
@@ -87,6 +86,9 @@ func BuildRouter(app *Application, navigation *Navigation, debugBroker *DebugBro
 	r.Transition("serve_espresso", "/api/serve_espresso", "Serve espresso to customer", HandleServeEspresso(app))
 	r.Transition("serve_latte", "/api/serve_latte", "Serve latte to customer", HandleServeLatte(app))
 	r.Transition("serve_cappuccino", "/api/serve_cappuccino", "Serve cappuccino to customer", HandleServeCappuccino(app))
+	r.Transition("restock_coffee_beans", "/api/restock_coffee_beans", "Restock coffee beans inventory", HandleRestockCoffeeBeans(app))
+	r.Transition("restock_milk", "/api/restock_milk", "Restock milk inventory", HandleRestockMilk(app))
+	r.Transition("restock_cups", "/api/restock_cups", "Restock cup inventory", HandleRestockCups(app))
 
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())
@@ -102,8 +104,8 @@ func StaticFileHandler() http.HandlerFunc {
 	candidates := []string{
 		"frontends/coffeeshop",                    // Custom frontend (top priority)
 		"frontend",                                    // Running from service directory
-		"generated/main/frontend",         // Generated frontend from repo root
-		filepath.Join("generated", "main", "frontend"), // Platform-safe
+		"generated/coffeeshop/frontend",         // Generated frontend from repo root
+		filepath.Join("generated", "coffeeshop", "frontend"), // Platform-safe
 	}
 
 	// Also try relative to executable
@@ -112,7 +114,7 @@ func StaticFileHandler() http.HandlerFunc {
 		candidates = append(candidates,
 			filepath.Join(exeDir, "frontends", "coffeeshop"),
 			filepath.Join(exeDir, "frontend"),
-			filepath.Join(exeDir, "generated", "main", "frontend"),
+			filepath.Join(exeDir, "generated", "coffeeshop", "frontend"),
 		)
 	}
 
@@ -537,9 +539,109 @@ func HandleServeCappuccino(app *Application) http.HandlerFunc {
 }
 
 
+// HandleRestockCoffeeBeans handles the restock_coffee_beans transition.
+func HandleRestockCoffeeBeans(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionRestockCoffeeBeans, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleRestockMilk handles the restock_milk transition.
+func HandleRestockMilk(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionRestockMilk, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
+// HandleRestockCups handles the restock_cups transition.
+func HandleRestockCups(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var req api.TransitionRequest
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.AggregateID == "" {
+			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate_id is required")
+			return
+		}
+
+		agg, err := app.Execute(ctx, req.AggregateID, TransitionRestockCups, req.Data)
+		if err != nil {
+			api.Error(w, http.StatusConflict, "TRANSITION_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, api.TransitionResult{
+			Success:            true,
+			AggregateID:        agg.ID(),
+			Version:            agg.Version(),
+			State:              agg.Places(),
+			EnabledTransitions: agg.EnabledTransitions(),
+		})
+	}
+}
+
+
 // HandlePredict runs ODE simulation and returns predicted resource levels.
 func HandlePredict(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		hoursStr := r.URL.Query().Get("hours")
 		hours := PredictionConfig.TimeHours
 		if hoursStr != "" {
@@ -548,10 +650,21 @@ func HandlePredict(app *Application) http.HandlerFunc {
 			}
 		}
 
-		// Get current token counts
+		// Get current token counts from aggregate if provided
 		currentTokens := GetCurrentInventory()
+		if aggID := r.URL.Query().Get("aggregate_id"); aggID != "" {
+			if agg, err := app.Load(ctx, aggID); err == nil {
+				currentTokens = make(map[string]int)
+				for place, tokens := range agg.Places() {
+					currentTokens[place] = tokens
+				}
+			}
+		}
 
-		result, err := RunSimulation(currentTokens, hours)
+		// Parse custom rates if provided
+		rates := getCustomRates(r)
+
+		result, err := RunSimulationWithRates(currentTokens, hours, rates)
 		if err != nil {
 			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
 			return
@@ -564,9 +677,23 @@ func HandlePredict(app *Application) http.HandlerFunc {
 // HandleRunout returns predicted runout times for resources.
 func HandleRunout(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentTokens := GetCurrentInventory()
+		ctx := r.Context()
 
-		result, err := RunSimulation(currentTokens, PredictionConfig.TimeHours)
+		// Get current token counts from aggregate if provided
+		currentTokens := GetCurrentInventory()
+		if aggID := r.URL.Query().Get("aggregate_id"); aggID != "" {
+			if agg, err := app.Load(ctx, aggID); err == nil {
+				currentTokens = make(map[string]int)
+				for place, tokens := range agg.Places() {
+					currentTokens[place] = tokens
+				}
+			}
+		}
+
+		// Parse custom rates if provided
+		rates := getCustomRates(r)
+
+		result, err := RunSimulationWithRates(currentTokens, PredictionConfig.TimeHours, rates)
 		if err != nil {
 			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
 			return
@@ -576,49 +703,24 @@ func HandleRunout(app *Application) http.HandlerFunc {
 	}
 }
 
-
-// HandleNavigation returns the navigation menu, filtered by user roles.
-func HandleNavigation(nav *Navigation) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		userRoles := getNavUserRoles(r)
-
-		items := []NavigationItem{}
-		for _, item := range nav.Items {
-			if len(item.Roles) == 0 {
-				items = append(items, item)
-				continue
-			}
-
-			if navHasAnyRole(userRoles, item.Roles) {
-				items = append(items, item)
-			}
-		}
-
-		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"brand": nav.Brand,
-			"items": items,
-		})
+// getCustomRates extracts transition rates from query parameters.
+func getCustomRates(r *http.Request) map[string]float64 {
+	rates := make(map[string]float64)
+	rateParams := []string{
+		"order_espresso", "order_latte", "order_cappuccino",
+		"make_espresso", "make_latte", "make_cappuccino",
+		"serve_espresso", "serve_latte", "serve_cappuccino",
 	}
-}
-
-// getNavUserRoles extracts user roles from the request context.
-func getNavUserRoles(r *http.Request) []string {
-	// No role-based access control configured
-	_ = r // unused
-	return nil
-}
-
-// navHasAnyRole checks if user has at least one of the required roles.
-func navHasAnyRole(userRoles []string, requiredRoles []string) bool {
-	for _, required := range requiredRoles {
-		for _, userRole := range userRoles {
-			if userRole == required {
-				return true
+	for _, param := range rateParams {
+		if val := r.URL.Query().Get(param); val != "" {
+			if rate, err := strconv.ParseFloat(val, 64); err == nil {
+				rates[param] = rate
 			}
 		}
 	}
-	return false
+	return rates
 }
+
 
 
 
@@ -745,7 +847,7 @@ func getInt(s string, defaultVal int) int {
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
-	schemaBase64 := "ewogICJuYW1lIjogImNvZmZlZXNob3AiLAogICJkZXNjcmlwdGlvbiI6ICJDb2ZmZWUgc2hvcCBpbnZlbnRvcnkgYW5kIG9yZGVyIHByb2Nlc3Npbmcgd2l0aCByZXNvdXJjZSBwcmVkaWN0aW9uIiwKICAicGxhY2VzIjogWwogICAgewogICAgICAiaWQiOiAiY29mZmVlX2JlYW5zIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNvZmZlZSBiZWFucyBpbnZlbnRvcnkgKGdyYW1zKSIsCiAgICAgICJpbml0aWFsIjogMTAwMCwKICAgICAgImtpbmQiOiAidG9rZW4iLAogICAgICAiY2FwYWNpdHkiOiAyMDAwLAogICAgICAicmVzb3VyY2UiOiB0cnVlCiAgICB9LAogICAgewogICAgICAiaWQiOiAibWlsayIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJNaWxrIGludmVudG9yeSAobWwpIiwKICAgICAgImluaXRpYWwiOiA1MDAsCiAgICAgICJraW5kIjogInRva2VuIiwKICAgICAgImNhcGFjaXR5IjogMTAwMCwKICAgICAgInJlc291cmNlIjogdHJ1ZQogICAgfSwKICAgIHsKICAgICAgImlkIjogImN1cHMiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ3VwIGludmVudG9yeSIsCiAgICAgICJpbml0aWFsIjogMjAwLAogICAgICAia2luZCI6ICJ0b2tlbiIsCiAgICAgICJjYXBhY2l0eSI6IDUwMCwKICAgICAgInJlc291cmNlIjogdHJ1ZQogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk9yZGVycyB3YWl0aW5nIHRvIGJlIG1hZGUiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogImVzcHJlc3NvX3JlYWR5IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkVzcHJlc3NvIGRyaW5rcyByZWFkeSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAibGF0dGVfcmVhZHkiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTGF0dGUgZHJpbmtzIHJlYWR5IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJjYXBwdWNjaW5vX3JlYWR5IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNhcHB1Y2Npbm8gZHJpbmtzIHJlYWR5IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvcmRlcnNfY29tcGxldGUiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ29tcGxldGVkIGFuZCBzZXJ2ZWQgb3JkZXJzIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0KICBdLAogICJ0cmFuc2l0aW9ucyI6IFsKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkN1c3RvbWVyIG9yZGVycyBlc3ByZXNzbyIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29yZGVyX2VzcHJlc3NvIiwKICAgICAgInJhdGUiOiAxMCwKICAgICAgImV2ZW50X3R5cGUiOiAiT3JkZXJFc3ByZXNzb2VkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2xhdHRlIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkN1c3RvbWVyIG9yZGVycyBsYXR0ZSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29yZGVyX2xhdHRlIiwKICAgICAgInJhdGUiOiAxNSwKICAgICAgImV2ZW50X3R5cGUiOiAiT3JkZXJMYXR0ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2NhcHB1Y2Npbm8iLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ3VzdG9tZXIgb3JkZXJzIGNhcHB1Y2Npbm8iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vcmRlcl9jYXBwdWNjaW5vIiwKICAgICAgInJhdGUiOiA4LAogICAgICAiZXZlbnRfdHlwZSI6ICJPcmRlckNhcHB1Y2Npbm9lZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJtYWtlX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkJhcmlzdGEgbWFrZXMgZXNwcmVzc28iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9tYWtlX2VzcHJlc3NvIiwKICAgICAgInJhdGUiOiAyMCwKICAgICAgImV2ZW50X3R5cGUiOiAiTWFrZUVzcHJlc3NvZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAibWFrZV9sYXR0ZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJCYXJpc3RhIG1ha2VzIGxhdHRlIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvbWFrZV9sYXR0ZSIsCiAgICAgICJyYXRlIjogMTIsCiAgICAgICJldmVudF90eXBlIjogIk1ha2VMYXR0ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm1ha2VfY2FwcHVjY2lubyIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJCYXJpc3RhIG1ha2VzIGNhcHB1Y2Npbm8iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9tYWtlX2NhcHB1Y2Npbm8iLAogICAgICAicmF0ZSI6IDEwLAogICAgICAiZXZlbnRfdHlwZSI6ICJNYWtlQ2FwcHVjY2lub2VkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInNlcnZlX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlNlcnZlIGVzcHJlc3NvIHRvIGN1c3RvbWVyIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvc2VydmVfZXNwcmVzc28iLAogICAgICAicmF0ZSI6IDMwLAogICAgICAiZXZlbnRfdHlwZSI6ICJTZXJ2ZUVzcHJlc3NvZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAic2VydmVfbGF0dGUiLAogICAgICAiZGVzY3JpcHRpb24iOiAiU2VydmUgbGF0dGUgdG8gY3VzdG9tZXIiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zZXJ2ZV9sYXR0ZSIsCiAgICAgICJyYXRlIjogMzAsCiAgICAgICJldmVudF90eXBlIjogIlNlcnZlTGF0dGVlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJzZXJ2ZV9jYXBwdWNjaW5vIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlNlcnZlIGNhcHB1Y2Npbm8gdG8gY3VzdG9tZXIiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zZXJ2ZV9jYXBwdWNjaW5vIiwKICAgICAgInJhdGUiOiAzMCwKICAgICAgImV2ZW50X3R5cGUiOiAiU2VydmVDYXBwdWNjaW5vZWQiCiAgICB9CiAgXSwKICAiYXJjcyI6IFsKICAgIHsKICAgICAgImZyb20iOiAib3JkZXJfZXNwcmVzc28iLAogICAgICAidG8iOiAib3JkZXJzX3BlbmRpbmciCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvcmRlcnNfcGVuZGluZyIsCiAgICAgICJ0byI6ICJtYWtlX2VzcHJlc3NvIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiY29mZmVlX2JlYW5zIiwKICAgICAgInRvIjogIm1ha2VfZXNwcmVzc28iLAogICAgICAid2VpZ2h0IjogMjAKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImN1cHMiLAogICAgICAidG8iOiAibWFrZV9lc3ByZXNzbyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1ha2VfZXNwcmVzc28iLAogICAgICAidG8iOiAiZXNwcmVzc29fcmVhZHkiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvcmRlcl9sYXR0ZSIsCiAgICAgICJ0byI6ICJvcmRlcnNfcGVuZGluZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgInRvIjogIm1ha2VfbGF0dGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjb2ZmZWVfYmVhbnMiLAogICAgICAidG8iOiAibWFrZV9sYXR0ZSIsCiAgICAgICJ3ZWlnaHQiOiAxNQogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibWlsayIsCiAgICAgICJ0byI6ICJtYWtlX2xhdHRlIiwKICAgICAgIndlaWdodCI6IDUwCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjdXBzIiwKICAgICAgInRvIjogIm1ha2VfbGF0dGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJtYWtlX2xhdHRlIiwKICAgICAgInRvIjogImxhdHRlX3JlYWR5IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib3JkZXJfY2FwcHVjY2lubyIsCiAgICAgICJ0byI6ICJvcmRlcnNfcGVuZGluZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgInRvIjogIm1ha2VfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImNvZmZlZV9iZWFucyIsCiAgICAgICJ0byI6ICJtYWtlX2NhcHB1Y2Npbm8iLAogICAgICAid2VpZ2h0IjogMTUKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1pbGsiLAogICAgICAidG8iOiAibWFrZV9jYXBwdWNjaW5vIiwKICAgICAgIndlaWdodCI6IDMwCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjdXBzIiwKICAgICAgInRvIjogIm1ha2VfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1ha2VfY2FwcHVjY2lubyIsCiAgICAgICJ0byI6ICJjYXBwdWNjaW5vX3JlYWR5IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiZXNwcmVzc29fcmVhZHkiLAogICAgICAidG8iOiAic2VydmVfZXNwcmVzc28iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzZXJ2ZV9lc3ByZXNzbyIsCiAgICAgICJ0byI6ICJvcmRlcnNfY29tcGxldGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJsYXR0ZV9yZWFkeSIsCiAgICAgICJ0byI6ICJzZXJ2ZV9sYXR0ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInNlcnZlX2xhdHRlIiwKICAgICAgInRvIjogIm9yZGVyc19jb21wbGV0ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImNhcHB1Y2Npbm9fcmVhZHkiLAogICAgICAidG8iOiAic2VydmVfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInNlcnZlX2NhcHB1Y2Npbm8iLAogICAgICAidG8iOiAib3JkZXJzX2NvbXBsZXRlIgogICAgfQogIF0sCiAgIm5hdmlnYXRpb24iOiB7CiAgICAiYnJhbmQiOiAiQ29mZmVlIFNob3AiLAogICAgIml0ZW1zIjogWwogICAgICB7CiAgICAgICAgImxhYmVsIjogIkRhc2hib2FyZCIsCiAgICAgICAgInBhdGgiOiAiLyIsCiAgICAgICAgImljb24iOiAiaG9tZSIKICAgICAgfSwKICAgICAgewogICAgICAgICJsYWJlbCI6ICJPcmRlcnMiLAogICAgICAgICJwYXRoIjogIi9vcmRlcnMiLAogICAgICAgICJpY29uIjogImxpc3QiCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAibGFiZWwiOiAiSW52ZW50b3J5IiwKICAgICAgICAicGF0aCI6ICIvaW52ZW50b3J5IiwKICAgICAgICAiaWNvbiI6ICJhcmNoaXZlIgogICAgICB9LAogICAgICB7CiAgICAgICAgImxhYmVsIjogIlNpbXVsYXRpb24iLAogICAgICAgICJwYXRoIjogIi9zaW11bGF0aW9uIiwKICAgICAgICAiaWNvbiI6ICJjaGFydCIKICAgICAgfSwKICAgICAgewogICAgICAgICJsYWJlbCI6ICJTY2hlbWEiLAogICAgICAgICJwYXRoIjogIi9zY2hlbWEiLAogICAgICAgICJpY29uIjogInNldHRpbmdzIgogICAgICB9CiAgICBdCiAgfSwKICAiZGVidWciOiB7CiAgICAiZW5hYmxlZCI6IHRydWUKICB9LAogICJwcmVkaWN0aW9uIjogewogICAgImVuYWJsZWQiOiB0cnVlLAogICAgInRpbWVIb3VycyI6IDgsCiAgICAicmF0ZVNjYWxlIjogMC4wMDAxCiAgfQp9"
+	schemaBase64 := "ewogICJuYW1lIjogImNvZmZlZXNob3AiLAogICJkZXNjcmlwdGlvbiI6ICJDb2ZmZWUgc2hvcCBpbnZlbnRvcnkgYW5kIG9yZGVyIHByb2Nlc3Npbmcgd2l0aCByZXNvdXJjZSBwcmVkaWN0aW9uIiwKICAicGxhY2VzIjogWwogICAgewogICAgICAiaWQiOiAiY29mZmVlX2JlYW5zIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNvZmZlZSBiZWFucyBpbnZlbnRvcnkgKGdyYW1zKSIsCiAgICAgICJpbml0aWFsIjogMTAwMCwKICAgICAgImtpbmQiOiAidG9rZW4iLAogICAgICAiY2FwYWNpdHkiOiAyMDAwLAogICAgICAicmVzb3VyY2UiOiB0cnVlCiAgICB9LAogICAgewogICAgICAiaWQiOiAibWlsayIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJNaWxrIGludmVudG9yeSAobWwpIiwKICAgICAgImluaXRpYWwiOiA1MDAsCiAgICAgICJraW5kIjogInRva2VuIiwKICAgICAgImNhcGFjaXR5IjogMTAwMCwKICAgICAgInJlc291cmNlIjogdHJ1ZQogICAgfSwKICAgIHsKICAgICAgImlkIjogImN1cHMiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ3VwIGludmVudG9yeSIsCiAgICAgICJpbml0aWFsIjogMjAwLAogICAgICAia2luZCI6ICJ0b2tlbiIsCiAgICAgICJjYXBhY2l0eSI6IDUwMCwKICAgICAgInJlc291cmNlIjogdHJ1ZQogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgImRlc2NyaXB0aW9uIjogIk9yZGVycyB3YWl0aW5nIHRvIGJlIG1hZGUiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogImVzcHJlc3NvX3JlYWR5IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkVzcHJlc3NvIGRyaW5rcyByZWFkeSIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAibGF0dGVfcmVhZHkiLAogICAgICAiZGVzY3JpcHRpb24iOiAiTGF0dGUgZHJpbmtzIHJlYWR5IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJjYXBwdWNjaW5vX3JlYWR5IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkNhcHB1Y2Npbm8gZHJpbmtzIHJlYWR5IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJvcmRlcnNfY29tcGxldGUiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ29tcGxldGVkIGFuZCBzZXJ2ZWQgb3JkZXJzIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0KICBdLAogICJ0cmFuc2l0aW9ucyI6IFsKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkN1c3RvbWVyIG9yZGVycyBlc3ByZXNzbyIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29yZGVyX2VzcHJlc3NvIiwKICAgICAgInJhdGUiOiAxMCwKICAgICAgImV2ZW50X3R5cGUiOiAiT3JkZXJFc3ByZXNzb2VkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2xhdHRlIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkN1c3RvbWVyIG9yZGVycyBsYXR0ZSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL29yZGVyX2xhdHRlIiwKICAgICAgInJhdGUiOiAxNSwKICAgICAgImV2ZW50X3R5cGUiOiAiT3JkZXJMYXR0ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm9yZGVyX2NhcHB1Y2Npbm8iLAogICAgICAiZGVzY3JpcHRpb24iOiAiQ3VzdG9tZXIgb3JkZXJzIGNhcHB1Y2Npbm8iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9vcmRlcl9jYXBwdWNjaW5vIiwKICAgICAgInJhdGUiOiA4LAogICAgICAiZXZlbnRfdHlwZSI6ICJPcmRlckNhcHB1Y2Npbm9lZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJtYWtlX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkJhcmlzdGEgbWFrZXMgZXNwcmVzc28iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9tYWtlX2VzcHJlc3NvIiwKICAgICAgInJhdGUiOiAyMCwKICAgICAgImV2ZW50X3R5cGUiOiAiTWFrZUVzcHJlc3NvZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAibWFrZV9sYXR0ZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJCYXJpc3RhIG1ha2VzIGxhdHRlIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvbWFrZV9sYXR0ZSIsCiAgICAgICJyYXRlIjogMTIsCiAgICAgICJldmVudF90eXBlIjogIk1ha2VMYXR0ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogIm1ha2VfY2FwcHVjY2lubyIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJCYXJpc3RhIG1ha2VzIGNhcHB1Y2Npbm8iLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9tYWtlX2NhcHB1Y2Npbm8iLAogICAgICAicmF0ZSI6IDEwLAogICAgICAiZXZlbnRfdHlwZSI6ICJNYWtlQ2FwcHVjY2lub2VkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInNlcnZlX2VzcHJlc3NvIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlNlcnZlIGVzcHJlc3NvIHRvIGN1c3RvbWVyIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvc2VydmVfZXNwcmVzc28iLAogICAgICAicmF0ZSI6IDMwLAogICAgICAiZXZlbnRfdHlwZSI6ICJTZXJ2ZUVzcHJlc3NvZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAic2VydmVfbGF0dGUiLAogICAgICAiZGVzY3JpcHRpb24iOiAiU2VydmUgbGF0dGUgdG8gY3VzdG9tZXIiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zZXJ2ZV9sYXR0ZSIsCiAgICAgICJyYXRlIjogMzAsCiAgICAgICJldmVudF90eXBlIjogIlNlcnZlTGF0dGVlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJzZXJ2ZV9jYXBwdWNjaW5vIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlNlcnZlIGNhcHB1Y2Npbm8gdG8gY3VzdG9tZXIiLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zZXJ2ZV9jYXBwdWNjaW5vIiwKICAgICAgInJhdGUiOiAzMCwKICAgICAgImV2ZW50X3R5cGUiOiAiU2VydmVDYXBwdWNjaW5vZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAicmVzdG9ja19jb2ZmZWVfYmVhbnMiLAogICAgICAiZGVzY3JpcHRpb24iOiAiUmVzdG9jayBjb2ZmZWUgYmVhbnMgaW52ZW50b3J5IiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvcmVzdG9ja19jb2ZmZWVfYmVhbnMiLAogICAgICAiZXZlbnRfdHlwZSI6ICJSZXN0b2NrQ29mZmVlQmVhbnNlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJyZXN0b2NrX21pbGsiLAogICAgICAiZGVzY3JpcHRpb24iOiAiUmVzdG9jayBtaWxrIGludmVudG9yeSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3Jlc3RvY2tfbWlsayIsCiAgICAgICJldmVudF90eXBlIjogIlJlc3RvY2tNaWxrZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAicmVzdG9ja19jdXBzIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlJlc3RvY2sgY3VwIGludmVudG9yeSIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvYXBpL3Jlc3RvY2tfY3VwcyIsCiAgICAgICJldmVudF90eXBlIjogIlJlc3RvY2tDdXBzZWQiCiAgICB9CiAgXSwKICAiYXJjcyI6IFsKICAgIHsKICAgICAgImZyb20iOiAib3JkZXJfZXNwcmVzc28iLAogICAgICAidG8iOiAib3JkZXJzX3BlbmRpbmciCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvcmRlcnNfcGVuZGluZyIsCiAgICAgICJ0byI6ICJtYWtlX2VzcHJlc3NvIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiY29mZmVlX2JlYW5zIiwKICAgICAgInRvIjogIm1ha2VfZXNwcmVzc28iLAogICAgICAid2VpZ2h0IjogMjAKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImN1cHMiLAogICAgICAidG8iOiAibWFrZV9lc3ByZXNzbyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1ha2VfZXNwcmVzc28iLAogICAgICAidG8iOiAiZXNwcmVzc29fcmVhZHkiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJvcmRlcl9sYXR0ZSIsCiAgICAgICJ0byI6ICJvcmRlcnNfcGVuZGluZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgInRvIjogIm1ha2VfbGF0dGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjb2ZmZWVfYmVhbnMiLAogICAgICAidG8iOiAibWFrZV9sYXR0ZSIsCiAgICAgICJ3ZWlnaHQiOiAxNQogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAibWlsayIsCiAgICAgICJ0byI6ICJtYWtlX2xhdHRlIiwKICAgICAgIndlaWdodCI6IDUwCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjdXBzIiwKICAgICAgInRvIjogIm1ha2VfbGF0dGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJtYWtlX2xhdHRlIiwKICAgICAgInRvIjogImxhdHRlX3JlYWR5IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAib3JkZXJfY2FwcHVjY2lubyIsCiAgICAgICJ0byI6ICJvcmRlcnNfcGVuZGluZyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm9yZGVyc19wZW5kaW5nIiwKICAgICAgInRvIjogIm1ha2VfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImNvZmZlZV9iZWFucyIsCiAgICAgICJ0byI6ICJtYWtlX2NhcHB1Y2Npbm8iLAogICAgICAid2VpZ2h0IjogMTUKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1pbGsiLAogICAgICAidG8iOiAibWFrZV9jYXBwdWNjaW5vIiwKICAgICAgIndlaWdodCI6IDMwCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJjdXBzIiwKICAgICAgInRvIjogIm1ha2VfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogIm1ha2VfY2FwcHVjY2lubyIsCiAgICAgICJ0byI6ICJjYXBwdWNjaW5vX3JlYWR5IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiZXNwcmVzc29fcmVhZHkiLAogICAgICAidG8iOiAic2VydmVfZXNwcmVzc28iCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzZXJ2ZV9lc3ByZXNzbyIsCiAgICAgICJ0byI6ICJvcmRlcnNfY29tcGxldGUiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJsYXR0ZV9yZWFkeSIsCiAgICAgICJ0byI6ICJzZXJ2ZV9sYXR0ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInNlcnZlX2xhdHRlIiwKICAgICAgInRvIjogIm9yZGVyc19jb21wbGV0ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImNhcHB1Y2Npbm9fcmVhZHkiLAogICAgICAidG8iOiAic2VydmVfY2FwcHVjY2lubyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInNlcnZlX2NhcHB1Y2Npbm8iLAogICAgICAidG8iOiAib3JkZXJzX2NvbXBsZXRlIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVzdG9ja19jb2ZmZWVfYmVhbnMiLAogICAgICAidG8iOiAiY29mZmVlX2JlYW5zIiwKICAgICAgIndlaWdodCI6IDUwMAogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVzdG9ja19taWxrIiwKICAgICAgInRvIjogIm1pbGsiLAogICAgICAid2VpZ2h0IjogNTAwCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJyZXN0b2NrX2N1cHMiLAogICAgICAidG8iOiAiY3VwcyIsCiAgICAgICJ3ZWlnaHQiOiAxMDAKICAgIH0KICBdLAogICJkZWJ1ZyI6IHsKICAgICJlbmFibGVkIjogdHJ1ZQogIH0sCiAgInByZWRpY3Rpb24iOiB7CiAgICAiZW5hYmxlZCI6IHRydWUsCiAgICAidGltZUhvdXJzIjogOCwKICAgICJyYXRlU2NhbGUiOiAwLjAwMDEKICB9Cn0="
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		schemaJSON, err := base64.StdEncoding.DecodeString(schemaBase64)

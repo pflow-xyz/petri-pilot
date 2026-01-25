@@ -8,6 +8,16 @@
 // API base path for when service is mounted at a prefix
 const API_BASE = window.API_BASE || ''
 
+// Frontend base path (may differ from API_BASE when in dash view)
+function getFrontendBase() {
+  const path = window.location.pathname
+  const match = path.match(/^(\/~[^\/]+)\//)
+  if (match) {
+    return match[1]  // e.g., /~coffeeshop
+  }
+  return API_BASE  // e.g., /coffeeshop
+}
+
 import { navigate } from './router.js'
 
 // Available roles for login
@@ -15,14 +25,16 @@ const availableRoles = [
 ]
 
 // Default navigation when backend is unavailable
-const defaultNavigation = {
-  brand: 'coffeeshop',
-  items: [
-    { label: 'coffeeshop', path: `${API_BASE}/coffeeshop`, icon: '' },
-    { label: 'New', path: `${API_BASE}/coffeeshop/new`, icon: '+' },
-    { label: 'Schema', path: `${API_BASE}/schema`, icon: '⚙' },
-    { label: 'Admin', path: `${API_BASE}/admin`, icon: '' },
-  ]
+function getDefaultNavigation() {
+  const base = getFrontendBase()
+  return {
+    brand: 'coffeeshop',
+    items: [
+      { label: 'coffeeshop', path: `${base}/coffeeshop`, icon: '' },
+      { label: 'New', path: `${base}/coffeeshop/new`, icon: '+' },
+      { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
+    ]
+  }
 }
 
 // Navigation state
@@ -46,11 +58,11 @@ async function fetchNavigation() {
       navigationData = await response.json()
     } else {
       // Use fallback navigation
-      navigationData = defaultNavigation
+      navigationData = getDefaultNavigation()
     }
   } catch (error) {
     // Use fallback navigation
-    navigationData = defaultNavigation
+    navigationData = getDefaultNavigation()
   } finally {
     isLoading = false
   }
@@ -84,8 +96,9 @@ export async function createNavigation() {
   const user = getCurrentUser()
 
   // Use fetched items or defaults
-  const items = navigationData?.items || defaultNavigation.items
-  const brand = navigationData?.brand || defaultNavigation.brand
+  const defaultNav = getDefaultNavigation()
+  const items = navigationData?.items || defaultNav.items
+  const brand = navigationData?.brand || defaultNav.brand
 
   // Brand link: if in dash view, link to custom frontend; otherwise stay in dash
   const brandUrl = getCustomFrontendUrl()
@@ -100,10 +113,11 @@ export async function createNavigation() {
       </div>
       <ul class="nav-menu">
         ${items.map(item => {
-          // Prepend API_BASE if path doesn't already include it
-          const itemPath = item.path.startsWith(API_BASE) ? item.path : `${API_BASE}${item.path}`
+          // Use path as-is (already includes correct base from getDefaultNavigation or backend)
+          const frontendBase = getFrontendBase()
+          const itemPath = item.path.startsWith('/') ? item.path : `${frontendBase}${item.path}`
           const isActive = currentPath === itemPath ||
-            (itemPath !== '/' && itemPath !== API_BASE && currentPath.startsWith(itemPath))
+            (itemPath !== '/' && itemPath !== frontendBase && currentPath.startsWith(itemPath))
           return `
             <li class="${isActive ? 'active' : ''}">
               <a href="${itemPath}" onclick="handleNavClick(event, '${itemPath}')">

@@ -3,7 +3,6 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
-import { initAdmin, renderAdminDashboard, loadAdminStats, renderAdminInstances, loadAdminInstances, renderAdminInstance, loadAdminInstance } from './admin.js'
 
 // API client
 const API_BASE = window.API_BASE || ''
@@ -1686,28 +1685,80 @@ window.showSchemaTab = function(tabName) {
 }
 
 
-// Admin dashboard - uses admin.js module
-async function renderAdminDashboardPage() {
-  initAdmin()
+// Admin dashboard (fallback when admin module not available)
+async function renderAdminPage() {
   const app = document.getElementById('app')
-  app.innerHTML = renderAdminDashboard()
-  await loadAdminStats()
-}
+  app.innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <h1>Admin Dashboard</h1>
+      </div>
+      <div id="admin-stats" class="card">
+        <div class="loading">Loading statistics...</div>
+      </div>
+      <div id="admin-instances" class="card">
+        <div class="card-header">Recent Instances</div>
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  `
 
-// Admin instances list
-async function renderAdminInstancesPage() {
-  initAdmin()
-  const app = document.getElementById('app')
-  app.innerHTML = renderAdminInstances()
-  await loadAdminInstances()
-}
+  try {
+    const [stats, instancesResult] = await Promise.all([
+      fetch(`${API_BASE}/admin/stats`, { headers: getHeaders() }).then(r => r.json()).catch(() => null),
+      api.listInstances()
+    ])
 
-// Admin instance detail
-async function renderAdminInstancePage(id) {
-  initAdmin()
-  const app = document.getElementById('app')
-  app.innerHTML = renderAdminInstance(id)
-  await loadAdminInstance(id)
+    if (stats) {
+      document.getElementById('admin-stats').innerHTML = `
+        <div class="card-header">Statistics</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+          <div>
+            <div style="font-size: 2rem; font-weight: 600;">${stats.total_streams || 0}</div>
+            <div style="color: #666;">Total Instances</div>
+          </div>
+          <div>
+            <div style="font-size: 2rem; font-weight: 600;">${stats.total_events || 0}</div>
+            <div style="color: #666;">Total Events</div>
+          </div>
+        </div>
+      `
+    } else {
+      document.getElementById('admin-stats').innerHTML = ''
+    }
+
+    instances = instancesResult.instances || []
+    const container = document.getElementById('admin-instances').querySelector('.loading')
+    if (container) {
+      container.outerHTML = instances.length > 0
+        ? `<table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Version</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${instances.slice(0, 20).map(inst => {
+                const status = getStatus(inst.state || inst.places)
+                return `
+                  <tr>
+                    <td><code>${inst.id}</code></td>
+                    <td>${formatStatus(status)}</td>
+                    <td>${inst.version || 0}</td>
+                    <td><button class="btn btn-sm btn-link" onclick="navigate('/coffeeshop/${inst.id}')">View</button></td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>`
+        : '<p style="color: #666; padding: 1rem;">No instances yet.</p>'
+    }
+  } catch (err) {
+    showError('Failed to load admin data: ' + err.message)
+  }
 }
 
 
@@ -1782,14 +1833,6 @@ function handleRouteChange(event) {
     renderDetailPage()
   } else if (path === '/schema') {
     renderSchemaPage()
-  } else if (path === '/admin') {
-    renderAdminDashboardPage()
-  } else if (path === '/admin/instances') {
-    renderAdminInstancesPage()
-  } else if (path === '/admin/instances/:id') {
-    const actualPath = window.location.pathname
-    const id = actualPath.replace('/admin/instances/', '')
-    renderAdminInstancePage(id)
   } else {
     renderListPage()
   }

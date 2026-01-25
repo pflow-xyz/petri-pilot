@@ -115,3 +115,39 @@ func (e ServeCappuccinoedEvent) EventType() string {
 }
 
 
+// RestockCoffeeBeansedEvent is emitted when the restock_coffee_beans transition fires.
+type RestockCoffeeBeansedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e RestockCoffeeBeansedEvent) EventType() string {
+	return "RestockCoffeeBeansed"
+}
+
+
+// RestockMilkedEvent is emitted when the restock_milk transition fires.
+type RestockMilkedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e RestockMilkedEvent) EventType() string {
+	return "RestockMilked"
+}
+
+
+// RestockCupsedEvent is emitted when the restock_cups transition fires.
+type RestockCupsedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e RestockCupsedEvent) EventType() string {
+	return "RestockCupsed"
+}
+
+

@@ -2,10 +2,7 @@
 
 package coffeeshop
 
-import (
-	"github.com/pflow-xyz/go-pflow/petri"
-	"github.com/pflow-xyz/go-pflow/solver"
-)
+// Simplified prediction model - calculates resource depletion based on order rates.
 
 // PredictionConfig holds simulation parameters.
 var PredictionConfig = struct {
@@ -13,7 +10,7 @@ var PredictionConfig = struct {
 	RateScale float64
 }{
 	TimeHours: 8.0,
-	RateScale: 0.000100,
+	RateScale: 1.0, // Not used in simplified model
 }
 
 // SimulationResult represents predicted resource levels over time.
@@ -32,126 +29,111 @@ func ResourcePlaceIDs() []string {
 	}
 }
 
-// RunSimulation executes ODE prediction from current state.
+// RunSimulation executes prediction from current state with default rates.
 func RunSimulation(currentTokens map[string]int, hours float64) (*SimulationResult, error) {
-	// Build Petri net
-	net := buildPredictionPetriNet()
+	return RunSimulationWithRates(currentTokens, hours, nil)
+}
 
-	// Build initial state (map[string]float64)
-	initialState := make(map[string]float64)
-	for placeID, tokens := range currentTokens {
-		initialState[placeID] = float64(tokens)
+// RunSimulationWithRates calculates resource depletion based on order rates.
+// Uses a simplified model: orders arrive at configured rates, each order type
+// consumes specific amounts of resources.
+func RunSimulationWithRates(currentTokens map[string]int, hours float64, customRates map[string]float64) (*SimulationResult, error) {
+	// Default rates (per hour)
+	defaultRates := map[string]float64{
+		"order_espresso":   10.00,
+		"order_latte":      15.00,
+		"order_cappuccino": 8.00,
 	}
-	// Ensure all places have a value
-	for label := range net.Places {
-		if _, ok := initialState[label]; !ok {
-			initialState[label] = 0
+
+	// Get effective order rates
+	orderRates := make(map[string]float64)
+	for order, defaultRate := range defaultRates {
+		if customRates != nil {
+			if customRate, ok := customRates[order]; ok {
+				orderRates[order] = customRate
+				continue
+			}
 		}
+		orderRates[order] = defaultRate
 	}
 
-	// Build transition rates
-	rates := make(map[string]float64)
-	rates["order_espresso"] = 10.00 * PredictionConfig.RateScale
-	rates["order_latte"] = 15.00 * PredictionConfig.RateScale
-	rates["order_cappuccino"] = 8.00 * PredictionConfig.RateScale
-	rates["make_espresso"] = 20.00 * PredictionConfig.RateScale
-	rates["make_latte"] = 12.00 * PredictionConfig.RateScale
-	rates["make_cappuccino"] = 10.00 * PredictionConfig.RateScale
-	rates["serve_espresso"] = 30.00 * PredictionConfig.RateScale
-	rates["serve_latte"] = 30.00 * PredictionConfig.RateScale
-	rates["serve_cappuccino"] = 30.00 * PredictionConfig.RateScale
+	// Resource consumption per order type (from Petri net arcs)
+	// espresso: 20g coffee, 0ml milk, 1 cup
+	// latte: 15g coffee, 50ml milk, 1 cup
+	// cappuccino: 15g coffee, 30ml milk, 1 cup
+	consumption := map[string]map[string]float64{
+		"order_espresso":   {"coffee_beans": 20, "milk": 0, "cups": 1},
+		"order_latte":      {"coffee_beans": 15, "milk": 50, "cups": 1},
+		"order_cappuccino": {"coffee_beans": 15, "milk": 30, "cups": 1},
+	}
 
-	// Create and solve ODE problem
-	tspan := [2]float64{0, hours * 60} // Convert hours to minutes
-	prob := solver.NewProblem(net, initialState, tspan, rates)
-	solution := solver.Solve(prob, solver.Tsit5(), solver.WorkflowOptions())
+	// Calculate consumption rates per hour for each resource
+	coffeePerHour := orderRates["order_espresso"]*consumption["order_espresso"]["coffee_beans"] +
+		orderRates["order_latte"]*consumption["order_latte"]["coffee_beans"] +
+		orderRates["order_cappuccino"]*consumption["order_cappuccino"]["coffee_beans"]
 
-	// Extract results
+	milkPerHour := orderRates["order_espresso"]*consumption["order_espresso"]["milk"] +
+		orderRates["order_latte"]*consumption["order_latte"]["milk"] +
+		orderRates["order_cappuccino"]*consumption["order_cappuccino"]["milk"]
+
+	cupsPerHour := orderRates["order_espresso"]*consumption["order_espresso"]["cups"] +
+		orderRates["order_latte"]*consumption["order_latte"]["cups"] +
+		orderRates["order_cappuccino"]*consumption["order_cappuccino"]["cups"]
+
+	// Get current inventory
+	coffeeBeans := float64(currentTokens["coffee_beans"])
+	milk := float64(currentTokens["milk"])
+	cups := float64(currentTokens["cups"])
+
+	// Generate time points (every minute for the duration)
+	totalMinutes := int(hours * 60)
+	timePoints := make([]float64, totalMinutes+1)
+	coffeeTrajectory := make([]float64, totalMinutes+1)
+	milkTrajectory := make([]float64, totalMinutes+1)
+	cupsTrajectory := make([]float64, totalMinutes+1)
+
+	for i := 0; i <= totalMinutes; i++ {
+		t := float64(i) // minutes
+		timePoints[i] = t
+
+		// Calculate remaining resources at time t
+		hoursElapsed := t / 60.0
+		coffeeTrajectory[i] = coffeeBeans - coffeePerHour*hoursElapsed
+		milkTrajectory[i] = milk - milkPerHour*hoursElapsed
+		cupsTrajectory[i] = cups - cupsPerHour*hoursElapsed
+	}
+
 	result := &SimulationResult{
-		TimePoints: solution.T,
-		Resources:  make(map[string][]float64),
+		TimePoints: timePoints,
+		Resources: map[string][]float64{
+			"coffee_beans": coffeeTrajectory,
+			"milk":         milkTrajectory,
+			"cups":         cupsTrajectory,
+		},
 		RunoutTime: make(map[string]*float64),
 	}
 
-	// Extract resource place trajectories
-	resourcePlaces := ResourcePlaceIDs()
-	for _, resourceID := range resourcePlaces {
-		trajectory := solution.GetVariable(resourceID)
-		if trajectory != nil {
-			result.Resources[resourceID] = trajectory
-
-			// Find runout time (when resource <= 0)
-			if rt := findRunoutTime(solution.T, trajectory); rt != nil {
-				result.RunoutTime[resourceID] = rt
-			}
+	// Calculate runout times (when resource hits 0)
+	if coffeePerHour > 0 {
+		rt := (coffeeBeans / coffeePerHour) * 60 // Convert hours to minutes
+		if rt <= hours*60 {
+			result.RunoutTime["coffee_beans"] = &rt
+		}
+	}
+	if milkPerHour > 0 {
+		rt := (milk / milkPerHour) * 60
+		if rt <= hours*60 {
+			result.RunoutTime["milk"] = &rt
+		}
+	}
+	if cupsPerHour > 0 {
+		rt := (cups / cupsPerHour) * 60
+		if rt <= hours*60 {
+			result.RunoutTime["cups"] = &rt
 		}
 	}
 
 	return result, nil
-}
-
-// buildPredictionPetriNet constructs the Petri net from the workflow definition.
-func buildPredictionPetriNet() *petri.PetriNet {
-	net := petri.NewPetriNet()
-
-	// Add places
-	net.AddPlace("coffee_beans", float64(1000), nil, 0, 0, nil)
-	net.AddPlace("milk", float64(500), nil, 0, 0, nil)
-	net.AddPlace("cups", float64(200), nil, 0, 0, nil)
-	net.AddPlace("orders_pending", float64(0), nil, 0, 0, nil)
-	net.AddPlace("espresso_ready", float64(0), nil, 0, 0, nil)
-	net.AddPlace("latte_ready", float64(0), nil, 0, 0, nil)
-	net.AddPlace("cappuccino_ready", float64(0), nil, 0, 0, nil)
-	net.AddPlace("orders_complete", float64(0), nil, 0, 0, nil)
-
-	// Add transitions
-	net.AddTransition("order_espresso", "default", 0, 0, nil)
-	net.AddTransition("order_latte", "default", 0, 0, nil)
-	net.AddTransition("order_cappuccino", "default", 0, 0, nil)
-	net.AddTransition("make_espresso", "default", 0, 0, nil)
-	net.AddTransition("make_latte", "default", 0, 0, nil)
-	net.AddTransition("make_cappuccino", "default", 0, 0, nil)
-	net.AddTransition("serve_espresso", "default", 0, 0, nil)
-	net.AddTransition("serve_latte", "default", 0, 0, nil)
-	net.AddTransition("serve_cappuccino", "default", 0, 0, nil)
-
-	// Add arcs (from model definition)
-	net.AddArc("order_espresso", "orders_pending", float64(1), false)
-	net.AddArc("orders_pending", "make_espresso", float64(1), false)
-	net.AddArc("coffee_beans", "make_espresso", float64(20), false)
-	net.AddArc("cups", "make_espresso", float64(1), false)
-	net.AddArc("make_espresso", "espresso_ready", float64(1), false)
-	net.AddArc("order_latte", "orders_pending", float64(1), false)
-	net.AddArc("orders_pending", "make_latte", float64(1), false)
-	net.AddArc("coffee_beans", "make_latte", float64(15), false)
-	net.AddArc("milk", "make_latte", float64(50), false)
-	net.AddArc("cups", "make_latte", float64(1), false)
-	net.AddArc("make_latte", "latte_ready", float64(1), false)
-	net.AddArc("order_cappuccino", "orders_pending", float64(1), false)
-	net.AddArc("orders_pending", "make_cappuccino", float64(1), false)
-	net.AddArc("coffee_beans", "make_cappuccino", float64(15), false)
-	net.AddArc("milk", "make_cappuccino", float64(30), false)
-	net.AddArc("cups", "make_cappuccino", float64(1), false)
-	net.AddArc("make_cappuccino", "cappuccino_ready", float64(1), false)
-	net.AddArc("espresso_ready", "serve_espresso", float64(1), false)
-	net.AddArc("serve_espresso", "orders_complete", float64(1), false)
-	net.AddArc("latte_ready", "serve_latte", float64(1), false)
-	net.AddArc("serve_latte", "orders_complete", float64(1), false)
-	net.AddArc("cappuccino_ready", "serve_cappuccino", float64(1), false)
-	net.AddArc("serve_cappuccino", "orders_complete", float64(1), false)
-
-	return net
-}
-
-// findRunoutTime finds the first time point where the value drops to or below zero.
-func findRunoutTime(t, values []float64) *float64 {
-	for i, v := range values {
-		if v <= 0 {
-			runoutTime := t[i]
-			return &runoutTime
-		}
-	}
-	return nil
 }
 
 // GetCurrentInventory returns the current token counts for resource places.

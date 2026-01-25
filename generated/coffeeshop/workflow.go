@@ -25,6 +25,9 @@ const (
 	TransitionServeEspresso = "serve_espresso"
 	TransitionServeLatte = "serve_latte"
 	TransitionServeCappuccino = "serve_cappuccino"
+	TransitionRestockCoffeeBeans = "restock_coffee_beans"
+	TransitionRestockMilk = "restock_milk"
+	TransitionRestockCups = "restock_cups"
 )
 
 // Event type constants
@@ -38,6 +41,9 @@ const (
 	EventTypeServeEspresso = "ServeEspressoed"
 	EventTypeServeLatte = "ServeLatteed"
 	EventTypeServeCappuccino = "ServeCappuccinoed"
+	EventTypeRestockCoffeeBeans = "RestockCoffeeBeansed"
+	EventTypeRestockMilk = "RestockMilked"
+	EventTypeRestockCups = "RestockCupsed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
@@ -75,5 +81,8 @@ func AllTransitions() []string {
 		TransitionServeEspresso,
 		TransitionServeLatte,
 		TransitionServeCappuccino,
+		TransitionRestockCoffeeBeans,
+		TransitionRestockMilk,
+		TransitionRestockCups,
 	}
 }

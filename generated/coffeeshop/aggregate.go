@@ -137,6 +137,33 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersComplete: 1,
 		},
 	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionRestockCoffeeBeans,
+		EventType: EventTypeRestockCoffeeBeans,
+		Inputs: map[string]int{
+		},
+		Outputs: map[string]int{
+			PlaceCoffeeBeans: 500,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionRestockMilk,
+		EventType: EventTypeRestockMilk,
+		Inputs: map[string]int{
+		},
+		Outputs: map[string]int{
+			PlaceMilk: 500,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionRestockCups,
+		EventType: EventTypeRestockCups,
+		Inputs: map[string]int{
+		},
+		Outputs: map[string]int{
+			PlaceCups: 100,
+		},
+	})
 
 	// Register event handlers for state updates
 	sm.RegisterHandler(EventTypeOrderEspresso, func(state *State, event *eventsource.Event) error {
@@ -165,6 +192,15 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeServeCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyServeCappuccino(state, event)
+	})
+	sm.RegisterHandler(EventTypeRestockCoffeeBeans, func(state *State, event *eventsource.Event) error {
+		return applyRestockCoffeeBeans(state, event)
+	})
+	sm.RegisterHandler(EventTypeRestockMilk, func(state *State, event *eventsource.Event) error {
+		return applyRestockMilk(state, event)
+	})
+	sm.RegisterHandler(EventTypeRestockCups, func(state *State, event *eventsource.Event) error {
+		return applyRestockCups(state, event)
 	})
 	return &Aggregate{sm: sm}
 }
@@ -273,6 +309,27 @@ func applyServeLatte(state *State, event *eventsource.Event) error {
 }
 
 func applyServeCappuccino(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyRestockCoffeeBeans(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyRestockMilk(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyRestockCups(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

@@ -4,20 +4,10 @@
   "prediction": {
     "enabled": true,
     "timeHours": 8,
-    "rateScale": 0.0001
+    "rateScale": 0.0167
   },
   "debug": {
     "enabled": true
-  },
-  "navigation": {
-    "brand": "Coffee Shop",
-    "items": [
-      {"label": "Dashboard", "path": "/", "icon": "home"},
-      {"label": "Orders", "path": "/orders", "icon": "list"},
-      {"label": "Inventory", "path": "/inventory", "icon": "archive"},
-      {"label": "Simulation", "path": "/simulation", "icon": "chart"},
-      {"label": "Schema", "path": "/schema", "icon": "settings"}
-    ]
   },
   "places": [
     {"id": "coffee_beans", "description": "Coffee beans inventory (grams)", "initial": 1000, "capacity": 2000, "resource": true},
@@ -38,7 +28,10 @@
     {"id": "make_cappuccino", "description": "Barista makes cappuccino", "rate": 10},
     {"id": "serve_espresso", "description": "Serve espresso to customer", "rate": 30},
     {"id": "serve_latte", "description": "Serve latte to customer", "rate": 30},
-    {"id": "serve_cappuccino", "description": "Serve cappuccino to customer", "rate": 30}
+    {"id": "serve_cappuccino", "description": "Serve cappuccino to customer", "rate": 30},
+    {"id": "restock_coffee_beans", "description": "Restock coffee beans inventory"},
+    {"id": "restock_milk", "description": "Restock milk inventory"},
+    {"id": "restock_cups", "description": "Restock cup inventory"}
   ],
   "arcs": [
     {"from": "order_espresso", "to": "orders_pending"},
@@ -66,6 +59,10 @@
     {"from": "latte_ready", "to": "serve_latte"},
     {"from": "serve_latte", "to": "orders_complete"},
     {"from": "cappuccino_ready", "to": "serve_cappuccino"},
-    {"from": "serve_cappuccino", "to": "orders_complete"}
+    {"from": "serve_cappuccino", "to": "orders_complete"},
+
+    {"from": "restock_coffee_beans", "to": "coffee_beans", "weight": 500},
+    {"from": "restock_milk", "to": "milk", "weight": 500},
+    {"from": "restock_cups", "to": "cups", "weight": 100}
   ]
 }

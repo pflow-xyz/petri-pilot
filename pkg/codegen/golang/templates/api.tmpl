@@ -102,6 +102,9 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{- if .HasAccessControl}}
 	// Test login endpoint (only available in debug mode)
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
+{{- else}}
+	// Guest login endpoint (debug mode without access control)
+	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
 {{- end}}
 {{end}}
 {{if .HasBlobstore}}

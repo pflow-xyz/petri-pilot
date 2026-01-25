@@ -48,7 +48,7 @@ func LoadConfig() (*Config, error) {
 		ShutdownTimeout: getDurationEnv("SHUTDOWN_TIMEOUT", 30*time.Second),
 
 		// Database defaults
-		DatabaseURL:  getEnv("DATABASE_URL", "file:main.db?_journal=WAL"),
+		DatabaseURL:  getEnv("DATABASE_URL", "file:coffeeshop.db?_journal=WAL"),
 		DatabaseType: getEnv("DATABASE_TYPE", "sqlite"),
 
 		// GitHub OAuth defaults

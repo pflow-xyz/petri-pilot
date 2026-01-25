@@ -51,6 +51,9 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `serve_espresso` | `ServeEspressoed` | - | Serve espresso to customer |
 | `serve_latte` | `ServeLatteed` | - | Serve latte to customer |
 | `serve_cappuccino` | `ServeCappuccinoed` | - | Serve cappuccino to customer |
+| `restock_coffee_beans` | `RestockCoffeeBeansed` | - | Restock coffee beans inventory |
+| `restock_milk` | `RestockMilked` | - | Restock milk inventory |
+| `restock_cups` | `RestockCupsed` | - | Restock cup inventory |
 
 
 ### Petri Net Diagram
@@ -78,6 +81,9 @@ stateDiagram-v2
     state "serve_espresso" as t_TransitionServeEspresso
     state "serve_latte" as t_TransitionServeLatte
     state "serve_cappuccino" as t_TransitionServeCappuccino
+    state "restock_coffee_beans" as t_TransitionRestockCoffeeBeans
+    state "restock_milk" as t_TransitionRestockMilk
+    state "restock_cups" as t_TransitionRestockCups
 
 
     t_TransitionOrderEspresso --> PlaceOrdersPending
@@ -112,6 +118,12 @@ stateDiagram-v2
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
 
+    t_TransitionRestockCoffeeBeans --> PlaceCoffeeBeans: 500
+
+    t_TransitionRestockMilk --> PlaceMilk: 500
+
+    t_TransitionRestockCups --> PlaceCups: 100
+
 ```
 
 ### Workflow Diagram
@@ -139,6 +151,9 @@ flowchart TD
         t_TransitionServeEspresso["serve_espresso"]
         t_TransitionServeLatte["serve_latte"]
         t_TransitionServeCappuccino["serve_cappuccino"]
+        t_TransitionRestockCoffeeBeans["restock_coffee_beans"]
+        t_TransitionRestockMilk["restock_milk"]
+        t_TransitionRestockCups["restock_cups"]
     end
 
 
@@ -174,6 +189,12 @@ flowchart TD
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
 
+    t_TransitionRestockCoffeeBeans -->|500| PlaceCoffeeBeans
+
+    t_TransitionRestockMilk -->|500| PlaceMilk
+
+    t_TransitionRestockCups -->|100| PlaceCups
+
 
     style Places fill:#e1f5fe
     style Transitions fill:#fff3e0
@@ -195,6 +216,9 @@ Events are immutable records of state transitions. Each event captures the trans
 | `ServeEspressoed` | `serve_espresso` | `aggregate_id`, `timestamp` |
 | `ServeLatteed` | `serve_latte` | `aggregate_id`, `timestamp` |
 | `ServeCappuccinoed` | `serve_cappuccino` | `aggregate_id`, `timestamp` |
+| `RestockCoffeeBeansed` | `restock_coffee_beans` | `aggregate_id`, `timestamp` |
+| `RestockMilked` | `restock_milk` | `aggregate_id`, `timestamp` |
+| `RestockCupsed` | `restock_cups` | `aggregate_id`, `timestamp` |
 
 
 ```mermaid
@@ -263,6 +287,24 @@ classDiagram
     }
     Event <|-- ServeCappuccinoedEvent
 
+    class RestockCoffeeBeansedEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- RestockCoffeeBeansedEvent
+
+    class RestockMilkedEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- RestockMilkedEvent
+
+    class RestockCupsedEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- RestockCupsedEvent
+
 ```
 
 
@@ -277,7 +319,6 @@ classDiagram
 | GET | `/ready` | Readiness check |
 | POST | `/api/coffeeshop` | Create new instance |
 | GET | `/api/coffeeshop/{id}` | Get instance state |
-| GET | `/api/navigation` | Get navigation menu |
 
 
 ### Transition Endpoints
@@ -293,6 +334,9 @@ classDiagram
 | POST | `/api/serve_espresso` | `serve_espresso` | Serve espresso to customer |
 | POST | `/api/serve_latte` | `serve_latte` | Serve latte to customer |
 | POST | `/api/serve_cappuccino` | `serve_cappuccino` | Serve cappuccino to customer |
+| POST | `/api/restock_coffee_beans` | `restock_coffee_beans` | Restock coffee beans inventory |
+| POST | `/api/restock_milk` | `restock_milk` | Restock milk inventory |
+| POST | `/api/restock_cups` | `restock_cups` | Restock cup inventory |
 
 
 ### Request/Response Format
@@ -327,18 +371,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ```
 
 
-## Navigation
-
-| Label | Path | Icon | Roles |
-|-------|------|------|-------|
-| Dashboard | `/` | home | * |
-| Orders | `/orders` | list | * |
-| Inventory | `/inventory` | archive | * |
-| Simulation | `/simulation` | chart | * |
-| Schema | `/schema` | settings | * |
-
-
-
 
 ## Configuration
 
@@ -362,7 +394,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── navigation.go     # Navigation menu
 ├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html

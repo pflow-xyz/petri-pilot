@@ -20,7 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	navigation *Navigation
 	debugBroker *DebugBroker
 }
 
@@ -33,17 +32,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize navigation
-	svc.navigation = &Navigation{
-		Brand: "Coffee Shop",
-		Items: []NavigationItem{
-			{Label: "Dashboard", Path: "/", Icon: "home", Roles: []string{ }},
-			{Label: "Orders", Path: "/orders", Icon: "list", Roles: []string{ }},
-			{Label: "Inventory", Path: "/inventory", Icon: "archive", Roles: []string{ }},
-			{Label: "Simulation", Path: "/simulation", Icon: "chart", Roles: []string{ }},
-			{Label: "Schema", Path: "/schema", Icon: "settings", Roles: []string{ }},
-		},
-	}
 	// Initialize debug broker
 	svc.debugBroker = NewDebugBroker()
 
@@ -57,7 +45,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.navigation, s.debugBroker)
+	return BuildRouter(s.app, s.debugBroker)
 }
 
 // Close cleans up resources used by the service.

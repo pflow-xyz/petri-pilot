@@ -226,7 +226,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		HasEventSourcing: true,
 		HasSnapshots:     true,
 		HasViews:         len(enriched.Views) > 0,
-		HasAdmin:         true, // Always generate admin dashboard
+		HasAdmin:         enriched.Admin != nil && enriched.Admin.Enabled,
 		HasDebug:         enriched.Debug != nil && enriched.Debug.Enabled,
 		HasPrediction:    enriched.Prediction != nil && enriched.Prediction.Enabled,
 		HasBlobstore:     enriched.Blobstore != nil && enriched.Blobstore.Enabled,
