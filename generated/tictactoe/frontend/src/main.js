@@ -552,7 +552,7 @@ function showSuccess(message) {
 }
 
 // Status configuration from schema
-const STATUS_PLACES = {"win_x": "X Wins", "win_o": "O Wins"}
+const STATUS_PLACES = {"win_o": "O Wins", "win_x": "X Wins"}
 const STATUS_DEFAULT = "In Progress"
 
 // Get human-readable status from places
@@ -1233,11 +1233,15 @@ async function renderSchemaPage() {
     const response = await fetch(`${API_BASE}/api/schema`)
     const schema = await response.json()
 
+    // Store schema for petri-view
+    _currentSchema = schema
+
     const schemaContent = document.getElementById('schema-content')
     schemaContent.innerHTML = `
       <div class="schema-viewer">
         <div class="schema-tabs">
           <button class="schema-tab active" onclick="showSchemaTab('overview')">Overview</button>
+          <button class="schema-tab" onclick="showSchemaTab('petrinet')">Petri Net</button>
           <button class="schema-tab" onclick="showSchemaTab('places')">Places (${schema.places?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('transitions')">Transitions (${schema.transitions?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('arcs')">Arcs (${schema.arcs?.length || 0})</button>
@@ -1338,6 +1342,12 @@ async function renderSchemaPage() {
               `).join('')}
             </tbody>
           </table>
+        </div>
+
+        <div id="schema-tab-petrinet" class="schema-tab-content" style="display: none;">
+          <div class="petrinet-container">
+            <petri-view id="schema-petri-view"></petri-view>
+          </div>
         </div>
 
         <div id="schema-tab-raw" class="schema-tab-content" style="display: none;">
@@ -1442,6 +1452,18 @@ async function renderSchemaPage() {
           font-size: 0.85rem;
           line-height: 1.5;
         }
+        .petrinet-container {
+          width: 100%;
+          height: calc(100vh - 280px);
+          min-height: 500px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .petrinet-container petri-view {
+          width: 100%;
+          height: 100%;
+        }
       </style>
     `
   } catch (err) {
@@ -1450,6 +1472,369 @@ async function renderSchemaPage() {
       <div class="error">Failed to load schema: ${err.message}</div>
     `
   }
+}
+
+// Store schema globally for petri-view
+let _currentSchema = null
+
+// Convert schema to pflow.xyz format
+function schemaToPflowModel(schema) {
+  const places = {}
+  const transitions = {}
+  const arcs = []
+
+  // Build adjacency info for flow-based layout
+  const placeIds = new Set((schema.places || []).map(p => p.id))
+  const transitionIds = new Set((schema.transitions || []).map(t => t.id))
+
+  // Track connections
+  const placeToTransitions = {}
+  const transitionToPlaces = {}
+  const placeInputs = {}
+  const transitionInputs = {}
+
+  ;(schema.places || []).forEach(p => {
+    placeToTransitions[p.id] = []
+    placeInputs[p.id] = []
+  })
+  ;(schema.transitions || []).forEach(t => {
+    transitionToPlaces[t.id] = []
+    transitionInputs[t.id] = []
+  })
+
+  ;(schema.arcs || []).forEach(a => {
+    if (placeIds.has(a.from) && transitionIds.has(a.to)) {
+      placeToTransitions[a.from].push(a.to)
+      transitionInputs[a.to].push(a.from)
+    } else if (transitionIds.has(a.from) && placeIds.has(a.to)) {
+      transitionToPlaces[a.from].push(a.to)
+      placeInputs[a.to].push(a.from)
+    }
+  })
+
+  // ============================================================
+  // Flow-based layout: arrange places by flow order, transitions alongside
+  // ============================================================
+
+  // Compute flow order using BFS from initial/source places
+  const placeOrder = []
+  const placeVisited = new Set()
+  const queue = []
+
+  // Start with places that have initial tokens or no inputs (sources)
+  ;(schema.places || []).forEach(p => {
+    if ((p.initial || 0) > 0 || placeInputs[p.id].length === 0) {
+      queue.push(p.id)
+      placeVisited.add(p.id)
+    }
+  })
+
+  // BFS traversal to get flow order
+  while (queue.length > 0) {
+    const pid = queue.shift()
+    placeOrder.push(pid)
+
+    // Find reachable places through transitions
+    placeToTransitions[pid].forEach(tid => {
+      transitionToPlaces[tid].forEach(nextPid => {
+        if (!placeVisited.has(nextPid)) {
+          placeVisited.add(nextPid)
+          queue.push(nextPid)
+        }
+      })
+    })
+  }
+
+  // Add any remaining places not reached by BFS
+  ;(schema.places || []).forEach(p => {
+    if (!placeVisited.has(p.id)) {
+      placeOrder.push(p.id)
+    }
+  })
+
+  // Group places/transitions by prefix for semantic clustering
+  // Examples: p00->p, x_turn->x, win_x->win, x_play_00->x_play, x_win_row0->x_win
+  function getPrefix(id) {
+    // Common workflow/state names that should not be split
+    const keepWhole = ['in_review', 'in_progress', 'create_post', 'can_reset', 'game_active']
+    if (keepWhole.includes(id)) return id
+
+    // x_play_00, o_play_11 -> x_play, o_play (underscore before digits)
+    let match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_\d/)
+    if (match) return match[1]
+
+    // p00, x00 -> p, x (letter(s) directly followed by digits)
+    match = id.match(/^([a-zA-Z]+)\d/)
+    if (match) return match[1]
+
+    // x_win_row0, o_win_col1 -> x_win, o_win (two parts before final part with digit)
+    match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_[a-zA-Z]+\d/)
+    if (match) return match[1]
+
+    // x_win_diag, x_win_anti -> x_win (three parts, no trailing digit)
+    match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_[a-zA-Z]+$/)
+    if (match) return match[1]
+
+    // win_x, win_o -> win (two parts, second is single letter)
+    match = id.match(/^([a-zA-Z]+)_[a-zA-Z]$/)
+    if (match) return match[1]
+
+    // For two-part names not in keepWhole, keep them whole if second part is long
+    // e.g., x_turn -> x (short suffix), but game_active -> game_active (long suffix, but in keepWhole)
+    match = id.match(/^([a-zA-Z]+)_([a-zA-Z]+)$/)
+    if (match && match[2].length <= 4) return match[1]  // Short suffix like "turn" -> use first part
+
+    return id
+  }
+
+  // Group ordered places by prefix while maintaining relative order
+  const prefixGroups = {}
+  placeOrder.forEach((pid, orderIndex) => {
+    const prefix = getPrefix(pid)
+    if (!prefixGroups[prefix]) {
+      prefixGroups[prefix] = { places: [], minOrder: orderIndex }
+    }
+    prefixGroups[prefix].places.push({ id: pid, order: orderIndex })
+  })
+
+  // Sort prefix groups by their earliest member's order
+  const sortedPrefixes = Object.entries(prefixGroups)
+    .sort((a, b) => a[1].minOrder - b[1].minOrder)
+    .map(([prefix, data]) => ({ prefix, ...data }))
+
+  // Layout constants
+  const MARGIN_TOP = 80
+  const MARGIN_LEFT = 100
+  const H_SPACING = 130  // Horizontal spacing within groups
+  const V_SPACING = 120  // Vertical spacing between rows
+  const GROUP_V_GAP = 80 // Vertical gap between prefix groups
+
+  const placePositions = {}
+  const placeData = {}  // Store place data for lookup
+  ;(schema.places || []).forEach(p => { placeData[p.id] = p })
+
+  let currentY = MARGIN_TOP
+  let maxX = MARGIN_LEFT
+
+  // Layout each prefix group
+  sortedPrefixes.forEach((group, groupIndex) => {
+    const places = group.places.sort((a, b) => {
+      // Sort by numeric suffix if present
+      const aNum = parseInt(a.id.match(/\d+$/)?.[0] || '0')
+      const bNum = parseInt(b.id.match(/\d+$/)?.[0] || '0')
+      return aNum - bNum
+    })
+
+    // Determine grid size - try to make it roughly square
+    const count = places.length
+    let cols, rows
+    if (count <= 4) {
+      cols = count
+      rows = 1
+    } else if (count === 9) {
+      // Special case for 3x3 grids (like tic-tac-toe cells)
+      cols = 3
+      rows = 3
+    } else if (count <= 9) {
+      cols = Math.ceil(Math.sqrt(count))
+      rows = Math.ceil(count / cols)
+    } else {
+      cols = Math.min(count, 6)
+      rows = Math.ceil(count / cols)
+    }
+
+    // Position places in a grid for this group
+    places.forEach((p, i) => {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = MARGIN_LEFT + col * H_SPACING
+      const y = currentY + row * V_SPACING
+      placePositions[p.id] = { x, y }
+      maxX = Math.max(maxX, x)
+    })
+
+    // Move to next row for next group
+    currentY += rows * V_SPACING + GROUP_V_GAP
+  })
+
+  let maxYInLayer = currentY
+
+  // Create place objects
+  ;(schema.places || []).forEach(p => {
+    const pos = placePositions[p.id] || { x: MARGIN_LEFT, y: MARGIN_TOP }
+    const initial = p.initial || 0
+    const capacity = p.capacity !== undefined ? p.capacity : null  // null = unlimited
+    places[p.id] = {
+      '@type': 'Place',
+      initial: [initial],
+      capacity: [capacity],
+      x: pos.x,
+      y: pos.y
+    }
+  })
+
+  // Group transitions by prefix for consistent positioning
+  const transitionGroups = {}
+  ;(schema.transitions || []).forEach(t => {
+    const prefix = getPrefix(t.id)
+    if (!transitionGroups[prefix]) transitionGroups[prefix] = []
+    transitionGroups[prefix].push(t)
+  })
+
+  // Position transitions to the right of places, arranged in a grid
+  const transitionPositions = {}
+  const T_MARGIN_LEFT = maxX + H_SPACING + 80  // Start transitions to the right of all places
+  const T_H_SPACING = 100
+  const T_V_SPACING = 80
+
+  // Group transitions by their primary input place's Y position
+  const transitionsByInputY = {}
+  ;(schema.transitions || []).forEach(t => {
+    const inputs = transitionInputs[t.id] || []
+    let primaryY = MARGIN_TOP
+    if (inputs.length > 0) {
+      // Use average Y of input places
+      let sumY = 0, count = 0
+      inputs.forEach(pid => {
+        const pos = placePositions[pid]
+        if (pos) { sumY += pos.y; count++ }
+      })
+      if (count > 0) primaryY = Math.round(sumY / count)
+    }
+    const yKey = Math.round(primaryY / 80) * 80  // Round to grid
+    if (!transitionsByInputY[yKey]) transitionsByInputY[yKey] = []
+    transitionsByInputY[yKey].push({ t, primaryY })
+  })
+
+  // Layout transitions row by row
+  const sortedYKeys = Object.keys(transitionsByInputY).map(Number).sort((a, b) => a - b)
+
+  sortedYKeys.forEach((yKey, rowIndex) => {
+    const row = transitionsByInputY[yKey]
+    // Sort transitions within row by name for consistency
+    row.sort((a, b) => a.t.id.localeCompare(b.t.id))
+
+    row.forEach((item, colIndex) => {
+      const x = T_MARGIN_LEFT + colIndex * T_H_SPACING
+      const y = item.primaryY
+      transitionPositions[item.t.id] = { x, y }
+    })
+  })
+
+  // Create transition objects
+  ;(schema.transitions || []).forEach(t => {
+    const pos = transitionPositions[t.id] || { x: MARGIN_LEFT, y: maxYInLayer + 150 }
+    transitions[t.id] = {
+      '@type': 'Transition',
+      x: pos.x,
+      y: pos.y
+    }
+  })
+
+  // Create arcs - omit weights if all are 1 (cleaner visualization)
+  const allWeightsAreOne = (schema.arcs || []).every(a => (a.weight || 1) === 1)
+  ;(schema.arcs || []).forEach(a => {
+    const arc = {
+      '@type': 'Arrow',
+      source: a.from,
+      target: a.to,
+      inhibit: a.type === 'inhibitor'
+    }
+    if (!allWeightsAreOne) {
+      arc.weight = [a.weight || 1]
+    }
+    arcs.push(arc)
+  })
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    name: schema.name || 'Model',
+    description: schema.description || '',
+    places,
+    transitions,
+    arcs
+  }
+}
+
+// Load petri-view component from CDN
+let petriViewLoaded = false
+async function loadPetriView() {
+  if (petriViewLoaded) return
+
+  // Load CSS
+  if (!document.querySelector('link[href*="petri-view.css"]')) {
+    const css = document.createElement('link')
+    css.rel = 'stylesheet'
+    css.href = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.css'
+    document.head.appendChild(css)
+  }
+
+  // Load JS as ES module (petri-view.js uses export)
+  if (!customElements.get('petri-view')) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.type = 'module'
+      script.src = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.js'
+      script.onload = resolve
+      script.onerror = reject
+      document.head.appendChild(script)
+    })
+    // Wait for custom element to be defined
+    await customElements.whenDefined('petri-view')
+  }
+
+  petriViewLoaded = true
+}
+
+// Initialize petri-view with schema
+async function initPetriView() {
+  if (!_currentSchema) return
+
+  await loadPetriView()
+
+  const petriView = document.getElementById('schema-petri-view')
+  if (!petriView) return
+
+  // Wait for component to be ready with setModel
+  const waitForReady = async (maxAttempts = 20) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      if (petriView.setModel) {
+        const model = schemaToPflowModel(_currentSchema)
+        petriView.setModel(model)
+        // Start simulation mode so transitions can be fired by clicking
+        // Wait a frame for the model to be processed
+        await new Promise(r => requestAnimationFrame(r))
+        if (petriView._toggleSim && !petriView._simRunning) {
+          petriView._toggleSim()
+        }
+        // Move toolbar to top by injecting CSS into shadow DOM
+        moveToolbarToTop(petriView)
+        return
+      }
+      await new Promise(r => setTimeout(r, 50))
+    }
+    console.warn('petri-view setModel not available after waiting')
+  }
+
+  await waitForReady()
+}
+
+// Move petri-view toolbar to top of canvas (no shadow DOM, inject into document)
+function moveToolbarToTop(petriView) {
+  // Check if we already injected our styles
+  if (document.getElementById('petri-toolbar-override')) return
+
+  const style = document.createElement('style')
+  style.id = 'petri-toolbar-override'
+  style.textContent = `
+    /* Move petri-view toolbar from bottom to top of canvas, aligned with hamburger menu */
+    .pv-menu.pv-mode-menu {
+      bottom: auto !important;
+      top: 260px !important;
+    }
+  `
+  document.head.appendChild(style)
 }
 
 // Schema tab switching
@@ -1469,6 +1854,16 @@ window.showSchemaTab = function(tabName) {
   if (targetContent) {
     targetContent.style.display = 'block'
     targetContent.classList.add('active')
+  }
+
+  // Initialize petri-view when tab is shown
+  if (tabName === 'petrinet') {
+    initPetriView()
+  } else {
+    // Restore scroll behavior when leaving petri-view tab
+    // petri-view sets overflow:hidden on body/html for pan/zoom
+    document.body.style.overflow = 'auto'
+    document.documentElement.style.overflow = 'auto'
   }
 }
 
@@ -1646,7 +2041,8 @@ let debugSessionId = null
 
 function initDebugWebSocket() {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${wsProtocol}//${window.location.host}/ws`
+  // Use API_BASE for multi-service mode support
+  const wsUrl = `${wsProtocol}//${window.location.host}${API_BASE}/ws`
 
   debugWs = new WebSocket(wsUrl)
 

@@ -130,7 +130,7 @@
       .form-field textarea:focus,
       .form-field select:focus {
         outline: none;
-        border-color: #0066cc;
+        border-color: #24292e;
       }
       .form-field .field-help {
         font-size: 0.85rem;
@@ -160,11 +160,11 @@
         transition: background 0.2s;
       }
       .btn-primary {
-        background: #0066cc;
+        background: #24292e;
         color: white;
       }
       .btn-primary:hover {
-        background: #0055aa;
+        background: #1a1e22;
       }
       .btn-secondary {
         background: #6c757d;
@@ -189,7 +189,7 @@
       }
       .btn-link {
         background: transparent;
-        color: #0066cc;
+        color: #24292e;
         padding: 0.5rem;
       }
       .btn-link:hover {
@@ -368,6 +368,26 @@
         display: none !important;
       }
 
+      /* Top nav for app/dash switching */
+      .top-nav {
+        background: rgba(0,0,0,0.15);
+        padding: 0.5rem 2rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+      }
+      .top-nav a {
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        font-size: 0.9rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      .top-nav a:hover {
+        background: rgba(255,255,255,0.2);
+      }
+
       /* Nested state display (for maps like balances/allowances) */
       .nested-state {
         display: flex;
@@ -410,8 +430,9 @@
     <script>
       (function() {
         const path = window.location.pathname;
-        const match = path.match(/^(\/[^\/]+)\//);
-        window.API_BASE = match ? match[1] : '';
+        // Match /~service/ or /service/ - API calls always go to /service/ (without ~)
+        const match = path.match(/^\/(~)?([^\/]+)\//);
+        window.API_BASE = match ? '/' + match[2] : '';
       })();
     </script>
 

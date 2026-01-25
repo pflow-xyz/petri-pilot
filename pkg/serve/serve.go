@@ -156,7 +156,7 @@ func RunMultiple(names []string, opts Options) error {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// Mount each service at /{name}/
+	// Mount each service at /{name}/ and /~{name}/
 	for i, svc := range services {
 		name := names[i]
 		handler := svc.BuildHandler()
@@ -164,18 +164,16 @@ func RunMultiple(names []string, opts Options) error {
 		mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
 		log.Printf("  Mounted %s at %s/", name, prefix)
 
-		// If custom frontend exists, also mount generated frontend at /{name}_/
-		if customFrontendPath := findCustomFrontend(name); customFrontendPath != "" {
-			packageName := strings.ReplaceAll(name, "-", "")
-			generatedPath := filepath.Join("generated", packageName, "frontend")
-			if _, err := os.Stat(generatedPath); err == nil {
-				genPrefix := "/" + name + "_"
-				spaHandler := createSPAHandler(generatedPath)
-				// Create combined handler that proxies API calls to main service
-				genHandler := createGeneratedFrontendHandler(spaHandler, handler)
-				mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
-				log.Printf("  Mounted %s (generated) at %s/", name, genPrefix)
-			}
+		// Always mount generated frontend at /~{name}/ for dashboard access
+		packageName := strings.ReplaceAll(name, "-", "")
+		generatedPath := filepath.Join("generated", packageName, "frontend")
+		if _, err := os.Stat(generatedPath); err == nil {
+			genPrefix := "/~" + name
+			spaHandler := createSPAHandler(generatedPath)
+			// Create combined handler that proxies API calls to main service
+			genHandler := createGeneratedFrontendHandler(spaHandler, handler)
+			mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
+			log.Printf("  Mounted %s dash at %s/", name, genPrefix)
 		}
 	}
 
@@ -187,12 +185,107 @@ func RunMultiple(names []string, opts Options) error {
 		}
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><head><title>Petri Pilot Services</title></head><body>"))
-		w.Write([]byte("<h1>Available Services</h1><ul>"))
+
+		// Build service cards
+		var cards strings.Builder
 		for _, name := range names {
-			fmt.Fprintf(w, `<li><a href="/%s/">%s</a></li>`, name, name)
+			cards.WriteString(fmt.Sprintf(`
+				<div class="service-card">
+					<h2>%s</h2>
+					<div class="links">
+						<a href="/%s/" class="btn btn-primary">Open App</a>
+						<a href="/~%s/" class="btn btn-secondary">Dashboard</a>
+					</div>
+				</div>`, name, name, name))
 		}
-		w.Write([]byte("</ul></body></html>"))
+
+		html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Petri Pilot</title>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+			min-height: 100vh;
+			padding: 2rem;
+		}
+		.container {
+			max-width: 900px;
+			margin: 0 auto;
+		}
+		header {
+			text-align: center;
+			color: white;
+			margin-bottom: 3rem;
+		}
+		header h1 {
+			font-size: 2.5rem;
+			margin-bottom: 0.5rem;
+		}
+		header p {
+			opacity: 0.9;
+			font-size: 1.1rem;
+		}
+		.services {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+			gap: 1.5rem;
+		}
+		.service-card {
+			background: white;
+			border-radius: 12px;
+			padding: 1.5rem;
+			box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+			transition: transform 0.2s, box-shadow 0.2s;
+		}
+		.service-card:hover {
+			transform: translateY(-4px);
+			box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+		}
+		.service-card h2 {
+			color: #333;
+			margin-bottom: 1rem;
+			font-size: 1.25rem;
+		}
+		.links {
+			display: flex;
+			gap: 0.75rem;
+		}
+		.btn {
+			flex: 1;
+			padding: 0.6rem 1rem;
+			border-radius: 6px;
+			text-decoration: none;
+			font-weight: 500;
+			text-align: center;
+			transition: opacity 0.2s;
+		}
+		.btn:hover { opacity: 0.9; }
+		.btn-primary {
+			background: #667eea;
+			color: white;
+		}
+		.btn-secondary {
+			background: #f0f0f0;
+			color: #333;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>Petri Pilot</h1>
+			<p>Event-sourced applications from Petri net models</p>
+		</header>
+		<div class="services">%s</div>
+	</div>
+</body>
+</html>`, cards.String())
+		w.Write([]byte(html))
 	})
 
 	server := &http.Server{
@@ -305,10 +398,28 @@ func runProcessService(svc ProcessService, port int) error {
 // runHTTPService runs a standard HTTP handler service.
 func runHTTPService(svc Service, port int, opts Options) error {
 	handler := svc.BuildHandler()
+	name := svc.Name()
+
+	// Always mount generated frontend at /~{name}/ for dashboard access
+	var finalHandler http.Handler = handler
+	packageName := strings.ReplaceAll(name, "-", "")
+	generatedPath := filepath.Join("generated", packageName, "frontend")
+	if _, err := os.Stat(generatedPath); err == nil {
+		// Create mux to handle both main handler and generated frontend
+		mux := http.NewServeMux()
+		genPrefix := "/~" + name
+		spaHandler := createSPAHandler(generatedPath)
+		genHandler := createGeneratedFrontendHandler(spaHandler, handler)
+		mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
+		// Default handler for everything else
+		mux.Handle("/", handler)
+		finalHandler = mux
+		log.Printf("  Dash available at %s/", genPrefix)
+	}
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      handler,
+		Handler:      finalHandler,
 		ReadTimeout:  opts.ReadTimeout,
 		WriteTimeout: opts.WriteTimeout,
 		IdleTimeout:  opts.IdleTimeout,
@@ -346,34 +457,11 @@ func runHTTPService(svc Service, port int, opts Options) error {
 	return nil
 }
 
-// createGeneratedFrontendHandler creates a handler that serves the generated frontend
-// but proxies API calls to the main service handler.
-func createGeneratedFrontendHandler(spaHandler, apiHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Proxy API and admin calls to the main service
-		if strings.HasPrefix(r.URL.Path, "/api/") ||
-			strings.HasPrefix(r.URL.Path, "/admin/") ||
-			strings.HasPrefix(r.URL.Path, "/auth/") ||
-			strings.HasPrefix(r.URL.Path, "/ws") {
-			apiHandler.ServeHTTP(w, r)
-			return
-		}
-		// Serve static files for everything else
-		spaHandler.ServeHTTP(w, r)
-	})
-}
-
-// findCustomFrontend checks if a custom frontend exists for the given service name.
-// Returns the path if found, empty string otherwise.
-func findCustomFrontend(name string) string {
-	path := filepath.Join("frontends", name)
-	if info, err := os.Stat(path); err == nil && info.IsDir() {
-		// Check if it has an index.html
-		if _, err := os.Stat(filepath.Join(path, "index.html")); err == nil {
-			return path
-		}
-	}
-	return ""
+// createGeneratedFrontendHandler creates a handler that serves only the generated frontend.
+// API calls should go to the main service URL (without ~), not through the dash.
+func createGeneratedFrontendHandler(spaHandler, _ http.Handler) http.Handler {
+	// Dash only serves the frontend - no API proxying
+	return spaHandler
 }
 
 // createSPAHandler creates an HTTP handler for serving a single-page application.

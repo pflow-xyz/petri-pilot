@@ -19,7 +19,7 @@
 
       /* Navigation */
       .navigation {
-        background: #24292e;
+        background: #0066cc;
         color: white;
         padding: 0 1rem;
         display: flex;
@@ -410,8 +410,9 @@
     <script>
       (function() {
         const path = window.location.pathname;
-        const match = path.match(/^(\/[^\/]+)\//);
-        window.API_BASE = match ? match[1] : '';
+        // Match /~service/ or /service/ - API calls always go to /service/ (without ~)
+        const match = path.match(/^\/(~)?([^\/]+)\//);
+        window.API_BASE = match ? '/' + match[2] : '';
       })();
     </script>
 

@@ -393,15 +393,216 @@ body {
   body {
     background: white;
   }
-  
+
   .navigation,
   .controls-section,
   stress-indicator {
     display: none;
   }
-  
+
   .coffee-card {
     box-shadow: none;
     border: 1px solid var(--espresso-dark);
   }
+}
+
+/* ============================================================================
+   Override Generated Blue Theme with Coffee Colors
+   ============================================================================ */
+
+/* Navigation */
+.navigation a.active,
+.navigation a:hover {
+  background: var(--latte-brown) !important;
+}
+
+/* Primary buttons - replace blue gradient with coffee */
+.btn-primary,
+button.btn-primary,
+.btn.btn-primary {
+  background: linear-gradient(to bottom, var(--coffee-brown), var(--espresso-dark)) !important;
+  border-color: var(--espresso-dark) !important;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover {
+  background: linear-gradient(to bottom, var(--latte-brown), var(--coffee-brown)) !important;
+}
+
+/* Secondary buttons */
+.btn-secondary.active,
+.btn-secondary:hover {
+  background: var(--latte-brown) !important;
+  color: white !important;
+}
+
+/* Links */
+a {
+  color: var(--coffee-brown);
+}
+
+a:hover {
+  color: var(--espresso-dark);
+}
+
+/* Tab buttons and navigation tabs */
+.tab-btn.active,
+.nav-tab.active,
+[role="tab"][aria-selected="true"] {
+  background: var(--coffee-brown) !important;
+  color: white !important;
+  border-color: var(--coffee-brown) !important;
+}
+
+.tab-btn:hover,
+.nav-tab:hover {
+  background: var(--cappuccino-light) !important;
+}
+
+/* Cards and panels */
+.card-header,
+.panel-header {
+  background: linear-gradient(to right, var(--espresso-dark), var(--coffee-brown)) !important;
+  color: white !important;
+}
+
+/* Status badges */
+.badge-primary,
+.status-badge {
+  background: var(--coffee-brown) !important;
+}
+
+/* Progress bars */
+.progress-bar,
+.progress-fill {
+  background: linear-gradient(to right, var(--coffee-brown), var(--latte-brown)) !important;
+}
+
+/* Form elements */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--coffee-brown) !important;
+  box-shadow: 0 0 0 3px rgba(109, 76, 65, 0.2) !important;
+}
+
+/* Tables */
+th {
+  background: var(--espresso-dark) !important;
+  color: white !important;
+}
+
+tr:hover {
+  background: var(--cream) !important;
+}
+
+/* Petri Net visualization overrides */
+pflow-model::part(transition) {
+  fill: var(--coffee-brown);
+}
+
+/* Instance cards */
+.instance-card:hover {
+  border-color: var(--coffee-brown) !important;
+}
+
+/* Admin panel header */
+.admin-header {
+  background: linear-gradient(135deg, var(--espresso-dark) 0%, var(--coffee-brown) 100%) !important;
+}
+
+/* Event numbers and badges */
+.event-num,
+.step-number {
+  background: var(--coffee-brown) !important;
+}
+
+/* Active/selected states */
+.active,
+.selected,
+[aria-selected="true"] {
+  border-color: var(--coffee-brown) !important;
+}
+
+/* Schema page */
+.schema-section h3,
+.section-title {
+  color: var(--espresso-dark) !important;
+  border-bottom-color: var(--foam) !important;
+}
+
+/* Transition buttons in admin */
+.transition-btn {
+  background: var(--coffee-brown) !important;
+  border-color: var(--espresso-dark) !important;
+}
+
+.transition-btn:hover {
+  background: var(--latte-brown) !important;
+}
+
+.transition-btn:disabled {
+  background: var(--cappuccino-light) !important;
+  opacity: 0.5;
+}
+
+/* Code blocks */
+code, pre {
+  background: var(--cream) !important;
+  border-color: var(--foam) !important;
+}
+
+/* Spinners and loaders */
+.spinner,
+.loading-spinner {
+  border-top-color: var(--coffee-brown) !important;
+}
+
+/* Schema tabs */
+.schema-tab.active {
+  background: var(--coffee-brown) !important;
+  border-color: var(--coffee-brown) !important;
+}
+
+/* Schema stat values (overview numbers) */
+.stat-value {
+  color: var(--coffee-brown) !important;
+}
+
+/* Schema JSON - darker espresso background */
+.schema-json {
+  background: var(--espresso-dark) !important;
+}
+
+/* Schema table code - remove background, use subtle styling */
+.schema-table code {
+  background: transparent !important;
+  color: var(--espresso-dark) !important;
+}
+
+/* Schema table headers */
+.schema-table th {
+  background: var(--cream) !important;
+  color: var(--espresso-dark) !important;
+}
+
+/* Fix petri-view tool controls - keep centered horizontally when editor is toggled */
+.pv-menu.pv-mode-menu {
+  position: absolute !important;
+  top: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: auto !important;
+  z-index: 100 !important;
+}
+
+/* Tooltips */
+.tooltip {
+  background: var(--espresso-dark) !important;
+}
+
+/* Modal headers */
+.modal-header {
+  background: linear-gradient(to right, var(--espresso-dark), var(--coffee-brown)) !important;
+  color: white !important;
 }

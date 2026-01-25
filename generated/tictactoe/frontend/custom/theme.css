@@ -3,8 +3,8 @@
 
 :root {
   /* Primary colors - customize these for your brand */
-  --color-primary: #0066cc;
-  --color-primary-hover: #0055aa;
+  --color-primary: #24292e;
+  --color-primary-hover: #1a1e22;
   --color-primary-light: #e3f2fd;
 
   /* Secondary colors */
@@ -93,4 +93,25 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-light);
+}
+
+/* Schema tabs - override blue with primary color */
+.schema-tab.active {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+/* Schema stat values (overview numbers) */
+.stat-value {
+  color: var(--color-primary) !important;
+}
+
+/* Fix petri-view tool controls - keep centered horizontally when editor is toggled */
+.pv-menu.pv-mode-menu {
+  position: absolute !important;
+  top: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: auto !important;
+  z-index: 100 !important;
 }
