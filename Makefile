@@ -12,7 +12,7 @@ test:
 
 # Run dev server (used on pilot.pflow.xyz)
 dev-run: build
-	./$(BINARY) serve tic-tac-toe coffeeshop
+	./$(BINARY) serve -port 8083 tic-tac-toe coffeeshop
 
 # Build the binary
 build:
