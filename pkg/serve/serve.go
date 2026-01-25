@@ -177,29 +177,36 @@ func RunMultiple(names []string, opts Options) error {
 		}
 	}
 
-	// Root handler lists available services
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
+	// Root handler - serve landing page if it exists, otherwise list services
+	if _, err := os.Stat("landing"); err == nil {
+		// Serve landing page directory
+		landingHandler := createSPAHandler("landing")
+		mux.Handle("/", landingHandler)
+		log.Printf("  Serving landing page from landing/")
+	} else {
+		// Fallback: list available services
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
 
-		// Build service cards
-		var cards strings.Builder
-		for _, name := range names {
-			cards.WriteString(fmt.Sprintf(`
-				<div class="service-card">
-					<h2>%s</h2>
-					<div class="links">
-						<a href="/%s/" class="btn btn-primary">Open App</a>
-						<a href="/~%s/" class="btn btn-secondary">Dashboard</a>
-					</div>
-				</div>`, name, name, name))
-		}
+			// Build service cards
+			var cards strings.Builder
+			for _, name := range names {
+				cards.WriteString(fmt.Sprintf(`
+					<div class="service-card">
+						<h2>%s</h2>
+						<div class="links">
+							<a href="/%s/" class="btn btn-primary">Open App</a>
+							<a href="/~%s/" class="btn btn-secondary">Dashboard</a>
+						</div>
+					</div>`, name, name, name))
+			}
 
-		html := fmt.Sprintf(`<!DOCTYPE html>
+			html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="UTF-8">
@@ -285,8 +292,9 @@ func RunMultiple(names []string, opts Options) error {
 	</div>
 </body>
 </html>`, cards.String())
-		w.Write([]byte(html))
-	})
+			w.Write([]byte(html))
+		})
+	}
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),

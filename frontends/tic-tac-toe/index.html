@@ -24,7 +24,32 @@
       background: rgba(0,0,0,0.2);
       padding: 0.5rem 2rem;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .top-nav .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .top-nav .nav-brand:hover {
+      opacity: 0.9;
+    }
+
+    .top-nav .nav-brand img {
+      height: 28px;
+      width: auto;
+    }
+
+    .top-nav .nav-links {
+      display: flex;
       gap: 1rem;
     }
 
@@ -511,7 +536,10 @@
 </head>
 <body>
   <nav class="top-nav">
-    <a id="dash-link" href="/~tic-tac-toe/">Dashboard</a>
+    <a href="/" class="nav-brand">Petri-Pilot</a>
+    <div class="nav-links">
+      <a id="dash-link" href="/~tic-tac-toe/">Dashboard</a>
+    </div>
   </nav>
   <script>
     // Set dash link based on current path
