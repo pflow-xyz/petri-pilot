@@ -294,7 +294,7 @@ Update petri-pilot to use go-pflow's extension system for schema v2.0:
 Tasks:
 - [x] Update schema parser to support v2.0 format with `net` and `extensions` keys
 - [x] Migrate `pkg/extensions` types to implement `go-pflow/metamodel.ModelExtension` (already done)
-- [ ] Update MCP tools to accept both v1 (flat) and v2 (nested) schemas
+- [x] Update MCP tools to accept both v1 (flat) and v2 (nested) schemas
 - [ ] Update codegen to use generic types from go-pflow where applicable
 - [ ] Add schema migration tool (v1 → v2)
 

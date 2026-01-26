@@ -353,10 +353,11 @@ func handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	opts := validator.DefaultOptions()
 	opts.EnableSensitivity = false // structural validation only
@@ -380,10 +381,11 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	full := request.GetBool("full", false)
 
@@ -432,10 +434,11 @@ func handlePreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("missing file parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	// Create generator
 	gen, err := golang.New(golang.Options{})
@@ -604,10 +607,11 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError(fmt.Sprintf("missing operations parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	// Parse operations
 	var operations []map[string]any
@@ -991,10 +995,12 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	// Parse model (supports both v1 flat and v2 nested formats)
+	parseResult, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parseResult.Model
 
 	language := request.GetString("language", "go")
 	pkgName := request.GetString("package", model.Name)
@@ -1025,8 +1031,17 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("model not implementable:\n%s", errJSON)), nil
 	}
 
-	// Parse extensions if provided
+	// Build ApplicationSpec with extensions
 	app := extensions.NewApplicationSpec(model)
+
+	// For v2 schemas, parse embedded extensions
+	if parseResult.Version == "2.0" && len(parseResult.Extensions) > 0 {
+		if err := parseV2Extensions(app, parseResult.Extensions); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid v2 extensions: %v", err)), nil
+		}
+	}
+
+	// Also support separate extensions parameter (for v1 or override)
 	if extensionsJSON != "" {
 		if err := parseExtensions(app, extensionsJSON); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid extensions JSON: %v", err)), nil
@@ -1072,10 +1087,12 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	// Parse model (supports both v1 flat and v2 nested formats)
+	parseResult, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parseResult.Model
 
 	projectName := request.GetString("project", "")
 	apiURL := request.GetString("api_url", "http://localhost:8080")
@@ -1094,8 +1111,17 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("model validation failed, fix errors before generating frontend:\n%s", errJSON)), nil
 	}
 
-	// Parse extensions if provided
+	// Build ApplicationSpec with extensions
 	app := extensions.NewApplicationSpec(model)
+
+	// For v2 schemas, parse embedded extensions
+	if parseResult.Version == "2.0" && len(parseResult.Extensions) > 0 {
+		if err := parseV2Extensions(app, parseResult.Extensions); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid v2 extensions: %v", err)), nil
+		}
+	}
+
+	// Also support separate extensions parameter (for v1 or override)
 	if extensionsJSON != "" {
 		if err := parseExtensions(app, extensionsJSON); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid extensions JSON: %v", err)), nil
@@ -1141,10 +1167,11 @@ func handleVisualize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	// Generate simple SVG visualization
 	svg := generateSVG(model)
@@ -1158,10 +1185,11 @@ func handleDocs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	model, err := parseModel(modelJSON)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	includeMetadata := request.GetBool("include_metadata", true)
 

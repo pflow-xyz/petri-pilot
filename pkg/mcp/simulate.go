@@ -197,11 +197,12 @@ func handleSimulateWithSteps(ctx context.Context, request mcp.CallToolRequest) (
 		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
 	}
 
-	// Parse model
-	model, err := parseModel(modelJSON)
+	// Parse model (supports both v1 and v2 schemas)
+	parsed, err := parseModelV2(modelJSON)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
+	model := parsed.Model
 
 	// Try new "steps" parameter first, then fall back to "transitions" for backwards compatibility
 	var steps []SimulationStep
