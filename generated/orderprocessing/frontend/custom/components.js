@@ -626,6 +626,508 @@ export class OrderFlowElement extends PetriElement {
 }
 
 // ============================================================================
+// Order Dashboard Component - Fulfillment Kanban Board
+// ============================================================================
+
+export class OrderDashboardElement extends PetriElement {
+  // Order workflow stages with their visual properties
+  static stages = [
+    { id: 'received', label: 'Received', icon: '📥', color: '#6c757d', actions: ['validate', 'reject'] },
+    { id: 'validated', label: 'Validated', icon: '✅', color: '#17a2b8', actions: ['process_payment'] },
+    { id: 'paid', label: 'Paid', icon: '💳', color: '#28a745', actions: ['ship'] },
+    { id: 'shipped', label: 'Shipped', icon: '📦', color: '#fd7e14', actions: ['confirm'] },
+    { id: 'completed', label: 'Completed', icon: '🎉', color: '#20c997', actions: [] },
+    { id: 'rejected', label: 'Rejected', icon: '❌', color: '#dc3545', actions: [] }
+  ]
+
+  styles() {
+    return `
+      .dashboard {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        padding: 1.5rem;
+        background: #f0f2f5;
+        min-height: 100vh;
+      }
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .dashboard-title .icon { font-size: 2rem; }
+      .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        min-width: 140px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .stat-icon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+      }
+      .stat-info { flex: 1; }
+      .stat-value { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; }
+      .stat-label { font-size: 0.85rem; color: #666; }
+      .kanban-board {
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+      }
+      .kanban-column {
+        flex: 1;
+        min-width: 250px;
+        max-width: 320px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+      }
+      .column-header {
+        padding: 1rem;
+        border-bottom: 3px solid var(--column-color, #6c757d);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .column-title {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .column-count {
+        background: var(--column-color, #6c757d);
+        color: white;
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .column-body {
+        flex: 1;
+        padding: 0.75rem;
+        overflow-y: auto;
+        max-height: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .column-body:empty::after {
+        content: 'No orders';
+        display: block;
+        text-align: center;
+        color: #999;
+        padding: 2rem;
+        font-style: italic;
+      }
+      .order-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-left: 4px solid var(--card-color, #6c757d);
+      }
+      .order-card:hover {
+        background: #e9ecef;
+        transform: translateX(4px);
+      }
+      .order-card.selected {
+        background: #e3f2fd;
+        border-left-color: #1976d2;
+      }
+      .order-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+      .order-id {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: #666;
+      }
+      .order-total {
+        font-weight: 600;
+        color: #28a745;
+      }
+      .order-customer {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+      }
+      .order-meta {
+        font-size: 0.8rem;
+        color: #888;
+      }
+      .order-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .order-action {
+        padding: 0.35rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .order-action.primary { background: #0066cc; color: white; }
+      .order-action.primary:hover { background: #0055aa; }
+      .order-action.success { background: #28a745; color: white; }
+      .order-action.success:hover { background: #218838; }
+      .order-action.warning { background: #ffc107; color: #333; }
+      .order-action.warning:hover { background: #e0a800; }
+      .order-action.danger { background: #dc3545; color: white; }
+      .order-action.danger:hover { background: #c82333; }
+      .detail-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.3s;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+      }
+      .detail-panel.open { transform: translateX(0); }
+      .detail-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .detail-title { font-size: 1.25rem; font-weight: 600; }
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+      }
+      .close-btn:hover { color: #333; }
+      .detail-body {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+      }
+      .detail-section { margin-bottom: 1.5rem; }
+      .detail-section-title {
+        font-weight: 600;
+        color: #666;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+      }
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .detail-label { color: #666; }
+      .detail-value { font-weight: 500; }
+      .timeline { padding: 1rem 0; }
+      .timeline-item {
+        display: flex;
+        gap: 1rem;
+        padding-bottom: 1.5rem;
+        position: relative;
+      }
+      .timeline-item:last-child { padding-bottom: 0; }
+      .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 32px;
+        bottom: 0;
+        width: 2px;
+        background: #e0e0e0;
+      }
+      .timeline-item:last-child::before { display: none; }
+      .timeline-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        z-index: 1;
+      }
+      .timeline-dot.active { background: #28a745; color: white; }
+      .timeline-dot.pending { background: #e0e0e0; color: #999; }
+      .timeline-dot.current {
+        background: #0066cc;
+        color: white;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(0, 102, 204, 0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(0, 102, 204, 0); }
+      }
+      .timeline-content { flex: 1; }
+      .timeline-title { font-weight: 500; margin-bottom: 0.25rem; }
+      .timeline-time { font-size: 0.8rem; color: #888; }
+      .new-order-btn {
+        background: #0066cc;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.2s;
+      }
+      .new-order-btn:hover { background: #0055aa; }
+    `
+  }
+
+  template() {
+    const state = this._state || {}
+    const instances = state.instances || []
+    const selectedId = state.selectedId
+
+    const ordersByStage = {}
+    OrderDashboardElement.stages.forEach(s => ordersByStage[s.id] = [])
+
+    instances.forEach(inst => {
+      const places = inst.state?.places || inst.state || {}
+      const currentStage = OrderDashboardElement.stages.find(s => places[s.id] > 0)
+      if (currentStage) {
+        ordersByStage[currentStage.id].push(inst)
+      }
+    })
+
+    const totalOrders = instances.length
+    const activeOrders = instances.filter(i => {
+      const p = i.state?.places || i.state || {}
+      return !p.completed && !p.rejected
+    }).length
+    const completedOrders = ordersByStage.completed.length
+    const rejectedOrders = ordersByStage.rejected.length
+    const selectedOrder = selectedId ? instances.find(i => i.id === selectedId) : null
+
+    return `
+      <div class="dashboard">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <span class="icon">📋</span>
+            Order Fulfillment
+          </div>
+          <button class="new-order-btn" data-action="new-order">
+            <span>+</span> New Order
+          </button>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">📦</div>
+            <div class="stat-info">
+              <div class="stat-value">${totalOrders}</div>
+              <div class="stat-label">Total Orders</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">⏳</div>
+            <div class="stat-info">
+              <div class="stat-value">${activeOrders}</div>
+              <div class="stat-label">In Progress</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">✅</div>
+            <div class="stat-info">
+              <div class="stat-value">${completedOrders}</div>
+              <div class="stat-label">Completed</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #ffebee;">❌</div>
+            <div class="stat-info">
+              <div class="stat-value">${rejectedOrders}</div>
+              <div class="stat-label">Rejected</div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-board">
+          ${OrderDashboardElement.stages.filter(s => s.id !== 'rejected').map(stage => `
+            <div class="kanban-column" style="--column-color: ${stage.color}">
+              <div class="column-header">
+                <span class="column-title">
+                  <span>${stage.icon}</span>
+                  ${stage.label}
+                </span>
+                <span class="column-count">${ordersByStage[stage.id].length}</span>
+              </div>
+              <div class="column-body">
+                ${ordersByStage[stage.id].map(order => this.renderOrderCard(order, stage)).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ${rejectedOrders > 0 ? `
+          <div style="margin-top: 1.5rem;">
+            <h3 style="margin-bottom: 1rem; color: #dc3545;">❌ Rejected Orders (${rejectedOrders})</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              ${ordersByStage.rejected.map(order => this.renderOrderCard(order, OrderDashboardElement.stages.find(s => s.id === 'rejected'))).join('')}
+            </div>
+          </div>
+        ` : ''}
+        <div class="detail-panel ${selectedOrder ? 'open' : ''}" id="detail-panel">
+          ${selectedOrder ? this.renderDetailPanel(selectedOrder) : ''}
+        </div>
+      </div>
+    `
+  }
+
+  renderOrderCard(order, stage) {
+    const data = order.state?.data || order.data || {}
+    const isSelected = order.id === this._state?.selectedId
+    const actionVariants = { validate: 'primary', reject: 'danger', process_payment: 'success', ship: 'warning', confirm: 'success' }
+    return `
+      <div class="order-card ${isSelected ? 'selected' : ''}" style="--card-color: ${stage.color}" data-order-id="${order.id}">
+        <div class="order-header">
+          <span class="order-id">#${order.id.slice(0, 8)}</span>
+          <span class="order-total">$${(data.total || 0).toFixed(2)}</span>
+        </div>
+        <div class="order-customer">${data.customer_name || 'Unknown Customer'}</div>
+        <div class="order-meta">${data.customer_email || ''}</div>
+        ${stage.actions.length > 0 ? `
+          <div class="order-actions">
+            ${stage.actions.map(action => `
+              <button class="order-action ${actionVariants[action] || 'primary'}" data-action="${action}" data-order-id="${order.id}">
+                ${action.replace(/_/g, ' ')}
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  renderDetailPanel(order) {
+    const data = order.state?.data || order.data || {}
+    const places = order.state?.places || order.state || {}
+    const currentStage = OrderDashboardElement.stages.find(s => places[s.id] > 0)
+    return `
+      <div class="detail-header">
+        <span class="detail-title">Order #${order.id.slice(0, 8)}</span>
+        <button class="close-btn" data-action="close-detail">×</button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <div class="detail-section-title">Order Timeline</div>
+          <div class="timeline">
+            ${OrderDashboardElement.stages.filter(s => s.id !== 'rejected').map(stage => {
+              const isActive = this.stageIsComplete(stage.id, places)
+              const isCurrent = stage.id === currentStage?.id
+              const dotClass = isCurrent ? 'current' : isActive ? 'active' : 'pending'
+              return `
+                <div class="timeline-item">
+                  <div class="timeline-dot ${dotClass}">${stage.icon}</div>
+                  <div class="timeline-content">
+                    <div class="timeline-title">${stage.label}</div>
+                    <div class="timeline-time">${isCurrent ? 'Current' : isActive ? 'Complete' : 'Pending'}</div>
+                  </div>
+                </div>
+              `
+            }).join('')}
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Customer Information</div>
+          <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${data.customer_name || '-'}</span></div>
+          <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${data.customer_email || '-'}</span></div>
+          <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${data.shipping_address || '-'}</span></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Payment</div>
+          <div class="detail-row"><span class="detail-label">Total</span><span class="detail-value" style="color: #28a745; font-size: 1.25rem;">$${(data.total || 0).toFixed(2)}</span></div>
+          <div class="detail-row"><span class="detail-label">Method</span><span class="detail-value">${data.payment_method || '-'}</span></div>
+          <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">${data.payment_status || '-'}</span></div>
+        </div>
+        ${data.tracking_number ? `
+          <div class="detail-section">
+            <div class="detail-section-title">Shipping</div>
+            <div class="detail-row"><span class="detail-label">Carrier</span><span class="detail-value">${data.carrier || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">Tracking #</span><span class="detail-value" style="font-family: monospace;">${data.tracking_number}</span></div>
+          </div>
+        ` : ''}
+        ${currentStage?.actions.length > 0 ? `
+          <div class="detail-section">
+            <div class="detail-section-title">Actions</div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              ${currentStage.actions.map(action => `
+                <button class="order-action primary" data-action="${action}" data-order-id="${order.id}">${action.replace(/_/g, ' ')}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  stageIsComplete(stageId, places) {
+    const stageOrder = ['received', 'validated', 'paid', 'shipped', 'completed']
+    const currentIdx = stageOrder.findIndex(s => places[s] > 0)
+    const stageIdx = stageOrder.indexOf(stageId)
+    return stageIdx < currentIdx || (stageIdx === currentIdx && stageId === 'completed')
+  }
+
+  onRender() {
+    this.$$('.order-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.order-action')) return
+        this.emit('select-order', { orderId: card.dataset.orderId })
+      })
+    })
+    this.$$('.order-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.emit('action', { action: btn.dataset.action, orderId: btn.dataset.orderId })
+      })
+    })
+    this.$('[data-action="close-detail"]')?.addEventListener('click', () => this.emit('close-detail'))
+    this.$('[data-action="new-order"]')?.addEventListener('click', () => this.emit('new-order'))
+  }
+}
+
+// ============================================================================
 // Register all default components (extensions can override by loading first)
 // ============================================================================
 
@@ -636,6 +1138,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
+  registerComponent('order-dashboard', OrderDashboardElement)
 }
 
 // Auto-register unless explicitly disabled
