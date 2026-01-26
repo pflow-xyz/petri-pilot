@@ -274,9 +274,9 @@ Application types externalized from go-pflow to petri-pilot:
 | 2.1 | Extension Interface (`ModelExtension`, `ExtensionRegistry`) | `go-pflow/metamodel/extension.go` |
 | 3 | Composable Patterns (`StateMachine[S]`, `Workflow[D]`, `ResourcePool[R]`, `EventSourced[S,E]`) | `go-pflow/metamodel/patterns.go` |
 
-### Remaining *(petri-pilot)*
+### Completed *(petri-pilot)*
 
-#### Phase 4.3: Schema JSON Evolution
+#### Phase 4.3: Schema JSON Evolution ✅
 
 Update petri-pilot to use go-pflow's extension system for schema v2.0:
 
