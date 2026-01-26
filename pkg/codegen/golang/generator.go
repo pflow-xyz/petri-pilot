@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 // Options configures the Go code generator.
@@ -245,6 +246,119 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 			return nil, fmt.Errorf("generating %s: %w", name, err)
 		}
 
+		files = append(files, GeneratedFile{
+			Name:    g.templates.OutputFileName(name),
+			Content: content,
+		})
+	}
+
+	return files, nil
+}
+
+// GenerateFilesFromApp generates Go code files from an ApplicationSpec which includes
+// both the core model and extensions (roles, views, navigation, etc.).
+func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]GeneratedFile, error) {
+	if app == nil || app.Net == nil {
+		return nil, fmt.Errorf("application spec or model is nil")
+	}
+
+	// Validate model for code generation
+	if issues := metamodel.ValidateForCodegen(app.Net); len(issues) > 0 {
+		return nil, fmt.Errorf("model validation failed: %v", issues)
+	}
+
+	// Determine package name: use "main" for standalone mode, custom name for submodule
+	packageName := g.opts.PackageName
+	if !g.opts.AsSubmodule && packageName == "" {
+		packageName = "main"
+	}
+
+	// Build template context from ApplicationSpec (includes extensions)
+	ctx, err := NewContextFromApp(app, ContextOptions{
+		ModulePath:  g.opts.ModulePath,
+		PackageName: packageName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("building context: %w", err)
+	}
+
+	// Determine which templates to generate
+	var templateNames []string
+	if g.opts.AsSubmodule {
+		templateNames = SubmoduleCodeTemplateNames()
+	} else {
+		templateNames = CodeTemplateNames()
+		templateNames = append([]string{TemplateGoMod}, templateNames...)
+	}
+	if g.opts.IncludeTests {
+		templateNames = append(templateNames, TestTemplateNames()...)
+	}
+	if g.opts.IncludeInfra {
+		templateNames = append(templateNames, InfraTemplateNames()...)
+	}
+	if g.opts.IncludeAuth {
+		templateNames = append(templateNames, AuthTemplateNames()...)
+	}
+	if g.opts.IncludeObservability {
+		templateNames = append(templateNames, ObservabilityTemplateNames()...)
+	}
+	if g.opts.IncludeDeploy {
+		templateNames = append(templateNames, DeployTemplateNames()...)
+	}
+	if g.opts.IncludeRealtime {
+		templateNames = append(templateNames, RealtimeTemplateNames()...)
+	}
+
+	// Include templates based on context features
+	if ctx.HasWorkflows() {
+		templateNames = append(templateNames, WorkflowTemplateNames()...)
+	}
+	if ctx.HasWebhooks() {
+		templateNames = append(templateNames, WebhookTemplateNames()...)
+	}
+	if ctx.HasViews() {
+		templateNames = append(templateNames, ViewTemplateNames()...)
+	}
+	if ctx.HasNavigation() {
+		templateNames = append(templateNames, NavigationTemplateNames()...)
+	}
+	if ctx.HasAdmin() {
+		templateNames = append(templateNames, AdminTemplateNames()...)
+	}
+	templateNames = append(templateNames, EventReplayTemplateNames()...)
+	if ctx.HasAccessControl() && !g.opts.IncludeAuth {
+		templateNames = append(templateNames, AuthTemplateNames()...)
+	}
+	if ctx.HasDebug() {
+		templateNames = append(templateNames, DebugTemplateNames()...)
+	}
+	if ctx.HasSLAs() {
+		templateNames = append(templateNames, SLATemplateNames()...)
+	}
+	if ctx.HasPrediction() {
+		templateNames = append(templateNames, PredictionTemplateNames()...)
+	}
+	if ctx.HasGraphQL() {
+		templateNames = append(templateNames, GraphQLTemplateNames()...)
+	}
+	if ctx.HasBlobstore() {
+		templateNames = append(templateNames, BlobstoreTemplateNames()...)
+	}
+	if ctx.HasAnyFeatures() {
+		templateNames = append(templateNames, FeaturesTemplateNames()...)
+	}
+	if ctx.UsesMetamodelRuntime() {
+		templateNames = append(templateNames, SafemathTemplateNames()...)
+	}
+	templateNames = append(templateNames, DocTemplateNames()...)
+
+	// Generate each file
+	var files []GeneratedFile
+	for _, name := range templateNames {
+		content, err := g.templates.Execute(name, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("generating %s: %w", name, err)
+		}
 		files = append(files, GeneratedFile{
 			Name:    g.templates.OutputFileName(name),
 			Content: content,

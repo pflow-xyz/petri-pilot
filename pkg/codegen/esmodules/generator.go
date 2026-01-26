@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 // Options configures the frontend code generator.
@@ -110,6 +111,58 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 
 	// Build template context
 	ctx, err := NewContext(model, ContextOptions{
+		ProjectName: g.opts.ProjectName,
+		APIBaseURL:  g.opts.APIBaseURL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("building context: %w", err)
+	}
+
+	// Determine which templates to generate
+	templateNames := AllTemplateNames()
+
+	// Include blobs template if blobstore is enabled
+	if ctx.HasBlobstore {
+		templateNames = append(templateNames, TemplateBlobs)
+	}
+
+	// Include wallet template if wallet is enabled
+	if ctx.HasWallet {
+		templateNames = append(templateNames, TemplateWallet)
+	}
+
+	// Generate each file
+	var files []GeneratedFile
+	for _, name := range templateNames {
+		content, err := g.templates.Execute(name, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("generating %s: %w", name, err)
+		}
+
+		files = append(files, GeneratedFile{
+			Name:         g.templates.OutputFileName(name),
+			Content:      content,
+			SkipIfExists: g.templates.ShouldSkipIfExists(name),
+		})
+	}
+
+	return files, nil
+}
+
+// GenerateFilesFromApp generates frontend code files from an ApplicationSpec which includes
+// both the core model and extensions (roles, views, navigation, etc.).
+func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]GeneratedFile, error) {
+	if app == nil || app.Net == nil {
+		return nil, fmt.Errorf("application spec or model is nil")
+	}
+
+	// Validate model for code generation
+	if issues := metamodel.ValidateForCodegen(app.Net); len(issues) > 0 {
+		return nil, fmt.Errorf("model validation failed: %v", issues)
+	}
+
+	// Build template context from ApplicationSpec (includes extensions)
+	ctx, err := NewContextFromApp(app, ContextOptions{
 		ProjectName: g.opts.ProjectName,
 		APIBaseURL:  g.opts.APIBaseURL,
 	})

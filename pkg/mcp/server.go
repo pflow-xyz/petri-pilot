@@ -16,6 +16,7 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
@@ -252,7 +253,7 @@ func diffTool() mcp.Tool {
 
 func extendTool() mcp.Tool {
 	return mcp.NewTool("petri_extend",
-		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_role, add_access, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_role, remove_access, remove_event, remove_binding. Returns the modified model."),
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_event, remove_binding. Returns the modified model."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON"),
@@ -277,6 +278,9 @@ func codegenTool() mcp.Tool {
 		mcp.WithString("package",
 			mcp.Description("Package/module name for generated code"),
 		),
+		mcp.WithString("extensions",
+			mcp.Description("Optional JSON object with extensions: {\"roles\":[...], \"views\":[...], \"admin\":{...}, \"navigation\":{...}}. These add authentication, views, and UI features to the generated code."),
+		),
 	)
 }
 
@@ -292,6 +296,9 @@ func frontendTool() mcp.Tool {
 		),
 		mcp.WithString("api_url",
 			mcp.Description("Backend API base URL (default: http://localhost:8080)"),
+		),
+		mcp.WithString("extensions",
+			mcp.Description("Optional JSON object with extensions: {\"roles\":[...], \"views\":[...], \"admin\":{...}, \"navigation\":{...}}. These add authentication, views, and UI features to the generated frontend."),
 		),
 	)
 }
@@ -991,6 +998,7 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 
 	language := request.GetString("language", "go")
 	pkgName := request.GetString("package", model.Name)
+	extensionsJSON := request.GetString("extensions", "")
 
 	// Only Go is supported for now
 	if language != "go" && language != "golang" {
@@ -1017,6 +1025,14 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("model not implementable:\n%s", errJSON)), nil
 	}
 
+	// Parse extensions if provided
+	app := extensions.NewApplicationSpec(model)
+	if extensionsJSON != "" {
+		if err := parseExtensions(app, extensionsJSON); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid extensions JSON: %v", err)), nil
+		}
+	}
+
 	// Create generator
 	gen, err := golang.New(golang.Options{
 		PackageName:  pkgName,
@@ -1026,8 +1042,13 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
 	}
 
-	// Generate files in memory
-	files, err := gen.GenerateFiles(model)
+	// Generate files using ApplicationSpec if extensions provided
+	var files []golang.GeneratedFile
+	if app.HasRoles() || app.HasViews() || app.HasNavigation() || app.HasAdmin() {
+		files, err = gen.GenerateFilesFromApp(app)
+	} else {
+		files, err = gen.GenerateFiles(model)
+	}
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("code generation failed: %v", err)), nil
 	}
@@ -1058,6 +1079,7 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	projectName := request.GetString("project", "")
 	apiURL := request.GetString("api_url", "http://localhost:8080")
+	extensionsJSON := request.GetString("extensions", "")
 
 	// Validate first
 	opts := validator.DefaultOptions()
@@ -1072,7 +1094,15 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("model validation failed, fix errors before generating frontend:\n%s", errJSON)), nil
 	}
 
-	// Create React generator
+	// Parse extensions if provided
+	app := extensions.NewApplicationSpec(model)
+	if extensionsJSON != "" {
+		if err := parseExtensions(app, extensionsJSON); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid extensions JSON: %v", err)), nil
+		}
+	}
+
+	// Create ES modules generator
 	gen, err := esmodules.New(esmodules.Options{
 		ProjectName: projectName,
 		APIBaseURL:  apiURL,
@@ -1081,15 +1111,20 @@ func handleFrontend(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
 	}
 
-	// Generate files in memory
-	files, err := gen.GenerateFiles(model)
+	// Generate files using ApplicationSpec if extensions provided
+	var files []esmodules.GeneratedFile
+	if app.HasRoles() || app.HasViews() || app.HasNavigation() || app.HasAdmin() {
+		files, err = gen.GenerateFilesFromApp(app)
+	} else {
+		files, err = gen.GenerateFiles(model)
+	}
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("frontend generation failed: %v", err)), nil
 	}
 
 	// Build output showing all generated files
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Generated %d files for React frontend:\n\n", len(files)))
+	sb.WriteString(fmt.Sprintf("Generated %d files for ES modules frontend:\n\n", len(files)))
 
 	for _, file := range files {
 		sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
@@ -1508,6 +1543,52 @@ func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 		return nil, err
 	}
 	return &model, nil
+}
+
+// extensionsInput is the JSON structure for the extensions parameter.
+type extensionsInput struct {
+	Roles      []extensions.Role   `json:"roles,omitempty"`
+	Views      []extensions.View   `json:"views,omitempty"`
+	Admin      *extensions.Admin   `json:"admin,omitempty"`
+	Navigation *extensions.Navigation `json:"navigation,omitempty"`
+}
+
+// parseExtensions parses extension JSON and adds them to the ApplicationSpec.
+func parseExtensions(app *extensions.ApplicationSpec, jsonStr string) error {
+	var ext extensionsInput
+	if err := json.Unmarshal([]byte(jsonStr), &ext); err != nil {
+		return err
+	}
+
+	// Add roles if provided
+	if len(ext.Roles) > 0 {
+		rolesExt := extensions.NewRoleExtension()
+		for _, r := range ext.Roles {
+			rolesExt.AddRole(r)
+		}
+		app.WithRoles(rolesExt)
+	}
+
+	// Add views if provided
+	if len(ext.Views) > 0 || ext.Admin != nil {
+		viewsExt := extensions.NewViewExtension()
+		for _, v := range ext.Views {
+			viewsExt.AddView(v)
+		}
+		if ext.Admin != nil {
+			viewsExt.SetAdmin(*ext.Admin)
+		}
+		app.WithViews(viewsExt)
+	}
+
+	// Add navigation if provided
+	if ext.Navigation != nil {
+		pagesExt := extensions.NewPageExtension()
+		pagesExt.SetNavigation(*ext.Navigation)
+		app.WithPages(pagesExt)
+	}
+
+	return nil
 }
 
 func generateSVG(model *goflowmetamodel.Model) string {
