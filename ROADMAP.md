@@ -10,7 +10,7 @@ Each example needs a custom frontend that showcases its unique workflow, similar
 | coffeeshop | Order queue, drink cards, barista view | ✅ |
 | erc20-token | Wallet balances, transfer form, tx history | ✅ |
 | order-processing | Order timeline, fulfillment dashboard | ✅ |
-| blog-post | Editor, approval flow, preview | ⬜ |
+| blog-post | Editor, approval flow, preview | ✅ |
 | support-ticket | Ticket thread, escalation view | ⬜ |
 
 ### Priority 1: tic-tac-toe
@@ -44,7 +44,7 @@ Custom components:
 | tic-tac-toe | ✅ | ✅ |
 | coffeeshop | ✅ | ⬜ |
 | erc20-token | ⬜ | ⬜ |
-| order-processing | ⬜ | ⬜ |
+| order-processing | ✅ | ⬜ |
 
 ## Cleanup
 

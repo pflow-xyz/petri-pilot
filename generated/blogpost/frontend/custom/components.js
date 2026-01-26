@@ -626,6 +626,377 @@ export class OrderFlowElement extends PetriElement {
 }
 
 // ============================================================================
+// Blog Dashboard Component - Editorial Workflow View
+// ============================================================================
+
+export class BlogDashboardElement extends PetriElement {
+  static states = [
+    { id: 'draft', label: 'Drafts', icon: '📝', color: '#6c757d' },
+    { id: 'in_review', label: 'In Review', icon: '👀', color: '#ffc107' },
+    { id: 'published', label: 'Published', icon: '✅', color: '#28a745' },
+    { id: 'archived', label: 'Archived', icon: '📦', color: '#dc3545' }
+  ]
+
+  styles() {
+    return `
+      .blog-dashboard {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+      }
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .new-post-btn {
+        background: #0066cc;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .new-post-btn:hover { background: #0055aa; }
+      .workflow-columns {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+      }
+      @media (max-width: 1200px) {
+        .workflow-columns { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 600px) {
+        .workflow-columns { grid-template-columns: 1fr; }
+      }
+      .workflow-column {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+      }
+      .column-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 3px solid var(--col-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .column-title {
+        font-weight: 600;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .column-count {
+        background: var(--col-color);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .column-body {
+        padding: 1rem;
+        min-height: 200px;
+        max-height: 500px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .column-body:empty::after {
+        content: 'No posts';
+        color: #999;
+        text-align: center;
+        padding: 2rem;
+        font-style: italic;
+      }
+      .post-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-left: 4px solid var(--card-color);
+      }
+      .post-card:hover {
+        background: #e9ecef;
+        transform: translateX(4px);
+      }
+      .post-card.selected {
+        background: #e3f2fd;
+        border-left-color: #1976d2;
+      }
+      .post-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1a1a2e;
+      }
+      .post-meta {
+        font-size: 0.8rem;
+        color: #666;
+        display: flex;
+        gap: 1rem;
+      }
+      .post-tags {
+        display: flex;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .tag {
+        background: #e9ecef;
+        color: #495057;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+      }
+      .post-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+      .action-btn {
+        padding: 0.35rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .action-btn.primary { background: #0066cc; color: white; }
+      .action-btn.success { background: #28a745; color: white; }
+      .action-btn.warning { background: #ffc107; color: #333; }
+      .action-btn.danger { background: #dc3545; color: white; }
+      .detail-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        width: 500px;
+        height: 100vh;
+        background: white;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.3s;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+      }
+      .detail-panel.open { transform: translateX(0); }
+      .detail-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+      }
+      .detail-body {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+      }
+      .preview-content {
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #eee;
+      }
+      .preview-content h1 {
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+        color: #1a1a2e;
+      }
+      .preview-content .author {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+      .preview-content .body {
+        line-height: 1.8;
+        color: #333;
+        white-space: pre-wrap;
+      }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+      .status-badge.draft { background: #e9ecef; color: #495057; }
+      .status-badge.in_review { background: #fff3cd; color: #856404; }
+      .status-badge.published { background: #d4edda; color: #155724; }
+      .status-badge.archived { background: #f8d7da; color: #721c24; }
+    `
+  }
+
+  template() {
+    const state = this._state || {}
+    const instances = state.instances || []
+    const selectedId = state.selectedId
+
+    // Group posts by state
+    const postsByState = {}
+    BlogDashboardElement.states.forEach(s => postsByState[s.id] = [])
+    instances.forEach(inst => {
+      const places = inst.state?.places || inst.state || {}
+      const currentState = BlogDashboardElement.states.find(s => places[s.id] > 0)
+      if (currentState) {
+        postsByState[currentState.id].push(inst)
+      }
+    })
+
+    const selectedPost = selectedId ? instances.find(i => i.id === selectedId) : null
+
+    return `
+      <div class="blog-dashboard">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <span>📝</span>
+            Blog Editorial Dashboard
+          </div>
+          <button class="new-post-btn" data-action="new-post">
+            <span>+</span> New Post
+          </button>
+        </div>
+        <div class="workflow-columns">
+          ${BlogDashboardElement.states.map(st => `
+            <div class="workflow-column" style="--col-color: ${st.color}">
+              <div class="column-header">
+                <span class="column-title">
+                  <span>${st.icon}</span>
+                  ${st.label}
+                </span>
+                <span class="column-count">${postsByState[st.id].length}</span>
+              </div>
+              <div class="column-body">
+                ${postsByState[st.id].map(post => this.renderPostCard(post, st)).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="detail-panel ${selectedPost ? 'open' : ''}">
+          ${selectedPost ? this.renderDetailPanel(selectedPost) : ''}
+        </div>
+      </div>
+    `
+  }
+
+  renderPostCard(post, st) {
+    const data = post.state?.data || post.data || {}
+    const isSelected = post.id === this._state?.selectedId
+    const actions = this.getActionsForState(st.id)
+    return `
+      <div class="post-card ${isSelected ? 'selected' : ''}" style="--card-color: ${st.color}" data-post-id="${post.id}">
+        <div class="post-title">${data.title || 'Untitled'}</div>
+        <div class="post-meta">
+          <span>👤 ${data.author_name || 'Unknown'}</span>
+        </div>
+        ${data.tags?.length ? `
+          <div class="post-tags">
+            ${(Array.isArray(data.tags) ? data.tags : data.tags.split(',')).slice(0, 3).map(t => `<span class="tag">${t.trim()}</span>`).join('')}
+          </div>
+        ` : ''}
+        ${actions.length > 0 ? `
+          <div class="post-actions">
+            ${actions.map(a => `
+              <button class="action-btn ${a.variant}" data-action="${a.id}" data-post-id="${post.id}">${a.label}</button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  renderDetailPanel(post) {
+    const data = post.state?.data || post.data || {}
+    const places = post.state?.places || post.state || {}
+    const currentState = BlogDashboardElement.states.find(s => places[s.id] > 0)
+    const actions = this.getActionsForState(currentState?.id)
+    return `
+      <div class="detail-header">
+        <span class="status-badge ${currentState?.id || ''}">${currentState?.icon || ''} ${currentState?.label || 'Unknown'}</span>
+        <button class="close-btn" data-action="close-detail">×</button>
+      </div>
+      <div class="detail-body">
+        <div class="preview-content">
+          <h1>${data.title || 'Untitled Post'}</h1>
+          <div class="author">By ${data.author_name || 'Unknown Author'}</div>
+          <div class="body">${data.content || 'No content yet...'}</div>
+        </div>
+        ${data.tags?.length ? `
+          <div style="margin-top: 1rem;">
+            <strong>Tags:</strong>
+            <div class="post-tags" style="margin-top: 0.5rem;">
+              ${(Array.isArray(data.tags) ? data.tags : data.tags.split(',')).map(t => `<span class="tag">${t.trim()}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${actions.length > 0 ? `
+          <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            ${actions.map(a => `
+              <button class="action-btn ${a.variant}" data-action="${a.id}" data-post-id="${post.id}">${a.label}</button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  getActionsForState(stateId) {
+    switch (stateId) {
+      case 'draft': return [{ id: 'update', label: 'Edit', variant: 'primary' }, { id: 'submit', label: 'Submit', variant: 'warning' }]
+      case 'in_review': return [{ id: 'approve', label: 'Approve', variant: 'success' }, { id: 'reject', label: 'Reject', variant: 'danger' }]
+      case 'published': return [{ id: 'unpublish', label: 'Unpublish', variant: 'danger' }]
+      case 'archived': return [{ id: 'restore', label: 'Restore', variant: 'primary' }]
+      default: return []
+    }
+  }
+
+  onRender() {
+    this.$$('.post-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.action-btn')) return
+        this.emit('select-post', { postId: card.dataset.postId })
+      })
+    })
+    this.$$('.action-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.emit('action', { action: btn.dataset.action, postId: btn.dataset.postId })
+      })
+    })
+    this.$('[data-action="close-detail"]')?.addEventListener('click', () => this.emit('close-detail'))
+    this.$('[data-action="new-post"]')?.addEventListener('click', () => this.emit('new-post'))
+  }
+}
+
+// ============================================================================
 // Register all default components (extensions can override by loading first)
 // ============================================================================
 
@@ -636,6 +1007,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
+  registerComponent('blog-dashboard', BlogDashboardElement)
 }
 
 // Auto-register unless explicitly disabled
