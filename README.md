@@ -19,6 +19,42 @@ petri-pilot generate -auto "order processing workflow"
 petri-pilot codegen model.json -o ./app/ --frontend
 ```
 
+## Installation
+
+### From Source
+
+```bash
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+```
+
+### MCP Setup (Claude Desktop / Cursor)
+
+Add to your MCP configuration:
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "command": "petri-pilot",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+**Cursor** (Settings → MCP → Add Server):
+
+```json
+{
+  "command": "petri-pilot",
+  "args": ["mcp"]
+}
+```
+
+After configuring, restart your client. The MCP tools (`petri_validate`, `petri_codegen`, etc.) will be available in conversations.
+
 ## Getting Started with Examples
 
 The `examples/` directory contains ready-to-use models. The `generated/` directory contains pre-built applications with both backend and frontend.
@@ -219,6 +255,50 @@ petri-pilot codegen model.json -o ./app/ --frontend
 # Generate frontend only
 petri-pilot frontend model.json -o ./frontend/
 ```
+
+## Configuration
+
+### Environment Variables
+
+Generated applications use environment variables for configuration:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | Server port |
+| `HOST` | `0.0.0.0` | Server bind address |
+| `DATABASE_TYPE` | `sqlite` | Storage backend: `sqlite`, `memory`, or `postgres` |
+| `DATABASE_URL` | `{app}.db` | Database connection string |
+| `ENVIRONMENT` | `development` | Environment: `development`, `staging`, `production` |
+| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `AUTH_ENABLED` | `false` | Enable GitHub OAuth authentication |
+| `GITHUB_CLIENT_ID` | - | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | - | GitHub OAuth App client secret |
+| `BASE_URL` | `http://localhost:8080` | Public URL for OAuth callbacks |
+
+### GitHub OAuth Setup
+
+To enable authentication in generated apps:
+
+1. **Create a GitHub OAuth App**
+   - Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App
+   - Application name: Your app name
+   - Homepage URL: `http://localhost:8080` (or your production URL)
+   - Authorization callback URL: `http://localhost:8080/auth/callback`
+
+2. **Configure environment variables**
+   ```bash
+   export AUTH_ENABLED=true
+   export GITHUB_CLIENT_ID=your_client_id
+   export GITHUB_CLIENT_SECRET=your_client_secret
+   export BASE_URL=http://localhost:8080
+   ```
+
+3. **Run the application**
+   ```bash
+   ./your-app
+   ```
+
+Users will be redirected to GitHub for login. After authorization, they receive a JWT token with their GitHub username and configured roles.
 
 ## Documentation
 

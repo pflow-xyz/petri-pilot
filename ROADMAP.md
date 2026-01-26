@@ -224,29 +224,19 @@ petri-pilot generate -auto "order processing workflow"
 Before making the repo public:
 
 ### Installation & Distribution
-- [ ] Create GitHub release (enables `go install github.com/pflow-xyz/petri-pilot@latest`)
-- [ ] Pre-built binaries for macOS, Linux, Windows
-- [ ] Remove replace directive from generated go.mod (requires published module)
+- [x] Create GitHub release (enables `go install github.com/pflow-xyz/petri-pilot@latest`)
+- [ ] Pre-built binaries for macOS, Linux, Windows (deferred - install from source for now)
+- [x] Remove replace directive from generated go.mod (now submodules, not standalone)
 
 ### Generated App Improvements
-- [ ] Use SQLite by default instead of MemoryStore (admin dashboard requires it)
-- [ ] Add `STORE_TYPE` env var to switch between memory/sqlite
-- [ ] Ensure generated apps work without replace directive
+- [x] Use SQLite by default instead of MemoryStore (admin dashboard requires it)
+- [x] Add `DATABASE_TYPE` env var to switch between memory/sqlite
+- [x] Ensure generated apps work without replace directive (now submodules)
 
 ### Documentation
-- [ ] MCP setup instructions for Claude Desktop config:
-  ```json
-  {
-    "mcpServers": {
-      "petri-pilot": {
-        "command": "petri-pilot",
-        "args": ["mcp"]
-      }
-    }
-  }
-  ```
-- [ ] GitHub OAuth App setup guide (GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET)
-- [ ] Environment variable reference for generated apps
+- [x] MCP setup instructions for Claude Desktop config
+- [x] GitHub OAuth App setup guide (GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET)
+- [x] Environment variable reference for generated apps
 
 ---
 

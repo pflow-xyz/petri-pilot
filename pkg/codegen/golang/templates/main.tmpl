@@ -21,18 +21,27 @@ import (
 )
 
 func main() {
-{{- if .HasAdmin}}
-	// Initialize SQLite event store (required for admin functionality)
-	store, err := eventsource.NewSQLiteStore("events.db")
+	// Load configuration from environment
+	cfg, err := LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to initialize event store: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Initialize event store based on DATABASE_TYPE
+	var store eventsource.EventStore
+	switch cfg.DatabaseType {
+	case "memory":
+		store = eventsource.NewMemoryStore()
+	case "sqlite":
+		sqliteStore, err := eventsource.NewSQLiteStore(cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("Failed to initialize SQLite event store: %v", err)
+		}
+		store = sqliteStore
+	default:
+		log.Fatalf("Unsupported database type: %s", cfg.DatabaseType)
 	}
 	defer store.Close()
-{{- else}}
-	// Initialize event store (in-memory for development)
-	store := eventsource.NewMemoryStore()
-	defer store.Close()
-{{- end}}
 
 	// Create application
 	app := NewApplication(store)
@@ -215,22 +224,17 @@ func main() {
 	router := BuildRouter(app{{if .HasAccessControl}}, middleware, sessions{{end}}{{if .HasNavigation}}, navigation{{end}}{{if .HasDebug}}, debugBroker{{end}}{{if .HasBlobstore}}, blobStore{{end}}{{if .HasTimers}}, timerManager{{end}}{{if .HasNotifications}}, notificationManager{{end}}{{if .HasComments}}, commentStore{{end}}{{if .HasTags}}, tagStore{{end}}{{if .HasFavorites}}, favoriteStore{{end}}{{if .HasActivity}}, activityStore{{end}}{{if .HasExport}}, exportHandler{{end}}{{if .HasBatch}}, batchHandler{{end}}{{if .HasInboundWebhooks}}, webhookHandler{{end}}{{if .HasTemplates}}, templateStore{{end}}{{if .HasIndexes}}, searchHandler{{end}}{{if .HasApprovals}}, approvalStore{{end}}{{if .HasRelationships}}, relationshipStore{{end}}{{if .HasDocuments}}, documentGenerator{{end}}{{if .HasSoftDelete}}, softDeleteStore{{end}})
 
 	// Configure server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	server := &http.Server{
-		Addr:         ":" + port,
+		Addr:         cfg.Addr(),
 		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  cfg.IdleTimeout,
 	}
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Starting {{.ModelName}} server on http://localhost:%s", port)
+		log.Printf("Starting {{.ModelName}} server on http://localhost:%s", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -244,7 +248,7 @@ func main() {
 	log.Println("Shutting down server...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
