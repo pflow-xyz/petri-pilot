@@ -61,7 +61,12 @@ Test each example in real usage before writing blog posts.
 - [ ] Note any UX friction or bugs
 
 ### Known issues to investigate
-- [ ] _Add issues discovered during testing_
+- [ ] Custom dashboards not loading for order-processing, blog-post, support-ticket, erc20-token
+  - Apps show generic list view instead of custom `<*-dashboard>` components
+  - Components exist in `custom/components.js` but aren't wired to routing
+- [ ] erc20-token: "No route found" error when clicking "+ Create New"
+- [ ] coffeeshop: WebSocket connection error (simulation still works locally)
+- [ ] Missing favicon.ico (404 error on all apps)
 
 ### Improvements identified
 - [ ] _Add improvement ideas from dogfooding_
