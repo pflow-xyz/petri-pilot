@@ -626,6 +626,468 @@ export class OrderFlowElement extends PetriElement {
 }
 
 // ============================================================================
+// ERC-20 Token Dashboard Component
+// ============================================================================
+
+export class TokenDashboardElement extends PetriElement {
+  static get observedAttributes() {
+    return ['selected-account']
+  }
+
+  // Predefined accounts from the model
+  static accounts = [
+    { address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', name: 'Alice (Admin)', short: 'Alice' },
+    { address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', name: 'Bob (Holder)', short: 'Bob' },
+    { address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', name: 'Charlie (Holder)', short: 'Charlie' },
+    { address: '0x90F79bf6EB2c4f870365E785982E1f101E93b906', name: 'Dave (Observer)', short: 'Dave' }
+  ]
+
+  constructor() {
+    super()
+    this._selectedAccount = TokenDashboardElement.accounts[0].address
+  }
+
+  styles() {
+    return `
+      :host {
+        display: block;
+      }
+      .token-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      /* Header */
+      .token-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .token-info h1 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.5rem;
+      }
+      .token-info .supply {
+        opacity: 0.9;
+        font-size: 0.9rem;
+      }
+      .supply-value {
+        font-family: monospace;
+        font-weight: 600;
+      }
+
+      /* Account Selector */
+      .account-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      .section-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .account-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+      .account-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .account-card:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+      }
+      .account-card.selected {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+      }
+      .account-name {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      .account-balance {
+        font-family: monospace;
+        font-size: 1.1rem;
+      }
+      .account-address {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        font-family: monospace;
+        word-break: break-all;
+      }
+
+      /* Balances Table */
+      .balances-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .balances-table th,
+      .balances-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      .balances-table th {
+        font-weight: 600;
+        color: #666;
+        font-size: 0.85rem;
+      }
+      .balances-table .address {
+        font-family: monospace;
+        font-size: 0.85rem;
+      }
+      .balances-table .balance {
+        font-family: monospace;
+        font-weight: 600;
+        text-align: right;
+      }
+
+      /* Forms */
+      .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      .form-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .form-group {
+        flex: 1;
+        min-width: 150px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 0.25rem;
+      }
+      .form-group input, .form-group select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+      .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 0.5rem 1.25rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+      .btn-success {
+        background: #28a745;
+        color: white;
+      }
+      .btn-warning {
+        background: #ffc107;
+        color: #333;
+      }
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 0.5rem;
+      }
+      .tab {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #666;
+        border-radius: 6px 6px 0 0;
+        transition: all 0.2s;
+      }
+      .tab:hover {
+        background: #f5f5f5;
+      }
+      .tab.active {
+        color: #667eea;
+        font-weight: 600;
+        background: #f0f3ff;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+    `
+  }
+
+  template() {
+    const state = this._state || {}
+    const totalSupply = state.total_supply || 0
+    const balances = state.balances || {}
+    const allowances = state.allowances || {}
+
+    const accounts = TokenDashboardElement.accounts
+    const selectedAddr = this._selectedAccount
+    const selectedBalance = balances[selectedAddr] || 0
+
+    // Build account cards
+    const accountCards = accounts.map(acc => {
+      const bal = balances[acc.address] || 0
+      const isSelected = acc.address === selectedAddr
+      return `
+        <div class="account-card ${isSelected ? 'selected' : ''}" data-address="${acc.address}">
+          <div class="account-name">${acc.short}</div>
+          <div class="account-balance">${this.formatAmount(bal)} tokens</div>
+          <div class="account-address">${acc.address.slice(0, 10)}...${acc.address.slice(-8)}</div>
+        </div>
+      `
+    }).join('')
+
+    // Build balances table
+    const balanceRows = Object.entries(balances)
+      .sort((a, b) => b[1] - a[1])
+      .map(([addr, bal]) => {
+        const acc = accounts.find(a => a.address === addr)
+        const name = acc ? acc.short : 'Unknown'
+        return `
+          <tr>
+            <td>${name}</td>
+            <td class="address">${addr.slice(0, 10)}...${addr.slice(-8)}</td>
+            <td class="balance">${this.formatAmount(bal)}</td>
+          </tr>
+        `
+      }).join('')
+
+    // Account options for selects
+    const accountOptions = accounts.map(acc =>
+      `<option value="${acc.address}">${acc.short} (${acc.address.slice(0, 8)}...)</option>`
+    ).join('')
+
+    return `
+      <div class="token-container">
+        <div class="token-header">
+          <div class="token-info">
+            <h1>🪙 ERC-20 Token</h1>
+            <div class="supply">Total Supply: <span class="supply-value">${this.formatAmount(totalSupply)}</span> tokens</div>
+          </div>
+        </div>
+
+        <div class="account-section">
+          <div class="section-title">👛 Select Account</div>
+          <div class="account-grid">${accountCards}</div>
+        </div>
+
+        <div class="form-section">
+          <div class="tabs">
+            <button class="tab active" data-tab="transfer">Transfer</button>
+            <button class="tab" data-tab="approve">Approve</button>
+            <button class="tab" data-tab="mint">Mint / Burn</button>
+          </div>
+
+          <div class="tab-content active" data-content="transfer">
+            <div class="form-row">
+              <div class="form-group">
+                <label>From</label>
+                <select id="transfer-from">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>To</label>
+                <select id="transfer-to">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="transfer-amount" placeholder="0" min="0">
+              </div>
+            </div>
+            <button class="btn btn-primary" data-action="transfer">Send Tokens</button>
+          </div>
+
+          <div class="tab-content" data-content="approve">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Owner</label>
+                <select id="approve-owner">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>Spender</label>
+                <select id="approve-spender">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="approve-amount" placeholder="0" min="0">
+              </div>
+            </div>
+            <button class="btn btn-warning" data-action="approve">Set Allowance</button>
+          </div>
+
+          <div class="tab-content" data-content="mint">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Recipient</label>
+                <select id="mint-to">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="mint-amount" placeholder="0" min="0">
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+              <button class="btn btn-success" data-action="mint">Mint Tokens</button>
+            </div>
+            <hr style="margin: 1rem 0; border: none; border-top: 1px solid #eee;">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Burn From</label>
+                <select id="burn-from">${accountOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="burn-amount" placeholder="0" min="0">
+              </div>
+            </div>
+            <button class="btn btn-danger" data-action="burn">Burn Tokens</button>
+          </div>
+        </div>
+
+        <div class="account-section">
+          <div class="section-title">📊 All Balances</div>
+          <table class="balances-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th style="text-align: right;">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${balanceRows || '<tr><td colspan="3" style="text-align: center; color: #999;">No balances yet</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+  }
+
+  formatAmount(amount) {
+    return new Intl.NumberFormat().format(amount)
+  }
+
+  onRender() {
+    // Account selection
+    this.$$('.account-card').forEach(card => {
+      card.addEventListener('click', () => {
+        this._selectedAccount = card.dataset.address
+        // Update form defaults
+        const fromSelect = this.$('#transfer-from')
+        if (fromSelect) fromSelect.value = this._selectedAccount
+        const ownerSelect = this.$('#approve-owner')
+        if (ownerSelect) ownerSelect.value = this._selectedAccount
+        this.render()
+      })
+    })
+
+    // Tab switching
+    this.$$('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        this.$$('.tab').forEach(t => t.classList.remove('active'))
+        this.$$('.tab-content').forEach(c => c.classList.remove('active'))
+        tab.classList.add('active')
+        this.$(`[data-content="${tab.dataset.tab}"]`)?.classList.add('active')
+      })
+    })
+
+    // Actions
+    this.$('[data-action="transfer"]')?.addEventListener('click', () => {
+      const from = this.$('#transfer-from')?.value
+      const to = this.$('#transfer-to')?.value
+      const amount = parseInt(this.$('#transfer-amount')?.value) || 0
+      if (from && to && amount > 0) {
+        this.emit('action', { transition: 'transfer', data: { from, to, amount } })
+      }
+    })
+
+    this.$('[data-action="approve"]')?.addEventListener('click', () => {
+      const owner = this.$('#approve-owner')?.value
+      const spender = this.$('#approve-spender')?.value
+      const amount = parseInt(this.$('#approve-amount')?.value) || 0
+      if (owner && spender && amount > 0) {
+        this.emit('action', { transition: 'approve', data: { owner, spender, amount } })
+      }
+    })
+
+    this.$('[data-action="mint"]')?.addEventListener('click', () => {
+      const to = this.$('#mint-to')?.value
+      const amount = parseInt(this.$('#mint-amount')?.value) || 0
+      if (to && amount > 0) {
+        this.emit('action', { transition: 'mint', data: { to, amount } })
+      }
+    })
+
+    this.$('[data-action="burn"]')?.addEventListener('click', () => {
+      const from = this.$('#burn-from')?.value
+      const amount = parseInt(this.$('#burn-amount')?.value) || 0
+      if (from && amount > 0) {
+        this.emit('action', { transition: 'burn', data: { from, amount } })
+      }
+    })
+
+    // Set default selections
+    const fromSelect = this.$('#transfer-from')
+    if (fromSelect) fromSelect.value = this._selectedAccount
+    const ownerSelect = this.$('#approve-owner')
+    if (ownerSelect) ownerSelect.value = this._selectedAccount
+  }
+}
+
+// ============================================================================
 // Register all default components (extensions can override by loading first)
 // ============================================================================
 
@@ -636,6 +1098,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
+  registerComponent('token-dashboard', TokenDashboardElement)
 }
 
 // Auto-register unless explicitly disabled
