@@ -18,5 +18,4 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/taskmanager"
 	_ "github.com/pflow-xyz/petri-pilot/generated/testaccess"
 	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoe"
-	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoev2"
 )
