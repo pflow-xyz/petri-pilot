@@ -10,28 +10,28 @@
     "enabled": true
   },
   "places": [
-    {"id": "coffee_beans", "description": "Coffee beans inventory (grams)", "initial": 1000, "capacity": 2000, "resource": true},
-    {"id": "milk", "description": "Milk inventory (ml)", "initial": 500, "capacity": 1000, "resource": true},
-    {"id": "cups", "description": "Cup inventory", "initial": 200, "capacity": 500, "resource": true},
-    {"id": "orders_pending", "description": "Orders waiting to be made", "initial": 0},
-    {"id": "espresso_ready", "description": "Espresso drinks ready", "initial": 0},
-    {"id": "latte_ready", "description": "Latte drinks ready", "initial": 0},
-    {"id": "cappuccino_ready", "description": "Cappuccino drinks ready", "initial": 0},
-    {"id": "orders_complete", "description": "Completed and served orders", "initial": 0}
+    {"id": "coffee_beans", "description": "Coffee beans inventory (grams)", "initial": 1000, "capacity": 2000, "resource": true, "x": 450, "y": 120},
+    {"id": "milk", "description": "Milk inventory (ml)", "initial": 500, "capacity": 1000, "resource": true, "x": 600, "y": 120},
+    {"id": "cups", "description": "Cup inventory", "initial": 200, "capacity": 500, "resource": true, "x": 750, "y": 120},
+    {"id": "orders_pending", "description": "Orders waiting to be made", "initial": 0, "x": 300, "y": 400},
+    {"id": "espresso_ready", "description": "Espresso drinks ready", "initial": 0, "x": 750, "y": 280},
+    {"id": "latte_ready", "description": "Latte drinks ready", "initial": 0, "x": 750, "y": 400},
+    {"id": "cappuccino_ready", "description": "Cappuccino drinks ready", "initial": 0, "x": 750, "y": 520},
+    {"id": "orders_complete", "description": "Completed and served orders", "initial": 0, "x": 1050, "y": 400}
   ],
   "transitions": [
-    {"id": "order_espresso", "description": "Customer orders espresso", "rate": 10},
-    {"id": "order_latte", "description": "Customer orders latte", "rate": 15},
-    {"id": "order_cappuccino", "description": "Customer orders cappuccino", "rate": 8},
-    {"id": "make_espresso", "description": "Barista makes espresso", "rate": 20},
-    {"id": "make_latte", "description": "Barista makes latte", "rate": 12},
-    {"id": "make_cappuccino", "description": "Barista makes cappuccino", "rate": 10},
-    {"id": "serve_espresso", "description": "Serve espresso to customer", "rate": 30},
-    {"id": "serve_latte", "description": "Serve latte to customer", "rate": 30},
-    {"id": "serve_cappuccino", "description": "Serve cappuccino to customer", "rate": 30},
-    {"id": "restock_coffee_beans", "description": "Restock coffee beans inventory"},
-    {"id": "restock_milk", "description": "Restock milk inventory"},
-    {"id": "restock_cups", "description": "Restock cup inventory"}
+    {"id": "order_espresso", "description": "Customer orders espresso", "rate": 10, "x": 100, "y": 280},
+    {"id": "order_latte", "description": "Customer orders latte", "rate": 15, "x": 100, "y": 400},
+    {"id": "order_cappuccino", "description": "Customer orders cappuccino", "rate": 8, "x": 100, "y": 520},
+    {"id": "make_espresso", "description": "Barista makes espresso", "rate": 20, "x": 550, "y": 280},
+    {"id": "make_latte", "description": "Barista makes latte", "rate": 12, "x": 550, "y": 400},
+    {"id": "make_cappuccino", "description": "Barista makes cappuccino", "rate": 10, "x": 550, "y": 520},
+    {"id": "serve_espresso", "description": "Serve espresso to customer", "rate": 30, "x": 900, "y": 280},
+    {"id": "serve_latte", "description": "Serve latte to customer", "rate": 30, "x": 900, "y": 400},
+    {"id": "serve_cappuccino", "description": "Serve cappuccino to customer", "rate": 30, "x": 900, "y": 520},
+    {"id": "restock_coffee_beans", "description": "Restock coffee beans inventory", "x": 450, "y": 30},
+    {"id": "restock_milk", "description": "Restock milk inventory", "x": 600, "y": 30},
+    {"id": "restock_cups", "description": "Restock cup inventory", "x": 750, "y": 30}
   ],
   "arcs": [
     {"from": "order_espresso", "to": "orders_pending"},
