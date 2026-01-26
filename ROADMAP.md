@@ -39,14 +39,32 @@ Custom components:
 
 ## Deployment
 
-| Example | pilot.pflow.xyz | Blog Post |
-|---------|-----------------|-----------|
-| tic-tac-toe | ✅ | ✅ |
-| coffeeshop | ✅ | ⬜ |
-| erc20-token | ✅ | ⬜ |
-| order-processing | ✅ | ⬜ |
-| blog-post | ✅ | ⬜ |
-| support-ticket | ✅ | ⬜ |
+| Example | pilot.pflow.xyz | Dogfooded | Blog Post |
+|---------|-----------------|-----------|-----------|
+| tic-tac-toe | ✅ | ✅ | ✅ |
+| coffeeshop | ✅ | ⬜ | ⬜ |
+| erc20-token | ✅ | ⬜ | ⬜ |
+| order-processing | ✅ | ⬜ | ⬜ |
+| blog-post | ✅ | ⬜ | ⬜ |
+| support-ticket | ✅ | ⬜ | ⬜ |
+
+## Dogfooding
+
+Test each example in real usage before writing blog posts.
+
+### Per-example checklist
+- [ ] Create multiple instances, exercise full workflow
+- [ ] Test error cases (invalid inputs, out-of-order transitions)
+- [ ] Check mobile/responsive layout
+- [ ] Verify custom dashboard displays state correctly
+- [ ] Test admin panel (list, detail, history)
+- [ ] Note any UX friction or bugs
+
+### Known issues to investigate
+- [ ] _Add issues discovered during testing_
+
+### Improvements identified
+- [ ] _Add improvement ideas from dogfooding_
 
 ## Cleanup
 
