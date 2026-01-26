@@ -1098,7 +1098,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
-  registerComponent('token-dashboard', TokenDashboardElement)
+  registerComponent('erc20-token-dashboard', TokenDashboardElement)
 }
 
 // Auto-register unless explicitly disabled

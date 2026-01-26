@@ -1007,7 +1007,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
-  registerComponent('blog-dashboard', BlogDashboardElement)
+  registerComponent('blog-post-dashboard', BlogDashboardElement)
 }
 
 // Auto-register unless explicitly disabled

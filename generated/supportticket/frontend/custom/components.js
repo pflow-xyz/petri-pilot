@@ -1053,7 +1053,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
-  registerComponent('ticket-dashboard', TicketDashboardElement)
+  registerComponent('support-ticket-dashboard', TicketDashboardElement)
 }
 
 // Auto-register unless explicitly disabled

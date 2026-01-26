@@ -4,6 +4,14 @@ import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
 
+// Import custom components (preserved across regeneration)
+import '../custom/components.js'
+
+// Check if a custom dashboard component is registered
+function hasCustomDashboard() {
+  return customElements.get('pf-order-processing-dashboard') !== undefined
+}
+
 // API client
 const API_BASE = window.API_BASE || ''
 
@@ -367,9 +375,17 @@ function formatStatus(status) {
 // Page Renderers
 // ============================================================================
 
-// List page - shows all instances
+// List page - shows all instances (or custom dashboard if available)
 async function renderListPage() {
   const app = document.getElementById('app')
+
+  // Check if a custom dashboard component is registered
+  if (hasCustomDashboard()) {
+    app.innerHTML = `<pf-order-processing-dashboard></pf-order-processing-dashboard>`
+    return
+  }
+
+  // Default list view
   app.innerHTML = `
     <div class="page">
       <div class="page-header">
