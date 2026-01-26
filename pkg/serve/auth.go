@@ -149,7 +149,18 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	h.sessions[sessionToken] = session
 	h.mu.Unlock()
 
-	// Redirect to frontend with token in URL params
+	// Set session cookie for server-side auth checks
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    sessionToken,
+		Path:     "/",
+		Expires:  session.ExpiresAt,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   strings.HasPrefix(h.frontendURL, "https"),
+	})
+
+	// Redirect to frontend with token in URL params (for localStorage)
 	redirectURL := h.frontendURL + "/?token=" + sessionToken + "&expires_at=" + session.ExpiresAt.Format(time.RFC3339)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
@@ -162,6 +173,17 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		delete(h.sessions, token)
 		h.mu.Unlock()
 	}
+
+	// Clear the session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
