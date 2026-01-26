@@ -240,7 +240,7 @@ Here's a complete example showing Events First with bindings:
 
 ```json
 {
-  "name": "token-ledger",
+  "name": "erc20-token",
   "events": [
     {
       "id": "tokens_transferred",
@@ -419,5 +419,5 @@ Bindings use present tense (what data):
 ## See Also
 
 - [Order Processing Example](../examples/order-processing.json) - Complete Events First example
-- [Token Ledger Example](../examples/token-ledger.json) - Arcnet pattern with map bindings
+- [ERC-20 Token Example](../examples/erc20-token.json) - Token ledger with map bindings
 - [Architecture](../ARCHITECTURE.md) - How Events First fits into the overall design

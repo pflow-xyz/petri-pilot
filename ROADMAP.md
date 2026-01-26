@@ -51,8 +51,8 @@ Custom components:
 ## Cleanup
 
 Consolidate redundant examples:
-- [ ] `order-system.json` → merge into `order-processing.json`
-- [ ] `task-manager.json` + `task-manager-app.json` → pick one
-- [ ] `tic-tac-toe-v2.json` → merge into `tic-tac-toe.json`
-- [ ] `token-ledger.json` → merge into `erc20-token.json`
-- [ ] `test-access.json` → move to tests or delete
+- [x] `order-system.json` → deleted (order-processing.json is the deployed version)
+- [x] `task-manager.json` + `task-manager-app.json` → kept both (different formats: Petri net vs Application DSL)
+- [x] `tic-tac-toe-v2.json` → deleted (tic-tac-toe.json is the complete version)
+- [x] `token-ledger.json` → deleted (erc20-token.json is the deployed version)
+- [x] `test-access.json` → kept (has generated code, used for access control testing)
