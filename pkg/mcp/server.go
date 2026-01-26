@@ -1546,7 +1546,84 @@ func titleCase(s string) string {
 
 // --- Helpers ---
 
+// pflowPlace is for parsing pflow.xyz format where places is an object
+type pflowPlace struct {
+	Initial  []int  `json:"initial"`
+	Capacity []int  `json:"capacity"`
+	Offset   int    `json:"offset"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
+}
+
+type pflowTransition struct {
+	Role string `json:"role"`
+	X    int    `json:"x"`
+	Y    int    `json:"y"`
+}
+
+type pflowArc struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Weight []int  `json:"weight"`
+}
+
+type pflowModel struct {
+	Name        string                     `json:"name"`
+	Description string                     `json:"description"`
+	Places      map[string]pflowPlace      `json:"places"`
+	Transitions map[string]pflowTransition `json:"transitions"`
+	Arcs        []pflowArc                 `json:"arcs"`
+}
+
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
+	// First try pflow.xyz format (places as object with string keys)
+	var pflow pflowModel
+	if err := json.Unmarshal([]byte(jsonStr), &pflow); err == nil && len(pflow.Places) > 0 {
+		model := &goflowmetamodel.Model{
+			Name:        pflow.Name,
+			Description: pflow.Description,
+		}
+
+		// Convert places
+		for id, p := range pflow.Places {
+			initial := 0
+			if len(p.Initial) > 0 {
+				initial = p.Initial[0]
+			}
+			model.Places = append(model.Places, goflowmetamodel.Place{
+				ID:      id,
+				Initial: initial,
+				X:       p.X,
+				Y:       p.Y,
+			})
+		}
+
+		// Convert transitions
+		for id, t := range pflow.Transitions {
+			model.Transitions = append(model.Transitions, goflowmetamodel.Transition{
+				ID: id,
+				X:  t.X,
+				Y:  t.Y,
+			})
+		}
+
+		// Convert arcs
+		for _, a := range pflow.Arcs {
+			weight := 1
+			if len(a.Weight) > 0 {
+				weight = a.Weight[0]
+			}
+			model.Arcs = append(model.Arcs, goflowmetamodel.Arc{
+				From:   a.Source,
+				To:     a.Target,
+				Weight: weight,
+			})
+		}
+
+		return model, nil
+	}
+
+	// Standard go-pflow format (places as array)
 	var model goflowmetamodel.Model
 	if err := json.Unmarshal([]byte(jsonStr), &model); err != nil {
 		return nil, err
@@ -1555,12 +1632,42 @@ func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 }
 
 func generateSVG(model *goflowmetamodel.Model) string {
-	// Calculate layout
-	placeY := 50
-	transY := 150
-	spacing := 120
-	width := max(len(model.Places), len(model.Transitions))*spacing + 100
-	height := 250
+	// Check if model has explicit positions
+	hasPositions := false
+	maxX, maxY := 0, 0
+	for _, p := range model.Places {
+		if p.X != 0 || p.Y != 0 {
+			hasPositions = true
+			if p.X > maxX {
+				maxX = p.X
+			}
+			if p.Y > maxY {
+				maxY = p.Y
+			}
+		}
+	}
+	for _, t := range model.Transitions {
+		if t.X != 0 || t.Y != 0 {
+			hasPositions = true
+			if t.X > maxX {
+				maxX = t.X
+			}
+			if t.Y > maxY {
+				maxY = t.Y
+			}
+		}
+	}
+
+	// Calculate dimensions
+	var width, height int
+	if hasPositions {
+		width = maxX + 100
+		height = maxY + 100
+	} else {
+		spacing := 120
+		width = max(len(model.Places), len(model.Transitions))*spacing + 100
+		height = 250
+	}
 
 	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d">
   <defs>
@@ -1576,43 +1683,64 @@ func generateSVG(model *goflowmetamodel.Model) string {
   </style>
 `, width, height)
 
+	// Default layout values for auto-positioning
+	defaultPlaceY := 50
+	defaultTransY := 150
+	spacing := 120
+
 	// Place positions
 	placePos := make(map[string][2]int)
 	for i, p := range model.Places {
-		x := 50 + i*spacing
-		placePos[p.ID] = [2]int{x, placeY}
+		var x, y int
+		if p.X != 0 || p.Y != 0 {
+			// Use explicit position
+			x, y = p.X, p.Y
+		} else {
+			// Auto-layout
+			x = 50 + i*spacing
+			y = defaultPlaceY
+		}
+		placePos[p.ID] = [2]int{x, y}
 		svg += fmt.Sprintf(`  <circle cx="%d" cy="%d" r="25" class="place"/>
   <text x="%d" y="%d" class="label">%s</text>
-`, x, placeY, x, placeY+45, p.ID)
+`, x, y, x, y+45, p.ID)
 		// Show initial tokens
 		if p.Initial > 0 {
 			svg += fmt.Sprintf(`  <text x="%d" y="%d" class="label" style="font-weight:bold">%d</text>
-`, x, placeY+5, p.Initial)
+`, x, y+5, p.Initial)
 		}
 	}
 
 	// Transition positions
 	transPos := make(map[string][2]int)
 	for i, t := range model.Transitions {
-		x := 50 + i*spacing
-		transPos[t.ID] = [2]int{x, transY}
+		var x, y int
+		if t.X != 0 || t.Y != 0 {
+			// Use explicit position
+			x, y = t.X, t.Y
+		} else {
+			// Auto-layout
+			x = 50 + i*spacing
+			y = defaultTransY
+		}
+		transPos[t.ID] = [2]int{x, y}
 		svg += fmt.Sprintf(`  <rect x="%d" y="%d" width="10" height="40" class="transition"/>
   <text x="%d" y="%d" class="label">%s</text>
-`, x-5, transY-20, x, transY+40, t.ID)
+`, x-5, y-20, x, y+40, t.ID)
 	}
 
 	// Draw arcs
 	for _, arc := range model.Arcs {
 		var x1, y1, x2, y2 int
 		if pos, ok := placePos[arc.From]; ok {
-			x1, y1 = pos[0], pos[1]+25 // bottom of place
+			x1, y1 = pos[0], pos[1]
 			if pos2, ok := transPos[arc.To]; ok {
-				x2, y2 = pos2[0], pos2[1]-20 // top of transition
+				x2, y2 = pos2[0], pos2[1]
 			}
 		} else if pos, ok := transPos[arc.From]; ok {
-			x1, y1 = pos[0], pos[1]+20 // bottom of transition
+			x1, y1 = pos[0], pos[1]
 			if pos2, ok := placePos[arc.To]; ok {
-				x2, y2 = pos2[0], pos2[1]-25 // top of place
+				x2, y2 = pos2[0], pos2[1]
 			}
 		}
 		if x1 != 0 && x2 != 0 {
