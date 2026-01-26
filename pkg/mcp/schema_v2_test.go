@@ -152,3 +152,46 @@ func TestParseV2Extensions(t *testing.T) {
 		t.Errorf("Expected user to inherit from admin, got %v", user.Inherits)
 	}
 }
+
+func TestMigrateV1ToV2(t *testing.T) {
+	// v1 schema with extensions in flat format
+	v1JSON := `{
+		"name": "order-workflow",
+		"places": [
+			{"id": "pending", "initial": 1},
+			{"id": "completed"}
+		],
+		"transitions": [
+			{"id": "complete"}
+		],
+		"arcs": [
+			{"from": "pending", "to": "complete"},
+			{"from": "complete", "to": "completed"}
+		],
+		"roles": [
+			{"id": "admin", "name": "Administrator"}
+		],
+		"views": [
+			{"id": "order-list", "name": "Orders", "kind": "table"}
+		]
+	}`
+
+	// Simulate what handleMigrate does
+	parsed, err := parseModelV2(v1JSON)
+	if err != nil {
+		t.Fatalf("Failed to parse v1 schema: %v", err)
+	}
+
+	if parsed.Version != "1.0" {
+		t.Errorf("Expected version 1.0, got %s", parsed.Version)
+	}
+
+	// Verify model was extracted correctly
+	if parsed.Model.Name != "order-workflow" {
+		t.Errorf("Expected name 'order-workflow', got %s", parsed.Model.Name)
+	}
+
+	if len(parsed.Model.Places) != 2 {
+		t.Errorf("Expected 2 places, got %d", len(parsed.Model.Places))
+	}
+}

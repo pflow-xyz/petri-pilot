@@ -295,15 +295,20 @@ Tasks:
 - [x] Update schema parser to support v2.0 format with `net` and `extensions` keys
 - [x] Migrate `pkg/extensions` types to implement `go-pflow/metamodel.ModelExtension` (already done)
 - [x] Update MCP tools to accept both v1 (flat) and v2 (nested) schemas
-- [ ] Update codegen to use generic types from go-pflow where applicable
-- [ ] Add schema migration tool (v1 → v2)
+- [x] Update codegen to use generic types from go-pflow where applicable
+- [x] Add schema migration tool (v1 → v2)
 
 #### Current Generics Usage
 
-Generated code uses one generic helper:
+Generated code uses go-pflow's generic types:
 
 ```go
-// Type-safe event unmarshaling in aggregate.go
+// Type-safe aggregate with generic state (aggregate.go)
+type Aggregate struct {
+    sm *eventsource.StateMachine[State]
+}
+
+// Type-safe event unmarshaling helper
 func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
     var data T
     if err := json.Unmarshal(event.Data, &data); err != nil {
@@ -312,6 +317,11 @@ func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
     return &data, nil
 }
 ```
+
+Additional patterns available in go-pflow for future use:
+- `DataState[T]` - versioned data with optimistic concurrency
+- `Workflow[D]` - multi-step data-flow orchestration
+- `ResourcePool[R]` - token-based resource management
 
 ### Open Questions
 

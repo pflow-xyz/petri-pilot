@@ -43,6 +43,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(visualizeTool(), handleVisualize)
 	s.AddTool(applicationTool(), handleApplication)
 	s.AddTool(docsTool(), handleDocs)
+	s.AddTool(migrateTool(), handleMigrate)
 
 	// Delegate tools for GitHub Copilot integration
 	s.AddTool(delegateAppTool(), handleDelegateApp)
@@ -322,6 +323,16 @@ func docsTool() mcp.Tool {
 		),
 		mcp.WithBoolean("include_metadata",
 			mcp.Description("Include model metadata in documentation (default: true)"),
+		),
+	)
+}
+
+func migrateTool() mcp.Tool {
+	return mcp.NewTool("petri_migrate",
+		mcp.WithDescription("Migrate a Petri net model from v1 (flat) to v2 (nested) schema format. V2 format separates the net definition from extensions like roles and views."),
+		mcp.WithString("model",
+			mcp.Required(),
+			mcp.Description("The v1 Petri net model as a JSON string"),
 		),
 	)
 }
@@ -1197,6 +1208,86 @@ func handleDocs(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 	md := generateMarkdownDocs(model, modelJSON, includeMetadata)
 
 	return mcp.NewToolResultText(md), nil
+}
+
+func handleMigrate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	modelJSON, err := request.RequireString("model")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	}
+
+	// Parse as v1 or v2 to get the model
+	parsed, err := parseModelV2(modelJSON)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
+	}
+
+	// If already v2, inform the user
+	if parsed.Version == "2.0" {
+		return mcp.NewToolResultText("Model is already in v2.0 format. No migration needed."), nil
+	}
+
+	// Extract extensions from v1 flat format
+	var v1Data map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(modelJSON), &v1Data); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse model: %v", err)), nil
+	}
+
+	// Build v2 schema
+	v2Schema := map[string]any{
+		"version": "2.0",
+		"net":     parsed.Model,
+	}
+
+	// Check for extension fields in v1 and migrate them
+	extensions := make(map[string]any)
+
+	if roles, ok := v1Data["roles"]; ok {
+		var rolesSlice []any
+		if err := json.Unmarshal(roles, &rolesSlice); err == nil && len(rolesSlice) > 0 {
+			extensions["petri-pilot/roles"] = rolesSlice
+		}
+	}
+
+	if views, ok := v1Data["views"]; ok {
+		var viewsSlice []any
+		if err := json.Unmarshal(views, &viewsSlice); err == nil && len(viewsSlice) > 0 {
+			extensions["petri-pilot/views"] = viewsSlice
+		}
+	}
+
+	if access, ok := v1Data["access"]; ok {
+		var accessSlice []any
+		if err := json.Unmarshal(access, &accessSlice); err == nil && len(accessSlice) > 0 {
+			extensions["petri-pilot/access"] = accessSlice
+		}
+	}
+
+	if navigation, ok := v1Data["navigation"]; ok {
+		var navObj any
+		if err := json.Unmarshal(navigation, &navObj); err == nil && navObj != nil {
+			extensions["petri-pilot/navigation"] = navObj
+		}
+	}
+
+	if admin, ok := v1Data["admin"]; ok {
+		var adminObj any
+		if err := json.Unmarshal(admin, &adminObj); err == nil && adminObj != nil {
+			extensions["petri-pilot/admin"] = adminObj
+		}
+	}
+
+	if len(extensions) > 0 {
+		v2Schema["extensions"] = extensions
+	}
+
+	// Output the migrated schema
+	output, err := json.MarshalIndent(v2Schema, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal v2 schema: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(output)), nil
 }
 
 // generateMarkdownDocs creates markdown documentation with mermaid diagrams
