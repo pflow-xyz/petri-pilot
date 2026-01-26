@@ -259,6 +259,86 @@ Potential enhancements (not yet scoped):
 
 ---
 
+## Metamodel Refactor
+
+Refactoring go-pflow's metamodel to support generics, externalize application constructs, and enable composable patterns.
+
+### Completed
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 2.2 | Move application constructs to `pkg/extensions` | ✅ |
+| 2.3 | Codegen uses `NewContextFromApp`, `GenerateFilesFromApp` | ✅ |
+| 4.2 | MCP tools accept `extensions` parameter | ✅ |
+
+Application types externalized from go-pflow to petri-pilot:
+- `Role`, `View`, `Navigation`, `Admin`, `Page`, `Entity`
+
+### Remaining
+
+#### Phase 1: Core Primitives with Generics
+
+```go
+// Generic state types
+type TokenState[T any] struct {
+    Count int
+    Data  T
+}
+
+type DataState[T any] struct {
+    Value   T
+    Version int
+}
+
+// Generic PetriNet
+type PetriNet[S any] struct {
+    Name        string
+    Places      []Place[S]
+    Transitions []Transition[S, S]
+    Arcs        []Arc[S]
+}
+```
+
+#### Phase 2.1: Extension Interface
+
+```go
+type ModelExtension interface {
+    Name() string
+    Validate(net *PetriNet[any]) error
+}
+```
+
+#### Phase 3: Composable Patterns
+
+| Pattern | Description |
+|---------|-------------|
+| `StateMachine[S]` | State machine semantics on top of PetriNet |
+| `Workflow[D]` | Multi-step process with data flow |
+| `ResourcePool[R]` | Token-based resource management |
+| `EventSourced[S,E]` | Event-driven state with replay |
+
+#### Phase 4.3: Schema JSON Evolution
+
+```json
+{
+  "version": "2.0",
+  "net": { "places": [...], "transitions": [...], "arcs": [...] },
+  "extensions": {
+    "petri-pilot/roles": [...],
+    "petri-pilot/views": [...]
+  }
+}
+```
+
+### Open Questions
+
+1. Should `Guard` functions use generics or remain `func(map[string]any) bool`?
+2. How to handle visualization (x,y) for composed patterns?
+3. Should extensions be Go interfaces or JSON schema-based?
+4. Versioning strategy for schema JSON format?
+
+---
+
 ## Dependencies
 
 | Package | Purpose |
