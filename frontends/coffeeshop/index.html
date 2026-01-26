@@ -70,17 +70,88 @@
   <nav class="top-nav">
     <a href="/" class="nav-brand">Petri-Pilot</a>
     <div class="nav-links">
-      <a id="dash-link" href="/~coffeeshop/">Manage</a>
+      <a id="dash-link" href="/~coffeeshop/" style="display: none;">Manage</a>
+      <a id="login-link" href="/auth/login" style="display: none;">Login</a>
+      <span id="user-info" style="display: none;">
+        <span id="user-name"></span>
+        <a href="#" id="logout-link">Logout</a>
+      </span>
     </div>
   </nav>
   <script>
-    // Set dash link based on current path
+    // Auth-aware navigation
     (function() {
       const path = window.location.pathname;
       const match = path.match(/^\/([^\/]+)\//);
+      const dashLink = document.getElementById('dash-link');
+      const loginLink = document.getElementById('login-link');
+      const userInfo = document.getElementById('user-info');
+      const userName = document.getElementById('user-name');
+      const logoutLink = document.getElementById('logout-link');
+
       if (match) {
-        document.getElementById('dash-link').href = '/~' + match[1] + '/';
+        dashLink.href = '/~' + match[1] + '/';
       }
+
+      // Check auth state
+      function checkAuth() {
+        const auth = localStorage.getItem('auth');
+        if (auth) {
+          try {
+            const data = JSON.parse(auth);
+            if (data.user && data.expires_at && new Date(data.expires_at) > new Date()) {
+              // User is logged in
+              dashLink.style.display = '';
+              loginLink.style.display = 'none';
+              userInfo.style.display = '';
+              userName.textContent = data.user.name || data.user.login;
+              return;
+            }
+          } catch (e) {}
+        }
+        // Not logged in - check if OAuth is available
+        dashLink.style.display = 'none';
+        userInfo.style.display = 'none';
+        fetch('/auth/status').then(r => r.json()).then(status => {
+          if (status.github_enabled) {
+            loginLink.style.display = '';
+          }
+        }).catch(() => {});
+      }
+
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const auth = localStorage.getItem('auth');
+        if (auth) {
+          try {
+            const data = JSON.parse(auth);
+            await fetch('/auth/logout', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + data.token }
+            });
+          } catch (e) {}
+        }
+        localStorage.removeItem('auth');
+        checkAuth();
+      });
+
+      // Handle OAuth callback
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        const expiresAt = params.get('expires_at');
+        fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => r.json())
+          .then(user => {
+            localStorage.setItem('auth', JSON.stringify({ token, expires_at: expiresAt, user }));
+            window.history.replaceState({}, '', window.location.pathname);
+            checkAuth();
+          });
+      } else {
+        checkAuth();
+      }
+
+      window.addEventListener('storage', checkAuth);
     })();
   </script>
   <div id="app">
