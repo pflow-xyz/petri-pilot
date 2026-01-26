@@ -552,7 +552,7 @@ function showSuccess(message) {
 }
 
 // Status configuration from schema
-const STATUS_PLACES = {"win_o": "O Wins", "win_x": "X Wins"}
+const STATUS_PLACES = {"win_x": "X Wins", "win_o": "O Wins"}
 const STATUS_DEFAULT = "In Progress"
 
 // Get human-readable status from places
@@ -1661,7 +1661,9 @@ function schemaToPflowModel(schema) {
 
   // Create place objects
   ;(schema.places || []).forEach(p => {
-    const pos = placePositions[p.id] || { x: MARGIN_LEFT, y: MARGIN_TOP }
+    // Use explicit x,y coordinates if provided in schema, otherwise use auto-calculated position
+    const hasExplicitPos = p.x !== undefined && p.y !== undefined && (p.x !== 0 || p.y !== 0)
+    const pos = hasExplicitPos ? { x: p.x, y: p.y } : (placePositions[p.id] || { x: MARGIN_LEFT, y: MARGIN_TOP })
     const initial = p.initial || 0
     const capacity = p.capacity !== undefined ? p.capacity : null  // null = unlimited
     places[p.id] = {
@@ -1723,7 +1725,9 @@ function schemaToPflowModel(schema) {
 
   // Create transition objects
   ;(schema.transitions || []).forEach(t => {
-    const pos = transitionPositions[t.id] || { x: MARGIN_LEFT, y: maxYInLayer + 150 }
+    // Use explicit x,y coordinates if provided in schema, otherwise use auto-calculated position
+    const hasExplicitPos = t.x !== undefined && t.y !== undefined && (t.x !== 0 || t.y !== 0)
+    const pos = hasExplicitPos ? { x: t.x, y: t.y } : (transitionPositions[t.id] || { x: MARGIN_LEFT, y: maxYInLayer + 150 })
     transitions[t.id] = {
       '@type': 'Transition',
       x: pos.x,

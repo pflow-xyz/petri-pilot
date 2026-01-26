@@ -15,7 +15,7 @@ const handleResponse = window.handleResponse || (r => r.json())
 const showError = window.showError || console.error
 
 // Status configuration from schema
-const STATUS_PLACES = {"win_o": "O Wins", "win_x": "X Wins"}
+const STATUS_PLACES = {"win_x": "X Wins", "win_o": "O Wins"}
 const STATUS_DEFAULT = "In Progress"
 
 // Admin state
