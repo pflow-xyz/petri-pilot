@@ -307,6 +307,17 @@ Users will be redirected to GitHub for login. After authorization, they receive 
 - **[E2E Testing Guide](docs/e2e-testing-guide.md)** - Writing tests for generated applications
 - **[Architecture](ARCHITECTURE.md)** - Detailed architecture and design patterns
 
+### Living Documentation
+
+This project is documented through working examples rather than standalone guides:
+
+- **[pilot.pflow.xyz](https://pilot.pflow.xyz)** - Live demos (tic-tac-toe, coffeeshop)
+- **[blog.stackdump.com](https://blog.stackdump.com)** - Posts exploring Petri net concepts with petri-pilot examples
+- **`examples/`** - Model files showing schema patterns
+- **`generated/`** - Complete applications demonstrating codegen output
+
+The examples are the documentation. Read the models, run the apps, trace the generated code.
+
 ## Development
 
 ```bash
