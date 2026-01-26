@@ -20,10 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	navigation *Navigation
-	debugBroker *DebugBroker
 }
 
 // NewService creates a new erc20-token service instance.
@@ -35,49 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "mint",
-			Roles:        []string{"admin",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "burn",
-			Roles:        []string{"admin",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "transfer",
-			Roles:        []string{"holder", "admin",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "approve",
-			Roles:        []string{"holder", "admin",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "transfer_from",
-			Roles:        []string{"holder", "admin",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize navigation
-	svc.navigation = &Navigation{
-		Brand: "ERC-20 Token",
-		Items: []NavigationItem{
-			{Label: "Admin", Path: "/admin", Icon: "⚙️", Roles: []string{"admin", }},
-		},
-	}
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -89,7 +42,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.navigation, s.debugBroker)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.

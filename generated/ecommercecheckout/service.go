@@ -20,9 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	debugBroker *DebugBroker
 }
 
 // NewService creates a new ecommerce-checkout service instance.
@@ -34,72 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "start_checkout",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "enter_payment",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "process_payment",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "payment_success",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "payment_fail_1",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "retry_payment_1",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "payment_fail_2",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "retry_payment_2",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "payment_fail_3",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "cancel_order",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "fulfill",
-			Roles:        []string{"fulfillment",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -111,7 +42,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.debugBroker)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.

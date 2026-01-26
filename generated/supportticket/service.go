@@ -20,9 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	debugBroker *DebugBroker
 }
 
 // NewService creates a new support-ticket service instance.
@@ -34,62 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "assign",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "start_work",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "escalate",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "request_info",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "customer_reply",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "resolve",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "resolve_escalated",
-			Roles:        []string{"supervisor",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "close",
-			Roles:        []string{"agent",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "reopen",
-			Roles:        []string{"customer",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -101,7 +42,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.debugBroker)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.

@@ -8,8 +8,24 @@
 // API base path for when service is mounted at a prefix
 const API_BASE = window.API_BASE || ''
 
-// Helper to strip API_BASE from a path for route matching
+// Frontend base path (may differ from API_BASE when in dash view)
+function getFrontendBase() {
+  const path = window.location.pathname
+  const match = path.match(/^(\/~[^\/]+)\//)
+  if (match) {
+    return match[1]  // e.g., /~coffeeshop
+  }
+  return API_BASE  // e.g., /coffeeshop
+}
+
+// Helper to strip base prefix from a path for route matching
 function stripBase(path) {
+  const frontendBase = getFrontendBase()
+  // First try stripping frontend base (handles dash view)
+  if (frontendBase && path.startsWith(frontendBase)) {
+    return path.slice(frontendBase.length) || '/'
+  }
+  // Fall back to API_BASE
   if (API_BASE && path.startsWith(API_BASE)) {
     return path.slice(API_BASE.length) || '/'
   }
@@ -45,22 +61,6 @@ export const routes = [
     path: '/schema',
     component: 'Schema',
     title: 'Schema Viewer',
-  },
-  // Admin routes
-  {
-    path: '/admin',
-    component: 'AdminDashboard',
-    title: 'Admin Dashboard',
-  },
-  {
-    path: '/admin/instances',
-    component: 'AdminInstances',
-    title: 'Instances',
-  },
-  {
-    path: '/admin/instances/:id',
-    component: 'AdminInstance',
-    title: 'Instance Detail',
   },
 ]
 
@@ -117,7 +117,7 @@ export function navigate(path, state = {}) {
     if (fallback) {
       currentRoute = fallback.route
       currentParams = fallback.params
-      window.history.pushState(state, '', `${API_BASE}${fallbackPath}`)
+      window.history.pushState(state, '', `${getFrontendBase()}${fallbackPath}`)
       renderCurrentRoute()
     }
     return
@@ -128,7 +128,7 @@ export function navigate(path, state = {}) {
     const user = getCurrentUser()
     if (!user || !hasAnyRole(user, match.route.roles)) {
       console.warn('Access denied:', path)
-      navigate(`${API_BASE}/test-access`)
+      navigate(`${getFrontendBase()}/test-access`)
       return
     }
   }
@@ -136,8 +136,9 @@ export function navigate(path, state = {}) {
   currentRoute = match.route
   currentParams = match.params
 
-  // Update browser history - use full path with API_BASE
-  const historyPath = path.startsWith(API_BASE) ? path : `${API_BASE}${routePath}`
+  // Update browser history - use frontend base (respects dash view)
+  const frontendBase = getFrontendBase()
+  const historyPath = path.startsWith(frontendBase) ? path : `${frontendBase}${routePath}`
   window.history.pushState(state, '', historyPath)
 
   // Trigger render
@@ -154,7 +155,7 @@ window.addEventListener('popstate', () => {
     renderCurrentRoute()
   } else {
     // Fallback to list
-    navigate(`${API_BASE}/test-access`)
+    navigate(`${getFrontendBase()}/test-access`)
   }
 })
 

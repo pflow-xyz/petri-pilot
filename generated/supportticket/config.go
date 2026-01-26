@@ -47,8 +47,8 @@ func LoadConfig() (*Config, error) {
 		IdleTimeout:     getDurationEnv("IDLE_TIMEOUT", 60*time.Second),
 		ShutdownTimeout: getDurationEnv("SHUTDOWN_TIMEOUT", 30*time.Second),
 
-		// Database defaults
-		DatabaseURL:  getEnv("DATABASE_URL", "file:supportticket.db?_journal=WAL"),
+		// Database defaults (SQLite by default, use DATABASE_TYPE=memory for in-memory)
+		DatabaseURL:  getEnv("DATABASE_URL", "supportticket.db"),
 		DatabaseType: getEnv("DATABASE_TYPE", "sqlite"),
 
 		// GitHub OAuth defaults

@@ -20,10 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	navigation *Navigation
-	debugBroker *DebugBroker
 }
 
 // NewService creates a new task-manager service instance.
@@ -35,47 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "start",
-			Roles:        []string{"user",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "submit",
-			Roles:        []string{"user",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "approve",
-			Roles:        []string{"reviewer",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "reject",
-			Roles:        []string{"reviewer",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize navigation
-	svc.navigation = &Navigation{
-		Brand: "Task Manager",
-		Items: []NavigationItem{
-			{Label: "Dashboard", Path: "/", Icon: "home", Roles: []string{ }},
-			{Label: "My Tasks", Path: "/tasks", Icon: "list", Roles: []string{ }},
-			{Label: "Reviews", Path: "/reviews", Icon: "check", Roles: []string{"reviewer","admin", }},
-			{Label: "Admin", Path: "/admin", Icon: "settings", Roles: []string{"admin", }},
-		},
-	}
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -87,7 +42,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.navigation, s.debugBroker)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.

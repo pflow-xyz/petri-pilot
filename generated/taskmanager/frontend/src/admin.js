@@ -16,7 +16,7 @@ const showError = window.showError || console.error
 
 // Status configuration from schema
 const STATUS_PLACES = {}
-const STATUS_DEFAULT = "In Progress"
+const STATUS_DEFAULT = "Unknown"
 
 // Admin state
 let currentStats = null

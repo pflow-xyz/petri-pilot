@@ -20,9 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	debugBroker *DebugBroker
 }
 
 // NewService creates a new job-application service instance.
@@ -34,82 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "start_screening",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "begin_checks",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "schedule_phone_screen",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "start_background_check",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "complete_phone_screen",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "complete_background_check",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "advance_to_interview",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "conduct_interview",
-			Roles:        []string{"hiring_manager",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "extend_offer",
-			Roles:        []string{"hiring_manager",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "accept_offer",
-			Roles:        []string{"candidate",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "reject_after_screen",
-			Roles:        []string{"recruiter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "reject_after_interview",
-			Roles:        []string{"hiring_manager",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "decline_offer",
-			Roles:        []string{"candidate",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -121,7 +42,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.debugBroker)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.

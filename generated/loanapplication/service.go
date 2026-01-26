@@ -3,12 +3,10 @@
 package loanapplication
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
-	_ "modernc.org/sqlite"
 )
 
 // ServiceName is the registered name for this service.
@@ -22,16 +20,6 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
-	sessions   SessionStore
-	middleware *Middleware
-	debugBroker *DebugBroker
-	blobDB    *sql.DB
-	blobStore *BlobStore
-	featuresDB *sql.DB
-	commentStore *CommentStore
-	tagStore *TagStore
-	activityStore *ActivityStore
-	softDeleteStore *SoftDeleteStore
 }
 
 // NewService creates a new loan-application service instance.
@@ -43,113 +31,6 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
-	// Initialize sessions for authentication
-	svc.sessions = NewInMemorySessionStore()
-
-	// Configure access control rules
-	accessRules := []*AccessControl{
-		{
-			TransitionID: "run_credit_check",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "auto_approve",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "flag_for_review",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "auto_deny",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "underwriter_approve",
-			Roles:        []string{"underwriter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "underwriter_deny",
-			Roles:        []string{"underwriter",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "finalize_approval",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "disburse",
-			Roles:        []string{"admin",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "start_repayment",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "make_payment",
-			Roles:        []string{"applicant",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "complete",
-			Roles:        []string{"system",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "mark_default",
-			Roles:        []string{"admin",  },
-			Guard:        "",
-		},
-	}
-
-	// Initialize middleware
-	svc.middleware = NewMiddleware(svc.sessions, accessRules)
-	// Initialize debug broker
-	svc.debugBroker = NewDebugBroker()
-	var err error
-	// Initialize blobstore
-	svc.blobDB, err = sql.Open("sqlite", "blobs.db")
-	if err != nil {
-		return nil, err
-	}
-
-	svc.blobStore = NewBlobStore(svc.blobDB, 52428800, []string{"application/json", "application/pdf", "image/*",  })
-	if err := svc.blobStore.InitSchema(); err != nil {
-		return nil, err
-	}
-	// Initialize features database
-	svc.featuresDB, err = sql.Open("sqlite", "features.db")
-	if err != nil {
-		return nil, err
-	}
-	// Initialize comment store
-	svc.commentStore = NewCommentStore(svc.featuresDB)
-	if err := svc.commentStore.InitSchema(); err != nil {
-		return nil, err
-	}
-	// Initialize tag store
-	svc.tagStore = NewTagStore(svc.featuresDB)
-	if err := svc.tagStore.InitSchema(); err != nil {
-		return nil, err
-	}
-	// Initialize activity store
-	svc.activityStore = NewActivityStore(svc.featuresDB)
-	if err := svc.activityStore.InitSchema(); err != nil {
-		return nil, err
-	}
-	// Initialize soft delete store
-	svc.softDeleteStore = NewSoftDeleteStore(svc.featuresDB, 30)
-	if err := svc.softDeleteStore.InitSchema(); err != nil {
-		return nil, err
-	}
 
 	return svc, nil
 }
@@ -161,17 +42,11 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app, s.middleware, s.sessions, s.debugBroker, s.blobStore, s.commentStore, s.tagStore, s.activityStore, s.softDeleteStore)
+	return BuildRouter(s.app)
 }
 
 // Close cleans up resources used by the service.
 func (s *Service) Close() error {
-	if s.blobDB != nil {
-		s.blobDB.Close()
-	}
-	if s.featuresDB != nil {
-		s.featuresDB.Close()
-	}
 	if s.store != nil {
 		return s.store.Close()
 	}

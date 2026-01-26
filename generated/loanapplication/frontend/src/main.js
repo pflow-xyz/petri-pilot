@@ -3,7 +3,6 @@
 import { createNavigation, refreshNavigation } from './navigation.js'
 import { navigate, initRouter, getRouteParams, getCurrentRoute } from './router.js'
 import { loadViews, renderFormView, renderDetailView, renderTableView, getFormData } from './views.js'
-import { initAdmin, renderAdminDashboard, loadAdminStats, renderAdminInstances, loadAdminInstances, renderAdminInstance, loadAdminInstance } from './admin.js'
 
 // API client
 const API_BASE = window.API_BASE || ''
@@ -392,7 +391,7 @@ function showSuccess(message) {
 
 // Status configuration from schema
 const STATUS_PLACES = {}
-const STATUS_DEFAULT = "In Progress"
+const STATUS_DEFAULT = "Unknown"
 
 // Get human-readable status from places
 function getStatus(places) {
@@ -1080,10 +1079,10 @@ async function renderSchemaPage() {
       <div class="schema-viewer">
         <div class="schema-tabs">
           <button class="schema-tab active" onclick="showSchemaTab('overview')">Overview</button>
+          <button class="schema-tab" onclick="showSchemaTab('petrinet')">Petri Net</button>
           <button class="schema-tab" onclick="showSchemaTab('places')">Places (${schema.places?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('transitions')">Transitions (${schema.transitions?.length || 0})</button>
           <button class="schema-tab" onclick="showSchemaTab('arcs')">Arcs (${schema.arcs?.length || 0})</button>
-          <button class="schema-tab" onclick="showSchemaTab('petrinet')">Petri Net</button>
           <button class="schema-tab" onclick="showSchemaTab('raw')">Raw JSON</button>
         </div>
 
@@ -1322,47 +1321,271 @@ function schemaToPflowModel(schema) {
   const transitions = {}
   const arcs = []
 
-  // Layout: auto-arrange places and transitions
-  const placeCount = schema.places?.length || 0
-  const transitionCount = schema.transitions?.length || 0
+  // Build adjacency info for flow-based layout
+  const placeIds = new Set((schema.places || []).map(p => p.id))
+  const transitionIds = new Set((schema.transitions || []).map(t => t.id))
 
-  // Create places with positions
-  ;(schema.places || []).forEach((p, i) => {
-    const col = i % 6
-    const row = Math.floor(i / 6)
+  // Track connections
+  const placeToTransitions = {}
+  const transitionToPlaces = {}
+  const placeInputs = {}
+  const transitionInputs = {}
+
+  ;(schema.places || []).forEach(p => {
+    placeToTransitions[p.id] = []
+    placeInputs[p.id] = []
+  })
+  ;(schema.transitions || []).forEach(t => {
+    transitionToPlaces[t.id] = []
+    transitionInputs[t.id] = []
+  })
+
+  ;(schema.arcs || []).forEach(a => {
+    if (placeIds.has(a.from) && transitionIds.has(a.to)) {
+      placeToTransitions[a.from].push(a.to)
+      transitionInputs[a.to].push(a.from)
+    } else if (transitionIds.has(a.from) && placeIds.has(a.to)) {
+      transitionToPlaces[a.from].push(a.to)
+      placeInputs[a.to].push(a.from)
+    }
+  })
+
+  // ============================================================
+  // Flow-based layout: arrange places by flow order, transitions alongside
+  // ============================================================
+
+  // Compute flow order using BFS from initial/source places
+  const placeOrder = []
+  const placeVisited = new Set()
+  const queue = []
+
+  // Start with places that have initial tokens or no inputs (sources)
+  ;(schema.places || []).forEach(p => {
+    if ((p.initial || 0) > 0 || placeInputs[p.id].length === 0) {
+      queue.push(p.id)
+      placeVisited.add(p.id)
+    }
+  })
+
+  // BFS traversal to get flow order
+  while (queue.length > 0) {
+    const pid = queue.shift()
+    placeOrder.push(pid)
+
+    // Find reachable places through transitions
+    placeToTransitions[pid].forEach(tid => {
+      transitionToPlaces[tid].forEach(nextPid => {
+        if (!placeVisited.has(nextPid)) {
+          placeVisited.add(nextPid)
+          queue.push(nextPid)
+        }
+      })
+    })
+  }
+
+  // Add any remaining places not reached by BFS
+  ;(schema.places || []).forEach(p => {
+    if (!placeVisited.has(p.id)) {
+      placeOrder.push(p.id)
+    }
+  })
+
+  // Group places/transitions by prefix for semantic clustering
+  // Examples: p00->p, x_turn->x, win_x->win, x_play_00->x_play, x_win_row0->x_win
+  function getPrefix(id) {
+    // Common workflow/state names that should not be split
+    const keepWhole = ['in_review', 'in_progress', 'create_post', 'can_reset', 'game_active']
+    if (keepWhole.includes(id)) return id
+
+    // x_play_00, o_play_11 -> x_play, o_play (underscore before digits)
+    let match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_\d/)
+    if (match) return match[1]
+
+    // p00, x00 -> p, x (letter(s) directly followed by digits)
+    match = id.match(/^([a-zA-Z]+)\d/)
+    if (match) return match[1]
+
+    // x_win_row0, o_win_col1 -> x_win, o_win (two parts before final part with digit)
+    match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_[a-zA-Z]+\d/)
+    if (match) return match[1]
+
+    // x_win_diag, x_win_anti -> x_win (three parts, no trailing digit)
+    match = id.match(/^([a-zA-Z]+_[a-zA-Z]+)_[a-zA-Z]+$/)
+    if (match) return match[1]
+
+    // win_x, win_o -> win (two parts, second is single letter)
+    match = id.match(/^([a-zA-Z]+)_[a-zA-Z]$/)
+    if (match) return match[1]
+
+    // For two-part names not in keepWhole, keep them whole if second part is long
+    // e.g., x_turn -> x (short suffix), but game_active -> game_active (long suffix, but in keepWhole)
+    match = id.match(/^([a-zA-Z]+)_([a-zA-Z]+)$/)
+    if (match && match[2].length <= 4) return match[1]  // Short suffix like "turn" -> use first part
+
+    return id
+  }
+
+  // Group ordered places by prefix while maintaining relative order
+  const prefixGroups = {}
+  placeOrder.forEach((pid, orderIndex) => {
+    const prefix = getPrefix(pid)
+    if (!prefixGroups[prefix]) {
+      prefixGroups[prefix] = { places: [], minOrder: orderIndex }
+    }
+    prefixGroups[prefix].places.push({ id: pid, order: orderIndex })
+  })
+
+  // Sort prefix groups by their earliest member's order
+  const sortedPrefixes = Object.entries(prefixGroups)
+    .sort((a, b) => a[1].minOrder - b[1].minOrder)
+    .map(([prefix, data]) => ({ prefix, ...data }))
+
+  // Layout constants
+  const MARGIN_TOP = 80
+  const MARGIN_LEFT = 100
+  const H_SPACING = 130  // Horizontal spacing within groups
+  const V_SPACING = 120  // Vertical spacing between rows
+  const GROUP_V_GAP = 80 // Vertical gap between prefix groups
+
+  const placePositions = {}
+  const placeData = {}  // Store place data for lookup
+  ;(schema.places || []).forEach(p => { placeData[p.id] = p })
+
+  let currentY = MARGIN_TOP
+  let maxX = MARGIN_LEFT
+
+  // Layout each prefix group
+  sortedPrefixes.forEach((group, groupIndex) => {
+    const places = group.places.sort((a, b) => {
+      // Sort by numeric suffix if present
+      const aNum = parseInt(a.id.match(/\d+$/)?.[0] || '0')
+      const bNum = parseInt(b.id.match(/\d+$/)?.[0] || '0')
+      return aNum - bNum
+    })
+
+    // Determine grid size - try to make it roughly square
+    const count = places.length
+    let cols, rows
+    if (count <= 4) {
+      cols = count
+      rows = 1
+    } else if (count === 9) {
+      // Special case for 3x3 grids (like tic-tac-toe cells)
+      cols = 3
+      rows = 3
+    } else if (count <= 9) {
+      cols = Math.ceil(Math.sqrt(count))
+      rows = Math.ceil(count / cols)
+    } else {
+      cols = Math.min(count, 6)
+      rows = Math.ceil(count / cols)
+    }
+
+    // Position places in a grid for this group
+    places.forEach((p, i) => {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = MARGIN_LEFT + col * H_SPACING
+      const y = currentY + row * V_SPACING
+      placePositions[p.id] = { x, y }
+      maxX = Math.max(maxX, x)
+    })
+
+    // Move to next row for next group
+    currentY += rows * V_SPACING + GROUP_V_GAP
+  })
+
+  let maxYInLayer = currentY
+
+  // Create place objects
+  ;(schema.places || []).forEach(p => {
+    // Use explicit x,y coordinates if provided in schema, otherwise use auto-calculated position
+    const hasExplicitPos = p.x !== undefined && p.y !== undefined && (p.x !== 0 || p.y !== 0)
+    const pos = hasExplicitPos ? { x: p.x, y: p.y } : (placePositions[p.id] || { x: MARGIN_LEFT, y: MARGIN_TOP })
     const initial = p.initial || 0
-    // Capacity: use explicit capacity if set, otherwise use a large number for "unlimited"
-    // petri-view treats capacity as a hard limit, so 0 means "can hold 0 tokens"
-    const capacity = p.capacity || 0
+    const capacity = p.capacity !== undefined ? p.capacity : null  // null = unlimited
     places[p.id] = {
       '@type': 'Place',
       initial: [initial],
       capacity: [capacity],
-      x: 80 + col * 120,
-      y: 80 + row * 100
+      x: pos.x,
+      y: pos.y
     }
   })
 
-  // Create transitions with positions
-  ;(schema.transitions || []).forEach((t, i) => {
-    const col = i % 6
-    const row = Math.floor(i / 6)
+  // Group transitions by prefix for consistent positioning
+  const transitionGroups = {}
+  ;(schema.transitions || []).forEach(t => {
+    const prefix = getPrefix(t.id)
+    if (!transitionGroups[prefix]) transitionGroups[prefix] = []
+    transitionGroups[prefix].push(t)
+  })
+
+  // Position transitions to the right of places, arranged in a grid
+  const transitionPositions = {}
+  const T_MARGIN_LEFT = maxX + H_SPACING + 80  // Start transitions to the right of all places
+  const T_H_SPACING = 100
+  const T_V_SPACING = 80
+
+  // Group transitions by their primary input place's Y position
+  const transitionsByInputY = {}
+  ;(schema.transitions || []).forEach(t => {
+    const inputs = transitionInputs[t.id] || []
+    let primaryY = MARGIN_TOP
+    if (inputs.length > 0) {
+      // Use average Y of input places
+      let sumY = 0, count = 0
+      inputs.forEach(pid => {
+        const pos = placePositions[pid]
+        if (pos) { sumY += pos.y; count++ }
+      })
+      if (count > 0) primaryY = Math.round(sumY / count)
+    }
+    const yKey = Math.round(primaryY / 80) * 80  // Round to grid
+    if (!transitionsByInputY[yKey]) transitionsByInputY[yKey] = []
+    transitionsByInputY[yKey].push({ t, primaryY })
+  })
+
+  // Layout transitions row by row
+  const sortedYKeys = Object.keys(transitionsByInputY).map(Number).sort((a, b) => a - b)
+
+  sortedYKeys.forEach((yKey, rowIndex) => {
+    const row = transitionsByInputY[yKey]
+    // Sort transitions within row by name for consistency
+    row.sort((a, b) => a.t.id.localeCompare(b.t.id))
+
+    row.forEach((item, colIndex) => {
+      const x = T_MARGIN_LEFT + colIndex * T_H_SPACING
+      const y = item.primaryY
+      transitionPositions[item.t.id] = { x, y }
+    })
+  })
+
+  // Create transition objects
+  ;(schema.transitions || []).forEach(t => {
+    // Use explicit x,y coordinates if provided in schema, otherwise use auto-calculated position
+    const hasExplicitPos = t.x !== undefined && t.y !== undefined && (t.x !== 0 || t.y !== 0)
+    const pos = hasExplicitPos ? { x: t.x, y: t.y } : (transitionPositions[t.id] || { x: MARGIN_LEFT, y: maxYInLayer + 150 })
     transitions[t.id] = {
       '@type': 'Transition',
-      x: 80 + col * 120,
-      y: 300 + row * 100
+      x: pos.x,
+      y: pos.y
     }
   })
 
-  // Create arcs
+  // Create arcs - omit weights if all are 1 (cleaner visualization)
+  const allWeightsAreOne = (schema.arcs || []).every(a => (a.weight || 1) === 1)
   ;(schema.arcs || []).forEach(a => {
-    arcs.push({
+    const arc = {
       '@type': 'Arrow',
       source: a.from,
       target: a.to,
-      weight: [a.weight || 1],
       inhibit: a.type === 'inhibitor'
-    })
+    }
+    if (!allWeightsAreOne) {
+      arc.weight = [a.weight || 1]
+    }
+    arcs.push(arc)
   })
 
   return {
@@ -1487,28 +1710,80 @@ window.showSchemaTab = function(tabName) {
 }
 
 
-// Admin dashboard - uses admin.js module
-async function renderAdminDashboardPage() {
-  initAdmin()
+// Admin dashboard (fallback when admin module not available)
+async function renderAdminPage() {
   const app = document.getElementById('app')
-  app.innerHTML = renderAdminDashboard()
-  await loadAdminStats()
-}
+  app.innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <h1>Admin Dashboard</h1>
+      </div>
+      <div id="admin-stats" class="card">
+        <div class="loading">Loading statistics...</div>
+      </div>
+      <div id="admin-instances" class="card">
+        <div class="card-header">Recent Instances</div>
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  `
 
-// Admin instances list
-async function renderAdminInstancesPage() {
-  initAdmin()
-  const app = document.getElementById('app')
-  app.innerHTML = renderAdminInstances()
-  await loadAdminInstances()
-}
+  try {
+    const [stats, instancesResult] = await Promise.all([
+      fetch(`${API_BASE}/admin/stats`, { headers: getHeaders() }).then(r => r.json()).catch(() => null),
+      api.listInstances()
+    ])
 
-// Admin instance detail
-async function renderAdminInstancePage(id) {
-  initAdmin()
-  const app = document.getElementById('app')
-  app.innerHTML = renderAdminInstance(id)
-  await loadAdminInstance(id)
+    if (stats) {
+      document.getElementById('admin-stats').innerHTML = `
+        <div class="card-header">Statistics</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+          <div>
+            <div style="font-size: 2rem; font-weight: 600;">${stats.total_streams || 0}</div>
+            <div style="color: #666;">Total Instances</div>
+          </div>
+          <div>
+            <div style="font-size: 2rem; font-weight: 600;">${stats.total_events || 0}</div>
+            <div style="color: #666;">Total Events</div>
+          </div>
+        </div>
+      `
+    } else {
+      document.getElementById('admin-stats').innerHTML = ''
+    }
+
+    instances = instancesResult.instances || []
+    const container = document.getElementById('admin-instances').querySelector('.loading')
+    if (container) {
+      container.outerHTML = instances.length > 0
+        ? `<table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Version</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${instances.slice(0, 20).map(inst => {
+                const status = getStatus(inst.state || inst.places)
+                return `
+                  <tr>
+                    <td><code>${inst.id}</code></td>
+                    <td>${formatStatus(status)}</td>
+                    <td>${inst.version || 0}</td>
+                    <td><button class="btn btn-sm btn-link" onclick="navigate('/loan-application/${inst.id}')">View</button></td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>`
+        : '<p style="color: #666; padding: 1rem;">No instances yet.</p>'
+    }
+  } catch (err) {
+    showError('Failed to load admin data: ' + err.message)
+  }
 }
 
 
@@ -1583,14 +1858,6 @@ function handleRouteChange(event) {
     renderDetailPage()
   } else if (path === '/schema') {
     renderSchemaPage()
-  } else if (path === '/admin') {
-    renderAdminDashboardPage()
-  } else if (path === '/admin/instances') {
-    renderAdminInstancesPage()
-  } else if (path === '/admin/instances/:id') {
-    const actualPath = window.location.pathname
-    const id = actualPath.replace('/admin/instances/', '')
-    renderAdminInstancePage(id)
   } else {
     renderListPage()
   }
@@ -1651,583 +1918,7 @@ async function init() {
 }
 
 
-// ============================================================================
-// Debug WebSocket Client
-// ============================================================================
-
-let debugWs = null
-let debugSessionId = null
-
-function initDebugWebSocket() {
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // Use API_BASE for multi-service mode support
-  const wsUrl = `${wsProtocol}//${window.location.host}${API_BASE}/ws`
-
-  debugWs = new WebSocket(wsUrl)
-
-  debugWs.onopen = () => {
-    console.log('[Debug] WebSocket connected')
-  }
-
-  debugWs.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-
-      if (msg.id === 'session' && msg.type === 'session') {
-        // Data is already parsed from JSON
-        const data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data
-        debugSessionId = data.session_id
-        console.log('[Debug] Session ID:', debugSessionId)
-      } else if (msg.type === 'eval') {
-        handleDebugEval(msg)
-      }
-    } catch (e) {
-      console.error('[Debug] Failed to parse message:', e)
-    }
-  }
-
-  debugWs.onclose = () => {
-    console.log('[Debug] WebSocket disconnected, reconnecting in 3s...')
-    debugSessionId = null
-    setTimeout(initDebugWebSocket, 3000)
-  }
-
-  debugWs.onerror = (err) => {
-    console.error('[Debug] WebSocket error:', err)
-  }
-}
-
-async function handleDebugEval(msg) {
-  try {
-    // Data may be parsed object or string
-    const data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data
-    const code = data.code
-
-    // Execute the code using Function constructor
-    const fn = new Function('return (async () => { ' + code + ' })()')
-    const result = await fn()
-
-    // Send response back - data should be an object, not a string
-    const response = {
-      type: 'response',
-      id: msg.id,
-      data: {
-        result: result,
-        type: typeof result
-      }
-    }
-    debugWs.send(JSON.stringify(response))
-  } catch (e) {
-    // Send error response
-    const response = {
-      type: 'response',
-      id: msg.id,
-      data: {
-        error: e.message
-      }
-    }
-    debugWs.send(JSON.stringify(response))
-  }
-}
-
-// Export debug functions for external use
-window.debugSessionId = () => debugSessionId
-window.debugWs = () => debugWs
-
-// ============================================================================
-// Pilot - Debug/Test Driving API
-// ============================================================================
-
-/**
- * window.pilot provides a clean API for driving the app programmatically.
- * Use this for:
- * - Automated E2E tests via the debug WebSocket
- * - Manual debugging from the browser console
- * - Visual confirmation of UI behavior
- */
-window.pilot = {
-  // --- Navigation ---
-
-  /** Navigate to the list page */
-  async list() {
-    navigate('/loan-application')
-    // Wait for instances to load
-    await this.waitFor('.entity-card, .empty-state', 5000).catch(() => {})
-    return instances
-  },
-
-  /** Navigate to create new instance form */
-  newForm() {
-    navigate('/loan-application/new')
-    return this.waitForRender()
-  },
-
-  /** Navigate to view a specific instance */
-  async view(id) {
-    navigate(`/loan-application/${id}`)
-    await this.waitForRender()
-    return currentInstance
-  },
-
-  /** Navigate to admin dashboard */
-  admin() {
-    navigate('/admin')
-    return this.waitForRender()
-  },
-
-  // --- Instance Operations ---
-
-  /** Create a new instance and navigate to it */
-  async create(data = {}) {
-    const result = await api.createInstance(data)
-    const id = result.aggregate_id || result.id
-    navigate(`/loan-application/${id}`)
-    await this.waitForRender()
-    return { id, ...result }
-  },
-
-  /** Get the current instance (from detail page) */
-  getCurrentInstance() {
-    return currentInstance
-  },
-
-  /** Get all loaded instances (from list page) */
-  getInstances() {
-    return instances
-  },
-
-  /** Reload current instance state from API */
-  async refresh() {
-    if (!currentInstance) throw new Error('No current instance')
-    const result = await api.getInstance(currentInstance.id)
-    currentInstance = {
-      id: result.aggregate_id || currentInstance.id,
-      version: result.version,
-      state: result.state,
-      places: result.places,
-      enabled: result.enabled || result.enabled_transitions || [],
-    }
-    renderInstanceDetail()
-    return currentInstance
-  },
-
-  // --- Actions ---
-
-  /** Execute a transition on the current instance */
-  async action(transitionId, data = {}) {
-    if (!currentInstance) throw new Error('No current instance - navigate to detail page first')
-    const result = await api.executeTransition(transitionId, currentInstance.id, data)
-    currentInstance = {
-      ...currentInstance,
-      version: result.version,
-      state: result.state,
-      places: result.state,
-      enabled: result.enabled || [],
-    }
-    renderInstanceDetail()
-    return { success: true, state: currentInstance.places, enabled: currentInstance.enabled }
-  },
-
-  /** Check if a transition is enabled for the current instance */
-  isEnabled(transitionId) {
-    if (!currentInstance) return false
-    return (currentInstance.enabled || []).includes(transitionId)
-  },
-
-  /** Get list of enabled transitions */
-  getEnabled() {
-    return currentInstance?.enabled || []
-  },
-
-  // --- Form Operations ---
-
-  /** Fill a form field by name */
-  fill(name, value) {
-    const input = document.querySelector(`[name="${name}"]`)
-    if (!input) throw new Error(`No input found with name: ${name}`)
-    input.value = value
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    return this
-  },
-
-  /** Submit the current form */
-  async submit() {
-    const form = document.querySelector('form')
-    if (!form) throw new Error('No form found on page')
-    const event = new Event('submit', { bubbles: true, cancelable: true })
-    form.dispatchEvent(event)
-    await this.waitForRender()
-    return currentInstance
-  },
-
-  // --- UI Inspection ---
-
-  /** Get text content of an element */
-  getText(selector) {
-    const el = document.querySelector(selector)
-    return el ? el.textContent.trim() : null
-  },
-
-  /** Check if an element exists */
-  exists(selector) {
-    return document.querySelector(selector) !== null
-  },
-
-  /** Get all buttons on the page */
-  getButtons() {
-    return Array.from(document.querySelectorAll('button')).map(btn => ({
-      text: btn.textContent.trim(),
-      disabled: btn.disabled,
-      className: btn.className,
-    }))
-  },
-
-  /** Click a button by text */
-  async clickButton(text) {
-    const buttons = document.querySelectorAll('button')
-    for (const btn of buttons) {
-      if (btn.textContent.trim() === text && !btn.disabled) {
-        btn.click()
-        await this.waitForRender()
-        return true
-      }
-    }
-    throw new Error(`No enabled button found with text: ${text}`)
-  },
-
-  // --- State ---
-
-  /** Get the current Petri net state (places with token counts) */
-  getState() {
-    return currentInstance?.places || null
-  },
-
-  /** Get the current status (place with token) */
-  getStatus() {
-    if (!currentInstance?.places) return null
-    for (const [place, tokens] of Object.entries(currentInstance.places)) {
-      if (tokens > 0) return place
-    }
-    return null
-  },
-
-  /** Get the current route */
-  getRoute() {
-    return getCurrentRoute()
-  },
-
-  /** Get current authenticated user */
-  getUser() {
-    return currentUser
-  },
-
-  /** Check if user is authenticated */
-  isAuthenticated() {
-    return authToken !== null
-  },
-
-  // --- Utilities ---
-
-  /** Wait for render to complete */
-  waitForRender(ms = 50) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  },
-
-  /** Wait for an element to appear */
-  async waitFor(selector, timeout = 5000) {
-    const start = Date.now()
-    while (Date.now() - start < timeout) {
-      if (document.querySelector(selector)) {
-        return document.querySelector(selector)
-      }
-      await this.waitForRender(50)
-    }
-    throw new Error(`Timeout waiting for: ${selector}`)
-  },
-
-  /** Wait for current instance to be in a specific state */
-  async waitForState(place, timeout = 5000) {
-    const start = Date.now()
-    while (Date.now() - start < timeout) {
-      if (currentInstance?.places?.[place] > 0) {
-        return currentInstance
-      }
-      await this.waitForRender(100)
-    }
-    throw new Error(`Timeout waiting for state: ${place}`)
-  },
-
-  /** Log current state to console (for debugging) */
-  debug() {
-    console.log('=== Pilot Debug ===')
-    console.log('Route:', getCurrentRoute())
-    console.log('User:', currentUser)
-    console.log('Instance:', currentInstance)
-    console.log('Enabled:', currentInstance?.enabled)
-    console.log('State:', currentInstance?.places)
-    return {
-      route: getCurrentRoute(),
-      user: currentUser,
-      instance: currentInstance,
-    }
-  },
-
-  // --- Event Sourcing ---
-
-  /** Get event history for current instance */
-  async getEvents() {
-    if (!currentInstance) throw new Error('No current instance')
-    const response = await fetch(`${API_BASE}/api/loanapplication/${currentInstance.id}/events`, {
-      headers: getHeaders()
-    })
-    const data = await handleResponse(response)
-    return data.events || []
-  },
-
-  /** Get event count for current instance */
-  async getEventCount() {
-    const events = await this.getEvents()
-    return events.length
-  },
-
-  /** Get the last event for current instance */
-  async getLastEvent() {
-    const events = await this.getEvents()
-    return events.length > 0 ? events[events.length - 1] : null
-  },
-
-  /** Replay instance to a specific version (read-only view) */
-  async replayTo(version) {
-    if (!currentInstance) throw new Error('No current instance')
-    const events = await this.getEvents()
-    const filtered = events.filter(e => (e.version || e.sequence) <= version)
-
-    // Compute state by applying events up to version
-    const places = {}
-    // Initialize with first event or empty
-    for (const event of filtered) {
-      if (event.state) {
-        Object.assign(places, event.state)
-      }
-    }
-    return { version, events: filtered, places }
-  },
-
-  // --- Role/Auth Testing ---
-
-  /** Login as a specific role (or array of roles) */
-  async loginAs(roles) {
-    const rolesArray = typeof roles === 'string' ? [roles] : roles
-    const response = await fetch(`${API_BASE}/api/debug/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: 'pilot-user', roles: rolesArray }),
-    })
-    const data = await response.json()
-    saveAuth(data)
-    await this.waitForRender(100)
-    return data
-  },
-
-  /** Logout current user */
-  logout() {
-    clearAuth()
-    return this.waitForRender()
-  },
-
-  /** Get current user's roles */
-  getRoles() {
-    return currentUser?.roles || []
-  },
-
-  /** Check if current user has a specific role */
-  hasRole(role) {
-    return this.getRoles().includes(role)
-  },
-
-  // --- Assertions (throw on failure) ---
-
-  /** Assert current instance is in expected state */
-  assertState(expectedPlace) {
-    const status = this.getStatus()
-    if (status !== expectedPlace) {
-      throw new Error(`Expected state '${expectedPlace}', got '${status}'`)
-    }
-    return this
-  },
-
-  /** Assert a transition is enabled */
-  assertEnabled(transitionId) {
-    if (!this.isEnabled(transitionId)) {
-      const enabled = this.getEnabled()
-      throw new Error(`Expected '${transitionId}' to be enabled. Enabled: [${enabled.join(', ')}]`)
-    }
-    return this
-  },
-
-  /** Assert a transition is disabled */
-  assertDisabled(transitionId) {
-    if (this.isEnabled(transitionId)) {
-      throw new Error(`Expected '${transitionId}' to be disabled, but it is enabled`)
-    }
-    return this
-  },
-
-  /** Assert element exists in DOM */
-  assertExists(selector) {
-    if (!this.exists(selector)) {
-      throw new Error(`Expected element '${selector}' to exist`)
-    }
-    return this
-  },
-
-  /** Assert element contains text */
-  assertText(selector, expected) {
-    const actual = this.getText(selector)
-    if (actual !== expected) {
-      throw new Error(`Expected '${selector}' to contain '${expected}', got '${actual}'`)
-    }
-    return this
-  },
-
-  /** Assert user is authenticated */
-  assertAuthenticated() {
-    if (!this.isAuthenticated()) {
-      throw new Error('Expected user to be authenticated')
-    }
-    return this
-  },
-
-  /** Assert user has role */
-  assertRole(role) {
-    if (!this.hasRole(role)) {
-      throw new Error(`Expected user to have role '${role}'. Has: [${this.getRoles().join(', ')}]`)
-    }
-    return this
-  },
-
-  // --- Workflow Introspection ---
-
-  /** Get all transition definitions */
-  getTransitions() {
-    return [
-      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check", requiredRoles: ["system"], apiPath: '/api/run_credit_check' },
-      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_approve' },
-      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review", requiredRoles: ["system"], apiPath: '/api/flag_for_review' },
-      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_approve' },
-      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_deny' },
-      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_deny' },
-      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval", requiredRoles: ["system"], apiPath: '/api/finalize_approval' },
-      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer", requiredRoles: ["admin"], apiPath: '/api/disburse' },
-      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period", requiredRoles: ["system"], apiPath: '/api/start_repayment' },
-      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment", requiredRoles: ["applicant"], apiPath: '/api/make_payment' },
-      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete", requiredRoles: ["system"], apiPath: '/api/complete' },
-      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted", requiredRoles: ["admin"], apiPath: '/api/mark_default' },
-    ]
-  },
-
-  /** Get all place definitions */
-  getPlaces() {
-    return [
-      { id: 'submitted', name: 'Submitted', initial: 1 },
-      { id: 'credit_check', name: 'CreditCheck', initial: 0 },
-      { id: 'auto_approved', name: 'AutoApproved', initial: 0 },
-      { id: 'manual_review', name: 'ManualReview', initial: 0 },
-      { id: 'approved', name: 'Approved', initial: 0 },
-      { id: 'denied', name: 'Denied', initial: 0 },
-      { id: 'disbursed', name: 'Disbursed', initial: 0 },
-      { id: 'repaying', name: 'Repaying', initial: 0 },
-      { id: 'paid_off', name: 'PaidOff', initial: 0 },
-      { id: 'defaulted', name: 'Defaulted', initial: 0 },
-    ]
-  },
-
-  /** Get transition by ID */
-  getTransition(id) {
-    return this.getTransitions().find(t => t.id === id) || null
-  },
-
-  /** Check if transition can fire, with reason if not */
-  canFire(transitionId) {
-    const transition = this.getTransition(transitionId)
-    if (!transition) {
-      return { canFire: false, reason: `Unknown transition: ${transitionId}` }
-    }
-
-    if (!currentInstance) {
-      return { canFire: false, reason: 'No current instance' }
-    }
-
-    const enabled = this.isEnabled(transitionId)
-    if (!enabled) {
-      const status = this.getStatus()
-      return {
-        canFire: false,
-        reason: `Transition '${transitionId}' not enabled in state '${status}'`,
-        currentState: status,
-        enabledTransitions: this.getEnabled()
-      }
-    }
-
-    // Check role-based access control
-    if (transition.requiredRoles && transition.requiredRoles.length > 0) {
-      const userRoles = this.getRoles()
-      const hasRequiredRole = transition.requiredRoles.some(r => userRoles.includes(r))
-      if (!hasRequiredRole) {
-        return {
-          canFire: false,
-          reason: `User lacks required role. Need one of: [${transition.requiredRoles.join(', ')}]. Has: [${userRoles.join(', ')}]`,
-          requiredRoles: transition.requiredRoles,
-          userRoles: userRoles
-        }
-      }
-    }
-
-    return { canFire: true }
-  },
-
-  /** Execute a sequence of transitions */
-  async sequence(transitionIds, options = {}) {
-    const results = []
-    const { stopOnError = true, data = {} } = options
-
-    for (const id of transitionIds) {
-      const check = this.canFire(id)
-      if (!check.canFire) {
-        if (stopOnError) {
-          throw new Error(`Sequence failed at '${id}': ${check.reason}`)
-        }
-        results.push({ transition: id, success: false, error: check.reason })
-        continue
-      }
-
-      try {
-        const result = await this.action(id, data[id] || {})
-        results.push({ transition: id, success: true, state: result.state })
-      } catch (e) {
-        if (stopOnError) throw e
-        results.push({ transition: id, success: false, error: e.message })
-      }
-    }
-
-    return results
-  },
-
-  /** Get workflow summary */
-  getWorkflowInfo() {
-    return {
-      places: this.getPlaces(),
-      transitions: this.getTransitions(),
-      initialPlace: this.getPlaces().find(p => p.initial > 0)?.id,
-    }
-  },
-}
-
 
 // Start the app
 init()
-
-
-// Initialize debug WebSocket after app init
-initDebugWebSocket()
 

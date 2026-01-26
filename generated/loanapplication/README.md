@@ -311,92 +311,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `applicant` | Customer applying for a loan | - |
-| `system` | Automated credit check and processing system | - |
-| `underwriter` | Loan underwriter who reviews applications | - |
-| `admin` | Full access to all operations | `underwriter` |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `run_credit_check` | `system` | - |
-| `auto_approve` | `system` | - |
-| `flag_for_review` | `system` | - |
-| `auto_deny` | `system` | - |
-| `underwriter_approve` | `underwriter` | - |
-| `underwriter_deny` | `underwriter` | - |
-| `finalize_approval` | `system` | - |
-| `disburse` | `admin` | - |
-| `start_repayment` | `system` | - |
-| `make_payment` | `applicant` | - |
-| `complete` | `system` | - |
-| `mark_default` | `admin` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_applicant["applicant"]
-        role_system["system"]
-        role_underwriter["underwriter"]
-        role_admin["admin"]
-    end
-
-    subgraph Transitions
-        t_run_credit_check["run_credit_check"]
-        t_auto_approve["auto_approve"]
-        t_flag_for_review["flag_for_review"]
-        t_auto_deny["auto_deny"]
-        t_underwriter_approve["underwriter_approve"]
-        t_underwriter_deny["underwriter_deny"]
-        t_finalize_approval["finalize_approval"]
-        t_disburse["disburse"]
-        t_start_repayment["start_repayment"]
-        t_make_payment["make_payment"]
-        t_complete["complete"]
-        t_mark_default["mark_default"]
-    end
-
-
-    role_system -.->|can execute| t_run_credit_check
-
-    role_system -.->|can execute| t_auto_approve
-
-    role_system -.->|can execute| t_flag_for_review
-
-    role_system -.->|can execute| t_auto_deny
-
-    role_underwriter -.->|can execute| t_underwriter_approve
-
-    role_underwriter -.->|can execute| t_underwriter_deny
-
-    role_system -.->|can execute| t_finalize_approval
-
-    role_admin -.->|can execute| t_disburse
-
-    role_system -.->|can execute| t_start_repayment
-
-    role_applicant -.->|can execute| t_make_payment
-
-    role_system -.->|can execute| t_complete
-
-    role_admin -.->|can execute| t_mark_default
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -468,7 +382,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./loan-application.db` | SQLite database path |
-| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -482,10 +395,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
-├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/

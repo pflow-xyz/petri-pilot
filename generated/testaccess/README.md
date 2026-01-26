@@ -149,54 +149,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `customer` | Regular customer who can submit items | - |
-| `reviewer` | Can review and approve/reject submissions | - |
-| `admin` | Full access to all operations | `customer`, `reviewer` |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `submit` | `customer` | - |
-| `approve` | `reviewer` | - |
-| `reject` | `reviewer` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_customer["customer"]
-        role_reviewer["reviewer"]
-        role_admin["admin"]
-    end
-
-    subgraph Transitions
-        t_submit["submit"]
-        t_approve["approve"]
-        t_reject["reject"]
-    end
-
-
-    role_customer -.->|can execute| t_submit
-
-    role_reviewer -.->|can execute| t_approve
-
-    role_reviewer -.->|can execute| t_reject
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -259,7 +211,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./test-access.db` | SQLite database path |
-| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -273,10 +224,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
-├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/

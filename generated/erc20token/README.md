@@ -172,63 +172,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `admin` | Can mint and burn tokens | - |
-| `holder` | Can transfer and approve tokens | - |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `mint` | `admin` | - |
-| `burn` | `admin` | - |
-| `transfer` | `holder`, `admin` | - |
-| `approve` | `holder`, `admin` | - |
-| `transfer_from` | `holder`, `admin` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_admin["admin"]
-        role_holder["holder"]
-    end
-
-    subgraph Transitions
-        t_mint["mint"]
-        t_burn["burn"]
-        t_transfer["transfer"]
-        t_approve["approve"]
-        t_transfer_from["transfer_from"]
-    end
-
-
-    role_admin -.->|can execute| t_mint
-
-    role_admin -.->|can execute| t_burn
-
-    role_holder -.->|can execute| t_transfer
-    role_admin -.->|can execute| t_transfer
-
-    role_holder -.->|can execute| t_approve
-    role_admin -.->|can execute| t_approve
-
-    role_holder -.->|can execute| t_transfer_from
-    role_admin -.->|can execute| t_transfer_from
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -239,11 +182,6 @@ graph TD
 | GET | `/ready` | Readiness check |
 | POST | `/api/erc20-token` | Create new instance |
 | GET | `/api/erc20-token/{id}` | Get instance state |
-| GET | `/api/navigation` | Get navigation menu |
-| GET | `/admin/stats` | Admin statistics |
-| GET | `/admin/instances` | List all instances |
-| GET | `/admin/instances/{id}` | Get instance detail |
-| GET | `/admin/instances/{id}/events` | Get instance events |
 
 
 ### Transition Endpoints
@@ -289,14 +227,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ```
 
 
-## Navigation
-
-| Label | Path | Icon | Roles |
-|-------|------|------|-------|
-| Admin | `/admin` | ⚙️ | `admin` |
-
-
-
 
 ## Configuration
 
@@ -306,7 +236,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./erc20-token.db` | SQLite database path |
-| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -320,12 +249,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
-├── navigation.go     # Navigation menu
-├── admin.go          # Admin handlers
-├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/

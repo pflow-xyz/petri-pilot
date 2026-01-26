@@ -254,80 +254,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `customer` | End user who submits support tickets | - |
-| `agent` | First-line support agent who handles tickets | - |
-| `supervisor` | Senior support who handles escalations | `agent` |
-| `admin` | Full access to all operations | `supervisor` |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `assign` | `agent` | - |
-| `start_work` | `agent` | - |
-| `escalate` | `agent` | - |
-| `request_info` | `agent` | - |
-| `customer_reply` | `customer` | - |
-| `resolve` | `agent` | - |
-| `resolve_escalated` | `supervisor` | - |
-| `close` | `agent` | - |
-| `reopen` | `customer` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_customer["customer"]
-        role_agent["agent"]
-        role_supervisor["supervisor"]
-        role_admin["admin"]
-    end
-
-    subgraph Transitions
-        t_assign["assign"]
-        t_start_work["start_work"]
-        t_escalate["escalate"]
-        t_request_info["request_info"]
-        t_customer_reply["customer_reply"]
-        t_resolve["resolve"]
-        t_resolve_escalated["resolve_escalated"]
-        t_close["close"]
-        t_reopen["reopen"]
-    end
-
-
-    role_agent -.->|can execute| t_assign
-
-    role_agent -.->|can execute| t_start_work
-
-    role_agent -.->|can execute| t_escalate
-
-    role_agent -.->|can execute| t_request_info
-
-    role_customer -.->|can execute| t_customer_reply
-
-    role_agent -.->|can execute| t_resolve
-
-    role_supervisor -.->|can execute| t_resolve_escalated
-
-    role_agent -.->|can execute| t_close
-
-    role_customer -.->|can execute| t_reopen
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -396,7 +322,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./support-ticket.db` | SQLite database path |
-| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -410,10 +335,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
-├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/
