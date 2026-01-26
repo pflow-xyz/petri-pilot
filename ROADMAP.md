@@ -1,70 +1,56 @@
 # Example Improvements Roadmap
 
-Improve examples to serve as living documentation. Each example should demonstrate specific patterns and be deployable.
+Each example needs a custom frontend that showcases its unique workflow, similar to how a real app would use the generated backend.
 
-## Current State
+## Custom Frontend Development
 
-| Example | Deployed | Blog Post | Patterns Demonstrated |
-|---------|----------|-----------|----------------------|
-| tic-tac-toe | ✅ pilot.pflow.xyz | ✅ | Game logic, turn-based, win detection |
-| coffeeshop | ✅ pilot.pflow.xyz | ⬜ | Queue management, order flow |
-| order-processing | ⬜ | ⬜ | Full-featured reference (roles, views, admin) |
-| erc20-token | ⬜ | ⬜ | Token ledger, allowances, safe math |
-| blog-post | ⬜ | ⬜ | Content workflow, approval process |
-| support-ticket | ⬜ | ⬜ | Ticket lifecycle, escalation |
-| job-application | ⬜ | ⬜ | Multi-stage review, RBAC |
-| loan-application | ⬜ | ⬜ | Document upload, underwriting |
-| ecommerce-checkout | ⬜ | ⬜ | Cart, payment, fulfillment |
-| task-manager | ⬜ | ⬜ | Basic CRUD workflow |
+| Example | Custom UI Needed | Status |
+|---------|-----------------|--------|
+| tic-tac-toe | Game board, turn indicator, win display | ✅ |
+| coffeeshop | Order queue, drink cards, barista view | ⬜ |
+| erc20-token | Wallet balances, transfer form, tx history | ⬜ |
+| order-processing | Order timeline, fulfillment dashboard | ⬜ |
+| blog-post | Editor, approval flow, preview | ⬜ |
+| support-ticket | Ticket thread, escalation view | ⬜ |
 
-## Priority: Deploy More Examples
+### Priority 1: tic-tac-toe
 
-### Phase 1: Add to pilot.pflow.xyz
+Custom `<game-board>` component:
+- 3x3 grid with clickable cells
+- X/O rendering based on state
+- Turn indicator (whose move)
+- Win line highlight
+- Game over overlay with result
 
-1. **erc20-token** - Showcase token/ledger patterns
-   - [ ] Test locally
-   - [ ] Add to serve command
-   - [ ] Deploy
+### Priority 2: coffeeshop
 
-2. **order-processing** - Reference implementation
-   - [ ] Test locally
-   - [ ] Add to serve command
-   - [ ] Deploy
+Custom components:
+- `<order-queue>` - Visual queue of pending orders
+- `<drink-card>` - Order card with drink details
+- `<barista-station>` - Drag-drop workflow view
 
-### Phase 2: Blog Integration
+### Priority 3: erc20-token
 
-Write posts on blog.stackdump.com exploring each example:
+Custom components:
+- `<wallet-balance>` - Token balance display with address
+- `<transfer-form>` - Send tokens form
+- `<allowance-manager>` - Approve/revoke allowances
+- `<tx-history>` - Transaction list
 
-- [ ] coffeeshop - Queue theory meets coffee
-- [ ] erc20-token - Token standards as Petri nets
-- [ ] order-processing - E-commerce state machines
+## Deployment
 
-### Phase 3: Cleanup
+| Example | pilot.pflow.xyz | Blog Post |
+|---------|-----------------|-----------|
+| tic-tac-toe | ✅ | ✅ |
+| coffeeshop | ✅ | ⬜ |
+| erc20-token | ⬜ | ⬜ |
+| order-processing | ⬜ | ⬜ |
 
-Remove or consolidate redundant examples:
+## Cleanup
 
-- [ ] `order-system.json` vs `order-processing.json` - pick one
-- [ ] `task-manager.json` vs `task-manager-app.json` - pick one
-- [ ] `tic-tac-toe-v2.json` - merge improvements into main
-- [ ] `token-ledger.json` vs `erc20-token.json` - consolidate
-- [ ] `test-access.json` - move to test fixtures or delete
-
-## Example Quality Checklist
-
-Each example should have:
-
-- [ ] Clear model name and description
-- [ ] Meaningful place/transition names
-- [ ] At least one role defined
-- [ ] At least one view defined
-- [ ] Working frontend
-- [ ] Passing e2e tests (if applicable)
-
-## Ideas for New Examples
-
-Potential additions to demonstrate more patterns:
-
-- **approval-chain** - Multi-level approval with delegation
-- **inventory** - Stock management with reservations
-- **booking** - Calendar/scheduling with conflicts
-- **auction** - Bidding with time constraints
+Consolidate redundant examples:
+- [ ] `order-system.json` → merge into `order-processing.json`
+- [ ] `task-manager.json` + `task-manager-app.json` → pick one
+- [ ] `tic-tac-toe-v2.json` → merge into `tic-tac-toe.json`
+- [ ] `token-ledger.json` → merge into `erc20-token.json`
+- [ ] `test-access.json` → move to tests or delete

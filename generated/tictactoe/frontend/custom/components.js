@@ -626,6 +626,235 @@ export class OrderFlowElement extends PetriElement {
 }
 
 // ============================================================================
+// Tic-Tac-Toe Game Board Component
+// ============================================================================
+
+export class GameBoardElement extends PetriElement {
+  static get observedAttributes() {
+    return ['instance-id', 'readonly']
+  }
+
+  styles() {
+    return `
+      :host {
+        display: block;
+      }
+      .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem;
+      }
+      .status {
+        font-size: 1.25rem;
+        font-weight: 600;
+        padding: 0.5rem 1.5rem;
+        border-radius: 8px;
+        background: #f8f9fa;
+      }
+      .status.x-turn { background: #e3f2fd; color: #1976d2; }
+      .status.o-turn { background: #fff3e0; color: #f57c00; }
+      .status.x-wins { background: #e8f5e9; color: #388e3c; }
+      .status.o-wins { background: #ffebee; color: #d32f2f; }
+      .status.draw { background: #f5f5f5; color: #616161; }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        background: #333;
+        padding: 8px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      .cell {
+        width: 80px;
+        height: 80px;
+        background: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 2.5rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cell:hover:not(.occupied):not(.game-over) {
+        background: #f0f0f0;
+        transform: scale(1.02);
+      }
+      .cell.occupied {
+        cursor: default;
+      }
+      .cell.game-over {
+        cursor: default;
+      }
+      .cell.x { color: #1976d2; }
+      .cell.o { color: #f57c00; }
+      .cell.win-cell {
+        animation: pulse 0.5s ease-in-out infinite alternate;
+      }
+      @keyframes pulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.05); }
+      }
+
+      .actions {
+        display: flex;
+        gap: 1rem;
+      }
+      .btn {
+        padding: 0.5rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn-reset {
+        background: #6c757d;
+        color: white;
+      }
+      .btn-reset:hover {
+        background: #5a6268;
+      }
+      .btn-new {
+        background: #28a745;
+        color: white;
+      }
+      .btn-new:hover {
+        background: #218838;
+      }
+    `
+  }
+
+  template() {
+    const state = this._state || {}
+    const places = state.places || state || {}
+
+    // Determine game status
+    const xWins = places.win_x > 0
+    const oWins = places.win_o > 0
+    const xTurn = places.x_turn > 0
+    const oTurn = places.o_turn > 0
+    const gameOver = xWins || oWins
+
+    // Count moves to detect draw
+    let moveCount = 0
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (places[`x${r}${c}`] > 0 || places[`o${r}${c}`] > 0) moveCount++
+      }
+    }
+    const isDraw = moveCount === 9 && !gameOver
+
+    // Status text
+    let statusText = ''
+    let statusClass = ''
+    if (xWins) {
+      statusText = '🎉 X Wins!'
+      statusClass = 'x-wins'
+    } else if (oWins) {
+      statusText = '🎉 O Wins!'
+      statusClass = 'o-wins'
+    } else if (isDraw) {
+      statusText = "It's a Draw!"
+      statusClass = 'draw'
+    } else if (xTurn) {
+      statusText = "X's Turn"
+      statusClass = 'x-turn'
+    } else if (oTurn) {
+      statusText = "O's Turn"
+      statusClass = 'o-turn'
+    }
+
+    // Build board cells
+    const cells = []
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const hasX = places[`x${r}${c}`] > 0
+        const hasO = places[`o${r}${c}`] > 0
+        const isEmpty = places[`p${r}${c}`] > 0
+
+        let content = ''
+        let cellClass = 'cell'
+
+        if (hasX) {
+          content = 'X'
+          cellClass += ' x occupied'
+        } else if (hasO) {
+          content = 'O'
+          cellClass += ' o occupied'
+        }
+
+        if (gameOver) {
+          cellClass += ' game-over'
+        }
+
+        const transitionId = xTurn ? `x_play_${r}${c}` : `o_play_${r}${c}`
+
+        cells.push(`
+          <button class="${cellClass}"
+                  data-row="${r}"
+                  data-col="${c}"
+                  data-transition="${isEmpty && !gameOver ? transitionId : ''}"
+                  ${(hasX || hasO || gameOver) ? 'disabled' : ''}>
+            ${content}
+          </button>
+        `)
+      }
+    }
+
+    const readonly = this.hasAttribute('readonly')
+
+    return `
+      <div class="game-container">
+        <div class="status ${statusClass}">${statusText}</div>
+        <div class="board">
+          ${cells.join('')}
+        </div>
+        ${!readonly ? `
+          <div class="actions">
+            ${gameOver || isDraw ? `
+              <button class="btn btn-new" data-action="new">New Game</button>
+            ` : `
+              <button class="btn btn-reset" data-action="reset">Reset</button>
+            `}
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  onRender() {
+    // Handle cell clicks
+    this.$$('.cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const transition = cell.dataset.transition
+        if (transition) {
+          this.emit('move', {
+            transition,
+            row: parseInt(cell.dataset.row),
+            col: parseInt(cell.dataset.col)
+          })
+        }
+      })
+    })
+
+    // Handle action buttons
+    this.$('[data-action="reset"]')?.addEventListener('click', () => {
+      this.emit('reset')
+    })
+    this.$('[data-action="new"]')?.addEventListener('click', () => {
+      this.emit('new-game')
+    })
+  }
+}
+
+// ============================================================================
 // Register all default components (extensions can override by loading first)
 // ============================================================================
 
@@ -636,6 +865,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
+  registerComponent('game-board', GameBoardElement)
 }
 
 // Auto-register unless explicitly disabled
