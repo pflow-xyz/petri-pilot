@@ -180,6 +180,7 @@ func RunMultiple(names []string, opts Options) error {
 		log.Printf("  Mounted %s at %s/", name, prefix)
 
 		// Always mount generated frontend at /~{name}/ for dashboard access
+		// Dashboard requires authentication
 		packageName := strings.ReplaceAll(name, "-", "")
 		generatedPath := filepath.Join("generated", packageName, "frontend")
 		if _, err := os.Stat(generatedPath); err == nil {
@@ -187,8 +188,10 @@ func RunMultiple(names []string, opts Options) error {
 			spaHandler := createSPAHandler(generatedPath)
 			// Create combined handler that proxies API calls to main service
 			genHandler := createGeneratedFrontendHandler(spaHandler, handler)
-			mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
-			log.Printf("  Mounted %s dash at %s/", name, genPrefix)
+			// Wrap with auth middleware - dashboard requires authentication
+			protectedHandler := authHandler.RequireAuth(http.StripPrefix(genPrefix, genHandler))
+			mux.Handle(genPrefix+"/", protectedHandler)
+			log.Printf("  Mounted %s dash at %s/ (auth required)", name, genPrefix)
 		}
 	}
 
@@ -423,6 +426,18 @@ func runHTTPService(svc Service, port int, opts Options) error {
 	handler := svc.BuildHandler()
 	name := svc.Name()
 
+	// Determine base URL for OAuth callbacks
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = fmt.Sprintf("http://localhost:%d", port)
+	}
+
+	// Initialize auth handler for single-service mode
+	authHandler := NewAuthHandler(baseURL)
+	if authHandler.Enabled() {
+		log.Printf("  GitHub OAuth enabled")
+	}
+
 	// Always mount generated frontend at /~{name}/ for dashboard access
 	var finalHandler http.Handler = handler
 	packageName := strings.ReplaceAll(name, "-", "")
@@ -430,14 +445,20 @@ func runHTTPService(svc Service, port int, opts Options) error {
 	if _, err := os.Stat(generatedPath); err == nil {
 		// Create mux to handle both main handler and generated frontend
 		mux := http.NewServeMux()
+
+		// Register auth routes
+		authHandler.RegisterRoutes(mux)
+
 		genPrefix := "/~" + name
 		spaHandler := createSPAHandler(generatedPath)
 		genHandler := createGeneratedFrontendHandler(spaHandler, handler)
-		mux.Handle(genPrefix+"/", http.StripPrefix(genPrefix, genHandler))
+		// Wrap with auth middleware - dashboard requires authentication
+		protectedHandler := authHandler.RequireAuth(http.StripPrefix(genPrefix, genHandler))
+		mux.Handle(genPrefix+"/", protectedHandler)
 		// Default handler for everything else
 		mux.Handle("/", handler)
 		finalHandler = mux
-		log.Printf("  Dash available at %s/", genPrefix)
+		log.Printf("  Dash available at %s/ (auth required)", genPrefix)
 	}
 
 	server := &http.Server{
