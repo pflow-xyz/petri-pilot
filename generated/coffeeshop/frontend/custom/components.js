@@ -626,6 +626,318 @@ export class OrderFlowElement extends PetriElement {
 }
 
 // ============================================================================
+// Coffee Shop Dashboard Component
+// ============================================================================
+
+export class CoffeeShopElement extends PetriElement {
+  styles() {
+    return `
+      :host {
+        display: block;
+      }
+      .shop-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1rem;
+      }
+      .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        color: #333;
+      }
+
+      /* Inventory Section */
+      .inventory {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+      .inventory-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      .inventory-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .inventory-icon {
+        font-size: 1.5rem;
+      }
+      .inventory-name {
+        font-weight: 500;
+        color: #333;
+      }
+      .inventory-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        font-family: monospace;
+      }
+      .inventory-bar {
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        overflow: hidden;
+      }
+      .inventory-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s;
+      }
+      .inventory-fill.high { background: #4caf50; }
+      .inventory-fill.medium { background: #ff9800; }
+      .inventory-fill.low { background: #f44336; }
+
+      /* Order Board */
+      .order-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+      }
+      .order-column {
+        background: #f5f5f5;
+        border-radius: 12px;
+        padding: 1rem;
+        min-height: 200px;
+      }
+      .column-header {
+        font-weight: 600;
+        text-align: center;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 2px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .column-count {
+        background: #666;
+        color: white;
+        padding: 0.125rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+      }
+      .order-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      /* Drink Cards */
+      .drink-card {
+        background: white;
+        border-radius: 8px;
+        padding: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .drink-icon {
+        font-size: 1.5rem;
+      }
+      .drink-name {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      /* Actions */
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+      }
+      .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .btn-order {
+        background: #4caf50;
+        color: white;
+      }
+      .btn-make {
+        background: #2196f3;
+        color: white;
+      }
+      .btn-serve {
+        background: #9c27b0;
+        color: white;
+      }
+      .btn-restock {
+        background: #ff9800;
+        color: white;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      @media (max-width: 800px) {
+        .order-board {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 500px) {
+        .order-board {
+          grid-template-columns: 1fr;
+        }
+      }
+    `
+  }
+
+  template() {
+    const state = this._state || {}
+    const places = state.places || state || {}
+
+    // Inventory items
+    const inventory = [
+      { id: 'coffee_beans', name: 'Coffee Beans', icon: '☕', unit: 'g', capacity: 2000 },
+      { id: 'milk', name: 'Milk', icon: '🥛', unit: 'ml', capacity: 1000 },
+      { id: 'cups', name: 'Cups', icon: '🥤', unit: '', capacity: 500 }
+    ]
+
+    const inventoryHtml = inventory.map(item => {
+      const value = places[item.id] || 0
+      const percent = (value / item.capacity) * 100
+      const level = percent > 50 ? 'high' : percent > 20 ? 'medium' : 'low'
+      return `
+        <div class="inventory-item">
+          <div class="inventory-header">
+            <span class="inventory-icon">${item.icon}</span>
+            <span class="inventory-name">${item.name}</span>
+          </div>
+          <div class="inventory-value">${value}${item.unit ? ' ' + item.unit : ''}</div>
+          <div class="inventory-bar">
+            <div class="inventory-fill ${level}" style="width: ${percent}%"></div>
+          </div>
+        </div>
+      `
+    }).join('')
+
+    // Order board columns
+    const pending = places.orders_pending || 0
+    const espressoReady = places.espresso_ready || 0
+    const latteReady = places.latte_ready || 0
+    const cappuccinoReady = places.cappuccino_ready || 0
+    const totalReady = espressoReady + latteReady + cappuccinoReady
+    const complete = places.orders_complete || 0
+
+    // Check what can be made (simplified - just check if resources available)
+    const beans = places.coffee_beans || 0
+    const milk = places.milk || 0
+    const cups = places.cups || 0
+
+    const canMakeEspresso = pending > 0 && beans >= 20 && cups >= 1
+    const canMakeLatte = pending > 0 && beans >= 15 && milk >= 50 && cups >= 1
+    const canMakeCappuccino = pending > 0 && beans >= 15 && milk >= 30 && cups >= 1
+
+    return `
+      <div class="shop-container">
+        <div>
+          <div class="section-title">📦 Inventory</div>
+          <div class="inventory">${inventoryHtml}</div>
+        </div>
+
+        <div>
+          <div class="section-title">📋 Order Board</div>
+          <div class="order-board">
+            <div class="order-column">
+              <div class="column-header">
+                <span>Pending</span>
+                <span class="column-count">${pending}</span>
+              </div>
+              <div class="order-cards">
+                ${pending > 0 ? `<div class="drink-card"><span class="drink-icon">🎫</span><span class="drink-name">${pending} order${pending > 1 ? 's' : ''}</span></div>` : ''}
+              </div>
+            </div>
+            <div class="order-column">
+              <div class="column-header">
+                <span>Making</span>
+                <span class="column-count">-</span>
+              </div>
+              <div class="order-cards"></div>
+            </div>
+            <div class="order-column">
+              <div class="column-header">
+                <span>Ready</span>
+                <span class="column-count">${totalReady}</span>
+              </div>
+              <div class="order-cards">
+                ${espressoReady > 0 ? `<div class="drink-card"><span class="drink-icon">☕</span><span class="drink-name">Espresso ×${espressoReady}</span></div>` : ''}
+                ${latteReady > 0 ? `<div class="drink-card"><span class="drink-icon">🥛</span><span class="drink-name">Latte ×${latteReady}</span></div>` : ''}
+                ${cappuccinoReady > 0 ? `<div class="drink-card"><span class="drink-icon">🍵</span><span class="drink-name">Cappuccino ×${cappuccinoReady}</span></div>` : ''}
+              </div>
+            </div>
+            <div class="order-column">
+              <div class="column-header">
+                <span>Served</span>
+                <span class="column-count">${complete}</span>
+              </div>
+              <div class="order-cards">
+                ${complete > 0 ? `<div class="drink-card"><span class="drink-icon">✅</span><span class="drink-name">${complete} served</span></div>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">🎬 Actions</div>
+          <div class="actions">
+            <button class="btn btn-order" data-transition="order_espresso">☕ Order Espresso</button>
+            <button class="btn btn-order" data-transition="order_latte">🥛 Order Latte</button>
+            <button class="btn btn-order" data-transition="order_cappuccino">🍵 Order Cappuccino</button>
+          </div>
+          <div class="actions" style="margin-top: 0.75rem;">
+            <button class="btn btn-make" data-transition="make_espresso" ${!canMakeEspresso ? 'disabled' : ''}>Make Espresso</button>
+            <button class="btn btn-make" data-transition="make_latte" ${!canMakeLatte ? 'disabled' : ''}>Make Latte</button>
+            <button class="btn btn-make" data-transition="make_cappuccino" ${!canMakeCappuccino ? 'disabled' : ''}>Make Cappuccino</button>
+          </div>
+          <div class="actions" style="margin-top: 0.75rem;">
+            <button class="btn btn-serve" data-transition="serve_espresso" ${espressoReady < 1 ? 'disabled' : ''}>Serve Espresso</button>
+            <button class="btn btn-serve" data-transition="serve_latte" ${latteReady < 1 ? 'disabled' : ''}>Serve Latte</button>
+            <button class="btn btn-serve" data-transition="serve_cappuccino" ${cappuccinoReady < 1 ? 'disabled' : ''}>Serve Cappuccino</button>
+          </div>
+          <div class="actions" style="margin-top: 0.75rem;">
+            <button class="btn btn-restock" data-transition="restock_coffee_beans">+500g Beans</button>
+            <button class="btn btn-restock" data-transition="restock_milk">+500ml Milk</button>
+            <button class="btn btn-restock" data-transition="restock_cups">+100 Cups</button>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  onRender() {
+    this.$$('[data-transition]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.disabled) {
+          this.emit('action', { transition: btn.dataset.transition })
+        }
+      })
+    })
+  }
+}
+
+// ============================================================================
 // Register all default components (extensions can override by loading first)
 // ============================================================================
 
@@ -636,6 +948,7 @@ export function registerDefaultComponents() {
   registerComponent('instance-card', InstanceCardElement)
   registerComponent('inventory-gauge', InventoryGaugeElement)
   registerComponent('order-flow', OrderFlowElement)
+  registerComponent('coffee-shop', CoffeeShopElement)
 }
 
 // Auto-register unless explicitly disabled

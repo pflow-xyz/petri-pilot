@@ -7,7 +7,7 @@ Each example needs a custom frontend that showcases its unique workflow, similar
 | Example | Custom UI Needed | Status |
 |---------|-----------------|--------|
 | tic-tac-toe | Game board, turn indicator, win display | ✅ |
-| coffeeshop | Order queue, drink cards, barista view | ⬜ |
+| coffeeshop | Order queue, drink cards, barista view | ✅ |
 | erc20-token | Wallet balances, transfer form, tx history | ⬜ |
 | order-processing | Order timeline, fulfillment dashboard | ⬜ |
 | blog-post | Editor, approval flow, preview | ⬜ |
