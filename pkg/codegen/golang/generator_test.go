@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 func loadTestModel(t *testing.T) *metamodel.Model {
@@ -127,6 +128,111 @@ func TestNewContext(t *testing.T) {
 	}
 }
 
+func TestNewContextFromApp(t *testing.T) {
+	// Create a model with core Petri net elements
+	model := &metamodel.Model{
+		Name: "test-app",
+		Places: []metamodel.Place{
+			{ID: "pending", Initial: 1, Kind: metamodel.TokenKind},
+			{ID: "completed", Initial: 0, Kind: metamodel.TokenKind},
+		},
+		Transitions: []metamodel.Transition{
+			{ID: "complete"},
+		},
+		Arcs: []metamodel.Arc{
+			{From: "pending", To: "complete"},
+			{From: "complete", To: "completed"},
+		},
+	}
+
+	// Create ApplicationSpec with extensions
+	app := extensions.NewApplicationSpec(model)
+
+	// Add roles extension
+	roles := extensions.NewRoleExtension()
+	roles.AddRole(extensions.Role{ID: "admin", Name: "Administrator"})
+	roles.AddRole(extensions.Role{ID: "user", Name: "User", Inherits: []string{"admin"}})
+	app.WithRoles(roles)
+
+	// Add views extension
+	views := extensions.NewViewExtension()
+	views.AddView(extensions.View{
+		ID:   "detail",
+		Name: "Detail View",
+		Kind: "detail",
+	})
+	views.SetAdmin(extensions.Admin{Enabled: true, Path: "/admin", Roles: []string{"admin"}})
+	app.WithViews(views)
+
+	// Add pages extension with navigation
+	pages := extensions.NewPageExtension()
+	pages.SetNavigation(extensions.Navigation{
+		Brand: "TestApp",
+		Items: []extensions.NavigationItem{
+			{Label: "Home", Path: "/"},
+			{Label: "Admin", Path: "/admin", Roles: []string{"admin"}},
+		},
+	})
+	app.WithPages(pages)
+
+	// Create context from app
+	ctx, err := NewContextFromApp(app, ContextOptions{})
+	if err != nil {
+		t.Fatalf("NewContextFromApp failed: %v", err)
+	}
+
+	// Verify basic fields
+	if ctx.ModelName != "test-app" {
+		t.Errorf("expected model name 'test-app', got %q", ctx.ModelName)
+	}
+
+	// Verify places
+	if len(ctx.Places) != 2 {
+		t.Errorf("expected 2 places, got %d", len(ctx.Places))
+	}
+
+	// Verify roles from extension
+	if len(ctx.Roles) != 2 {
+		t.Errorf("expected 2 roles, got %d", len(ctx.Roles))
+	}
+	foundAdmin := false
+	for _, r := range ctx.Roles {
+		if r.ID == "admin" {
+			foundAdmin = true
+			if r.Name != "Administrator" {
+				t.Errorf("expected admin name 'Administrator', got %q", r.Name)
+			}
+		}
+	}
+	if !foundAdmin {
+		t.Error("expected to find admin role")
+	}
+
+	// Verify views from extension
+	if len(ctx.Views) != 1 {
+		t.Errorf("expected 1 view, got %d", len(ctx.Views))
+	}
+
+	// Verify admin from extension
+	if ctx.Admin == nil {
+		t.Fatal("expected admin to be set")
+	}
+	if !ctx.Admin.Enabled {
+		t.Error("expected admin to be enabled")
+	}
+
+	// Verify navigation from extension
+	if ctx.Navigation == nil {
+		t.Fatal("expected navigation to be set")
+	}
+	if ctx.Navigation.Brand != "TestApp" {
+		t.Errorf("expected brand 'TestApp', got %q", ctx.Navigation.Brand)
+	}
+	if len(ctx.Navigation.Items) != 2 {
+		t.Errorf("expected 2 nav items, got %d", len(ctx.Navigation.Items))
+	}
+}
+
 func TestTemplates(t *testing.T) {
 	tmpl, err := NewTemplates()
 	if err != nil {
@@ -166,13 +272,14 @@ func TestGenerateFiles(t *testing.T) {
 		t.Fatalf("GenerateFiles failed: %v", err)
 	}
 
-	// Should generate: service.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go
-	// Plus auth.go, middleware.go, permissions.go (when access control is present), views.go (when views are present),
-	// api_events.go (always generated), navigation.go (when navigation is configured), admin.go (when admin is enabled),
-	// debug.go (when debug is enabled), sla.go (when SLA is configured), GraphQL files (when graphql is enabled),
-	// README.md (always generated)
+	// Core files always generated:
+	// service.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go,
+	// api_events.go, README.md
+	// Note: Application construct files (auth.go, views.go, navigation.go, admin.go, etc.) are only
+	// generated when the corresponding extensions are present. The test model has core Petri net
+	// elements only; application constructs are now stored in extensions.
 	// Note: AsSubmodule mode generates service.go instead of main.go and skips go.mod
-	expectedFiles := []string{"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "auth.go", "middleware.go", "permissions.go", "views.go", "api_events.go", "navigation.go", "admin.go", "debug.go", "sla.go", "graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml", "README.md"}
+	expectedFiles := []string{"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "api_events.go", "README.md"}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 		for _, f := range files {

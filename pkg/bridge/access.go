@@ -5,7 +5,7 @@ package bridge
 import (
 	"strings"
 
-	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 // AccessSpec describes the access control configuration extracted from a model.
@@ -58,50 +58,53 @@ type AccessRuleSpec struct {
 	HasGuard bool
 }
 
-// ExtractAccessSpec extracts access control configuration from a model.
-func ExtractAccessSpec(model *metamodel.Model) *AccessSpec {
+// ExtractAccessSpec extracts access control configuration from an ApplicationSpec.
+func ExtractAccessSpec(app *extensions.ApplicationSpec) *AccessSpec {
 	spec := &AccessSpec{
-		Roles:         make([]RoleSpec, 0, len(model.Roles)),
-		Rules:         make([]AccessRuleSpec, 0, len(model.Access)),
+		Roles:         make([]RoleSpec, 0),
+		Rules:         make([]AccessRuleSpec, 0),
 		RoleHierarchy: make(map[string][]string),
 	}
 
-	// Build role hierarchy first
-	roleMap := make(map[string]*metamodel.Role)
-	for i := range model.Roles {
-		roleMap[model.Roles[i].ID] = &model.Roles[i]
+	// Extract roles from extension
+	rolesExt := app.Roles()
+	if rolesExt != nil {
+		// Build role hierarchy first
+		spec.RoleHierarchy = ResolveRoleHierarchy(rolesExt.Roles)
+
+		// Extract role specs
+		for _, role := range rolesExt.Roles {
+			name := role.Name
+			if name == "" {
+				name = toPascalCase(role.ID)
+			}
+
+			roleSpec := RoleSpec{
+				ID:           role.ID,
+				Name:         name,
+				Description:  role.Description,
+				Inherits:     role.Inherits,
+				AllRoles:     spec.RoleHierarchy[role.ID],
+				DynamicGrant: role.DynamicGrant,
+			}
+			spec.Roles = append(spec.Roles, roleSpec)
+		}
 	}
 
-	// Resolve role hierarchy (flatten inheritance)
-	spec.RoleHierarchy = ResolveRoleHierarchy(model.Roles)
-
-	// Extract role specs
-	for _, role := range model.Roles {
-		name := role.Name
-		if name == "" {
-			name = toPascalCase(role.ID)
+	// Extract access rules from entities extension
+	entitiesExt := app.Entities()
+	if entitiesExt != nil {
+		for _, entity := range entitiesExt.Entities {
+			for _, access := range entity.Access {
+				ruleSpec := AccessRuleSpec{
+					TransitionID: access.Action,
+					Roles:        access.Roles,
+					Guard:        access.Guard,
+					HasGuard:     access.Guard != "",
+				}
+				spec.Rules = append(spec.Rules, ruleSpec)
+			}
 		}
-
-		roleSpec := RoleSpec{
-			ID:           role.ID,
-			Name:         name,
-			Description:  role.Description,
-			Inherits:     role.Inherits,
-			AllRoles:     spec.RoleHierarchy[role.ID],
-			DynamicGrant: role.DynamicGrant,
-		}
-		spec.Roles = append(spec.Roles, roleSpec)
-	}
-
-	// Extract access rules
-	for _, rule := range model.Access {
-		ruleSpec := AccessRuleSpec{
-			TransitionID: rule.Transition,
-			Roles:        rule.Roles,
-			Guard:        rule.Guard,
-			HasGuard:     rule.Guard != "",
-		}
-		spec.Rules = append(spec.Rules, ruleSpec)
 	}
 
 	return spec
@@ -109,11 +112,11 @@ func ExtractAccessSpec(model *metamodel.Model) *AccessSpec {
 
 // ResolveRoleHierarchy flattens role inheritance into a map of role ID to all effective roles.
 // For example, if admin inherits from user, RoleHierarchy["admin"] = ["admin", "user"].
-func ResolveRoleHierarchy(roles []metamodel.Role) map[string][]string {
+func ResolveRoleHierarchy(roles []extensions.Role) map[string][]string {
 	hierarchy := make(map[string][]string)
 
 	// Build role map for lookup
-	roleMap := make(map[string]*metamodel.Role)
+	roleMap := make(map[string]*extensions.Role)
 	for i := range roles {
 		roleMap[roles[i].ID] = &roles[i]
 	}

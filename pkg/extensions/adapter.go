@@ -6,9 +6,9 @@ import (
 	goflowmodel "github.com/pflow-xyz/go-pflow/metamodel"
 )
 
-// ToLegacyModel converts an ApplicationSpec back to a legacy go-pflow Model.
-// This allows the new extension-based workflow to integrate with the existing
-// petri-pilot codegen Context which expects a Model.
+// ToLegacyModel returns the core Petri net Model from an ApplicationSpec.
+// Application constructs (roles, views, etc.) are stored in extensions and
+// should be accessed via the ApplicationSpec methods (Roles(), Views(), etc.).
 //
 // Example usage:
 //
@@ -16,98 +16,14 @@ import (
 //	app.WithEntities(entities)
 //	app.WithRoles(roles)
 //
-//	legacyModel := ToLegacyModel(app)
-//	ctx, err := golang.NewContext(legacyModel, opts)
+//	coreModel := ToLegacyModel(app)
+//	ctx, err := golang.NewContext(coreModel, opts)
+//	// Use app.Roles(), app.Views() for application constructs
 func ToLegacyModel(app *ApplicationSpec) *goflowmodel.Model {
 	if app.Net == nil {
 		return &goflowmodel.Model{}
 	}
-
-	model := app.Net
-
-	// Add roles from extension
-	if roles := app.Roles(); roles != nil {
-		for _, r := range roles.Roles {
-			model.Roles = append(model.Roles, goflowmodel.Role{
-				ID:           r.ID,
-				Name:         r.Name,
-				Description:  r.Description,
-				Inherits:     r.Inherits,
-				DynamicGrant: r.DynamicGrant,
-			})
-		}
-	}
-
-	// Add views from extension
-	if views := app.Views(); views != nil {
-		for _, v := range views.Views {
-			view := goflowmodel.View{
-				ID:          v.ID,
-				Name:        v.Name,
-				Kind:        v.Kind,
-				Description: v.Description,
-				Actions:     v.Actions,
-			}
-			for _, g := range v.Groups {
-				group := goflowmodel.ViewGroup{
-					ID:   g.ID,
-					Name: g.Name,
-				}
-				for _, f := range g.Fields {
-					group.Fields = append(group.Fields, goflowmodel.ViewField{
-						Binding:     f.Binding,
-						Label:       f.Label,
-						Type:        f.Type,
-						Required:    f.Required,
-						ReadOnly:    f.ReadOnly,
-						Placeholder: f.Placeholder,
-					})
-				}
-				view.Groups = append(view.Groups, group)
-			}
-			model.Views = append(model.Views, view)
-		}
-
-		// Add admin config
-		if views.Admin != nil {
-			model.Admin = &goflowmodel.Admin{
-				Enabled:  views.Admin.Enabled,
-				Path:     views.Admin.Path,
-				Roles:    views.Admin.Roles,
-				Features: views.Admin.Features,
-			}
-		}
-	}
-
-	// Add navigation from page extension
-	if pages := app.Pages(); pages != nil && pages.Navigation != nil {
-		model.Navigation = &goflowmodel.Navigation{
-			Brand: pages.Navigation.Brand,
-		}
-		for _, item := range pages.Navigation.Items {
-			model.Navigation.Items = append(model.Navigation.Items, goflowmodel.NavigationItem{
-				Label: item.Label,
-				Path:  item.Path,
-				Icon:  item.Icon,
-				Roles: item.Roles,
-			})
-		}
-	}
-
-	// Add access rules from entities
-	if entities := app.Entities(); entities != nil {
-		for _, entity := range entities.Entities {
-			for _, access := range entity.Access {
-				model.Access = append(model.Access, goflowmodel.AccessRule{
-					Transition: access.Action,
-					Roles:      access.Roles,
-					Guard:      access.Guard,
-				})
-			}
-		}
-	}
-
-	return model
+	return app.Net
 }
 
 // EntityToModel converts an Entity to a standalone go-pflow Model.
@@ -186,113 +102,28 @@ func EntityToModel(entity Entity) *goflowmodel.Model {
 		}
 	}
 
-	// Add access rules
-	for _, access := range entity.Access {
-		model.Access = append(model.Access, goflowmodel.AccessRule{
-			Transition: access.Action,
-			Roles:      access.Roles,
-			Guard:      access.Guard,
-		})
-	}
+	// Note: Access rules are stored in extensions, not in the core model.
+	// Use EntityExtension to retrieve access rules for this entity.
 
 	return model
 }
 
-// NewApplicationSpecFromLegacy creates an ApplicationSpec from a legacy Model.
-// This allows existing models to be wrapped in the new extension-based format.
+// NewApplicationSpecFromLegacy creates an ApplicationSpec from a Model.
+// The Model now only contains core Petri net elements (places, transitions, arcs).
+// Application constructs (roles, views, etc.) should be added via extensions.
+//
+// Example:
+//
+//	app := NewApplicationSpecFromLegacy(model)
+//	roles := NewRoleExtension()
+//	roles.AddRole(Role{ID: "admin", Name: "Administrator"})
+//	app.WithRoles(roles)
 func NewApplicationSpecFromLegacy(model *goflowmodel.Model) *ApplicationSpec {
-	app := NewApplicationSpec(model)
-
-	// Extract roles to extension
-	if len(model.Roles) > 0 {
-		roles := NewRoleExtension()
-		for _, r := range model.Roles {
-			roles.AddRole(Role{
-				ID:           r.ID,
-				Name:         r.Name,
-				Description:  r.Description,
-				Inherits:     r.Inherits,
-				DynamicGrant: r.DynamicGrant,
-			})
-		}
-		app.WithRoles(roles)
-	}
-
-	// Extract views to extension
-	if len(model.Views) > 0 || model.Admin != nil {
-		views := NewViewExtension()
-		for _, v := range model.Views {
-			view := View{
-				ID:          v.ID,
-				Name:        v.Name,
-				Kind:        v.Kind,
-				Description: v.Description,
-				Actions:     v.Actions,
-			}
-			for _, g := range v.Groups {
-				group := ViewGroup{
-					ID:   g.ID,
-					Name: g.Name,
-				}
-				for _, f := range g.Fields {
-					group.Fields = append(group.Fields, ViewField{
-						Binding:     f.Binding,
-						Label:       f.Label,
-						Type:        f.Type,
-						Required:    f.Required,
-						ReadOnly:    f.ReadOnly,
-						Placeholder: f.Placeholder,
-					})
-				}
-				view.Groups = append(view.Groups, group)
-			}
-			views.AddView(view)
-		}
-		if model.Admin != nil {
-			views.SetAdmin(Admin{
-				Enabled:  model.Admin.Enabled,
-				Path:     model.Admin.Path,
-				Roles:    model.Admin.Roles,
-				Features: model.Admin.Features,
-			})
-		}
-		app.WithViews(views)
-	}
-
-	// Extract navigation to pages extension
-	if model.Navigation != nil {
-		pages := NewPageExtension()
-		nav := Navigation{
-			Brand: model.Navigation.Brand,
-		}
-		for _, item := range model.Navigation.Items {
-			nav.Items = append(nav.Items, NavigationItem{
-				Label: item.Label,
-				Path:  item.Path,
-				Icon:  item.Icon,
-				Roles: item.Roles,
-			})
-		}
-		pages.SetNavigation(nav)
-		app.WithPages(pages)
-	}
-
-	return app
+	return NewApplicationSpec(model)
 }
 
-// MigrateModel migrates a legacy Model to the modern ApplicationSpec format.
-// This is a convenience wrapper around NewApplicationSpecFromLegacy that also
-// clears the application constructs from the model to prevent duplication.
+// MigrateModel creates an ApplicationSpec from a Model.
+// This is an alias for NewApplicationSpecFromLegacy for backwards compatibility.
 func MigrateModel(model *goflowmodel.Model) *ApplicationSpec {
-	app := NewApplicationSpecFromLegacy(model)
-
-	// Clear application constructs from the model since they're now in extensions
-	// This prevents duplication when converting back
-	app.Net.Roles = nil
-	app.Net.Access = nil
-	app.Net.Views = nil
-	app.Net.Navigation = nil
-	app.Net.Admin = nil
-
-	return app
+	return NewApplicationSpec(model)
 }

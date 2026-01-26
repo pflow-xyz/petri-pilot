@@ -8,6 +8,7 @@ import (
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/bridge"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 // Context holds all data needed for code generation templates.
@@ -734,103 +735,9 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
 	}
 
-	// Extract access control from schema if not provided in opts
-	if len(opts.AccessRules) == 0 && len(opts.Roles) == 0 {
-		accessSpec := bridge.ExtractAccessSpec(enriched)
-		ctx.Roles = buildRoleContexts(accessSpec.Roles)
-		ctx.AccessRules = buildAccessRuleContexts(accessSpec.Rules)
-	}
-
-	// Build view contexts from schema
-	ctx.Views = buildViewContexts(enriched.Views)
-
-	// Build navigation context
-	if enriched.Navigation != nil {
-		ctx.Navigation = buildNavigationContext(enriched.Navigation)
-	}
-
-	// Build admin context
-	if enriched.Admin != nil {
-		ctx.Admin = buildAdminContext(enriched.Admin)
-	}
-
-	// Build event sourcing context
-	if enriched.EventSourcing != nil {
-		ctx.EventSourcing = buildEventSourcingContext(enriched.EventSourcing)
-	}
-
-	// Build debug context
-	if enriched.Debug != nil {
-		ctx.Debug = buildDebugContext(enriched.Debug)
-	}
-
-	// Build SLA context
-	if enriched.SLA != nil {
-		ctx.SLA = buildSLAContext(enriched.SLA)
-	}
-
-	// Build prediction context
-	if enriched.Prediction != nil {
-		ctx.Prediction = buildPredictionContext(enriched.Prediction)
-	}
-
-	// Build GraphQL context
-	if enriched.GraphQL != nil {
-		ctx.GraphQL = buildGraphQLContext(enriched.GraphQL)
-	}
-
-	// Build blobstore context
-	if enriched.Blobstore != nil {
-		ctx.Blobstore = buildBlobstoreContext(enriched.Blobstore)
-	}
-
-	// Build timers context
-	ctx.Timers = buildTimersContext(enriched.Timers)
-
-	// Build notifications context
-	ctx.Notifications = buildNotificationsContext(enriched.Notifications)
-
-	// Build relationships context
-	ctx.Relationships = buildRelationshipsContext(enriched.Relationships)
-
-	// Build computed fields context
-	ctx.Computed = buildComputedContext(enriched.Computed)
-
-	// Build indexes context
-	ctx.Indexes = buildIndexesContext(enriched.Indexes)
-
-	// Build approvals context
-	ctx.Approvals = buildApprovalsContext(enriched.Approvals)
-
-	// Build templates context
-	ctx.Templates = buildTemplatesContext(enriched.Templates)
-
-	// Build batch context
-	ctx.Batch = buildBatchContext(enriched.Batch)
-
-	// Build inbound webhooks context
-	ctx.InboundWebhooks = buildInboundWebhooksContext(enriched.InboundWebhooks)
-
-	// Build documents context
-	ctx.Documents = buildDocumentsContext(enriched.Documents)
-
-	// Build comments context
-	ctx.Comments = buildCommentsContext(enriched.Comments)
-
-	// Build tags context
-	ctx.Tags = buildTagsContext(enriched.Tags)
-
-	// Build activity context
-	ctx.Activity = buildActivityContext(enriched.Activity)
-
-	// Build favorites context
-	ctx.Favorites = buildFavoritesContext(enriched.Favorites)
-
-	// Build export context
-	ctx.Export = buildExportContext(enriched.Export)
-
-	// Build soft delete context
-	ctx.SoftDelete = buildSoftDeleteContext(enriched.SoftDelete)
+	// Note: Access control, views, navigation, admin and other application constructs
+	// are now stored in extensions. Use NewContextFromApp with an ApplicationSpec
+	// to populate these fields. The Model only contains core Petri net elements.
 
 	// Serialize schema JSON for schema viewer (base64 encoded to avoid escaping issues)
 	schemaBytes, err := json.MarshalIndent(enriched, "", "  ")
@@ -840,6 +747,160 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	ctx.SchemaJSON = base64.StdEncoding.EncodeToString(schemaBytes)
 
 	return ctx, nil
+}
+
+// NewContextFromApp creates a Context from an ApplicationSpec.
+// This uses the extension-based model where application constructs
+// (roles, views, navigation, etc.) are stored in extensions rather
+// than embedded in the Model.
+func NewContextFromApp(app *extensions.ApplicationSpec, opts ContextOptions) (*Context, error) {
+	if app == nil || app.Net == nil {
+		return nil, nil
+	}
+
+	// Use the adapter to convert to legacy model for now
+	// This preserves compatibility with existing template logic
+	legacyModel := extensions.ToLegacyModel(app)
+
+	// Create context using the legacy path
+	ctx, err := NewContext(legacyModel, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override with extension data where available
+	// This allows extensions to take precedence over legacy model fields
+
+	// Roles from extension
+	if rolesExt := app.Roles(); rolesExt != nil {
+		ctx.Roles = buildRoleContextsFromExtension(rolesExt)
+	}
+
+	// Views from extension
+	if viewsExt := app.Views(); viewsExt != nil {
+		ctx.Views = buildViewContextsFromExtension(viewsExt)
+		if viewsExt.Admin != nil {
+			ctx.Admin = buildAdminContextFromExtension(viewsExt.Admin)
+		}
+	}
+
+	// Navigation from extension
+	if pagesExt := app.Pages(); pagesExt != nil && pagesExt.Navigation != nil {
+		ctx.Navigation = buildNavigationContextFromExtension(pagesExt.Navigation)
+	}
+
+	// Access rules from entities extension
+	if entitiesExt := app.Entities(); entitiesExt != nil {
+		ctx.AccessRules = buildAccessRuleContextsFromEntities(entitiesExt)
+	}
+
+	return ctx, nil
+}
+
+// buildRoleContextsFromExtension converts extension roles to RoleContexts.
+func buildRoleContextsFromExtension(ext *extensions.RoleExtension) []RoleContext {
+	result := make([]RoleContext, len(ext.Roles))
+	for i, r := range ext.Roles {
+		// Flatten hierarchy
+		allRoles := ext.FlattenHierarchy(r.ID)
+
+		result[i] = RoleContext{
+			ID:              r.ID,
+			Name:            r.Name,
+			Description:     r.Description,
+			Inherits:        r.Inherits,
+			ConstName:       ToConstName("Role", r.ID),
+			AllRoles:        allRoles,
+			DynamicGrant:    r.DynamicGrant,
+			HasDynamicGrant: r.DynamicGrant != "",
+		}
+	}
+	return result
+}
+
+// buildAccessRuleContextsFromEntities extracts access rules from entities.
+func buildAccessRuleContextsFromEntities(ext *extensions.EntityExtension) []AccessRuleContext {
+	var result []AccessRuleContext
+	for _, entity := range ext.Entities {
+		for _, rule := range entity.Access {
+			result = append(result, AccessRuleContext{
+				TransitionID: rule.Action,
+				Roles:        rule.Roles,
+				Guard:        rule.Guard,
+				GuardGoCode:  GuardExpressionToGo(rule.Guard, "state", "bindings"),
+				HasGuard:     rule.Guard != "",
+			})
+		}
+	}
+	return result
+}
+
+// buildViewContextsFromExtension converts extension views to ViewContexts.
+func buildViewContextsFromExtension(ext *extensions.ViewExtension) []ViewContext {
+	result := make([]ViewContext, len(ext.Views))
+	for i, v := range ext.Views {
+		groups := make([]ViewGroupContext, len(v.Groups))
+		for j, g := range v.Groups {
+			fields := make([]ViewFieldContext, len(g.Fields))
+			for k, f := range g.Fields {
+				fields[k] = ViewFieldContext{
+					Binding:     f.Binding,
+					Label:       f.Label,
+					Type:        f.Type,
+					Required:    f.Required,
+					ReadOnly:    f.ReadOnly,
+					Placeholder: f.Placeholder,
+				}
+			}
+			groups[j] = ViewGroupContext{
+				ID:     g.ID,
+				Name:   g.Name,
+				Fields: fields,
+			}
+		}
+		result[i] = ViewContext{
+			ID:          v.ID,
+			Name:        v.Name,
+			Kind:        v.Kind,
+			Description: v.Description,
+			Groups:      groups,
+			Actions:     v.Actions,
+		}
+	}
+	return result
+}
+
+// buildAdminContextFromExtension converts extension Admin to AdminContext.
+func buildAdminContextFromExtension(admin *extensions.Admin) *AdminContext {
+	if admin == nil {
+		return nil
+	}
+	return &AdminContext{
+		Enabled:  admin.Enabled,
+		Path:     admin.Path,
+		Roles:    admin.Roles,
+		Features: admin.Features,
+	}
+}
+
+// buildNavigationContextFromExtension converts extension Navigation to NavigationContext.
+func buildNavigationContextFromExtension(nav *extensions.Navigation) *NavigationContext {
+	if nav == nil {
+		return nil
+	}
+	items := make([]NavigationItemContext, len(nav.Items))
+	for i, item := range nav.Items {
+		items[i] = NavigationItemContext{
+			Label: item.Label,
+			Path:  item.Path,
+			Icon:  item.Icon,
+			Roles: item.Roles,
+		}
+	}
+	return &NavigationContext{
+		Brand: nav.Brand,
+		Items: items,
+	}
 }
 
 // buildRoleContexts converts bridge RoleSpecs to RoleContexts.

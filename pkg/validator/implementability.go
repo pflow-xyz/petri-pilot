@@ -372,21 +372,8 @@ func (v *Validator) checkViewBindings(model *metamodel.Model, result *Implementa
 	eventFields["aggregate_id"] = true
 	eventFields["timestamp"] = true
 
-	// Check view field bindings against event fields
-	for _, view := range model.Views {
-		for _, group := range view.Groups {
-			for _, field := range group.Fields {
-				if field.Binding != "" && !eventFields[field.Binding] {
-					result.Warnings = append(result.Warnings, ImplementabilityIssue{
-						Code:    "UNBOUND_VIEW_FIELD",
-						Message: fmt.Sprintf("View '%s' field binding '%s' does not match any event field", view.ID, field.Binding),
-						Element: view.ID,
-						Fix:     fmt.Sprintf("Add field '%s' to an event definition or update binding", field.Binding),
-					})
-				}
-			}
-		}
-	}
+	// Note: View field binding validation is now handled by the extensions package.
+	// Views are stored in extensions, not in the core Model.
 }
 
 // detectPattern identifies the model pattern type.

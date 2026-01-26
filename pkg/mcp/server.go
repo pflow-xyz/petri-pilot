@@ -575,55 +575,13 @@ func compareModels(a, b *goflowmetamodel.Model) ModelDiff {
 		}
 	}
 
-	// Compare roles
-	rolesA := make(map[string]bool)
-	for _, r := range a.Roles {
-		rolesA[r.ID] = true
-	}
-	rolesB := make(map[string]bool)
-	for _, r := range b.Roles {
-		rolesB[r.ID] = true
-	}
-	for id := range rolesB {
-		if !rolesA[id] {
-			diff.RolesAdded = append(diff.RolesAdded, id)
-		}
-	}
-	for id := range rolesA {
-		if !rolesB[id] {
-			diff.RolesRemoved = append(diff.RolesRemoved, id)
-		}
-	}
-
-	// Compare access rules
-	accessKey := func(acc goflowmetamodel.AccessRule) string {
-		return fmt.Sprintf("%s:%v", acc.Transition, acc.Roles)
-	}
-	accessA := make(map[string]bool)
-	for _, acc := range a.Access {
-		accessA[accessKey(acc)] = true
-	}
-	accessB := make(map[string]bool)
-	for _, acc := range b.Access {
-		accessB[accessKey(acc)] = true
-	}
-	for key := range accessB {
-		if !accessA[key] {
-			diff.AccessAdded = append(diff.AccessAdded, key)
-		}
-	}
-	for key := range accessA {
-		if !accessB[key] {
-			diff.AccessRemoved = append(diff.AccessRemoved, key)
-		}
-	}
+	// Note: Roles and Access are now stored in extensions, not in the core Model.
+	// Diff for those constructs would require extension-aware comparison.
 
 	// Check if there are any changes
 	diff.HasChanges = len(diff.PlacesAdded) > 0 || len(diff.PlacesRemoved) > 0 ||
 		len(diff.TransitionsAdded) > 0 || len(diff.TransitionsRemoved) > 0 ||
-		len(diff.ArcsAdded) > 0 || len(diff.ArcsRemoved) > 0 ||
-		len(diff.RolesAdded) > 0 || len(diff.RolesRemoved) > 0 ||
-		len(diff.AccessAdded) > 0 || len(diff.AccessRemoved) > 0
+		len(diff.ArcsAdded) > 0 || len(diff.ArcsRemoved) > 0
 
 	return diff
 }
@@ -759,37 +717,14 @@ func applyOperation(model *goflowmetamodel.Model, opType string, op map[string]a
 		})
 
 	case "add_role":
-		id, _ := op["id"].(string)
-		if id == "" {
-			return fmt.Errorf("missing 'id' for add_role")
-		}
-		name, _ := op["name"].(string)
-		desc, _ := op["description"].(string)
-		model.Roles = append(model.Roles, goflowmetamodel.Role{
-			ID:          id,
-			Name:        name,
-			Description: desc,
-		})
+		// Roles are now stored in extensions, not in the core Model.
+		// Use the extensions package to manage roles.
+		return fmt.Errorf("add_role is deprecated: roles are now managed via extensions")
 
 	case "add_access":
-		transition, _ := op["transition"].(string)
-		if transition == "" {
-			return fmt.Errorf("missing 'transition' for add_access")
-		}
-		rolesRaw, _ := op["roles"].([]any)
-		var roles []string
-		for _, r := range rolesRaw {
-			if s, ok := r.(string); ok {
-				roles = append(roles, s)
-			}
-		}
-		if len(roles) == 0 {
-			return fmt.Errorf("missing 'roles' for add_access")
-		}
-		model.Access = append(model.Access, goflowmetamodel.AccessRule{
-			Transition: transition,
-			Roles:      roles,
-		})
+		// Access rules are now stored in extensions, not in the core Model.
+		// Use the extensions package to manage access rules.
+		return fmt.Errorf("add_access is deprecated: access rules are now managed via extensions")
 
 	case "remove_place":
 		id, _ := op["id"].(string)
@@ -832,30 +767,12 @@ func applyOperation(model *goflowmetamodel.Model, opType string, op map[string]a
 		model.Arcs = newArcs
 
 	case "remove_role":
-		id, _ := op["id"].(string)
-		if id == "" {
-			return fmt.Errorf("missing 'id' for remove_role")
-		}
-		newRoles := make([]goflowmetamodel.Role, 0, len(model.Roles))
-		for _, r := range model.Roles {
-			if r.ID != id {
-				newRoles = append(newRoles, r)
-			}
-		}
-		model.Roles = newRoles
+		// Roles are now stored in extensions, not in the core Model.
+		return fmt.Errorf("remove_role is deprecated: roles are now managed via extensions")
 
 	case "remove_access":
-		transition, _ := op["transition"].(string)
-		if transition == "" {
-			return fmt.Errorf("missing 'transition' for remove_access")
-		}
-		newAccess := make([]goflowmetamodel.AccessRule, 0, len(model.Access))
-		for _, a := range model.Access {
-			if a.Transition != transition {
-				newAccess = append(newAccess, a)
-			}
-		}
-		model.Access = newAccess
+		// Access rules are now stored in extensions, not in the core Model.
+		return fmt.Errorf("remove_access is deprecated: access rules are now managed via extensions")
 
 	case "add_event":
 		id, _ := op["id"].(string)
@@ -1248,12 +1165,7 @@ func generateMarkdownDocs(model *goflowmetamodel.Model, rawJSON string, includeM
 	if len(model.Events) > 0 {
 		sb.WriteString(fmt.Sprintf("| Events | %d |\n", len(model.Events)))
 	}
-	if len(model.Roles) > 0 {
-		sb.WriteString(fmt.Sprintf("| Roles | %d |\n", len(model.Roles)))
-	}
-	if len(model.Access) > 0 {
-		sb.WriteString(fmt.Sprintf("| Access Rules | %d |\n", len(model.Access)))
-	}
+	// Note: Roles and Access are now stored in extensions, not in the core Model.
 	sb.WriteString("\n")
 
 	// Mermaid state diagram
@@ -1426,40 +1338,7 @@ func generateMarkdownDocs(model *goflowmetamodel.Model, rawJSON string, includeM
 		}
 	}
 
-	// Roles section
-	if len(model.Roles) > 0 {
-		sb.WriteString("## Roles\n\n")
-		sb.WriteString("| ID | Name | Description | Inherits |\n")
-		sb.WriteString("|----|------|-------------|----------|\n")
-		for _, r := range model.Roles {
-			name := r.Name
-			if name == "" {
-				name = r.ID
-			}
-			desc := r.Description
-			if desc == "" {
-				desc = "-"
-			}
-			inherits := "-"
-			if len(r.Inherits) > 0 {
-				inherits = strings.Join(r.Inherits, ", ")
-			}
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n", r.ID, name, desc, inherits))
-		}
-		sb.WriteString("\n")
-	}
-
-	// Access control section
-	if len(model.Access) > 0 {
-		sb.WriteString("## Access Control\n\n")
-		sb.WriteString("| Transition | Allowed Roles |\n")
-		sb.WriteString("|------------|---------------|\n")
-		for _, a := range model.Access {
-			roles := strings.Join(a.Roles, ", ")
-			sb.WriteString(fmt.Sprintf("| `%s` | %s |\n", a.Transition, roles))
-		}
-		sb.WriteString("\n")
-	}
+	// Note: Roles and Access Control sections are now documented via extensions.
 
 	// Metadata section
 	if includeMetadata {

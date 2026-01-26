@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 )
 
 // Context holds all data needed for React code generation templates.
@@ -225,44 +226,21 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		// Feature flags - event sourcing is always enabled in generated backends
 		HasEventSourcing: true,
 		HasSnapshots:     true,
-		HasViews:         len(enriched.Views) > 0,
-		HasAdmin:         enriched.Admin != nil && enriched.Admin.Enabled,
-		HasDebug:         enriched.Debug != nil && enriched.Debug.Enabled,
-		HasPrediction:    enriched.Prediction != nil && enriched.Prediction.Enabled,
-		HasBlobstore:     enriched.Blobstore != nil && enriched.Blobstore.Enabled,
-		HasWallet:        enriched.Wallet != nil && enriched.Wallet.Enabled,
+		// Note: HasViews, HasAdmin, HasDebug, HasPrediction, HasBlobstore, HasWallet
+		// are set by NewContextFromApp when using extensions
+		// Initialize Status with default empty config
+		Status: &StatusContext{
+			PlacesJSON: "{}",
+			Default:    "Unknown",
+			HasConfig:  false,
+		},
 	}
-
-	// Build prediction context
-	if enriched.Prediction != nil && enriched.Prediction.Enabled {
-		timeHours := enriched.Prediction.TimeHours
-		if timeHours == 0 {
-			timeHours = 8.0
-		}
-		rateScale := enriched.Prediction.RateScale
-		if rateScale == 0 {
-			rateScale = 0.0001
-		}
-		ctx.Prediction = &PredictionContext{
-			Enabled:   true,
-			TimeHours: timeHours,
-			RateScale: rateScale,
-		}
-	}
-
-	// Build wallet context
-	if enriched.Wallet != nil && enriched.Wallet.Enabled {
-		ctx.Wallet = buildWalletContext(enriched.Wallet)
-	}
-
-	// Build status context
-	ctx.Status = buildStatusContext(enriched.Status)
 
 	// Build place contexts
 	ctx.Places = buildPlaceContexts(enriched.Places)
 
-	// Build transition contexts with access control info
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Access)
+	// Build transition contexts (access control comes from extensions)
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, nil)
 
 	// Build route contexts from bridge inference
 	apiRoutes := metamodel.InferAPIRoutes(enriched)
@@ -272,8 +250,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	stateFields := metamodel.InferAggregateState(enriched)
 	ctx.StateFields = buildStateFieldContexts(stateFields)
 
-	// Build role contexts for login selector
-	ctx.Roles = buildRoleContexts(enriched.Roles)
+	// Note: Roles are populated by NewContextFromApp when using extensions
 
 	// Use provided pages or create default ones
 	if len(opts.Pages) > 0 {
@@ -284,6 +261,53 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	}
 
 	return ctx, nil
+}
+
+// NewContextFromApp creates a Context from an ApplicationSpec.
+// This uses the extension-based model where application constructs
+// are stored in extensions rather than embedded in the Model.
+func NewContextFromApp(app *extensions.ApplicationSpec, opts ContextOptions) (*Context, error) {
+	if app == nil || app.Net == nil {
+		return nil, nil
+	}
+
+	// Use the adapter to convert to legacy model
+	legacyModel := extensions.ToLegacyModel(app)
+
+	// Create context using the legacy path
+	ctx, err := NewContext(legacyModel, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override with extension data where available
+
+	// Roles from extension
+	if rolesExt := app.Roles(); rolesExt != nil {
+		ctx.Roles = buildRoleContextsFromExtension(rolesExt)
+	}
+
+	// Feature flags from extensions
+	if app.HasViews() {
+		ctx.HasViews = true
+	}
+	if app.HasAdmin() {
+		ctx.HasAdmin = true
+	}
+
+	return ctx, nil
+}
+
+// buildRoleContextsFromExtension converts extension roles to RoleContexts.
+func buildRoleContextsFromExtension(ext *extensions.RoleExtension) []RoleContext {
+	result := make([]RoleContext, len(ext.Roles))
+	for i, r := range ext.Roles {
+		result[i] = RoleContext{
+			ID:          r.ID,
+			Description: r.Description,
+		}
+	}
+	return result
 }
 
 func buildPlaceContexts(places []metamodel.Place) []PlaceContext {

@@ -25,13 +25,13 @@ func TestToLegacyModel(t *testing.T) {
 
 		app := NewApplicationSpec(model)
 
-		// Add roles
+		// Add roles to extension
 		roles := NewRoleExtension()
 		roles.AddRole(Role{ID: "admin", Name: "Administrator"})
 		roles.AddRole(Role{ID: "user", Name: "User", Inherits: []string{"admin"}})
 		app.WithRoles(roles)
 
-		// Add views
+		// Add views to extension
 		views := NewViewExtension()
 		views.AddView(View{
 			ID:   "order-detail",
@@ -41,7 +41,7 @@ func TestToLegacyModel(t *testing.T) {
 		views.SetAdmin(Admin{Enabled: true, Path: "/admin", Roles: []string{"admin"}})
 		app.WithViews(views)
 
-		// Add pages with navigation
+		// Add pages with navigation to extension
 		pages := NewPageExtension()
 		pages.SetNavigation(Navigation{
 			Brand: "OrderApp",
@@ -52,53 +52,35 @@ func TestToLegacyModel(t *testing.T) {
 		})
 		app.WithPages(pages)
 
-		// Convert back to legacy
+		// Convert to legacy model (now returns core model only)
 		legacy := ToLegacyModel(app)
 
-		// Verify structure preserved
+		// Verify core structure preserved
 		if legacy.Name != "test-workflow" {
 			t.Errorf("expected name 'test-workflow', got %q", legacy.Name)
 		}
-
-		// Verify roles transferred
-		if len(legacy.Roles) != 2 {
-			t.Errorf("expected 2 roles, got %d", len(legacy.Roles))
+		if len(legacy.Places) != 2 {
+			t.Errorf("expected 2 places, got %d", len(legacy.Places))
 		}
-		foundAdmin := false
-		for _, r := range legacy.Roles {
-			if r.ID == "admin" {
-				foundAdmin = true
-				if r.Name != "Administrator" {
-					t.Errorf("expected admin name 'Administrator', got %q", r.Name)
-				}
-			}
+		if len(legacy.Transitions) != 1 {
+			t.Errorf("expected 1 transition, got %d", len(legacy.Transitions))
 		}
-		if !foundAdmin {
-			t.Error("expected to find admin role")
+		if len(legacy.Arcs) != 2 {
+			t.Errorf("expected 2 arcs, got %d", len(legacy.Arcs))
 		}
 
-		// Verify views transferred
-		if len(legacy.Views) != 1 {
-			t.Errorf("expected 1 view, got %d", len(legacy.Views))
+		// Verify application constructs are in extensions (not in model)
+		if !app.HasRoles() {
+			t.Error("expected HasRoles to be true")
 		}
-
-		// Verify admin transferred
-		if legacy.Admin == nil {
-			t.Fatal("expected admin to be set")
+		if !app.HasViews() {
+			t.Error("expected HasViews to be true")
 		}
-		if !legacy.Admin.Enabled {
-			t.Error("expected admin to be enabled")
+		if !app.HasAdmin() {
+			t.Error("expected HasAdmin to be true")
 		}
-
-		// Verify navigation transferred
-		if legacy.Navigation == nil {
-			t.Fatal("expected navigation to be set")
-		}
-		if legacy.Navigation.Brand != "OrderApp" {
-			t.Errorf("expected brand 'OrderApp', got %q", legacy.Navigation.Brand)
-		}
-		if len(legacy.Navigation.Items) != 2 {
-			t.Errorf("expected 2 nav items, got %d", len(legacy.Navigation.Items))
+		if !app.HasNavigation() {
+			t.Error("expected HasNavigation to be true")
 		}
 	})
 
@@ -220,10 +202,8 @@ func TestEntityToModel(t *testing.T) {
 		t.Errorf("expected %d arcs, got %d", expectedArcs, len(model.Arcs))
 	}
 
-	// Verify access rules
-	if len(model.Access) != 1 {
-		t.Errorf("expected 1 access rule, got %d", len(model.Access))
-	}
+	// Note: Access rules are now stored in extensions, not in the model
+	// The entity.Access is available for codegen to use via the EntityExtension
 }
 
 func TestNewApplicationSpecFromLegacy(t *testing.T) {
@@ -235,70 +215,34 @@ func TestNewApplicationSpecFromLegacy(t *testing.T) {
 		Transitions: []goflowmodel.Transition{
 			{ID: "t1"},
 		},
-		Roles: []goflowmodel.Role{
-			{ID: "admin", Name: "Administrator"},
-			{ID: "user", Name: "User"},
-		},
-		Views: []goflowmodel.View{
-			{
-				ID:   "detail",
-				Name: "Detail View",
-				Kind: "detail",
-				Groups: []goflowmodel.ViewGroup{
-					{
-						ID:   "info",
-						Name: "Information",
-						Fields: []goflowmodel.ViewField{
-							{Binding: "name", Label: "Name", Type: "text"},
-						},
-					},
-				},
-			},
-		},
-		Navigation: &goflowmodel.Navigation{
-			Brand: "TestApp",
-			Items: []goflowmodel.NavigationItem{
-				{Label: "Home", Path: "/"},
-				{Label: "Admin", Path: "/admin", Roles: []string{"admin"}},
-			},
-		},
-		Admin: &goflowmodel.Admin{
-			Enabled: true,
-			Path:    "/admin",
-			Roles:   []string{"admin"},
-		},
 	}
 
 	app := NewApplicationSpecFromLegacy(model)
 
-	// Verify roles extracted
+	// Verify core model is wrapped
+	if app.Net.Name != "legacy-model" {
+		t.Errorf("expected name 'legacy-model', got %q", app.Net.Name)
+	}
+	if len(app.Net.Places) != 1 {
+		t.Errorf("expected 1 place, got %d", len(app.Net.Places))
+	}
+
+	// Application constructs should be added via extensions
+	// The model no longer has Roles, Views, etc. embedded
+	if app.HasRoles() {
+		t.Error("expected HasRoles to be false initially")
+	}
+	if app.HasViews() {
+		t.Error("expected HasViews to be false initially")
+	}
+
+	// Add roles via extension
+	roles := NewRoleExtension()
+	roles.AddRole(Role{ID: "admin", Name: "Administrator"})
+	app.WithRoles(roles)
+
 	if !app.HasRoles() {
-		t.Error("expected HasRoles to be true")
-	}
-	roles := app.Roles()
-	if len(roles.Roles) != 2 {
-		t.Errorf("expected 2 roles, got %d", len(roles.Roles))
-	}
-
-	// Verify views extracted
-	if !app.HasViews() {
-		t.Error("expected HasViews to be true")
-	}
-	views := app.Views()
-	if len(views.Views) != 1 {
-		t.Errorf("expected 1 view, got %d", len(views.Views))
-	}
-	if views.Admin == nil {
-		t.Error("expected admin to be set")
-	}
-
-	// Verify navigation extracted
-	if !app.HasNavigation() {
-		t.Error("expected HasNavigation to be true")
-	}
-	pages := app.Pages()
-	if pages.Navigation.Brand != "TestApp" {
-		t.Errorf("expected brand 'TestApp', got %q", pages.Navigation.Brand)
+		t.Error("expected HasRoles to be true after adding roles")
 	}
 }
 
@@ -308,38 +252,29 @@ func TestMigrateModel(t *testing.T) {
 		Places: []goflowmodel.Place{
 			{ID: "p1"},
 		},
-		Roles: []goflowmodel.Role{
-			{ID: "admin"},
-		},
-		Views: []goflowmodel.View{
-			{ID: "v1"},
-		},
 	}
 
 	app := MigrateModel(model)
 
-	// Verify extensions exist
-	if !app.HasRoles() {
-		t.Error("expected roles to be migrated")
-	}
-	if !app.HasViews() {
-		t.Error("expected views to be migrated")
+	// Verify model is wrapped
+	if app.Net.Name != "migrate-me" {
+		t.Errorf("expected name 'migrate-me', got %q", app.Net.Name)
 	}
 
-	// Verify model was cleared
-	if len(app.Net.Roles) != 0 {
-		t.Errorf("expected roles to be cleared, got %d", len(app.Net.Roles))
+	// Extensions should be added separately
+	if app.HasRoles() {
+		t.Error("expected no roles initially")
 	}
-	if len(app.Net.Views) != 0 {
-		t.Errorf("expected views to be cleared, got %d", len(app.Net.Views))
+	if app.HasViews() {
+		t.Error("expected no views initially")
 	}
 }
 
-func TestRoundTripLegacy(t *testing.T) {
-	// Create a legacy model with application constructs
-	original := &goflowmodel.Model{
-		Name:        "roundtrip-test",
-		Description: "Test round trip",
+func TestApplicationSpecWithExtensions(t *testing.T) {
+	// Create a core model with Petri net elements only
+	model := &goflowmodel.Model{
+		Name:        "extension-test",
+		Description: "Test extensions",
 		Places: []goflowmodel.Place{
 			{ID: "pending", Initial: 1, Kind: goflowmodel.TokenKind},
 		},
@@ -349,52 +284,60 @@ func TestRoundTripLegacy(t *testing.T) {
 		Arcs: []goflowmodel.Arc{
 			{From: "pending", To: "confirm"},
 		},
-		Roles: []goflowmodel.Role{
-			{ID: "admin", Name: "Administrator", Description: "Admin role"},
+	}
+
+	app := NewApplicationSpec(model)
+
+	// Add roles
+	roles := NewRoleExtension()
+	roles.AddRole(Role{ID: "admin", Name: "Administrator", Description: "Admin role"})
+	app.WithRoles(roles)
+
+	// Add views
+	views := NewViewExtension()
+	views.AddView(View{ID: "detail", Name: "Detail", Kind: "detail"})
+	app.WithViews(views)
+
+	// Add navigation
+	pages := NewPageExtension()
+	pages.SetNavigation(Navigation{
+		Brand: "TestBrand",
+		Items: []NavigationItem{
+			{Label: "Home", Path: "/"},
 		},
-		Views: []goflowmodel.View{
-			{ID: "detail", Name: "Detail", Kind: "detail"},
-		},
-		Navigation: &goflowmodel.Navigation{
-			Brand: "TestBrand",
-			Items: []goflowmodel.NavigationItem{
-				{Label: "Home", Path: "/"},
-			},
-		},
+	})
+	app.WithPages(pages)
+
+	// Verify extensions are accessible
+	if !app.HasRoles() {
+		t.Error("expected HasRoles to be true")
+	}
+	rolesExt := app.Roles()
+	if len(rolesExt.Roles) != 1 {
+		t.Errorf("expected 1 role, got %d", len(rolesExt.Roles))
+	}
+	if rolesExt.Roles[0].ID != "admin" {
+		t.Errorf("expected role 'admin', got %q", rolesExt.Roles[0].ID)
 	}
 
-	// Convert to extension-based format
-	app := NewApplicationSpecFromLegacy(original)
-
-	// Convert back to legacy
-	result := ToLegacyModel(app)
-
-	// Verify core structure preserved
-	if result.Name != original.Name {
-		t.Errorf("name mismatch: %q vs %q", result.Name, original.Name)
+	if !app.HasViews() {
+		t.Error("expected HasViews to be true")
 	}
-	if len(result.Places) != len(original.Places) {
-		t.Errorf("place count mismatch: %d vs %d", len(result.Places), len(original.Places))
+	viewsExt := app.Views()
+	if len(viewsExt.Views) != 1 {
+		t.Errorf("expected 1 view, got %d", len(viewsExt.Views))
 	}
 
-	// Verify roles preserved
-	if len(result.Roles) != len(original.Roles) {
-		t.Errorf("role count mismatch: %d vs %d", len(result.Roles), len(original.Roles))
+	if !app.HasNavigation() {
+		t.Error("expected HasNavigation to be true")
 	}
-	if result.Roles[0].ID != original.Roles[0].ID {
-		t.Errorf("role ID mismatch: %q vs %q", result.Roles[0].ID, original.Roles[0].ID)
-	}
-
-	// Verify views preserved
-	if len(result.Views) != len(original.Views) {
-		t.Errorf("view count mismatch: %d vs %d", len(result.Views), len(original.Views))
+	pagesExt := app.Pages()
+	if pagesExt.Navigation.Brand != "TestBrand" {
+		t.Errorf("expected brand 'TestBrand', got %q", pagesExt.Navigation.Brand)
 	}
 
-	// Verify navigation preserved
-	if result.Navigation == nil {
-		t.Fatal("navigation should be preserved")
-	}
-	if result.Navigation.Brand != original.Navigation.Brand {
-		t.Errorf("nav brand mismatch: %q vs %q", result.Navigation.Brand, original.Navigation.Brand)
+	// Core model is still accessible
+	if app.Net.Name != "extension-test" {
+		t.Errorf("expected name 'extension-test', got %q", app.Net.Name)
 	}
 }
