@@ -43,8 +43,10 @@ Custom components:
 |---------|-----------------|-----------|
 | tic-tac-toe | ✅ | ✅ |
 | coffeeshop | ✅ | ⬜ |
-| erc20-token | ⬜ | ⬜ |
+| erc20-token | ✅ | ⬜ |
 | order-processing | ✅ | ⬜ |
+| blog-post | ✅ | ⬜ |
+| support-ticket | ✅ | ⬜ |
 
 ## Cleanup
 
