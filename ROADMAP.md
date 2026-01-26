@@ -11,7 +11,7 @@ Each example needs a custom frontend that showcases its unique workflow, similar
 | erc20-token | Wallet balances, transfer form, tx history | ✅ |
 | order-processing | Order timeline, fulfillment dashboard | ✅ |
 | blog-post | Editor, approval flow, preview | ✅ |
-| support-ticket | Ticket thread, escalation view | ⬜ |
+| support-ticket | Ticket thread, escalation view | ✅ |
 
 ### Priority 1: tic-tac-toe
 
