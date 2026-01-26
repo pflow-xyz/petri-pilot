@@ -1489,6 +1489,43 @@ type pflowModel struct {
 	Arcs        []pflowArc                 `json:"arcs"`
 }
 
+// schemaV2 represents the v2.0 schema format with nested net and extensions.
+type schemaV2 struct {
+	Version    string                     `json:"version"`
+	Net        *goflowmetamodel.Model     `json:"net"`
+	Extensions map[string]json.RawMessage `json:"extensions"`
+}
+
+// ParseResult contains the parsed model and any extensions from a v2 schema.
+type ParseResult struct {
+	Model      *goflowmetamodel.Model
+	Extensions map[string]json.RawMessage
+	Version    string
+}
+
+// parseModelV2 parses a model and returns both the model and any v2 extensions.
+func parseModelV2(jsonStr string) (*ParseResult, error) {
+	// First check if this is v2 format (has "version" and "net" keys)
+	var v2 schemaV2
+	if err := json.Unmarshal([]byte(jsonStr), &v2); err == nil && v2.Version == "2.0" && v2.Net != nil {
+		return &ParseResult{
+			Model:      v2.Net,
+			Extensions: v2.Extensions,
+			Version:    "2.0",
+		}, nil
+	}
+
+	// Fall back to v1 parsing
+	model, err := parseModel(jsonStr)
+	if err != nil {
+		return nil, err
+	}
+	return &ParseResult{
+		Model:   model,
+		Version: "1.0",
+	}, nil
+}
+
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 	// First try pflow.xyz format (places as object with string keys)
 	var pflow pflowModel
@@ -1547,9 +1584,9 @@ func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 
 // extensionsInput is the JSON structure for the extensions parameter.
 type extensionsInput struct {
-	Roles      []extensions.Role   `json:"roles,omitempty"`
-	Views      []extensions.View   `json:"views,omitempty"`
-	Admin      *extensions.Admin   `json:"admin,omitempty"`
+	Roles      []extensions.Role      `json:"roles,omitempty"`
+	Views      []extensions.View      `json:"views,omitempty"`
+	Admin      *extensions.Admin      `json:"admin,omitempty"`
 	Navigation *extensions.Navigation `json:"navigation,omitempty"`
 }
 
@@ -1588,6 +1625,61 @@ func parseExtensions(app *extensions.ApplicationSpec, jsonStr string) error {
 		app.WithPages(pagesExt)
 	}
 
+	return nil
+}
+
+// parseV2Extensions parses v2 schema extensions and adds them to the ApplicationSpec.
+// Extension keys use namespaced names like "petri-pilot/roles".
+func parseV2Extensions(app *extensions.ApplicationSpec, exts map[string]json.RawMessage) error {
+	for name, data := range exts {
+		switch name {
+		case extensions.RolesExtensionName: // "petri-pilot/roles"
+			var roles []extensions.Role
+			if err := json.Unmarshal(data, &roles); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", name, err)
+			}
+			rolesExt := extensions.NewRoleExtension()
+			for _, r := range roles {
+				rolesExt.AddRole(r)
+			}
+			app.WithRoles(rolesExt)
+
+		case extensions.ViewsExtensionName: // "petri-pilot/views"
+			var views []extensions.View
+			if err := json.Unmarshal(data, &views); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", name, err)
+			}
+			viewsExt := extensions.NewViewExtension()
+			for _, v := range views {
+				viewsExt.AddView(v)
+			}
+			app.WithViews(viewsExt)
+
+		case extensions.PagesExtensionName: // "petri-pilot/pages"
+			var pages extensions.PageExtension
+			if err := json.Unmarshal(data, &pages); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", name, err)
+			}
+			app.WithPages(&pages)
+
+		case extensions.EntitiesExtensionName: // "petri-pilot/entities"
+			var entities extensions.EntityExtension
+			if err := json.Unmarshal(data, &entities); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", name, err)
+			}
+			app.WithEntities(&entities)
+
+		case extensions.WorkflowsExtensionName: // "petri-pilot/workflows"
+			var workflows extensions.WorkflowExtension
+			if err := json.Unmarshal(data, &workflows); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", name, err)
+			}
+			app.WithWorkflows(&workflows)
+
+		default:
+			// Unknown extension - skip for forward compatibility
+		}
+	}
 	return nil
 }
 

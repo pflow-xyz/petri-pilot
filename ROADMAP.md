@@ -264,50 +264,21 @@ Refactoring go-pflow's metamodel to support generics, externalize application co
 Application types externalized from go-pflow to petri-pilot:
 - `Role`, `View`, `Navigation`, `Admin`, `Page`, `Entity`
 
-### Remaining
+### Completed in go-pflow
 
-#### Phase 1: Core Primitives with Generics
+> **Repository split**: Phases 1-3 are **go-pflow** changes (generic primitives, patterns). Phase 4 is **petri-pilot** changes (schema evolution, codegen templates).
 
-```go
-// Generic state types
-type TokenState[T any] struct {
-    Count int
-    Data  T
-}
+| Phase | Description | Location |
+|-------|-------------|----------|
+| 1 | Generic Primitives (`TokenState[T]`, `DataState[T]`, `PetriNet[S]`) | `go-pflow/metamodel/generic.go` |
+| 2.1 | Extension Interface (`ModelExtension`, `ExtensionRegistry`) | `go-pflow/metamodel/extension.go` |
+| 3 | Composable Patterns (`StateMachine[S]`, `Workflow[D]`, `ResourcePool[R]`, `EventSourced[S,E]`) | `go-pflow/metamodel/patterns.go` |
 
-type DataState[T any] struct {
-    Value   T
-    Version int
-}
-
-// Generic PetriNet
-type PetriNet[S any] struct {
-    Name        string
-    Places      []Place[S]
-    Transitions []Transition[S, S]
-    Arcs        []Arc[S]
-}
-```
-
-#### Phase 2.1: Extension Interface
-
-```go
-type ModelExtension interface {
-    Name() string
-    Validate(net *PetriNet[any]) error
-}
-```
-
-#### Phase 3: Composable Patterns
-
-| Pattern | Description |
-|---------|-------------|
-| `StateMachine[S]` | State machine semantics on top of PetriNet |
-| `Workflow[D]` | Multi-step process with data flow |
-| `ResourcePool[R]` | Token-based resource management |
-| `EventSourced[S,E]` | Event-driven state with replay |
+### Remaining *(petri-pilot)*
 
 #### Phase 4.3: Schema JSON Evolution
+
+Update petri-pilot to use go-pflow's extension system for schema v2.0:
 
 ```json
 {
@@ -320,12 +291,32 @@ type ModelExtension interface {
 }
 ```
 
+Tasks:
+- [x] Update schema parser to support v2.0 format with `net` and `extensions` keys
+- [x] Migrate `pkg/extensions` types to implement `go-pflow/metamodel.ModelExtension` (already done)
+- [ ] Update MCP tools to accept both v1 (flat) and v2 (nested) schemas
+- [ ] Update codegen to use generic types from go-pflow where applicable
+- [ ] Add schema migration tool (v1 → v2)
+
+#### Current Generics Usage
+
+Generated code uses one generic helper:
+
+```go
+// Type-safe event unmarshaling in aggregate.go
+func unmarshalEventData[T any](event *eventsource.Event) (*T, error) {
+    var data T
+    if err := json.Unmarshal(event.Data, &data); err != nil {
+        return nil, err
+    }
+    return &data, nil
+}
+```
+
 ### Open Questions
 
-1. Should `Guard` functions use generics or remain `func(map[string]any) bool`?
-2. How to handle visualization (x,y) for composed patterns?
-3. Should extensions be Go interfaces or JSON schema-based?
-4. Versioning strategy for schema JSON format?
+1. Should v1 schema remain supported indefinitely or deprecate after migration period?
+2. How to version extensions independently from core schema?
 
 ---
 
