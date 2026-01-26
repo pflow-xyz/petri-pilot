@@ -190,6 +190,27 @@ const TRANSITION_DEFS = [
     fields: [
     ]
   },
+  {
+    id: 'restock_coffee_beans',
+    name: 'Restock Coffee Beans',
+    description: "Restock coffee beans inventory",
+    fields: [
+    ]
+  },
+  {
+    id: 'restock_milk',
+    name: 'Restock Milk',
+    description: "Restock milk inventory",
+    fields: [
+    ]
+  },
+  {
+    id: 'restock_cups',
+    name: 'Restock Cups',
+    description: "Restock cup inventory",
+    fields: [
+    ]
+  },
 ]
 
 // ============================================================================
@@ -2362,6 +2383,9 @@ window.pilot = {
       { id: 'serve_espresso', name: 'Serve Espresso', description: "Serve espresso to customer", requiredRoles: [], apiPath: '/api/serve_espresso' },
       { id: 'serve_latte', name: 'Serve Latte', description: "Serve latte to customer", requiredRoles: [], apiPath: '/api/serve_latte' },
       { id: 'serve_cappuccino', name: 'Serve Cappuccino', description: "Serve cappuccino to customer", requiredRoles: [], apiPath: '/api/serve_cappuccino' },
+      { id: 'restock_coffee_beans', name: 'Restock Coffee Beans', description: "Restock coffee beans inventory", requiredRoles: [], apiPath: '/api/restock_coffee_beans' },
+      { id: 'restock_milk', name: 'Restock Milk', description: "Restock milk inventory", requiredRoles: [], apiPath: '/api/restock_milk' },
+      { id: 'restock_cups', name: 'Restock Cups', description: "Restock cup inventory", requiredRoles: [], apiPath: '/api/restock_cups' },
     ]
   },
 

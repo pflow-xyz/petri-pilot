@@ -40,6 +40,7 @@ function getDefaultNavigation() {
 // Navigation state
 let navigationData = null
 let isLoading = false
+let authStatus = null // { github_enabled: boolean }
 
 // Fetch navigation from backend
 async function fetchNavigation() {
@@ -66,6 +67,28 @@ async function fetchNavigation() {
   } finally {
     isLoading = false
   }
+}
+
+// Fetch auth status to check if GitHub OAuth is enabled
+// Auth routes are at the serve layer (root), not under the service prefix
+async function fetchAuthStatus() {
+  if (authStatus !== null) return authStatus
+
+  try {
+    // Try root-level auth first (serve layer), then service-level as fallback
+    let response = await fetch('/auth/status')
+    if (!response.ok) {
+      response = await fetch(`${API_BASE}/auth/status`)
+    }
+    if (response.ok) {
+      authStatus = await response.json()
+    } else {
+      authStatus = { github_enabled: false }
+    }
+  } catch (error) {
+    authStatus = { github_enabled: false }
+  }
+  return authStatus
 }
 
 // Compute the custom frontend URL (non-dash view)
@@ -145,6 +168,23 @@ export async function createNavigation() {
 
 // Create login modal HTML
 function createLoginModal() {
+  // GitHub login button (shown when GitHub OAuth is enabled)
+  // Auth routes are at the serve layer (root), so use absolute path
+  const githubButton = `
+    <a href="/auth/login" class="github-login-btn" id="github-login-btn" style="display: none;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+      </svg>
+      Login with GitHub
+    </a>
+  `
+
+  const divider = `
+    <div class="login-divider" id="login-divider" style="display: none;">
+      <span>or</span>
+    </div>
+  `
+
   if (availableRoles.length === 0) {
     // No roles defined, show simple login
     return `
@@ -156,13 +196,16 @@ function createLoginModal() {
             <button onclick="hideLoginModal()" class="modal-close">&times;</button>
           </div>
           <div class="modal-body">
-            <p>No roles configured. Click below to login as a guest user.</p>
+            ${githubButton}
+            ${divider}
+            <p id="guest-login-text">No roles configured. Click below to login as a guest user.</p>
             <button onclick="handleRoleLogin(['guest'])" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
               Login as Guest
             </button>
           </div>
         </div>
       </div>
+      ${createLoginStyles()}
     `
   }
 
@@ -178,10 +221,12 @@ function createLoginModal() {
       <div class="modal-backdrop" onclick="hideLoginModal()"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Select Role</h3>
+          <h3>Login</h3>
           <button onclick="hideLoginModal()" class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
+          ${githubButton}
+          ${divider}
           <p>Choose a role to login as:</p>
           <div class="role-list">
             ${roleButtons}
@@ -189,6 +234,13 @@ function createLoginModal() {
         </div>
       </div>
     </div>
+    ${createLoginStyles()}
+  `
+}
+
+// Create styles for login modal
+function createLoginStyles() {
+  return `
     <style>
       .modal {
         position: fixed;
@@ -248,6 +300,47 @@ function createLoginModal() {
         margin: 0 0 1rem 0;
         color: #666;
       }
+      .github-login-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: #24292e;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .github-login-btn:hover {
+        background: #1a1e22;
+        color: white;
+      }
+      .github-login-btn svg {
+        flex-shrink: 0;
+      }
+      .login-divider {
+        display: flex;
+        align-items: center;
+        margin: 1.25rem 0;
+        color: #999;
+        font-size: 0.85rem;
+      }
+      .login-divider::before,
+      .login-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #ddd;
+      }
+      .login-divider span {
+        padding: 0 1rem;
+      }
       .role-list {
         display: flex;
         flex-direction: column;
@@ -287,10 +380,20 @@ function createLoginModal() {
 }
 
 // Show login modal
-window.showLoginModal = function() {
+window.showLoginModal = async function() {
   const modal = document.getElementById('login-modal')
   if (modal) {
     modal.style.display = 'flex'
+
+    // Check if GitHub OAuth is enabled and show/hide the button
+    const status = await fetchAuthStatus()
+    const githubBtn = document.getElementById('github-login-btn')
+    const divider = document.getElementById('login-divider')
+
+    if (status.github_enabled) {
+      if (githubBtn) githubBtn.style.display = 'flex'
+      if (divider) divider.style.display = 'flex'
+    }
   }
 }
 

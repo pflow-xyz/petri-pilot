@@ -146,8 +146,23 @@ func RunMultiple(names []string, opts Options) error {
 		port = 8080
 	}
 
+	// Determine base URL for OAuth callbacks
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = fmt.Sprintf("http://localhost:%d", port)
+	}
+
+	// Initialize auth handler
+	authHandler := NewAuthHandler(baseURL)
+	if authHandler.Enabled() {
+		log.Printf("  GitHub OAuth enabled")
+	}
+
 	// Build combined mux
 	mux := http.NewServeMux()
+
+	// Register auth routes
+	authHandler.RegisterRoutes(mux)
 
 	// Shared health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

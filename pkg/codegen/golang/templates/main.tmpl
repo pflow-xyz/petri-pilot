@@ -40,7 +40,7 @@ func main() {
 	{{- if .HasAccessControl}}
 	// Initialize sessions for authentication
 	sessions := NewInMemorySessionStore()
-	
+
 	// Configure access control rules
 	accessRules := []*AccessControl{
 		{{- range .AccessRules}}
@@ -51,7 +51,7 @@ func main() {
 		},
 		{{- end}}
 	}
-	
+
 	// Initialize middleware
 	middleware := NewMiddleware(sessions, accessRules)
 	{{- end}}

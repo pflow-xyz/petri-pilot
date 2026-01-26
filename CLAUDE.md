@@ -403,7 +403,23 @@ export GITHUB_TOKEN=$(gh auth token)
 
 ## Deploying to pflow.dev
 
-The pflow.dev server runs multiple services in tmux. To update a service:
+Use `publish.sh` to deploy changes to production.
+
+```bash
+# Full publish: commit, push, and deploy
+./publish.sh "Add new MCP tool"
+
+# Deploy only (pull latest, rebuild, restart)
+./publish.sh --deploy
+
+# Check service status and logs
+./publish.sh --status
+```
+
+**Production server:**
+- Host: `pflow.dev` (user: `ubuntu`)
+- Service runs on port 8083 in tmux session `servers:0`
+- Command: `./petri-pilot serve -port 8083 tic-tac-toe coffeeshop`
 
 ### Tmux Session Structure
 
@@ -432,6 +448,7 @@ ssh pflow.dev "tmux capture-pane -t servers:3 -p | tail -10"
 
 | Service | Internal Port | Public URL |
 |---------|---------------|------------|
+| pflow-pilot | 8083 | pilot.pflow.xyz |
 | blog-stackdump-com | 8082 | blog.stackdump.com |
 | pflow-xyz | 8081 | pflow.xyz |
 | tens-city | 8080 | stackdump.com |
