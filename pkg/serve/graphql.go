@@ -120,30 +120,38 @@ func (ug *UnifiedGraphQL) extractAndNamespace(serviceName, schema string) (queri
 	prefix := toPascalCase(strings.ReplaceAll(serviceName, "-", ""))
 	lowerPrefix := strings.ToLower(prefix)
 
+	// First pass: collect all type/input names defined in this schema
+	definedTypes := make(map[string]bool)
+	for _, line := range strings.Split(schema, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "type ") && strings.HasSuffix(trimmed, "{") {
+			name := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "type "), "{"))
+			if name != "Query" && name != "Mutation" {
+				definedTypes[name] = true
+			}
+		} else if strings.HasPrefix(trimmed, "input ") && strings.HasSuffix(trimmed, "{") {
+			name := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "input "), "{"))
+			definedTypes[name] = true
+		}
+	}
+
+	// Build rename map: sort by length descending to avoid substring collisions
+	// e.g., "AggregateState" must be replaced before "State"
+	renameMap := make(map[string]string)
+	var sortedNames []string
+	for typeName := range definedTypes {
+		renameMap[typeName] = prefix + typeName
+		sortedNames = append(sortedNames, typeName)
+	}
+	sort.Slice(sortedNames, func(i, j int) bool {
+		return len(sortedNames[i]) > len(sortedNames[j])
+	})
+
 	// Parse the schema into sections
 	lines := strings.Split(schema, "\n")
 	var currentSection string
-	var currentType string
 	var typeBuffer strings.Builder
 	var inType bool
-
-	// Types that should be namespaced
-	typeNames := map[string]bool{
-		"AggregateState":   true,
-		"State":            true,
-		"Places":           true,
-		"TransitionResult": true,
-		"AggregateList":    true,
-		"AdminStats":       true,
-		"PlaceCount":       true,
-		"Event":            true,
-	}
-
-	// Rename map for this service
-	renameMap := make(map[string]string)
-	for typeName := range typeNames {
-		renameMap[typeName] = prefix + typeName
-	}
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -155,10 +163,9 @@ func (ug *UnifiedGraphQL) extractAndNamespace(serviceName, schema string) (queri
 		} else if strings.HasPrefix(trimmed, "type Mutation") {
 			currentSection = "mutation"
 			continue
-		} else if strings.HasPrefix(trimmed, "type ") || strings.HasPrefix(trimmed, "input ") {
+		} else if (strings.HasPrefix(trimmed, "type ") || strings.HasPrefix(trimmed, "input ")) && strings.HasSuffix(trimmed, "{") {
 			// Start of a type definition
 			inType = true
-			currentType = trimmed
 			typeBuffer.Reset()
 			typeBuffer.WriteString(line + "\n")
 			currentSection = "type"
@@ -169,11 +176,10 @@ func (ug *UnifiedGraphQL) extractAndNamespace(serviceName, schema string) (queri
 			typeDef := typeBuffer.String()
 
 			// Namespace the type definition
-			typeDef = namespaceType(typeDef, prefix, renameMap)
+			typeDef = namespaceTypeDef(typeDef, prefix, sortedNames, renameMap)
 			types = append(types, typeDef)
 
 			inType = false
-			currentType = ""
 			typeBuffer.Reset()
 			continue
 		}
@@ -196,14 +202,10 @@ func (ug *UnifiedGraphQL) extractAndNamespace(serviceName, schema string) (queri
 
 		switch currentSection {
 		case "query":
-			// Namespace query fields
-			// e.g., "erc20token(id: ID!): AggregateState" -> "erc20token(id: ID!): Erc20tokenAggregateState"
-			field := namespaceField(trimmed, lowerPrefix, prefix, renameMap)
+			field := namespaceQueryField(trimmed, lowerPrefix, prefix, sortedNames, renameMap)
 			queries = append(queries, field)
 		case "mutation":
-			// Namespace mutation fields
-			// e.g., "createErc20token: AggregateState!" -> "erc20token_create: Erc20tokenAggregateState!"
-			field := namespaceMutation(trimmed, lowerPrefix, prefix, renameMap, currentType)
+			field := namespaceMutationField(trimmed, lowerPrefix, prefix, sortedNames, renameMap)
 			mutations = append(mutations, field)
 		}
 	}
@@ -211,74 +213,66 @@ func (ug *UnifiedGraphQL) extractAndNamespace(serviceName, schema string) (queri
 	return queries, mutations, types
 }
 
-// namespaceField renames types in a query field definition.
-func namespaceField(field, _, prefix string, renameMap map[string]string) string {
-	result := field
-	for oldName, newName := range renameMap {
-		result = strings.ReplaceAll(result, oldName, newName)
+// applyTypeRenames replaces type references using word-boundary regexes,
+// processing longer names first to avoid substring collisions.
+func applyTypeRenames(s, _ string, sortedNames []string, renameMap map[string]string) string {
+	result := s
+	for _, name := range sortedNames {
+		newName := renameMap[name]
+		// Use word boundary to avoid "State" matching inside "AggregateState"
+		re := regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
+		result = re.ReplaceAllString(result, newName)
 	}
-	// Also rename input types
-	inputRe := regexp.MustCompile(`(\w+)Input`)
-	result = inputRe.ReplaceAllString(result, prefix+"${1}Input")
 	return result
 }
 
-// namespaceMutation renames types and transforms mutation names.
-func namespaceMutation(field, _, prefix string, renameMap map[string]string, _ string) string {
-	lowerPrefix := strings.ToLower(prefix)
-	result := field
+// namespaceQueryField renames types in a query field and prefixes un-prefixed field names.
+func namespaceQueryField(field, lowerPrefix, prefix string, sortedNames []string, renameMap map[string]string) string {
+	result := applyTypeRenames(field, prefix, sortedNames, renameMap)
 
-	// Replace types
-	for oldName, newName := range renameMap {
-		result = strings.ReplaceAll(result, oldName, newName)
-	}
-
-	// Transform mutation names: "createFoo" -> "foo_create", "transfer" -> "foo_transfer"
-	if strings.HasPrefix(result, "create") {
-		// "createErc20token: ..." -> "erc20token_create: ..."
-		result = strings.Replace(result, "create", lowerPrefix+"_create", 1)
-		// Remove the model name after create if it exists
-		result = regexp.MustCompile(`_create\w*:`).ReplaceAllString(result, "_create:")
-	} else {
-		// Other transitions: "transfer(input: TransferInput!)" -> "erc20token_transfer(input: ...)"
-		parts := strings.SplitN(result, "(", 2)
-		if len(parts) == 2 {
-			transitionName := strings.TrimSpace(parts[0])
-			rest := parts[1]
-			result = lowerPrefix + "_" + transitionName + "(" + rest
-		} else if strings.Contains(result, ":") {
-			parts = strings.SplitN(result, ":", 2)
-			transitionName := strings.TrimSpace(parts[0])
-			rest := parts[1]
-			result = lowerPrefix + "_" + transitionName + ":" + rest
+	// Prefix field names that don't already start with the service prefix
+	// e.g., "adminStats:" -> "blogpostAdminStats:", but "blogpostList" stays as-is
+	fieldName := strings.TrimSpace(field)
+	nameEnd := strings.IndexAny(fieldName, "(:")
+	if nameEnd > 0 {
+		name := strings.TrimSpace(fieldName[:nameEnd])
+		if !strings.HasPrefix(name, lowerPrefix) {
+			// Prefix it
+			result = lowerPrefix + strings.ToUpper(name[:1]) + name[1:] + result[nameEnd:]
 		}
 	}
 
-	// Rename input types
-	inputRe := regexp.MustCompile(`(\w+)Input`)
-	result = inputRe.ReplaceAllString(result, prefix+"${1}Input")
+	return result
+}
+
+// namespaceMutationField renames types and transforms mutation names.
+func namespaceMutationField(field, lowerPrefix, prefix string, sortedNames []string, renameMap map[string]string) string {
+	// Apply type renames
+	result := applyTypeRenames(field, prefix, sortedNames, renameMap)
+
+	// Transform mutation names: "createFoo:" -> "prefix_create:", "transfer(" -> "prefix_transfer("
+	trimmed := strings.TrimSpace(result)
+	nameEnd := strings.IndexAny(trimmed, "(:")
+	if nameEnd > 0 {
+		name := strings.TrimSpace(trimmed[:nameEnd])
+		sep := trimmed[nameEnd]
+		rest := trimmed[nameEnd:]
+
+		if strings.HasPrefix(name, "create") && sep == ':' {
+			// Instance creation (no args): "createBlogPost: ..." -> "blogpost_create: ..."
+			result = lowerPrefix + "_create" + rest
+		} else {
+			// Transition with args or non-create: "transfer(input: ...)" -> "prefix_transfer(input: ...)"
+			result = lowerPrefix + "_" + name + rest
+		}
+	}
 
 	return result
 }
 
-// namespaceType renames a type definition and its field types.
-func namespaceType(typeDef, prefix string, renameMap map[string]string) string {
-	result := typeDef
-
-	// Rename the type itself
-	for oldName, newName := range renameMap {
-		// Match "type OldName" or "input OldName"
-		result = regexp.MustCompile(`(type|input)\s+`+oldName+`\b`).ReplaceAllString(result, "${1} "+newName)
-		// Also rename references to the type
-		result = regexp.MustCompile(`:\s*`+oldName+`\b`).ReplaceAllString(result, ": "+newName)
-		result = regexp.MustCompile(`\[`+oldName+`\b`).ReplaceAllString(result, "["+newName)
-	}
-
-	// Rename input types
-	result = regexp.MustCompile(`(type|input)\s+(\w+)Input\b`).ReplaceAllString(result, "${1} "+prefix+"${2}Input")
-	result = regexp.MustCompile(`:\s*(\w+)Input\b`).ReplaceAllString(result, ": "+prefix+"${1}Input")
-
-	return result
+// namespaceTypeDef renames a type definition and its field type references.
+func namespaceTypeDef(typeDef, prefix string, sortedNames []string, renameMap map[string]string) string {
+	return applyTypeRenames(typeDef, prefix, sortedNames, renameMap)
 }
 
 // toPascalCase converts a string to PascalCase.
@@ -572,8 +566,8 @@ func parseSchemaField(line string) map[string]any {
 	}
 	field["name"] = strings.TrimSpace(line[:nameEnd])
 
-	// Extract args if present
-	var args []map[string]any
+	// Extract args if present (must be non-nil empty slice for introspection compliance)
+	args := make([]map[string]any, 0)
 	if line[nameEnd] == '(' {
 		argsEnd := strings.Index(line, ")")
 		if argsEnd > nameEnd {
