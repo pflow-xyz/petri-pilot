@@ -195,7 +195,8 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
       color: #fff;
     }
     #models-panel .mp-pflow-btn svg {
-      height: 14px; width: auto; fill: currentColor;
+      height: 16px; width: auto; fill: currentColor;
+      vertical-align: -2px;
     }
   </style>
 </head>
@@ -663,7 +664,7 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
 
       // Open in pflow button
       html += '<a class="mp-pflow-btn" href="/pflow?model=' + encodeURIComponent(name) + '" target="_blank">' +
-        'Open in <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448.6 135.28"><g transform="translate(5,5)"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21zm89.89-28.02h-11.21v11.21h11.21zm33.63 11.21h11.21V28.02h-33.63v11.21z"/><path d="M179.56 72.86h-11.21V39.23h-11.21v56.05h-11.21v11.21h33.63V95.28h-11.21V84.07h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm33.63-22.42H224.4v11.21h11.21v33.63H224.4v11.21h33.63V72.86h-11.21V39.23h11.21V28.02h-11.21V16.81h-11.21z"/><path d="M246.82 5.6v11.21h22.42V5.6zm56.05 56.05V5.6h-22.42v11.21h11.21v56.05h-11.21v11.21h33.63V72.86h-11.21zm33.63-11.21V39.23h-11.21v33.63h11.21zm22.42 0h-11.21v11.21h11.21zm0-11.21h11.21V28.02H336.5v11.21zm-11.21 33.63H336.5v11.21h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm44.84-11.21V28.02h-22.42v11.21h11.21v22.42h11.21zm11.21 22.42h-11.21v11.21h11.21zm11.21 11.21h-11.21v11.21h11.21zm11.21-22.42V28.02h-11.21v44.84h11.21zm11.21 22.42H448.6v11.21h11.21zm11.21-11.21h-11.21v11.21h11.21zm11.21-33.63h-11.21v33.63h11.21V39.23h11.21V28.02z"/></g></svg></a>';
+        'Open in <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 115"><g transform="translate(5,5)"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21zm89.89-28.02h-11.21v11.21h11.21zm33.63 11.21h11.21V28.02h-33.63v11.21z"/><path d="M179.56 72.86h-11.21V39.23h-11.21v56.05h-11.21v11.21h33.63V95.28h-11.21V84.07h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm33.63-22.42H224.4v11.21h11.21v33.63H224.4v11.21h33.63V72.86h-11.21V39.23h11.21V28.02h-11.21V16.81h-11.21z"/><path d="M246.82 5.6v11.21h22.42V5.6zm56.05 56.05V5.6h-22.42v11.21h11.21v56.05h-11.21v11.21h33.63V72.86h-11.21zm33.63-11.21V39.23h-11.21v33.63h11.21zm22.42 0h-11.21v11.21h11.21zm0-11.21h11.21V28.02H336.5v11.21zm-11.21 33.63H336.5v11.21h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm44.84-11.21V28.02h-22.42v11.21h11.21v22.42h11.21zm11.21 22.42h-11.21v11.21h11.21zm11.21 11.21h-11.21v11.21h11.21zm11.21-22.42V28.02h-11.21v44.84h11.21zm11.21 22.42H448.6v11.21h11.21zm11.21-11.21h-11.21v11.21h11.21zm11.21-33.63h-11.21v33.63h11.21V39.23h11.21V28.02z"/></g></svg></a>';
 
       // SVG
       html += '<div class="mp-svg-wrap" id="mp-svg-container"></div>';
@@ -871,8 +872,8 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 1) continue;
         var ux = dx / dist, uy = dy / dist;
-        var r1 = nodeType[arc.from] === 'place' ? 22 : 8;
-        var r2 = nodeType[arc.to] === 'place' ? 27 : 12;
+        var r1 = nodeType[arc.from] === 'place' ? 22 : 18;
+        var r2 = nodeType[arc.to] === 'place' ? 27 : 20;
         var x1 = from[0] + ux * r1, y1 = from[1] + uy * r1;
         var x2 = to[0] - ux * r2, y2 = to[1] - uy * r2;
         svg += '<path d="M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + '" class="mp-arc"/>';
@@ -891,13 +892,13 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
         }
       }
 
-      // Transitions
+      // Transitions (rounded square, pflow style)
       for (var i = 0; i < transitions.length; i++) {
         var t = transitions[i];
         var pos = nodePos[t.id];
         if (!pos) continue;
         var x = pos[0], y = pos[1];
-        svg += '<rect x="' + (x - 4) + '" y="' + (y - 16) + '" width="8" height="32" class="mp-trans"/>';
+        svg += '<rect x="' + (x - 12) + '" y="' + (y - 12) + '" width="24" height="24" rx="4" class="mp-trans"/>';
         svg += '<text x="' + x + '" y="' + (y + 30) + '" class="mp-label">' + escHtml(t.id) + '</text>';
       }
 
@@ -934,12 +935,14 @@ func PflowHandler() http.HandlerFunc {
   <style>
     /* Hide login/share UI — keep all other controls */
     .pv-top-right-btn { display: none !important; }
+    .pv-scale-meter, .pv-scale-label, .pv-scale-legend, .pv-scale-reset { z-index: 1; }
+    .pv-mode-menu { z-index: 1; }
     .pv-label { color: #222; }
     #pflow-loading {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       display: flex; align-items: center; justify-content: center;
-      font-family: system-ui, sans-serif; font-size: 16px; color: #666;
-      background: #fafafa;
+      font-family: system-ui, sans-serif; font-size: 16px; color: #999;
+      background: #fafafa; z-index: 950;
     }
     #pflow-error {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -950,9 +953,19 @@ func PflowHandler() http.HandlerFunc {
     #pflow-error h2 { margin: 0; font-size: 20px; }
     #pflow-error p { margin: 0; font-size: 14px; color: #666; }
     #pflow-error a { color: #2a6fb8; }
+    .pflow-title {
+      position: fixed; top: 16px; left: 60px; z-index: 1000;
+      pointer-events: auto; text-decoration: none;
+    }
+    .pflow-title svg {
+      width: 120px; height: auto; display: block; fill: #ccc;
+    }
   </style>
 </head>
 <body>
+  <a class="pflow-title" href="/pflow">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 115"><g transform="translate(5,5)"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21zm89.89-28.02h-11.21v11.21h11.21zm33.63 11.21h11.21V28.02h-33.63v11.21z"/><path d="M179.56 72.86h-11.21V39.23h-11.21v56.05h-11.21v11.21h33.63V95.28h-11.21V84.07h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm33.63-22.42H224.4v11.21h11.21v33.63H224.4v11.21h33.63V72.86h-11.21V39.23h11.21V28.02h-11.21V16.81h-11.21z"/><path d="M246.82 5.6v11.21h22.42V5.6zm56.05 56.05V5.6h-22.42v11.21h11.21v56.05h-11.21v11.21h33.63V72.86h-11.21zm33.63-11.21V39.23h-11.21v33.63h11.21zm22.42 0h-11.21v11.21h11.21zm0-11.21h11.21V28.02H336.5v11.21zm-11.21 33.63H336.5v11.21h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm44.84-11.21V28.02h-22.42v11.21h11.21v22.42h11.21zm11.21 22.42h-11.21v11.21h11.21zm11.21 11.21h-11.21v11.21h11.21zm11.21-22.42V28.02h-11.21v44.84h11.21zm11.21 22.42H448.6v11.21h11.21zm11.21-11.21h-11.21v11.21h11.21zm11.21-33.63h-11.21v33.63h11.21V39.23h11.21V28.02z"/></g></svg>
+  </a>
   <div id="pflow-loading">Loading model...</div>
   <div id="pflow-error">
     <h2>Model not found</h2>
@@ -988,27 +1001,208 @@ func PflowHandler() http.HandlerFunc {
     var params = new URLSearchParams(window.location.search);
     var modelName = params.get('model');
 
+    function escHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function generateThumbSVG(model) {
+      var places = model.places || [];
+      var transitions = model.transitions || [];
+      var arcs = model.arcs || [];
+
+      var nodePos = {};
+      var nodeType = {};
+      for (var i = 0; i < places.length; i++) nodeType[places[i].id] = 'place';
+      for (var i = 0; i < transitions.length; i++) nodeType[transitions[i].id] = 'transition';
+
+      // Check for explicit positions
+      var hasPositions = false;
+      for (var i = 0; i < places.length; i++) {
+        if (places[i].x !== undefined || places[i].y !== undefined) { hasPositions = true; break; }
+      }
+      if (!hasPositions) {
+        for (var i = 0; i < transitions.length; i++) {
+          if (transitions[i].x !== undefined || transitions[i].y !== undefined) { hasPositions = true; break; }
+        }
+      }
+
+      if (hasPositions) {
+        for (var i = 0; i < places.length; i++) {
+          var p = places[i];
+          nodePos[p.id] = [p.x !== undefined ? p.x : 50 + i * 120, p.y !== undefined ? p.y : 50];
+        }
+        for (var i = 0; i < transitions.length; i++) {
+          var t = transitions[i];
+          nodePos[t.id] = [t.x !== undefined ? t.x : 50 + i * 120, t.y !== undefined ? t.y : 150];
+        }
+      } else {
+        // Layered layout
+        var outEdges = {}, inEdges = {}, allIds = [];
+        for (var i = 0; i < places.length; i++) { allIds.push(places[i].id); outEdges[places[i].id] = []; inEdges[places[i].id] = []; }
+        for (var i = 0; i < transitions.length; i++) { allIds.push(transitions[i].id); outEdges[transitions[i].id] = []; inEdges[transitions[i].id] = []; }
+        for (var i = 0; i < arcs.length; i++) {
+          if (outEdges[arcs[i].from]) outEdges[arcs[i].from].push(arcs[i].to);
+          if (inEdges[arcs[i].to]) inEdges[arcs[i].to].push(arcs[i].from);
+        }
+        var layer = {}, visited = {};
+        function assignLayer(id) {
+          if (visited[id]) return layer[id] || 0;
+          visited[id] = true;
+          var maxPrev = -1;
+          var ins = inEdges[id] || [];
+          for (var j = 0; j < ins.length; j++) {
+            var pl = assignLayer(ins[j]);
+            if (pl > maxPrev) maxPrev = pl;
+          }
+          layer[id] = maxPrev + 1;
+          return layer[id];
+        }
+        for (var i = 0; i < allIds.length; i++) assignLayer(allIds[i]);
+        var layers = {}, maxLayer = 0;
+        for (var i = 0; i < allIds.length; i++) {
+          var l = layer[allIds[i]] || 0;
+          if (!layers[l]) layers[l] = [];
+          layers[l].push(allIds[i]);
+          if (l > maxLayer) maxLayer = l;
+        }
+        var colSpacing = 120, rowSpacing = 80, padX = 60, padY = 50;
+        for (var l = 0; l <= maxLayer; l++) {
+          var nodes = layers[l] || [];
+          for (var n = 0; n < nodes.length; n++) {
+            nodePos[nodes[n]] = [padX + l * colSpacing, padY + n * rowSpacing];
+          }
+        }
+      }
+
+      // Compute bounds
+      var maxX = 0, maxY = 0;
+      for (var id in nodePos) {
+        if (nodePos[id][0] > maxX) maxX = nodePos[id][0];
+        if (nodePos[id][1] > maxY) maxY = nodePos[id][1];
+      }
+      var width = maxX + 100;
+      var height = maxY + 80;
+
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;height:100%;">';
+      svg += '<defs><marker id="th-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">';
+      svg += '<polygon points="0 0, 10 3.5, 0 7" fill="#8bb4d6"/></marker></defs>';
+      svg += '<style>.th-place{fill:rgba(30,80,120,0.5);stroke:#4a9eda;stroke-width:2}.th-trans{fill:#c0c0c0;stroke:#c0c0c0}.th-label{font-family:system-ui,sans-serif;font-size:10px;text-anchor:middle;fill:#ccc}.th-arc{stroke:#8bb4d6;stroke-width:1.5;fill:none;marker-end:url(#th-arrow)}</style>';
+
+      // Arcs
+      for (var i = 0; i < arcs.length; i++) {
+        var arc = arcs[i];
+        var from = nodePos[arc.from];
+        var to = nodePos[arc.to];
+        if (!from || !to) continue;
+        var dx = to[0] - from[0], dy = to[1] - from[1];
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1) continue;
+        var ux = dx / dist, uy = dy / dist;
+        var r1 = nodeType[arc.from] === 'place' ? 22 : 18;
+        var r2 = nodeType[arc.to] === 'place' ? 27 : 20;
+        var x1 = from[0] + ux * r1, y1 = from[1] + uy * r1;
+        var x2 = to[0] - ux * r2, y2 = to[1] - uy * r2;
+        svg += '<path d="M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + '" class="th-arc"/>';
+      }
+
+      // Places
+      for (var i = 0; i < places.length; i++) {
+        var p = places[i];
+        var pos = nodePos[p.id];
+        if (!pos) continue;
+        svg += '<circle cx="' + pos[0] + '" cy="' + pos[1] + '" r="20" class="th-place"/>';
+        svg += '<text x="' + pos[0] + '" y="' + (pos[1] + 35) + '" class="th-label">' + escHtml(p.id) + '</text>';
+        if (p.initial > 0) {
+          svg += '<text x="' + pos[0] + '" y="' + (pos[1] + 4) + '" class="th-label" style="font-weight:bold;fill:#fff">' + p.initial + '</text>';
+        }
+      }
+
+      // Transitions (rounded square, pflow style)
+      for (var i = 0; i < transitions.length; i++) {
+        var t = transitions[i];
+        var pos = nodePos[t.id];
+        if (!pos) continue;
+        svg += '<rect x="' + (pos[0] - 12) + '" y="' + (pos[1] - 12) + '" width="24" height="24" rx="4" class="th-trans"/>';
+        svg += '<text x="' + pos[0] + '" y="' + (pos[1] + 30) + '" class="th-label">' + escHtml(t.id) + '</text>';
+      }
+
+      svg += '</svg>';
+      return svg;
+    }
+
     if (!modelName) {
-      // Show model picker
+      // Show model picker with SVG thumbnails
       document.getElementById('pflow-loading').textContent = 'Loading models...';
+
+      // Create empty petri-view so the full pflow UI renders behind
+      var pv = document.createElement('petri-view');
+      var pvScript = document.createElement('script');
+      pvScript.type = 'application/ld+json';
+      pvScript.textContent = JSON.stringify({
+        '@context': 'https://pflow.xyz/schema',
+        '@type': 'PetriNet',
+        places: {}, transitions: {}, arcs: []
+      });
+      pv.appendChild(pvScript);
+      document.body.appendChild(pv);
+
       fetch('/models')
         .then(function(r) { return r.json(); })
         .then(function(names) {
           document.getElementById('pflow-loading').style.display = 'none';
+          // Modal overlay
+          var overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:900;background:rgba(0,0,0,0.65);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:60px 20px 20px;';
+          document.body.appendChild(overlay);
           var container = document.createElement('div');
-          container.style.cssText = 'max-width:600px;margin:60px auto;padding:20px;font-family:system-ui,sans-serif;';
+          container.style.cssText = 'max-width:900px;width:100%;padding:32px;font-family:system-ui,sans-serif;color:#e0e4e8;background:#1a2535;border-radius:16px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+          overlay.appendChild(container);
           container.innerHTML = '<h1 style="font-size:24px;margin:0 0 8px;">Petri Net Viewer</h1>' +
-            '<p style="color:#666;margin:0 0 24px;">Select a model to view:</p>';
+            '<p style="color:#8899aa;margin:0 0 24px;">Select a model to view:</p>' +
+            '<div id="pflow-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;"></div>';
+          var grid = document.getElementById('pflow-grid');
           for (var i = 0; i < names.length; i++) {
-            var a = document.createElement('a');
-            a.href = '/pflow?model=' + encodeURIComponent(names[i]);
-            a.textContent = names[i];
-            a.style.cssText = 'display:block;padding:14px 18px;margin-bottom:8px;border:1px solid #e1e4e8;border-radius:8px;text-decoration:none;color:#333;font-size:16px;transition:background 0.15s;';
-            a.addEventListener('mouseenter', function() { this.style.background = '#f5f5f5'; });
-            a.addEventListener('mouseleave', function() { this.style.background = ''; });
-            container.appendChild(a);
+            (function(name) {
+              var card = document.createElement('a');
+              card.href = '/pflow?model=' + encodeURIComponent(name);
+              card.style.cssText = 'display:block;border:1px solid rgba(255,255,255,0.1);border-radius:10px;text-decoration:none;color:#e0e4e8;overflow:hidden;transition:box-shadow 0.2s,transform 0.2s;background:#1e2a3a;';
+              card.addEventListener('mouseenter', function() { this.style.boxShadow = '0 4px 20px rgba(0,0,0,0.4)'; this.style.transform = 'translateY(-2px)'; this.style.borderColor = 'rgba(255,255,255,0.2)'; });
+              card.addEventListener('mouseleave', function() { this.style.boxShadow = ''; this.style.transform = ''; this.style.borderColor = 'rgba(255,255,255,0.1)'; });
+              var thumb = document.createElement('div');
+              thumb.style.cssText = 'height:160px;background:#253545;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid rgba(255,255,255,0.08);';
+              thumb.innerHTML = '<div style="color:#aaa;font-size:13px;">Loading...</div>';
+              card.appendChild(thumb);
+              var info = document.createElement('div');
+              info.style.cssText = 'padding:12px 14px;';
+              info.innerHTML = '<div style="font-size:15px;font-weight:600;">' + escHtml(name) + '</div>';
+              card.appendChild(info);
+              grid.appendChild(card);
+              // Fetch model and render thumbnail SVG
+              fetch('/' + encodeURIComponent(name) + '/api/schema')
+                .then(function(r) { return r.json(); })
+                .then(function(model) {
+                  thumb.innerHTML = generateThumbSVG(model);
+                  // Add description if available
+                  if (model.description) {
+                    var desc = document.createElement('div');
+                    desc.style.cssText = 'font-size:12px;color:#8899aa;margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
+                    desc.textContent = model.description;
+                    info.appendChild(desc);
+                  }
+                  // Add stats
+                  var places = (model.places || []).length;
+                  var transitions = (model.transitions || []).length;
+                  var stats = document.createElement('div');
+                  stats.style.cssText = 'font-size:11px;color:#667788;margin-top:6px;';
+                  stats.textContent = places + ' places \u00b7 ' + transitions + ' transitions';
+                  info.appendChild(stats);
+                })
+                .catch(function() {
+                  thumb.innerHTML = '<div style="color:#ccc;font-size:13px;">Preview unavailable</div>';
+                });
+            })(names[i]);
           }
-          document.body.appendChild(container);
         })
         .catch(function() {
           document.getElementById('pflow-loading').textContent = 'Failed to load models';
