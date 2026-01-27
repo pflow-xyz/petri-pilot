@@ -9,6 +9,10 @@
   "debug": {
     "enabled": true
   },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
   "places": [
     {"id": "coffee_beans", "description": "Coffee beans inventory (grams)", "initial": 1000, "capacity": 2000, "resource": true, "x": 450, "y": 120},
     {"id": "milk", "description": "Milk inventory (ml)", "initial": 500, "capacity": 1000, "resource": true, "x": 600, "y": 120},

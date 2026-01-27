@@ -6,6 +6,10 @@
     "enabled": true,
     "eval": true
   },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
   "places": [
     {"id": "pending", "initial": 1},
     {"id": "in_progress"},

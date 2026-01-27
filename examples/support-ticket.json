@@ -5,6 +5,10 @@
     "enabled": true,
     "eval": true
   },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
   "places": [
     {"id": "new", "description": "Ticket just created, awaiting triage", "initial": 1},
     {"id": "assigned", "description": "Ticket assigned to an agent", "initial": 0},

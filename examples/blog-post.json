@@ -5,6 +5,10 @@
     "enabled": true,
     "eval": true
   },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
   "admin": {
     "enabled": true,
     "path": "/admin",

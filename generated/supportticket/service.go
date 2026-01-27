@@ -112,3 +112,13 @@ func (s *Service) Close() error {
 	return nil
 }
 
+// GraphQLSchema returns the GraphQL schema for this service.
+func (s *Service) GraphQLSchema() string {
+	return GraphQLSchemaString
+}
+
+// GraphQLResolvers returns the GraphQL resolvers for this service.
+func (s *Service) GraphQLResolvers() map[string]serve.GraphQLResolver {
+	return GraphQLResolversMap(s.app)
+}
+
