@@ -4,6 +4,7 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -199,8 +200,15 @@ func RunMultiple(names []string, opts Options) error {
 		mux.Handle("/graphql", unifiedGraphQL.Handler())
 		mux.HandleFunc("/graphql/i", PlaygroundHandler("/graphql"))
 		mux.HandleFunc("/schema", unifiedGraphQL.SchemaHandler())
+		mux.HandleFunc("/models", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			json.NewEncoder(w).Encode(names)
+		})
+		mux.HandleFunc("/pflow", PflowHandler())
 		log.Printf("  Unified GraphQL at /graphql (%d services)", len(graphqlServices))
 		log.Printf("  GraphQL Playground at /graphql/i")
+		log.Printf("  Petri Net Viewer at /pflow")
 	}
 
 	// Mount each service at /{name}/ and /~{name}/
