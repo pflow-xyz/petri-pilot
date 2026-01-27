@@ -165,6 +165,58 @@ classDiagram
 
 
 
+## Access Control
+
+Role-based access control (RBAC) restricts which users can execute transitions.
+
+
+### Roles
+
+| Role | Description | Inherits |
+|------|-------------|----------|
+| `user` | - | - |
+| `reviewer` | - | - |
+| `admin` | - | `user`, `reviewer` |
+
+
+
+### Permissions
+
+| Transition | Required Roles | Guard |
+|------------|----------------|-------|
+| `start` | `user` | - |
+| `submit` | `user` | - |
+| `approve` | `reviewer` | - |
+| `reject` | `reviewer` | - |
+
+
+```mermaid
+graph TD
+    subgraph Roles
+        role_user["user"]
+        role_reviewer["reviewer"]
+        role_admin["admin"]
+    end
+
+    subgraph Transitions
+        t_start["start"]
+        t_submit["submit"]
+        t_approve["approve"]
+        t_reject["reject"]
+    end
+
+
+    role_user -.->|can execute| t_start
+
+    role_user -.->|can execute| t_submit
+
+    role_reviewer -.->|can execute| t_approve
+
+    role_reviewer -.->|can execute| t_reject
+
+```
+
+
 ## API Endpoints
 
 ### Core Endpoints
@@ -175,6 +227,11 @@ classDiagram
 | GET | `/ready` | Readiness check |
 | POST | `/api/task-manager` | Create new instance |
 | GET | `/api/task-manager/{id}` | Get instance state |
+| GET | `/api/navigation` | Get navigation menu |
+| GET | `/admin/stats` | Admin statistics |
+| GET | `/admin/instances` | List all instances |
+| GET | `/admin/instances/{id}` | Get instance detail |
+| GET | `/admin/instances/{id}/events` | Get instance events |
 
 
 ### Transition Endpoints
@@ -219,6 +276,17 @@ curl -X POST http://localhost:8080/api/<transition> \
 ```
 
 
+## Navigation
+
+| Label | Path | Icon | Roles |
+|-------|------|------|-------|
+| Dashboard | `/` | home | * |
+| My Tasks | `/tasks` | list | * |
+| Reviews | `/reviews` | check | `reviewer`, `admin` |
+| Admin | `/admin` | settings | `admin` |
+
+
+
 
 ## Configuration
 
@@ -228,6 +296,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./task-manager.db` | SQLite database path |
+| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -241,6 +310,12 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
+├── auth.go           # Authentication
+├── middleware.go     # HTTP middleware
+├── permissions.go    # Permission checks
+├── navigation.go     # Navigation menu
+├── admin.go          # Admin handlers
+├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/

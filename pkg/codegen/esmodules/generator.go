@@ -102,6 +102,52 @@ func (g *Generator) Generate(model *metamodel.Model) ([]string, error) {
 	return paths, nil
 }
 
+// GenerateFromApp generates frontend code from an ApplicationSpec and writes files to disk.
+// This is like Generate but supports extensions (roles, views, admin, navigation).
+func (g *Generator) GenerateFromApp(app *extensions.ApplicationSpec) ([]string, error) {
+	if g.opts.OutputDir == "" {
+		return nil, fmt.Errorf("output directory is required")
+	}
+
+	// Generate files in memory
+	files, err := g.GenerateFilesFromApp(app)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create output directory
+	if err := os.MkdirAll(g.opts.OutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("creating output directory: %w", err)
+	}
+
+	// Write files to disk
+	var paths []string
+	for _, file := range files {
+		path := filepath.Join(g.opts.OutputDir, file.Name)
+
+		// Create subdirectories if needed
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("creating directory %s: %w", dir, err)
+		}
+
+		// Skip files marked as "generate once" if they already exist
+		if file.SkipIfExists {
+			if _, err := os.Stat(path); err == nil {
+				// File exists, skip it to preserve user customizations
+				continue
+			}
+		}
+
+		if err := os.WriteFile(path, file.Content, 0644); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", file.Name, err)
+		}
+		paths = append(paths, path)
+	}
+
+	return paths, nil
+}
+
 // GenerateFiles generates frontend code files in memory without writing to disk.
 func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, error) {
 	// Validate model for code generation

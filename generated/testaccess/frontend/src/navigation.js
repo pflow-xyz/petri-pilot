@@ -22,6 +22,9 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
+  { id: 'customer', description: "Regular customer who can submit items" },
+  { id: 'reviewer', description: "Can review and approve/reject submissions" },
+  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable

@@ -20,6 +20,9 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
+	sessions   SessionStore
+	middleware *Middleware
+	debugBroker *DebugBroker
 }
 
 // NewService creates a new loan-application service instance.
@@ -31,6 +34,17 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
+	// Initialize sessions for authentication
+	svc.sessions = NewInMemorySessionStore()
+
+	// Configure access control rules
+	accessRules := []*AccessControl{
+	}
+
+	// Initialize middleware
+	svc.middleware = NewMiddleware(svc.sessions, accessRules)
+	// Initialize debug broker
+	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -42,7 +56,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app)
+	return BuildRouter(s.app, s.middleware, s.sessions, s.debugBroker)
 }
 
 // Close cleans up resources used by the service.

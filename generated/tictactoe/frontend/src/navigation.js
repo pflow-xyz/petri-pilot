@@ -33,6 +33,7 @@ function getDefaultNavigation() {
       { label: 'tic-tac-toe', path: `${base}/tic-tac-toe`, icon: '' },
       { label: 'New', path: `${base}/tic-tac-toe/new`, icon: '+' },
       { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
+      { label: 'Admin', path: `${base}/admin`, icon: '' },
     ]
   }
 }

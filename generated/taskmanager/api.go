@@ -3,6 +3,7 @@
 package taskmanager
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io/fs"
@@ -13,11 +14,15 @@ import (
 	"strings"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
+	"github.com/pflow-xyz/go-pflow/eventsource"
 )
 
 // BuildRouter creates an HTTP router for the task-manager workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, navigation *Navigation, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -34,9 +39,19 @@ func BuildRouter(app *Application) http.Handler {
 	r.GET("/api/taskmanager/{id}", "Get task-manager state", HandleGetState(app))
 
 
+	// Navigation endpoint
+	r.GET("/api/navigation", "Get navigation menu", HandleNavigation(navigation))
+
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
 
+
+	// Admin endpoints
+	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
+	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
+	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
+	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
+	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
 
 
 	// Event replay endpoints
@@ -48,6 +63,13 @@ func BuildRouter(app *Application) http.Handler {
 
 
 
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 
 
 
@@ -66,10 +88,10 @@ func BuildRouter(app *Application) http.Handler {
 
 
 	// Transition endpoints
-	r.Transition("start", "/api/start", "Start working on a task", HandleStart(app))
-	r.Transition("submit", "/api/submit", "Submit task for review", HandleSubmit(app))
-	r.Transition("approve", "/api/approve", "Approve completed task", HandleApprove(app))
-	r.Transition("reject", "/api/reject", "Reject task and send back", HandleReject(app))
+	r.Transition("start", "/api/start", "Start working on a task", middleware.RequirePermission("start")(HandleStart(app)))
+	r.Transition("submit", "/api/submit", "Submit task for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
+	r.Transition("approve", "/api/approve", "Approve completed task", middleware.RequirePermission("approve")(HandleApprove(app)))
+	r.Transition("reject", "/api/reject", "Reject task and send back", middleware.RequirePermission("reject")(HandleReject(app)))
 
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())
@@ -357,7 +379,180 @@ func HandleReject(app *Application) http.HandlerFunc {
 
 
 
+// HandleNavigation returns the navigation menu, filtered by user roles.
+func HandleNavigation(nav *Navigation) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userRoles := getNavUserRoles(r)
 
+		items := []NavigationItem{}
+		for _, item := range nav.Items {
+			if len(item.Roles) == 0 {
+				items = append(items, item)
+				continue
+			}
+
+			if navHasAnyRole(userRoles, item.Roles) {
+				items = append(items, item)
+			}
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"brand": nav.Brand,
+			"items": items,
+		})
+	}
+}
+
+// getNavUserRoles extracts user roles from the request context.
+func getNavUserRoles(r *http.Request) []string {
+	user, ok := r.Context().Value("user").(*User)
+	if !ok || user == nil {
+		return nil
+	}
+	return user.Roles
+}
+
+// navHasAnyRole checks if user has at least one of the required roles.
+func navHasAnyRole(userRoles []string, requiredRoles []string) bool {
+	for _, required := range requiredRoles {
+		for _, userRole := range userRoles {
+			if userRole == required {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+
+
+// HandleAdminStats wraps the admin stats handler.
+func HandleAdminStats(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+adminStore, ok := app.store.(interface {
+GetStats(ctx context.Context) (*eventsource.Stats, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+stats, err := adminStore.GetStats(ctx)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, stats)
+}
+}
+
+// HandleAdminListInstances wraps the admin list instances handler.
+func HandleAdminListInstances(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+
+place := r.URL.Query().Get("place")
+from := r.URL.Query().Get("from")
+to := r.URL.Query().Get("to")
+page := getIntQueryParam(r, "page", 1)
+perPage := getIntQueryParam(r, "per_page", 50)
+
+adminStore, ok := app.store.(interface {
+ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
+})
+if !ok {
+api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+return
+}
+
+instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+return
+}
+
+// Load state for each instance by replaying events
+// Note: This loads aggregates individually which may be slow for large lists.
+// The perPage parameter limits the number of instances processed.
+for i := range instances {
+agg, err := app.Load(ctx, instances[i].ID)
+if err != nil {
+// Log error but continue processing other instances
+// The state will remain as initialized by ListInstances
+continue
+}
+// Get the Petri net places (token distribution)
+instances[i].State = agg.Places()
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"instances": instances,
+"total":     total,
+"page":      page,
+"per_page":  perPage,
+})
+}
+}
+
+// HandleAdminGetInstance wraps the admin get instance handler.
+func HandleAdminGetInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+agg, err := app.Load(ctx, id)
+if err != nil {
+api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"id":      agg.ID(),
+"version": agg.Version(),
+"state":   agg.State(),
+})
+}
+}
+
+// HandleAdminGetEvents wraps the admin get events handler.
+func HandleAdminGetEvents(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+from := getIntQueryParam(r, "from", 0)
+
+events, err := app.store.Read(ctx, id, from)
+if err != nil {
+api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"events": events,
+})
+}
+}
+
+// HandleAdminDeleteInstance deletes an instance and all its events.
+func HandleAdminDeleteInstance(app *Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+ctx := r.Context()
+id := r.PathValue("id")
+
+if err := app.store.DeleteStream(ctx, id); err != nil {
+api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+return
+}
+
+api.JSON(w, http.StatusOK, map[string]interface{}{
+"deleted": true,
+"id":      id,
+})
+}
+}
 
 
 
@@ -482,7 +677,7 @@ func getInt(s string, defaultVal int) int {
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
-	schemaBase64 := "ewogICJuYW1lIjogInRhc2stbWFuYWdlciIsCiAgInZlcnNpb24iOiAiMS4wLjAiLAogICJkZXNjcmlwdGlvbiI6ICJUYXNrIG1hbmFnZW1lbnQgd29ya2Zsb3cgd2l0aCBuYXZpZ2F0aW9uIGFuZCBhZG1pbiBkYXNoYm9hcmQiLAogICJwbGFjZXMiOiBbCiAgICB7CiAgICAgICJpZCI6ICJwZW5kaW5nIiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJpbl9wcm9ncmVzcyIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAicmV2aWV3IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJjb21wbGV0ZWQiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfQogIF0sCiAgInRyYW5zaXRpb25zIjogWwogICAgewogICAgICAiaWQiOiAic3RhcnQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiU3RhcnQgd29ya2luZyBvbiBhIHRhc2siLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zdGFydCIsCiAgICAgICJldmVudF90eXBlIjogIlN0YXJ0ZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAic3VibWl0IiwKICAgICAgImRlc2NyaXB0aW9uIjogIlN1Ym1pdCB0YXNrIGZvciByZXZpZXciLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zdWJtaXQiLAogICAgICAiZXZlbnRfdHlwZSI6ICJTdWJtaXRlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJhcHByb3ZlIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkFwcHJvdmUgY29tcGxldGVkIHRhc2siLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9hcHByb3ZlIiwKICAgICAgImV2ZW50X3R5cGUiOiAiQXBwcm92ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInJlamVjdCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJSZWplY3QgdGFzayBhbmQgc2VuZCBiYWNrIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvcmVqZWN0IiwKICAgICAgImV2ZW50X3R5cGUiOiAiUmVqZWN0ZWQiCiAgICB9CiAgXSwKICAiYXJjcyI6IFsKICAgIHsKICAgICAgImZyb20iOiAicGVuZGluZyIsCiAgICAgICJ0byI6ICJzdGFydCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInN0YXJ0IiwKICAgICAgInRvIjogImluX3Byb2dyZXNzIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiaW5fcHJvZ3Jlc3MiLAogICAgICAidG8iOiAic3VibWl0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAic3VibWl0IiwKICAgICAgInRvIjogInJldmlldyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInJldmlldyIsCiAgICAgICJ0byI6ICJhcHByb3ZlIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiYXBwcm92ZSIsCiAgICAgICJ0byI6ICJjb21wbGV0ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJyZXZpZXciLAogICAgICAidG8iOiAicmVqZWN0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVqZWN0IiwKICAgICAgInRvIjogInBlbmRpbmciCiAgICB9CiAgXQp9"
+	schemaBase64 := "ewogICJuYW1lIjogInRhc2stbWFuYWdlciIsCiAgInZlcnNpb24iOiAiMS4wLjAiLAogICJkZXNjcmlwdGlvbiI6ICJUYXNrIG1hbmFnZW1lbnQgd29ya2Zsb3cgd2l0aCBuYXZpZ2F0aW9uIGFuZCBhZG1pbiBkYXNoYm9hcmQiLAogICJwbGFjZXMiOiBbCiAgICB7CiAgICAgICJpZCI6ICJwZW5kaW5nIiwKICAgICAgImluaXRpYWwiOiAxLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJpbl9wcm9ncmVzcyIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAicmV2aWV3IiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJjb21wbGV0ZWQiLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfQogIF0sCiAgInRyYW5zaXRpb25zIjogWwogICAgewogICAgICAiaWQiOiAic3RhcnQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiU3RhcnQgd29ya2luZyBvbiBhIHRhc2siLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zdGFydCIsCiAgICAgICJldmVudF90eXBlIjogIlN0YXJ0ZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAic3VibWl0IiwKICAgICAgImRlc2NyaXB0aW9uIjogIlN1Ym1pdCB0YXNrIGZvciByZXZpZXciLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9zdWJtaXQiLAogICAgICAiZXZlbnRfdHlwZSI6ICJTdWJtaXRlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJhcHByb3ZlIiwKICAgICAgImRlc2NyaXB0aW9uIjogIkFwcHJvdmUgY29tcGxldGVkIHRhc2siLAogICAgICAiaHR0cF9tZXRob2QiOiAiUE9TVCIsCiAgICAgICJodHRwX3BhdGgiOiAiL2FwaS9hcHByb3ZlIiwKICAgICAgImV2ZW50X3R5cGUiOiAiQXBwcm92ZWVkIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInJlamVjdCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJSZWplY3QgdGFzayBhbmQgc2VuZCBiYWNrIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9hcGkvcmVqZWN0IiwKICAgICAgImV2ZW50X3R5cGUiOiAiUmVqZWN0ZWQiCiAgICB9CiAgXSwKICAiYXJjcyI6IFsKICAgIHsKICAgICAgImZyb20iOiAicGVuZGluZyIsCiAgICAgICJ0byI6ICJzdGFydCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInN0YXJ0IiwKICAgICAgInRvIjogImluX3Byb2dyZXNzIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiaW5fcHJvZ3Jlc3MiLAogICAgICAidG8iOiAic3VibWl0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAic3VibWl0IiwKICAgICAgInRvIjogInJldmlldyIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInJldmlldyIsCiAgICAgICJ0byI6ICJhcHByb3ZlIgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAiYXBwcm92ZSIsCiAgICAgICJ0byI6ICJjb21wbGV0ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJyZXZpZXciLAogICAgICAidG8iOiAicmVqZWN0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVqZWN0IiwKICAgICAgInRvIjogInBlbmRpbmciCiAgICB9CiAgXSwKICAiYWNjZXNzIjogWwogICAgewogICAgICAidHJhbnNpdGlvbiI6ICJzdGFydCIsCiAgICAgICJyb2xlcyI6IFsKICAgICAgICAidXNlciIKICAgICAgXQogICAgfSwKICAgIHsKICAgICAgInRyYW5zaXRpb24iOiAic3VibWl0IiwKICAgICAgInJvbGVzIjogWwogICAgICAgICJ1c2VyIgogICAgICBdCiAgICB9LAogICAgewogICAgICAidHJhbnNpdGlvbiI6ICJhcHByb3ZlIiwKICAgICAgInJvbGVzIjogWwogICAgICAgICJyZXZpZXdlciIKICAgICAgXQogICAgfSwKICAgIHsKICAgICAgInRyYW5zaXRpb24iOiAicmVqZWN0IiwKICAgICAgInJvbGVzIjogWwogICAgICAgICJyZXZpZXdlciIKICAgICAgXQogICAgfQogIF0sCiAgImV2ZW50U291cmNpbmciOiB7CiAgICAic25hcHNob3RzIjogewogICAgICAiZW5hYmxlZCI6IHRydWUsCiAgICAgICJmcmVxdWVuY3kiOiAxMAogICAgfSwKICAgICJyZXRlbnRpb24iOiB7CiAgICAgICJldmVudHMiOiAiOTBkIiwKICAgICAgInNuYXBzaG90cyI6ICIxeSIKICAgIH0KICB9LAogICJkZWJ1ZyI6IHsKICAgICJlbmFibGVkIjogdHJ1ZSwKICAgICJldmFsIjogdHJ1ZQogIH0KfQ=="
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		schemaJSON, err := base64.StdEncoding.DecodeString(schemaBase64)

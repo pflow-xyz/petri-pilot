@@ -88,13 +88,14 @@ func generateToken(length int) string {
 
 // AuthHandler handles GitHub OAuth authentication.
 type AuthHandler struct {
-	config   *oauth2.Config
-	sessions SessionStore
-	states   map[string]time.Time // CSRF state tokens
+	config      *oauth2.Config
+	sessions    SessionStore
+	states      map[string]time.Time // CSRF state tokens
+	frontendURL string               // URL to redirect to after OAuth
 }
 
 // NewAuthHandler creates a new auth handler.
-func NewAuthHandler(clientID, clientSecret, callbackURL string, sessions SessionStore) *AuthHandler {
+func NewAuthHandler(clientID, clientSecret, callbackURL, frontendURL string, sessions SessionStore) *AuthHandler {
 	return &AuthHandler{
 		config: &oauth2.Config{
 			ClientID:     clientID,
@@ -103,8 +104,9 @@ func NewAuthHandler(clientID, clientSecret, callbackURL string, sessions Session
 			Endpoint:     github.Endpoint,
 			RedirectURL:  callbackURL,
 		},
-		sessions: sessions,
-		states:   make(map[string]time.Time),
+		sessions:    sessions,
+		states:      make(map[string]time.Time),
+		frontendURL: frontendURL,
 	}
 }
 
@@ -163,13 +165,10 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return session token (frontend will store this)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"token":      session.Token,
-		"expires_at": session.ExpiresAt,
-		"user":       session.User,
-	})
+	// Redirect to frontend with token in URL params
+	// The frontend will extract these and store in localStorage
+	redirectURL := h.frontendURL + "?token=" + session.Token + "&expires_at=" + session.ExpiresAt.Format(time.RFC3339)
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 // HandleLogout invalidates the session.
@@ -254,8 +253,19 @@ func extractToken(r *http.Request) string {
 	return ""
 }
 
+// HandleAuthStatus returns the authentication configuration status.
+// This allows the frontend to know whether GitHub OAuth is available.
+func (h *AuthHandler) HandleAuthStatus(w http.ResponseWriter, r *http.Request) {
+	enabled := h.config.ClientID != ""
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"github_enabled": enabled,
+	})
+}
+
 // RegisterAuthRoutes registers authentication routes.
 func RegisterAuthRoutes(mux *http.ServeMux, auth *AuthHandler) {
+	mux.HandleFunc("GET /auth/status", auth.HandleAuthStatus)
 	mux.HandleFunc("GET /auth/login", auth.HandleLogin)
 	mux.HandleFunc("GET /auth/callback", auth.HandleCallback)
 	mux.HandleFunc("POST /auth/logout", auth.HandleLogout)

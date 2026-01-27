@@ -20,6 +20,7 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
+	debugBroker *DebugBroker
 }
 
 // NewService creates a new coffeeshop service instance.
@@ -31,6 +32,8 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
+	// Initialize debug broker
+	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -42,7 +45,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app)
+	return BuildRouter(s.app, s.debugBroker)
 }
 
 // Close cleans up resources used by the service.

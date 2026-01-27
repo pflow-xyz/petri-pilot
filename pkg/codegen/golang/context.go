@@ -739,6 +739,17 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	// are now stored in extensions. Use NewContextFromApp with an ApplicationSpec
 	// to populate these fields. The Model only contains core Petri net elements.
 
+	// Build debug context if debug is enabled
+	ctx.Debug = buildDebugContext(enriched.Debug)
+
+	// Build access control from model if present
+	if enriched.Roles != nil {
+		ctx.Roles = buildRoleContextsFromModel(enriched.Roles)
+	}
+	if enriched.Access != nil {
+		ctx.AccessRules = buildAccessRuleContextsFromModel(enriched.Access)
+	}
+
 	// Serialize schema JSON for schema viewer (base64 encoded to avoid escaping issues)
 	schemaBytes, err := json.MarshalIndent(enriched, "", "  ")
 	if err != nil {
@@ -931,6 +942,69 @@ func buildAccessRuleContexts(rules []bridge.AccessRuleSpec) []AccessRuleContext 
 			Guard:        r.Guard,
 			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
 			HasGuard:     r.HasGuard,
+		}
+	}
+	return result
+}
+
+// buildRoleContextsFromModel converts metamodel Roles to RoleContexts.
+func buildRoleContextsFromModel(roles []metamodel.Role) []RoleContext {
+	result := make([]RoleContext, len(roles))
+	for i, r := range roles {
+		// Compute all inherited roles
+		allRoles := computeAllRoles(r.ID, roles)
+		result[i] = RoleContext{
+			ID:              r.ID,
+			Name:            r.Name,
+			Description:     r.Description,
+			Inherits:        r.Inherits,
+			ConstName:       ToConstName("Role", r.ID),
+			AllRoles:        allRoles,
+			DynamicGrant:    r.DynamicGrant,
+			HasDynamicGrant: r.DynamicGrant != "",
+		}
+	}
+	return result
+}
+
+// computeAllRoles returns all roles including inherited roles.
+func computeAllRoles(roleID string, allRoleDefs []metamodel.Role) []string {
+	seen := make(map[string]bool)
+	var result []string
+
+	var traverse func(id string)
+	traverse = func(id string) {
+		if seen[id] {
+			return
+		}
+		seen[id] = true
+		result = append(result, id)
+
+		// Find this role's definition to get its inherits
+		for _, r := range allRoleDefs {
+			if r.ID == id {
+				for _, parent := range r.Inherits {
+					traverse(parent)
+				}
+				break
+			}
+		}
+	}
+
+	traverse(roleID)
+	return result
+}
+
+// buildAccessRuleContextsFromModel converts metamodel AccessRules to AccessRuleContexts.
+func buildAccessRuleContextsFromModel(rules []metamodel.AccessRule) []AccessRuleContext {
+	result := make([]AccessRuleContext, len(rules))
+	for i, r := range rules {
+		result[i] = AccessRuleContext{
+			TransitionID: r.Transition,
+			Roles:        r.Roles,
+			Guard:        r.Guard,
+			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
+			HasGuard:     r.Guard != "",
 		}
 	}
 	return result

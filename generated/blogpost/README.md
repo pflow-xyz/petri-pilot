@@ -222,6 +222,70 @@ classDiagram
 
 
 
+## Access Control
+
+Role-based access control (RBAC) restricts which users can execute transitions.
+
+
+### Roles
+
+| Role | Description | Inherits |
+|------|-------------|----------|
+| `author` | Content creator who writes and submits posts | - |
+| `editor` | Reviews and approves/rejects submitted posts | - |
+| `admin` | Full access to all operations | `author`, `editor` |
+
+
+
+### Permissions
+
+| Transition | Required Roles | Guard |
+|------------|----------------|-------|
+| `create_post` | `author` | - |
+| `update` | `author` | - |
+| `submit` | `author` | - |
+| `approve` | `editor` | - |
+| `reject` | `editor` | - |
+| `unpublish` | `editor` | - |
+| `restore` | `admin` | - |
+
+
+```mermaid
+graph TD
+    subgraph Roles
+        role_author["author"]
+        role_editor["editor"]
+        role_admin["admin"]
+    end
+
+    subgraph Transitions
+        t_create_post["create_post"]
+        t_update["update"]
+        t_submit["submit"]
+        t_approve["approve"]
+        t_reject["reject"]
+        t_unpublish["unpublish"]
+        t_restore["restore"]
+    end
+
+
+    role_author -.->|can execute| t_create_post
+
+    role_author -.->|can execute| t_update
+
+    role_author -.->|can execute| t_submit
+
+    role_editor -.->|can execute| t_approve
+
+    role_editor -.->|can execute| t_reject
+
+    role_editor -.->|can execute| t_unpublish
+
+    role_admin -.->|can execute| t_restore
+
+```
+
+
 ## API Endpoints
 
 ### Core Endpoints
@@ -232,6 +296,11 @@ classDiagram
 | GET | `/ready` | Readiness check |
 | POST | `/api/blog-post` | Create new instance |
 | GET | `/api/blog-post/{id}` | Get instance state |
+| GET | `/api/navigation` | Get navigation menu |
+| GET | `/admin/stats` | Admin statistics |
+| GET | `/admin/instances` | List all instances |
+| GET | `/admin/instances/{id}` | Get instance detail |
+| GET | `/admin/instances/{id}/events` | Get instance events |
 
 
 ### Transition Endpoints
@@ -279,6 +348,15 @@ curl -X POST http://localhost:8080/api/<transition> \
 ```
 
 
+## Navigation
+
+| Label | Path | Icon | Roles |
+|-------|------|------|-------|
+| Posts | `/` | 📝 | * |
+| Admin | `/admin` | ⚙️ | `admin`, `editor` |
+
+
+
 
 ## Configuration
 
@@ -288,6 +366,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
 | `DB_PATH` | `./blog-post.db` | SQLite database path |
+| `DEBUG` | `false` | Enable debug endpoints |
 
 
 ## Development
@@ -301,6 +380,12 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
+├── auth.go           # Authentication
+├── middleware.go     # HTTP middleware
+├── permissions.go    # Permission checks
+├── navigation.go     # Navigation menu
+├── admin.go          # Admin handlers
+├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html
 │   └── src/

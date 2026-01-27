@@ -242,6 +242,40 @@ func HandleListSessions(broker *DebugBroker) http.HandlerFunc {
 }
 
 
+// HandleDebugGuestLogin creates a mock guest session (debug mode only, no access control).
+func HandleDebugGuestLogin() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Login string   `json:"login"`
+			Roles []string `json:"roles"`
+		}
+		if err := api.DecodeJSON(r, &req); err != nil {
+			api.Error(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+			return
+		}
+
+		if req.Login == "" {
+			req.Login = "guest"
+		}
+		if len(req.Roles) == 0 {
+			req.Roles = []string{"guest"}
+		}
+
+		// Return a mock auth response - no real session needed without access control
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"token":      "debug-guest-token",
+			"expires_at": time.Now().Add(24 * time.Hour),
+			"user": map[string]interface{}{
+				"id":    12345,
+				"login": req.Login,
+				"name":  "Guest User",
+				"email": req.Login + "@debug.local",
+				"roles": req.Roles,
+			},
+		})
+	}
+}
+
 
 // HandleSessionEval sends code to a browser session for evaluation.
 func HandleSessionEval(broker *DebugBroker) http.HandlerFunc {

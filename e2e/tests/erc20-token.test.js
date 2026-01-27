@@ -72,7 +72,7 @@ describe('erc20-token', () => {
 
       // Verify event was recorded
       const events = await harness.pilot.getEvents();
-      const mintEvent = events.find(e => e.type === 'Minted' || e.type === 'MintEvent');
+      const mintEvent = events.find(e => e.type === 'mint_event' || e.type === 'MintEvent');
       expect(mintEvent).toBeDefined();
     });
 
@@ -86,7 +86,7 @@ describe('erc20-token', () => {
       await harness.pilot.action('mint', { to: 'bob', amount: 300 });
 
       const events = await harness.pilot.getEvents();
-      const mintEvents = events.filter(e => e.type === 'Minted' || e.type === 'MintEvent');
+      const mintEvents = events.filter(e => e.type === 'mint_event' || e.type === 'MintEvent');
       expect(mintEvents.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -112,7 +112,7 @@ describe('erc20-token', () => {
 
       // Verify burn event was recorded
       const events = await harness.pilot.getEvents();
-      const burnEvent = events.find(e => e.type === 'Burned' || e.type === 'BurnEvent');
+      const burnEvent = events.find(e => e.type === 'burn_event' || e.type === 'BurnEvent');
       expect(burnEvent).toBeDefined();
     });
   });
@@ -139,7 +139,7 @@ describe('erc20-token', () => {
 
       // Verify transfer event
       const events = await harness.pilot.getEvents();
-      const transferEvent = events.find(e => e.type === 'Transfered' || e.type === 'TransferEvent');
+      const transferEvent = events.find(e => e.type === 'transfer_event' || e.type === 'TransferEvent');
       expect(transferEvent).toBeDefined();
     });
 
@@ -159,7 +159,7 @@ describe('erc20-token', () => {
       await harness.pilot.action('transfer', { from: 'charlie', to: 'alice', amount: 50 });
 
       const events = await harness.pilot.getEvents();
-      const transferEvents = events.filter(e => e.type === 'Transfered' || e.type === 'TransferEvent');
+      const transferEvents = events.filter(e => e.type === 'transfer_event' || e.type === 'TransferEvent');
       expect(transferEvents.length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -183,7 +183,7 @@ describe('erc20-token', () => {
 
       // Verify approval event
       const events = await harness.pilot.getEvents();
-      const approvalEvent = events.find(e => e.type === 'Approveed' || e.type === 'ApprovalEvent');
+      const approvalEvent = events.find(e => e.type === 'approval_event' || e.type === 'ApprovalEvent');
       expect(approvalEvent).toBeDefined();
     });
 
@@ -197,7 +197,7 @@ describe('erc20-token', () => {
       await harness.pilot.action('approve', { owner: 'alice', spender: 'bob', amount: 200 });
 
       const events = await harness.pilot.getEvents();
-      const approvalEvents = events.filter(e => e.type === 'Approveed' || e.type === 'ApprovalEvent');
+      const approvalEvents = events.filter(e => e.type === 'approval_event' || e.type === 'ApprovalEvent');
       expect(approvalEvents.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -228,7 +228,7 @@ describe('erc20-token', () => {
 
       // Verify transfer_from event
       const events = await harness.pilot.getEvents();
-      const transferFromEvent = events.find(e => e.type === 'TransferFromed' || e.type === 'TransferFromEvent');
+      const transferFromEvent = events.find(e => e.type === 'transfer_from_event' || e.type === 'TransferFromEvent');
       expect(transferFromEvent).toBeDefined();
     });
 
@@ -295,12 +295,12 @@ describe('erc20-token', () => {
       const events = await harness.pilot.getEvents();
       const eventTypes = events.map(e => e.type);
 
-      // Check we have at least one of each event type
-      const hasMint = eventTypes.some(t => t.includes('Mint'));
-      const hasTransfer = eventTypes.some(t => t === 'Transfered' || t === 'TransferEvent');
-      const hasApproval = eventTypes.some(t => t.includes('Approv'));
-      const hasTransferFrom = eventTypes.some(t => t.includes('TransferFrom'));
-      const hasBurn = eventTypes.some(t => t.includes('Burn'));
+      // Check we have at least one of each event type (using lowercase snake_case event IDs)
+      const hasMint = eventTypes.some(t => t.includes('mint'));
+      const hasTransfer = eventTypes.some(t => t === 'transfer_event');
+      const hasApproval = eventTypes.some(t => t.includes('approval'));
+      const hasTransferFrom = eventTypes.some(t => t.includes('transfer_from'));
+      const hasBurn = eventTypes.some(t => t.includes('burn'));
 
       expect(hasMint).toBe(true);
       expect(hasTransfer).toBe(true);

@@ -22,6 +22,10 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
+  { id: 'applicant', description: "Customer applying for a loan" },
+  { id: 'system', description: "Automated credit check and processing system" },
+  { id: 'underwriter', description: "Loan underwriter who reviews applications" },
+  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable

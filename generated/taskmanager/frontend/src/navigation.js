@@ -22,6 +22,9 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
+  { id: 'user', description: "" },
+  { id: 'reviewer', description: "" },
+  { id: 'admin', description: "" },
 ]
 
 // Default navigation when backend is unavailable
@@ -33,6 +36,7 @@ function getDefaultNavigation() {
       { label: 'task-manager', path: `${base}/task-manager`, icon: '' },
       { label: 'New', path: `${base}/task-manager/new`, icon: '+' },
       { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
+      { label: 'Admin', path: `${base}/admin`, icon: '' },
     ]
   }
 }

@@ -22,6 +22,8 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
+  { id: 'admin', description: "Can mint and burn tokens" },
+  { id: 'holder', description: "Can transfer and approve tokens" },
 ]
 
 // Default navigation when backend is unavailable
@@ -33,6 +35,7 @@ function getDefaultNavigation() {
       { label: 'erc20-token', path: `${base}/erc20-token`, icon: '' },
       { label: 'New', path: `${base}/erc20-token/new`, icon: '+' },
       { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
+      { label: 'Admin', path: `${base}/admin`, icon: '' },
     ]
   }
 }

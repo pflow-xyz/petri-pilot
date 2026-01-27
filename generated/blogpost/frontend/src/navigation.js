@@ -22,6 +22,9 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
+  { id: 'author', description: "Content creator who writes and submits posts" },
+  { id: 'editor', description: "Reviews and approves/rejects submitted posts" },
+  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable
@@ -33,6 +36,7 @@ function getDefaultNavigation() {
       { label: 'blog-post', path: `${base}/blog-post`, icon: '' },
       { label: 'New', path: `${base}/blog-post/new`, icon: '+' },
       { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
+      { label: 'Admin', path: `${base}/admin`, icon: '' },
     ]
   }
 }

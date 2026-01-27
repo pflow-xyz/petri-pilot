@@ -16,6 +16,7 @@ import (
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 	"github.com/pflow-xyz/petri-pilot/pkg/feedback"
 	"github.com/pflow-xyz/petri-pilot/pkg/generator"
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
@@ -560,11 +561,13 @@ Examples:
 		os.Exit(1)
 	}
 
-	var model metamodel.Model
-	if err := json.Unmarshal(data, &model); err != nil {
+	// Parse model and extensions (admin, navigation, roles, access, views)
+	model, app, err := parseModelWithExtensions(data)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
 	}
+	hasExtensions := app.HasAdmin() || app.HasNavigation() || app.HasRoles() || app.HasViews()
 
 	// Package name is determined by generator if not specified
 	pkgName := *pkg
@@ -579,7 +582,7 @@ Examples:
 			os.Exit(1)
 		}
 
-		content, err := gen.Preview(&model, golang.TemplateOpenAPI)
+		content, err := gen.Preview(model, golang.TemplateOpenAPI)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating OpenAPI spec: %v\n", err)
 			os.Exit(1)
@@ -613,7 +616,7 @@ Examples:
 		EnableSensitivity: false,
 	})
 
-	result, err := v.Validate(&model)
+	result, err := v.Validate(model)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
 		os.Exit(1)
@@ -666,8 +669,13 @@ Examples:
 		os.Exit(1)
 	}
 
-	// Generate files
-	paths, err := gen.Generate(&model)
+	// Generate files - use GenerateFromApp if we have extensions
+	var paths []string
+	if hasExtensions {
+		paths, err = gen.GenerateFromApp(app)
+	} else {
+		paths, err = gen.Generate(model)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating code: %v\n", err)
 		os.Exit(1)
@@ -692,7 +700,12 @@ Examples:
 			os.Exit(1)
 		}
 
-		frontendPaths, err := frontendGen.Generate(&model)
+		var frontendPaths []string
+		if hasExtensions {
+			frontendPaths, err = frontendGen.GenerateFromApp(app)
+		} else {
+			frontendPaths, err = frontendGen.Generate(model)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
 			os.Exit(1)
@@ -854,4 +867,84 @@ func cmdExamples(args []string) {
 	}
 
 	fmt.Println(string(content))
+}
+
+// modelWithExtensions is a struct for parsing v1 model JSON that includes extension fields
+// like admin, navigation, roles, access, and views at the top level.
+type modelWithExtensions struct {
+	metamodel.Model
+
+	// Extension fields that may appear at the top level of v1 model JSON
+	Admin      *extensions.Admin      `json:"admin,omitempty"`
+	Navigation *extensions.Navigation `json:"navigation,omitempty"`
+	Roles      []extensions.Role      `json:"roles,omitempty"`
+	Access     []accessRule           `json:"access,omitempty"`
+	Views      []extensions.View      `json:"views,omitempty"`
+}
+
+// accessRule is a simplified struct for parsing access rules from v1 model JSON.
+type accessRule struct {
+	Transition string   `json:"transition"`
+	Roles      []string `json:"roles"`
+	Guard      string   `json:"guard,omitempty"`
+}
+
+// parseModelWithExtensions parses a model JSON file and extracts both the core model
+// and any extension fields (admin, navigation, roles, access, views).
+// Returns the core model and an ApplicationSpec with extensions populated.
+func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.ApplicationSpec, error) {
+	// First parse into the extended struct
+	var ext modelWithExtensions
+	if err := json.Unmarshal(data, &ext); err != nil {
+		return nil, nil, err
+	}
+
+	// Create the core model from embedded Model
+	model := &ext.Model
+
+	// Copy access rules from the shadowing field to the model
+	// (the ext.Access field shadows the embedded Model.Access field during JSON unmarshaling)
+	if len(ext.Access) > 0 && len(model.Access) == 0 {
+		model.Access = make([]metamodel.AccessRule, len(ext.Access))
+		for i, rule := range ext.Access {
+			model.Access[i] = metamodel.AccessRule{
+				Transition: rule.Transition,
+				Roles:      rule.Roles,
+				Guard:      rule.Guard,
+			}
+		}
+	}
+
+	// Create ApplicationSpec with extensions
+	app := extensions.NewApplicationSpec(model)
+
+	// Add roles if present
+	if len(ext.Roles) > 0 {
+		rolesExt := extensions.NewRoleExtension()
+		for _, r := range ext.Roles {
+			rolesExt.AddRole(r)
+		}
+		app.WithRoles(rolesExt)
+	}
+
+	// Add views and admin if present
+	if len(ext.Views) > 0 || ext.Admin != nil {
+		viewsExt := extensions.NewViewExtension()
+		for _, v := range ext.Views {
+			viewsExt.AddView(v)
+		}
+		if ext.Admin != nil {
+			viewsExt.SetAdmin(*ext.Admin)
+		}
+		app.WithViews(viewsExt)
+	}
+
+	// Add navigation if present
+	if ext.Navigation != nil {
+		pagesExt := extensions.NewPageExtension()
+		pagesExt.SetNavigation(*ext.Navigation)
+		app.WithPages(pagesExt)
+	}
+
+	return model, app, nil
 }

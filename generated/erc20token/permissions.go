@@ -104,12 +104,6 @@ func HasDynamicRole(user *User, roleID string, state map[string]any) bool {
 
 	// Check dynamic grant expressions for each role
 	switch roleID {
-	case "holder":
-		// Dynamic grant: balances[user.login] > 0
-		granted, err := EvaluateGuard("balances[user.login] > 0", bindings)
-		if err == nil && granted {
-			return true
-		}
 	}
 
 	return false

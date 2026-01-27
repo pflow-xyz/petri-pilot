@@ -20,6 +20,10 @@ func init() {
 type Service struct {
 	store eventsource.Store
 	app   *Application
+	sessions   SessionStore
+	middleware *Middleware
+	navigation *Navigation
+	debugBroker *DebugBroker
 }
 
 // NewService creates a new blog-post service instance.
@@ -31,6 +35,60 @@ func NewService() (serve.Service, error) {
 
 	// Create application
 	svc.app = NewApplication(svc.store)
+	// Initialize sessions for authentication
+	svc.sessions = NewInMemorySessionStore()
+
+	// Configure access control rules
+	accessRules := []*AccessControl{
+		{
+			TransitionID: "create_post",
+			Roles:        []string{"author",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "update",
+			Roles:        []string{"author",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "submit",
+			Roles:        []string{"author",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "approve",
+			Roles:        []string{"editor",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "reject",
+			Roles:        []string{"editor",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "unpublish",
+			Roles:        []string{"editor",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "restore",
+			Roles:        []string{"admin",  },
+			Guard:        "",
+		},
+	}
+
+	// Initialize middleware
+	svc.middleware = NewMiddleware(svc.sessions, accessRules)
+	// Initialize navigation
+	svc.navigation = &Navigation{
+		Brand: "Blog",
+		Items: []NavigationItem{
+			{Label: "Posts", Path: "/", Icon: "📝", Roles: []string{ }},
+			{Label: "Admin", Path: "/admin", Icon: "⚙️", Roles: []string{"admin","editor", }},
+		},
+	}
+	// Initialize debug broker
+	svc.debugBroker = NewDebugBroker()
 
 	return svc, nil
 }
@@ -42,7 +100,7 @@ func (s *Service) Name() string {
 
 // BuildHandler returns the HTTP handler for this service.
 func (s *Service) BuildHandler() http.Handler {
-	return BuildRouter(s.app)
+	return BuildRouter(s.app, s.middleware, s.sessions, s.navigation, s.debugBroker)
 }
 
 // Close cleans up resources used by the service.

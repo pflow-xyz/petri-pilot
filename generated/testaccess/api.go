@@ -16,8 +16,11 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the test-access workflow.
-func BuildRouter(app *Application) http.Handler {
+func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore, debugBroker *DebugBroker) http.Handler {
 	r := api.NewRouter()
+
+	// Apply auth middleware to extract user from token (optional, doesn't require auth)
+	r.Use(OptionalAuthMiddleware(sessions))
 
 	// Health check - always returns ok if server is running
 	r.GET("/health", "Health check", func(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +35,9 @@ func BuildRouter(app *Application) http.Handler {
 
 	// Get aggregate state
 	r.GET("/api/testaccess/{id}", "Get test-access state", HandleGetState(app))
+
+	// View definitions
+	r.GET("/api/views", "Get view definitions", HandleGetViews())
 
 
 	// Schema viewer endpoint
@@ -48,6 +54,13 @@ func BuildRouter(app *Application) http.Handler {
 
 
 
+
+	// Debug WebSocket and eval endpoints
+	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
+	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
+	// Test login endpoint (only available in debug mode)
+	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
 
 
 
@@ -66,9 +79,9 @@ func BuildRouter(app *Application) http.Handler {
 
 
 	// Transition endpoints
-	r.Transition("submit", "/items/{id}/submit", "Submit for review", HandleSubmit(app))
-	r.Transition("approve", "/items/{id}/approve", "Approve the submission", HandleApprove(app))
-	r.Transition("reject", "/items/{id}/reject", "Reject the submission", HandleReject(app))
+	r.Transition("submit", "/items/{id}/submit", "Submit for review", middleware.RequirePermission("submit")(HandleSubmit(app)))
+	r.Transition("approve", "/items/{id}/approve", "Approve the submission", middleware.RequirePermission("approve")(HandleApprove(app)))
+	r.Transition("reject", "/items/{id}/reject", "Reject the submission", middleware.RequirePermission("reject")(HandleReject(app)))
 
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())
@@ -321,6 +334,19 @@ func HandleReject(app *Application) http.HandlerFunc {
 }
 
 
+// HandleGetViews returns the view definitions for the workflow.
+func HandleGetViews() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := ViewsJSON()
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "VIEWS_ERROR", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
 
 
 
@@ -448,7 +474,7 @@ func getInt(s string, defaultVal int) int {
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
-	schemaBase64 := "ewogICJuYW1lIjogInRlc3QtYWNjZXNzIiwKICAidmVyc2lvbiI6ICIxLjAuMCIsCiAgImRlc2NyaXB0aW9uIjogIlRlc3QgbW9kZWwgZm9yIGFjY2VzcyBjb250cm9sIGNvZGUgZ2VuZXJhdGlvbiIsCiAgInBsYWNlcyI6IFsKICAgIHsKICAgICAgImlkIjogImRyYWZ0IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkluaXRpYWwgc3RhdGUiLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInN1Ym1pdHRlZCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdWJtaXR0ZWQgZm9yIHJldmlldyIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAiYXBwcm92ZWQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQXBwcm92ZWQgYnkgYWRtaW4iLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInJlamVjdGVkIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlJlamVjdGVkIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0KICBdLAogICJ0cmFuc2l0aW9ucyI6IFsKICAgIHsKICAgICAgImlkIjogInN1Ym1pdCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdWJtaXQgZm9yIHJldmlldyIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvaXRlbXMve2lkfS9zdWJtaXQiLAogICAgICAiZXZlbnRfdHlwZSI6ICJTdWJtaXR0ZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAiYXBwcm92ZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJBcHByb3ZlIHRoZSBzdWJtaXNzaW9uIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9pdGVtcy97aWR9L2FwcHJvdmUiLAogICAgICAiZXZlbnRfdHlwZSI6ICJBcHByb3ZlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJyZWplY3QiLAogICAgICAiZGVzY3JpcHRpb24iOiAiUmVqZWN0IHRoZSBzdWJtaXNzaW9uIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9pdGVtcy97aWR9L3JlamVjdCIsCiAgICAgICJldmVudF90eXBlIjogIlJlamVjdGVkIgogICAgfQogIF0sCiAgImFyY3MiOiBbCiAgICB7CiAgICAgICJmcm9tIjogImRyYWZ0IiwKICAgICAgInRvIjogInN1Ym1pdCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInN1Ym1pdCIsCiAgICAgICJ0byI6ICJzdWJtaXR0ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzdWJtaXR0ZWQiLAogICAgICAidG8iOiAiYXBwcm92ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImFwcHJvdmUiLAogICAgICAidG8iOiAiYXBwcm92ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzdWJtaXR0ZWQiLAogICAgICAidG8iOiAicmVqZWN0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVqZWN0IiwKICAgICAgInRvIjogInJlamVjdGVkIgogICAgfQogIF0KfQ=="
+	schemaBase64 := "ewogICJuYW1lIjogInRlc3QtYWNjZXNzIiwKICAidmVyc2lvbiI6ICIxLjAuMCIsCiAgImRlc2NyaXB0aW9uIjogIlRlc3QgbW9kZWwgZm9yIGFjY2VzcyBjb250cm9sIGNvZGUgZ2VuZXJhdGlvbiIsCiAgInBsYWNlcyI6IFsKICAgIHsKICAgICAgImlkIjogImRyYWZ0IiwKICAgICAgImRlc2NyaXB0aW9uIjogIkluaXRpYWwgc3RhdGUiLAogICAgICAiaW5pdGlhbCI6IDEsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInN1Ym1pdHRlZCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdWJtaXR0ZWQgZm9yIHJldmlldyIsCiAgICAgICJpbml0aWFsIjogMCwKICAgICAgImtpbmQiOiAidG9rZW4iCiAgICB9LAogICAgewogICAgICAiaWQiOiAiYXBwcm92ZWQiLAogICAgICAiZGVzY3JpcHRpb24iOiAiQXBwcm92ZWQgYnkgYWRtaW4iLAogICAgICAiaW5pdGlhbCI6IDAsCiAgICAgICJraW5kIjogInRva2VuIgogICAgfSwKICAgIHsKICAgICAgImlkIjogInJlamVjdGVkIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlJlamVjdGVkIiwKICAgICAgImluaXRpYWwiOiAwLAogICAgICAia2luZCI6ICJ0b2tlbiIKICAgIH0KICBdLAogICJ0cmFuc2l0aW9ucyI6IFsKICAgIHsKICAgICAgImlkIjogInN1Ym1pdCIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdWJtaXQgZm9yIHJldmlldyIsCiAgICAgICJodHRwX21ldGhvZCI6ICJQT1NUIiwKICAgICAgImh0dHBfcGF0aCI6ICIvaXRlbXMve2lkfS9zdWJtaXQiLAogICAgICAiZXZlbnRfdHlwZSI6ICJTdWJtaXR0ZWQiCiAgICB9LAogICAgewogICAgICAiaWQiOiAiYXBwcm92ZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJBcHByb3ZlIHRoZSBzdWJtaXNzaW9uIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9pdGVtcy97aWR9L2FwcHJvdmUiLAogICAgICAiZXZlbnRfdHlwZSI6ICJBcHByb3ZlZCIKICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJyZWplY3QiLAogICAgICAiZGVzY3JpcHRpb24iOiAiUmVqZWN0IHRoZSBzdWJtaXNzaW9uIiwKICAgICAgImh0dHBfbWV0aG9kIjogIlBPU1QiLAogICAgICAiaHR0cF9wYXRoIjogIi9pdGVtcy97aWR9L3JlamVjdCIsCiAgICAgICJldmVudF90eXBlIjogIlJlamVjdGVkIgogICAgfQogIF0sCiAgImFyY3MiOiBbCiAgICB7CiAgICAgICJmcm9tIjogImRyYWZ0IiwKICAgICAgInRvIjogInN1Ym1pdCIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogInN1Ym1pdCIsCiAgICAgICJ0byI6ICJzdWJtaXR0ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzdWJtaXR0ZWQiLAogICAgICAidG8iOiAiYXBwcm92ZSIKICAgIH0sCiAgICB7CiAgICAgICJmcm9tIjogImFwcHJvdmUiLAogICAgICAidG8iOiAiYXBwcm92ZWQiCiAgICB9LAogICAgewogICAgICAiZnJvbSI6ICJzdWJtaXR0ZWQiLAogICAgICAidG8iOiAicmVqZWN0IgogICAgfSwKICAgIHsKICAgICAgImZyb20iOiAicmVqZWN0IiwKICAgICAgInRvIjogInJlamVjdGVkIgogICAgfQogIF0sCiAgImFjY2VzcyI6IFsKICAgIHsKICAgICAgInRyYW5zaXRpb24iOiAic3VibWl0IiwKICAgICAgInJvbGVzIjogWwogICAgICAgICJjdXN0b21lciIKICAgICAgXQogICAgfSwKICAgIHsKICAgICAgInRyYW5zaXRpb24iOiAiYXBwcm92ZSIsCiAgICAgICJyb2xlcyI6IFsKICAgICAgICAicmV2aWV3ZXIiCiAgICAgIF0KICAgIH0sCiAgICB7CiAgICAgICJ0cmFuc2l0aW9uIjogInJlamVjdCIsCiAgICAgICJyb2xlcyI6IFsKICAgICAgICAicmV2aWV3ZXIiCiAgICAgIF0KICAgIH0KICBdLAogICJkZWJ1ZyI6IHsKICAgICJlbmFibGVkIjogdHJ1ZSwKICAgICJldmFsIjogdHJ1ZQogIH0KfQ=="
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		schemaJSON, err := base64.StdEncoding.DecodeString(schemaBase64)
