@@ -1,370 +1,126 @@
 # Petri Pilot
 
-**The model is the application.**
+An SDK for building applications from Petri net models.
 
-Describe your system in plain language. An LLM designs a formal Petri net model. Validation catches deadlocks and structural errors. Deterministic codegen produces a complete application.
+Define a model. Generate an app. The model is the source of truth.
 
-The model contains everything: state machine, access control, UI structure, admin dashboard. Code is a projection. Change the model, regenerate, deploy.
+## How It Works
 
-No LLM-generated code. The LLM designs models. Codegen produces apps.
+```
+JSON Model ──> Deterministic Codegen ──> Running Application
+                                              │
+                                    ┌─────────┼─────────┐
+                                    │         │         │
+                                 Go API   Frontend   GraphQL
+```
 
-## Quick Start
+A Petri net model is a JSON file with **places** (states), **transitions** (actions), and **arcs** (connections). From that single file, codegen produces:
+
+- **Go backend** -- event-sourced aggregate, REST API, SQLite storage, auth, permissions
+- **ES modules frontend** -- admin dashboard, schema viewer, simulation, event history
+- **GraphQL API** -- unified query layer across all models with built-in playground
+- **pflow viewer** -- interactive Petri net visualization via [pflow.xyz](https://pflow.xyz)
+
+No LLM-generated code. The LLM designs models. Templates produce apps.
+
+## MCP-Native
+
+Petri Pilot runs as an MCP server. An LLM can design, validate, simulate, generate, and iterate without leaving the conversation.
 
 ```bash
-# Run as MCP server (for Claude Desktop, Cursor)
 petri-pilot mcp
-
-# Or generate from CLI
-petri-pilot generate -auto "order processing workflow"
-petri-pilot codegen model.json -o ./app/ --frontend
 ```
 
-## Installation
+| Tool | Purpose |
+|------|---------|
+| `petri_validate` | Structural correctness |
+| `petri_analyze` | Reachability, deadlocks, liveness |
+| `petri_simulate` | Fire transitions, trace state |
+| `petri_codegen` | Generate Go backend |
+| `petri_frontend` | Generate ES modules frontend |
+| `petri_application` | Full-stack from high-level spec |
+| `petri_extend` | Add places, transitions, arcs to existing model |
+| `petri_visualize` | SVG rendering |
+| `service_start` | Build and launch a generated app |
+| `service_logs` | Inspect runtime output |
 
-### From Source
+## Multi-Model Server
+
+Run multiple models on a single port. Each gets its own API, frontend, and dashboard.
 
 ```bash
-go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
-```
-
-### MCP Setup (Claude Desktop / Cursor)
-
-Add to your MCP configuration:
-
-**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "petri-pilot": {
-      "command": "petri-pilot",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-**Cursor** (Settings → MCP → Add Server):
-
-```json
-{
-  "command": "petri-pilot",
-  "args": ["mcp"]
-}
-```
-
-After configuring, restart your client. The MCP tools (`petri_validate`, `petri_codegen`, etc.) will be available in conversations.
-
-## Live Environment
-
-When running multiple models with `petri-pilot serve`, the server provides a unified interface:
-
-| URL | Description |
-|-----|-------------|
-| `/` | Landing page with links to all models and tools |
-| `/graphql/i` | **GraphQL Playground** - query and mutate all models through a unified API with an operations explorer and model schema browser |
-| `/pflow` | **Petri Net Viewer** - interactive visualization of all models using the [pflow.xyz](https://pflow.xyz) editor |
-| `/{model}/` | Per-model REST API |
-| `/app/{model}/` | Generated dashboard (auth required) |
-
-```bash
-# Run multiple models on a single port
 petri-pilot serve tic-tac-toe coffeeshop erc20-token blog-post
-
-# Open the playground
-open http://localhost:8080/graphql/i
-
-# Open the Petri net viewer
-open http://localhost:8080/pflow
 ```
 
-The GraphQL playground combines all service schemas into a single endpoint. The operations explorer (left sidebar) groups queries and mutations by service. The models panel (right sidebar) shows Petri net visualizations, events, roles, and access rules for each model, with an "Open in pflow" button for interactive exploration.
+| Route | What |
+|-------|------|
+| `/` | Landing page |
+| `/{model}/` | Custom frontend + REST API |
+| `/app/{model}/` | Generated dashboard |
+| `/graphql/i` | GraphQL playground |
+| `/pflow` | Petri net viewer |
 
-See **[pilot.pflow.xyz](https://pilot.pflow.xyz)** for a live instance.
+The GraphQL playground, schema viewer, and pflow viewer all read the same model data. Three lenses on one system.
 
-## Getting Started with Examples
+**Live instance:** [pilot.pflow.xyz](https://pilot.pflow.xyz)
 
-The `examples/` directory contains ready-to-use models. The `generated/` directory contains pre-built applications with both backend and frontend.
-
-### Run the Order Processing Example
-
-```bash
-# 1. Start the backend
-cd generated/order-processing
-./order-processing
-# Server starts on http://localhost:8080
-
-# 2. In another terminal, start the frontend
-cd generated/order-processing/frontend
-npm install
-npm run dev
-# Frontend starts on http://localhost:5173
-```
-
-### What's Included
-
-Each generated app includes:
-
-**Backend (Go)**
-- `main.go` - Application entry point
-- `api.go` - HTTP handlers for all transitions
-- `workflow.go` - Petri net state machine
-- `aggregate.go` - Event-sourced aggregate
-- `auth.go` - GitHub OAuth authentication
-- `middleware.go` - JWT validation, CORS
-- `permissions.go` - Role-based access control
-- `views.go` - View definitions for UI
-- `navigation.go` - Navigation menu (if configured)
-- `admin.go` - Admin dashboard handlers (if configured)
-- `openapi.yaml` - OpenAPI 3.0 specification
-
-**Frontend (ES Modules)**
-- `src/main.js` - Application entry
-- `src/router.js` - Client-side routing
-- `src/navigation.js` - Dynamic navigation from API
-- `src/views.js` - Dynamic forms from view definitions
-- `src/events.js` - Event history with time-travel
-- `src/admin.js` - Admin dashboard
-
-### API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `POST /api/{model}` | Create new instance |
-| `GET /api/{model}/{id}` | Get instance state |
-| `POST /api/{transition}` | Fire a transition |
-| `GET /api/views` | Get view definitions |
-| `GET /api/navigation` | Get navigation menu |
-| `GET /api/{model}/{id}/events` | Event history |
-| `GET /api/{model}/{id}/at/{version}` | State at version |
-| `GET /admin/stats` | Dashboard statistics |
-| `GET /admin/instances` | List all instances |
-
-## Model Schema
-
-The model format is formally specified in [`schema/petri-model.schema.json`](schema/petri-model.schema.json). LLMs can validate against this schema before submitting models.
-
-For architectural details, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
-
-### Basic Model
+## Model Format
 
 ```json
 {
-  "name": "order-processing",
+  "name": "order",
   "places": [
-    {"id": "received", "initial": 1},
-    {"id": "validated"},
+    {"id": "pending", "initial": 1},
     {"id": "shipped"}
   ],
   "transitions": [
-    {"id": "validate"},
-    {"id": "ship"}
+    {"id": "ship", "event": "order_shipped"}
   ],
   "arcs": [
-    {"from": "received", "to": "validate"},
-    {"from": "validate", "to": "validated"},
-    {"from": "validated", "to": "ship"},
+    {"from": "pending", "to": "ship"},
     {"from": "ship", "to": "shipped"}
   ]
 }
 ```
 
-### Events First Schema
+Models can also include roles, access rules, events with typed fields, views, navigation, and admin configuration. See `examples/` for full-featured models.
 
-Petri-pilot uses an **Events First** design pattern where events define the complete data contract, while bindings define operational data for state computation.
+The format is specified in [`schema/petri-model.schema.json`](schema/petri-model.schema.json).
 
-#### Events: The Complete Record
-
-Events capture the complete business record with:
-- All required and optional fields for audit and replay
-- Auto-populated system fields (timestamp, aggregate_id)
-- Full domain context for event sourcing
-
-```json
-{
-  "events": [
-    {
-      "id": "order_validated",
-      "name": "Order Validated",
-      "description": "Order has passed validation checks",
-      "fields": [
-        {"name": "order_id", "type": "string", "required": true},
-        {"name": "customer_name", "type": "string", "required": true},
-        {"name": "customer_email", "type": "string"},
-        {"name": "total", "type": "number", "required": true},
-        {"name": "status", "type": "string"}
-      ]
-    }
-  ]
-}
-```
-
-#### Bindings: Operational Data
-
-Bindings extract just the operational data needed for:
-- Guard expressions (state validation)
-- Arc transformations (state updates)
-- Map key lookups (arcnet pattern)
-
-```json
-{
-  "transitions": [
-    {
-      "id": "validate",
-      "event": "order_validated",
-      "bindings": [
-        {"name": "order_id", "type": "string"},
-        {"name": "customer_name", "type": "string"},
-        {"name": "total", "type": "number", "value": true}
-      ]
-    }
-  ]
-}
-```
-
-**Key differences:**
-- **Events** = Complete business record (what happened)
-- **Bindings** = Operational subset (what's needed for computation)
-- **`"value": true`** = Transfer value to state (for data places)
-- **`"keys": ["key"]`** = Use as map key for lookups
-
-For more details, see [`docs/events-first-pattern.md`](docs/events-first-pattern.md).
-
-### Full-Featured Model
-
-See `examples/order-processing.json` for a complete example with:
-- Events First schema with bindings
-- Roles and access control
-- Views for forms and tables
-- Navigation configuration
-- Event sourcing with snapshots
-- Admin dashboard
-
-## MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `petri_validate` | Check model for errors |
-| `petri_analyze` | Reachability analysis |
-| `petri_simulate` | Simulate workflow execution |
-| `petri_codegen` | Generate Go application |
-| `petri_application` | Generate full-stack app |
-
-### LLM Integration
-
-The model format is designed for LLM consumption:
-
-1. **JSON Schema** - [`schema/petri-model.schema.json`](schema/petri-model.schema.json) for client-side validation
-2. **Structured feedback** - `petri_validate` returns actionable errors with fix suggestions
-3. **Deterministic output** - Same model always produces same code
-
-Workflow:
-```
-Requirements → LLM generates model → Validate → Fix errors → Generate code
-```
-
-The model is the contract between human intent and machine execution.
-
-## CLI Commands
+## Install
 
 ```bash
-# Generate model from natural language
-petri-pilot generate "order processing workflow"
-petri-pilot generate -auto "user registration" -o model.json
-
-# Validate a model
-petri-pilot validate model.json
-
-# Generate code
-petri-pilot codegen model.json -o ./app/
-petri-pilot codegen model.json -o ./app/ --frontend
-
-# Generate frontend only
-petri-pilot frontend model.json -o ./frontend/
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
 ```
 
-## Configuration
-
-### Environment Variables
-
-Generated applications use environment variables for configuration:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8080` | Server port |
-| `HOST` | `0.0.0.0` | Server bind address |
-| `DATABASE_TYPE` | `sqlite` | Storage backend: `sqlite`, `memory`, or `postgres` |
-| `DATABASE_URL` | `{app}.db` | Database connection string |
-| `ENVIRONMENT` | `development` | Environment: `development`, `staging`, `production` |
-| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
-| `AUTH_ENABLED` | `false` | Enable GitHub OAuth authentication |
-| `GITHUB_CLIENT_ID` | - | GitHub OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | - | GitHub OAuth App client secret |
-| `BASE_URL` | `http://localhost:8080` | Public URL for OAuth callbacks |
-
-### GitHub OAuth Setup
-
-To enable authentication in generated apps:
-
-1. **Create a GitHub OAuth App**
-   - Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App
-   - Application name: Your app name
-   - Homepage URL: `http://localhost:8080` (or your production URL)
-   - Authorization callback URL: `http://localhost:8080/auth/callback`
-
-2. **Configure environment variables**
-   ```bash
-   export AUTH_ENABLED=true
-   export GITHUB_CLIENT_ID=your_client_id
-   export GITHUB_CLIENT_SECRET=your_client_secret
-   export BASE_URL=http://localhost:8080
-   ```
-
-3. **Run the application**
-   ```bash
-   ./your-app
-   ```
-
-Users will be redirected to GitHub for login. After authorization, they receive a JWT token with their GitHub username and configured roles.
-
-## Documentation
-
-- **[Architecture](ARCHITECTURE.md)** - Design philosophy, categorical structure, serving layer, and why Petri nets
-- **[Events First Pattern](docs/events-first-pattern.md)** - Complete guide to Events First schema and binding patterns
-- **[MCP Prompts Guide](docs/mcp-prompts-guide.md)** - How to use design-workflow, add-access-control, and add-views prompts
-- **[E2E Testing Guide](docs/e2e-testing-guide.md)** - Writing tests for generated applications
-- **[GraphQL & pflow Integration](ARCHITECTURE.md#serving-layer)** - Unified GraphQL API, playground UI, and Petri net viewer
-
-### Living Documentation
-
-This project is documented through working examples rather than standalone guides:
-
-- **[pilot.pflow.xyz](https://pilot.pflow.xyz)** - Live demos (tic-tac-toe, coffeeshop)
-- **[blog.stackdump.com](https://blog.stackdump.com)** - Posts exploring Petri net concepts with petri-pilot examples
-- **`examples/`** - Model files showing schema patterns
-- **`generated/`** - Complete applications demonstrating codegen output
-
-The examples are the documentation. Read the models, run the apps, trace the generated code.
-
-## Development
+## CLI
 
 ```bash
-# Build the CLI
-make build
-
-# Run tests
-make test
-
-# Generate all examples
-make codegen-all
-
-# Build all examples (verifies generated code compiles)
-make build-examples
+petri-pilot generate "order processing workflow"   # LLM designs a model
+petri-pilot validate model.json                    # Check structure
+petri-pilot codegen model.json -o ./app/ --frontend # Generate full app
+petri-pilot serve order coffeeshop                 # Run models
+petri-pilot mcp                                    # MCP server mode
 ```
 
-## Why Petri Nets?
+## Architecture
 
-Minimal formalism: places (state), transitions (actions), arcs (connections). Four concepts, formal verification, expressive power.
+```
+pkg/schema/          Model types
+pkg/codegen/golang/  Go backend templates
+pkg/codegen/esmodules/ Frontend templates
+pkg/serve/           Multi-model HTTP server, GraphQL, pflow viewer
+pkg/mcp/             MCP server and tools
+pkg/runtime/         EventStore, Aggregate interfaces
+```
+
+Templates are the source of truth. `generated/` is derived output. Change a template, regenerate, every app picks it up.
+
+For details see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## Why Petri Nets
+
+Four concepts: places, transitions, arcs, tokens. Formal enough for verification. Simple enough for an LLM to design. Expressive enough for real applications.
 
 ## License
 
