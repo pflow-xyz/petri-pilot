@@ -196,6 +196,7 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
     }
     #models-panel .mp-pflow-btn img {
       height: 14px; width: auto; opacity: 0.8;
+      filter: invert(1);
     }
     #models-panel .mp-pflow-btn:hover img { opacity: 1; }
   </style>
@@ -664,8 +665,7 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
 
       // Open in pflow button
       html += '<a class="mp-pflow-btn" href="/pflow?model=' + encodeURIComponent(name) + '" target="_blank">' +
-        '<img src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/title.svg" alt="pflow"/>' +
-        'Open in pflow</a>';
+        'Open in <img src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/title.svg" alt="pflow"/></a>';
 
       // SVG
       html += '<div class="mp-svg-wrap" id="mp-svg-container"></div>';
