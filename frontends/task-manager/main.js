@@ -22,7 +22,7 @@ const STATUS_MAP = {
 // API calls
 async function fetchTasks() {
   try {
-    const response = await fetch(`${getApiBase()}/api/task-manager`)
+    const response = await fetch(`${getApiBase()}/api/taskmanager`)
     if (response.ok) {
       const data = await response.json()
       state.tasks = data.instances || []
@@ -34,7 +34,7 @@ async function fetchTasks() {
 
 async function createTask(title, description) {
   try {
-    const response = await fetch(`${getApiBase()}/api/task-manager`, {
+    const response = await fetch(`${getApiBase()}/api/taskmanager`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

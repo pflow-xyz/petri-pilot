@@ -62,7 +62,7 @@ const STATUS_ACTIONS = {
 // API calls
 async function fetchTickets() {
   try {
-    const response = await fetch(`${getApiBase()}/api/support-ticket`)
+    const response = await fetch(`${getApiBase()}/api/supportticket`)
     if (response.ok) {
       const data = await response.json()
       state.tickets = data.instances || []
@@ -74,7 +74,7 @@ async function fetchTickets() {
 
 async function createTicket(subject, description, priority, customerName, customerEmail) {
   try {
-    const response = await fetch(`${getApiBase()}/api/support-ticket`, {
+    const response = await fetch(`${getApiBase()}/api/supportticket`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

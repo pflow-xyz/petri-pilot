@@ -28,7 +28,7 @@ async function fetchState() {
   try {
     // Get aggregate ID first (or create one)
     if (!state.aggregateId) {
-      const listResp = await fetch(`${getApiBase()}/api/erc20-token`)
+      const listResp = await fetch(`${getApiBase()}/api/erc20token`)
       if (listResp.ok) {
         const data = await listResp.json()
         if (data.instances && data.instances.length > 0) {
@@ -39,7 +39,7 @@ async function fetchState() {
 
     // If still no aggregate, create one
     if (!state.aggregateId) {
-      const createResp = await fetch(`${getApiBase()}/api/erc20-token`, {
+      const createResp = await fetch(`${getApiBase()}/api/erc20token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: {} })
@@ -52,7 +52,7 @@ async function fetchState() {
 
     // Get current state
     if (state.aggregateId) {
-      const stateResp = await fetch(`${getApiBase()}/api/erc20-token/${state.aggregateId}`)
+      const stateResp = await fetch(`${getApiBase()}/api/erc20token/${state.aggregateId}`)
       if (stateResp.ok) {
         const data = await stateResp.json()
         if (data.state) {
@@ -63,7 +63,7 @@ async function fetchState() {
       }
 
       // Get events
-      const eventsResp = await fetch(`${getApiBase()}/api/erc20-token/${state.aggregateId}/events`)
+      const eventsResp = await fetch(`${getApiBase()}/api/erc20token/${state.aggregateId}/events`)
       if (eventsResp.ok) {
         const data = await eventsResp.json()
         state.events = data.events || []

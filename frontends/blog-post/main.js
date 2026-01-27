@@ -16,7 +16,7 @@ let state = {
 // API calls
 async function fetchPosts() {
   try {
-    const response = await fetch(`${getApiBase()}/api/blog-post`)
+    const response = await fetch(`${getApiBase()}/api/blogpost`)
     if (response.ok) {
       const data = await response.json()
       state.posts = data.instances || []
@@ -28,7 +28,7 @@ async function fetchPosts() {
 
 async function fetchPost(id) {
   try {
-    const response = await fetch(`${getApiBase()}/api/blog-post/${id}`)
+    const response = await fetch(`${getApiBase()}/api/blogpost/${id}`)
     if (response.ok) {
       const data = await response.json()
       return data
@@ -41,7 +41,7 @@ async function fetchPost(id) {
 
 async function fetchEvents(id) {
   try {
-    const response = await fetch(`${getApiBase()}/api/blog-post/${id}/events`)
+    const response = await fetch(`${getApiBase()}/api/blogpost/${id}/events`)
     if (response.ok) {
       const data = await response.json()
       return data.events || []
@@ -55,7 +55,7 @@ async function fetchEvents(id) {
 async function createPost(title, content, tags) {
   try {
     // First create the aggregate
-    const createResp = await fetch(`${getApiBase()}/api/blog-post`, {
+    const createResp = await fetch(`${getApiBase()}/api/blogpost`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: {} })
