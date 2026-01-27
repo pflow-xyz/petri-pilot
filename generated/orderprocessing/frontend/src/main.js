@@ -1059,6 +1059,9 @@ async function renderSchemaPage() {
             <div class="schema-info-card">
               <h3>${schema.name || 'Unnamed'}</h3>
               <p>${schema.description || 'No description'}</p>
+              <a class="pflow-link" href="/pflow?model=${encodeURIComponent(schema.name || '')}" target="_blank">
+                Open in <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 115"><g transform="translate(5,5)"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21zm89.89-28.02h-11.21v11.21h11.21zm33.63 11.21h11.21V28.02h-33.63v11.21z"/><path d="M179.56 72.86h-11.21V39.23h-11.21v56.05h-11.21v11.21h33.63V95.28h-11.21V84.07h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm33.63-22.42H224.4v11.21h11.21v33.63H224.4v11.21h33.63V72.86h-11.21V39.23h11.21V28.02h-11.21V16.81h-11.21z"/><path d="M246.82 5.6v11.21h22.42V5.6zm56.05 56.05V5.6h-22.42v11.21h11.21v56.05h-11.21v11.21h33.63V72.86h-11.21zm33.63-11.21V39.23h-11.21v33.63h11.21zm22.42 0h-11.21v11.21h11.21zm0-11.21h11.21V28.02H336.5v11.21zm-11.21 33.63H336.5v11.21h33.63V72.86zm22.42-22.42v22.42h11.21V39.23h-11.21zm44.84-11.21V28.02h-22.42v11.21h11.21v22.42h11.21zm11.21 22.42h-11.21v11.21h11.21zm11.21 11.21h-11.21v11.21h11.21zm11.21-22.42V28.02h-11.21v44.84h11.21zm11.21 22.42H448.6v11.21h11.21zm11.21-11.21h-11.21v11.21h11.21zm11.21-33.63h-11.21v33.63h11.21V39.23h11.21V28.02z"/></g></svg>
+              </a>
             </div>
             <div class="schema-stats">
               <div class="stat-item">
@@ -1205,6 +1208,31 @@ async function renderSchemaPage() {
         .schema-info-card p {
           margin: 0;
           color: #666;
+        }
+        .pflow-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 0.75rem;
+          padding: 6px 14px;
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          text-decoration: none;
+          color: #555;
+          font-size: 0.85rem;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .pflow-link:hover {
+          background: #e9e9e9;
+          border-color: #bbb;
+          color: #333;
+        }
+        .pflow-link svg {
+          height: 16px;
+          width: auto;
+          fill: currentColor;
+          vertical-align: -2px;
         }
         .schema-stats {
           display: grid;
