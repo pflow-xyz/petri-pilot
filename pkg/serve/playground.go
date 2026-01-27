@@ -181,6 +181,23 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
       font-size: 11px; color: #d4a054; background: rgba(255,255,255,0.05);
       padding: 1px 4px; border-radius: 2px;
     }
+    #models-panel .mp-pflow-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; margin-bottom: 12px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px; cursor: pointer; text-decoration: none;
+      color: rgba(255,255,255,0.7); font-size: 12px;
+      font-family: 'Source Code Pro', monospace;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    #models-panel .mp-pflow-btn:hover {
+      background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.3);
+      color: #fff;
+    }
+    #models-panel .mp-pflow-btn img {
+      height: 14px; width: auto; opacity: 0.8;
+    }
+    #models-panel .mp-pflow-btn:hover img { opacity: 1; }
   </style>
 </head>
 <body>
@@ -644,6 +661,11 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
       if (model.type) meta.push(model.type);
       if (meta.length) html += '<div class="mp-meta">' + meta.map(escHtml).join(' \u00b7 ') + '</div>';
       if (model.description) html += '<div class="mp-desc">' + escHtml(model.description) + '</div>';
+
+      // Open in pflow button
+      html += '<a class="mp-pflow-btn" href="/pflow?model=' + encodeURIComponent(name) + '" target="_blank">' +
+        '<img src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/title.svg" alt="pflow"/>' +
+        'Open in pflow</a>';
 
       // SVG
       html += '<div class="mp-svg-wrap" id="mp-svg-container"></div>';
