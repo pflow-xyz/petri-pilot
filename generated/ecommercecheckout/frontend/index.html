@@ -430,8 +430,8 @@
     <script>
       (function() {
         const path = window.location.pathname;
-        // Match /~service/ or /service/ - API calls always go to /service/ (without ~)
-        const match = path.match(/^\/(~)?([^\/]+)\//);
+        // Match /app/service/ or /service/ - API calls always go to /service/ (without /app/ prefix)
+        const match = path.match(/^\/(app\/)?([^\/]+)\//);
         window.API_BASE = match ? '/' + match[2] : '';
       })();
     </script>

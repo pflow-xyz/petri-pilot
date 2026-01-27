@@ -11,9 +11,9 @@ const API_BASE = window.API_BASE || ''
 // Frontend base path (may differ from API_BASE when in dash view)
 function getFrontendBase() {
   const path = window.location.pathname
-  const match = path.match(/^(\/~[^\/]+)\//)
+  const match = path.match(/^(\/app\/[^\/]+)\//)
   if (match) {
-    return match[1]  // e.g., /~coffeeshop
+    return match[1]  // e.g., /app/coffeeshop
   }
   return API_BASE  // e.g., /coffeeshop
 }
@@ -95,10 +95,10 @@ async function fetchAuthStatus() {
 }
 
 // Compute the custom frontend URL (non-dash view)
-// If we're at /~service/, link to /service/
+// If we're at /app/service/, link to /service/
 function getCustomFrontendUrl() {
   const path = window.location.pathname
-  const match = path.match(/^\/~([^\/]+)\//)
+  const match = path.match(/^\/app\/([^\/]+)\//)
   if (match) {
     return '/' + match[1] + '/'
   }
@@ -106,9 +106,9 @@ function getCustomFrontendUrl() {
   return API_BASE + '/erc20-token'
 }
 
-// Check if we're in dash view (~ prefix)
+// Check if we're in dash view (/app/ prefix)
 function isInDashView() {
-  return window.location.pathname.match(/^\/~[^\/]+\//) !== null
+  return window.location.pathname.match(/^\/app\/[^\/]+\//) !== null
 }
 
 // Create navigation HTML

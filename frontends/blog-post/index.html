@@ -376,7 +376,7 @@
     <a href="#" class="nav-brand" id="home-link">Blog</a>
     <div class="nav-links">
       <a href="#" id="new-post-link" class="btn-new-post">New Post</a>
-      <a id="dash-link" href="/~blog-post/" style="display: none;">Admin</a>
+      <a id="dash-link" href="/app/blog-post/" style="display: none;">Admin</a>
       <a id="login-link" href="/auth/login" style="display: none;">Login</a>
       <span id="user-info" style="display: none;">
         <span id="user-name"></span>
@@ -397,7 +397,7 @@
       const logoutLink = document.getElementById('logout-link');
 
       if (match) {
-        dashLink.href = '/~' + match[1] + '/';
+        dashLink.href = '/app/' + match[1] + '/';
       }
 
       function checkAuth() {

@@ -211,7 +211,7 @@ func RunMultiple(names []string, opts Options) error {
 		log.Printf("  Petri Net Viewer at /pflow")
 	}
 
-	// Mount each service at /{name}/ and /~{name}/
+	// Mount each service at /{name}/ and /app/{name}/
 	for i, svc := range services {
 		name := names[i]
 		handler := svc.BuildHandler()
@@ -219,12 +219,12 @@ func RunMultiple(names []string, opts Options) error {
 		mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
 		log.Printf("  Mounted %s at %s/", name, prefix)
 
-		// Always mount generated frontend at /~{name}/ for dashboard access
+		// Always mount generated frontend at /app/{name}/ for dashboard access
 		// Dashboard requires authentication
 		packageName := strings.ReplaceAll(name, "-", "")
 		generatedPath := filepath.Join("generated", packageName, "frontend")
 		if _, err := os.Stat(generatedPath); err == nil {
-			genPrefix := "/~" + name
+			genPrefix := "/app/" + name
 			spaHandler := createSPAHandler(generatedPath)
 			// Create combined handler that proxies API calls to main service
 			genHandler := createGeneratedFrontendHandler(spaHandler, handler)
@@ -259,7 +259,7 @@ func RunMultiple(names []string, opts Options) error {
 						<h2>%s</h2>
 						<div class="links">
 							<a href="/%s/" class="btn btn-primary">Open App</a>
-							<a href="/~%s/" class="btn btn-secondary">Dashboard</a>
+							<a href="/app/%s/" class="btn btn-secondary">Dashboard</a>
 						</div>
 					</div>`, name, name, name))
 			}
@@ -478,7 +478,7 @@ func runHTTPService(svc Service, port int, opts Options) error {
 		log.Printf("  GitHub OAuth enabled")
 	}
 
-	// Always mount generated frontend at /~{name}/ for dashboard access
+	// Always mount generated frontend at /app/{name}/ for dashboard access
 	var finalHandler http.Handler = handler
 	packageName := strings.ReplaceAll(name, "-", "")
 	generatedPath := filepath.Join("generated", packageName, "frontend")
@@ -489,7 +489,7 @@ func runHTTPService(svc Service, port int, opts Options) error {
 		// Register auth routes
 		authHandler.RegisterRoutes(mux)
 
-		genPrefix := "/~" + name
+		genPrefix := "/app/" + name
 		spaHandler := createSPAHandler(generatedPath)
 		genHandler := createGeneratedFrontendHandler(spaHandler, handler)
 		// Wrap with auth middleware - dashboard requires authentication
@@ -542,7 +542,7 @@ func runHTTPService(svc Service, port int, opts Options) error {
 }
 
 // createGeneratedFrontendHandler creates a handler that serves only the generated frontend.
-// API calls should go to the main service URL (without ~), not through the dash.
+// API calls should go to the main service URL (without /app/ prefix), not through the dash.
 func createGeneratedFrontendHandler(spaHandler, _ http.Handler) http.Handler {
 	// Dash only serves the frontend - no API proxying
 	return spaHandler

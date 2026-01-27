@@ -374,7 +374,7 @@
       <select id="wallet-selector">
         <option value="">Select Wallet...</option>
       </select>
-      <a id="dash-link" href="/~erc20-token/" style="display: none;">Admin</a>
+      <a id="dash-link" href="/app/erc20-token/" style="display: none;">Admin</a>
       <a id="login-link" href="/auth/login" style="display: none;">Login</a>
       <span id="user-info" style="display: none;">
         <span id="user-name"></span>
@@ -395,7 +395,7 @@
       const logoutLink = document.getElementById('logout-link');
 
       if (match) {
-        dashLink.href = '/~' + match[1] + '/';
+        dashLink.href = '/app/' + match[1] + '/';
       }
 
       function checkAuth() {

@@ -261,7 +261,7 @@ The static landing page serves as the root when the `landing/` directory exists.
 | `/models` | JSON array of service names | Service discovery |
 | `/pflow` | `PflowHandler()` | Petri net viewer |
 | `/{service}/` | Service HTTP handler | Per-service REST API |
-| `/~{service}/` | SPA handler (auth required) | Generated dashboard |
+| `/app/{service}/` | SPA handler (auth required) | Generated dashboard |
 | `/auth/*` | `AuthHandler` | GitHub OAuth routes |
 
 ## Runtime

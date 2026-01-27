@@ -79,7 +79,7 @@
   <nav class="top-nav">
     <a href="/" class="nav-brand">Petri-Pilot</a>
     <div class="nav-links">
-      <a id="dash-link" href="/~coffeeshop/" style="display: none;">Admin</a>
+      <a id="dash-link" href="/app/coffeeshop/" style="display: none;">Admin</a>
       <a id="login-link" href="/auth/login" style="display: none;">Login</a>
       <span id="user-info" style="display: none;">
         <span id="user-name"></span>
@@ -99,7 +99,7 @@
       const logoutLink = document.getElementById('logout-link');
 
       if (match) {
-        dashLink.href = '/~' + match[1] + '/';
+        dashLink.href = '/app/' + match[1] + '/';
       }
 
       // Check auth state
@@ -171,10 +171,10 @@
   <script>
     (function() {
       const path = window.location.pathname;
-      const match = path.match(/^(\/~?([^\/]+))\//);
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
       if (match) {
-        // If on dash view (/~service/), API calls go to /service/ (without ~)
-        window.API_BASE = '/' + match[2];
+        // If on dash view (/app/service/), API calls go to /service/ (without /app/ prefix)
+        window.API_BASE = '/' + match[3];
       } else {
         window.API_BASE = '';
       }

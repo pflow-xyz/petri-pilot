@@ -11,9 +11,9 @@ const API_BASE = window.API_BASE || ''
 // Frontend base path (may differ from API_BASE when in dash view)
 function getFrontendBase() {
   const path = window.location.pathname
-  const match = path.match(/^(\/~[^\/]+)\//)
+  const match = path.match(/^(\/app\/[^\/]+)\//)
   if (match) {
-    return match[1]  // e.g., /~coffeeshop
+    return match[1]  // e.g., /app/coffeeshop
   }
   return API_BASE  // e.g., /coffeeshop
 }

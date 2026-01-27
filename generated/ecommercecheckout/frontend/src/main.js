@@ -2387,17 +2387,17 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process", requiredRoles: [], apiPath: '/api/start_checkout' },
-      { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details", requiredRoles: [], apiPath: '/api/enter_payment' },
-      { id: 'process_payment', name: 'Process Payment', description: "Process the payment", requiredRoles: [], apiPath: '/api/process_payment' },
-      { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully", requiredRoles: [], apiPath: '/api/payment_success' },
-      { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed", requiredRoles: [], apiPath: '/api/payment_fail_1' },
-      { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)", requiredRoles: [], apiPath: '/api/retry_payment_1' },
-      { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed", requiredRoles: [], apiPath: '/api/payment_fail_2' },
-      { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)", requiredRoles: [], apiPath: '/api/retry_payment_2' },
-      { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed", requiredRoles: [], apiPath: '/api/payment_fail_3' },
-      { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries", requiredRoles: [], apiPath: '/api/cancel_order' },
-      { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order", requiredRoles: [], apiPath: '/api/fulfill' },
+      { id: 'start_checkout', name: 'Start Checkout', description: "Begin checkout process", requiredRoles: ["customer"], apiPath: '/api/start_checkout' },
+      { id: 'enter_payment', name: 'Enter Payment', description: "Enter payment details", requiredRoles: ["customer"], apiPath: '/api/enter_payment' },
+      { id: 'process_payment', name: 'Process Payment', description: "Process the payment", requiredRoles: ["system"], apiPath: '/api/process_payment' },
+      { id: 'payment_success', name: 'Payment Success', description: "Payment processed successfully", requiredRoles: ["system"], apiPath: '/api/payment_success' },
+      { id: 'payment_fail_1', name: 'Payment Fail 1', description: "First payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_1' },
+      { id: 'retry_payment_1', name: 'Retry Payment 1', description: "Retry payment (attempt 2)", requiredRoles: ["customer"], apiPath: '/api/retry_payment_1' },
+      { id: 'payment_fail_2', name: 'Payment Fail 2', description: "Second payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_2' },
+      { id: 'retry_payment_2', name: 'Retry Payment 2', description: "Retry payment (attempt 3)", requiredRoles: ["customer"], apiPath: '/api/retry_payment_2' },
+      { id: 'payment_fail_3', name: 'Payment Fail 3', description: "Third payment attempt failed", requiredRoles: ["system"], apiPath: '/api/payment_fail_3' },
+      { id: 'cancel_order', name: 'Cancel Order', description: "Cancel order after max retries", requiredRoles: ["system"], apiPath: '/api/cancel_order' },
+      { id: 'fulfill', name: 'Fulfill', description: "Fulfill the order", requiredRoles: ["fulfillment"], apiPath: '/api/fulfill' },
     ]
   },
 

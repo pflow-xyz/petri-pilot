@@ -470,7 +470,7 @@
   <nav class="top-nav">
     <a href="#" class="nav-brand">Support Tickets</a>
     <div class="nav-links">
-      <a id="dash-link" href="/~support-ticket/" style="display: none;">Admin</a>
+      <a id="dash-link" href="/app/support-ticket/" style="display: none;">Admin</a>
       <a id="login-link" href="/auth/login" style="display: none;">Login</a>
       <span id="user-info" style="display: none;">
         <span id="user-name" style="color: rgba(255,255,255,0.8);"></span>
@@ -491,7 +491,7 @@
       const logoutLink = document.getElementById('logout-link');
 
       if (match) {
-        dashLink.href = '/~' + match[1] + '/';
+        dashLink.href = '/app/' + match[1] + '/';
       }
 
       function checkAuth() {

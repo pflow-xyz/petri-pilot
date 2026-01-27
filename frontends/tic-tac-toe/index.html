@@ -554,7 +554,7 @@
   <nav class="top-nav">
     <a href="/" class="nav-brand">Petri-Pilot</a>
     <div class="nav-links">
-      <a id="dash-link" href="/~tic-tac-toe/" style="display: none;">Admin</a>
+      <a id="dash-link" href="/app/tic-tac-toe/" style="display: none;">Admin</a>
       <a id="login-link" href="/auth/login" style="display: none;">Login</a>
       <span id="user-info" style="display: none;">
         <span id="user-name"></span>
@@ -574,7 +574,7 @@
       const logoutLink = document.getElementById('logout-link');
 
       if (match) {
-        dashLink.href = '/~' + match[1] + '/';
+        dashLink.href = '/app/' + match[1] + '/';
       }
 
       // Check auth state

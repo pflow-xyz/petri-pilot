@@ -2394,18 +2394,18 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check", requiredRoles: [], apiPath: '/api/run_credit_check' },
-      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score", requiredRoles: [], apiPath: '/api/auto_approve' },
-      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review", requiredRoles: [], apiPath: '/api/flag_for_review' },
-      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application", requiredRoles: [], apiPath: '/api/underwriter_approve' },
-      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application", requiredRoles: [], apiPath: '/api/underwriter_deny' },
-      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score", requiredRoles: [], apiPath: '/api/auto_deny' },
-      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval", requiredRoles: [], apiPath: '/api/finalize_approval' },
-      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer", requiredRoles: [], apiPath: '/api/disburse' },
-      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period", requiredRoles: [], apiPath: '/api/start_repayment' },
-      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment", requiredRoles: [], apiPath: '/api/make_payment' },
-      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete", requiredRoles: [], apiPath: '/api/complete' },
-      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted", requiredRoles: [], apiPath: '/api/mark_default' },
+      { id: 'run_credit_check', name: 'Run Credit Check', description: "Initiate automated credit check", requiredRoles: ["system"], apiPath: '/api/run_credit_check' },
+      { id: 'auto_approve', name: 'Auto Approve', description: "Automatic approval based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_approve' },
+      { id: 'flag_for_review', name: 'Flag For Review', description: "Flag application for manual review", requiredRoles: ["system"], apiPath: '/api/flag_for_review' },
+      { id: 'underwriter_approve', name: 'Underwriter Approve', description: "Underwriter approves the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_approve' },
+      { id: 'underwriter_deny', name: 'Underwriter Deny', description: "Underwriter denies the application", requiredRoles: ["underwriter"], apiPath: '/api/underwriter_deny' },
+      { id: 'auto_deny', name: 'Auto Deny', description: "Automatic denial based on credit score", requiredRoles: ["system"], apiPath: '/api/auto_deny' },
+      { id: 'finalize_approval', name: 'Finalize Approval', description: "Finalize loan approval", requiredRoles: ["system"], apiPath: '/api/finalize_approval' },
+      { id: 'disburse', name: 'Disburse', description: "Disburse loan funds to customer", requiredRoles: ["admin"], apiPath: '/api/disburse' },
+      { id: 'start_repayment', name: 'Start Repayment', description: "Begin repayment period", requiredRoles: ["system"], apiPath: '/api/start_repayment' },
+      { id: 'make_payment', name: 'Make Payment', description: "Customer makes a payment", requiredRoles: ["applicant"], apiPath: '/api/make_payment' },
+      { id: 'complete', name: 'Complete', description: "Final payment received, loan complete", requiredRoles: ["system"], apiPath: '/api/complete' },
+      { id: 'mark_default', name: 'Mark Default', description: "Mark loan as defaulted", requiredRoles: ["admin"], apiPath: '/api/mark_default' },
     ]
   },
 

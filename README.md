@@ -65,7 +65,7 @@ When running multiple models with `petri-pilot serve`, the server provides a uni
 | `/graphql/i` | **GraphQL Playground** - query and mutate all models through a unified API with an operations explorer and model schema browser |
 | `/pflow` | **Petri Net Viewer** - interactive visualization of all models using the [pflow.xyz](https://pflow.xyz) editor |
 | `/{model}/` | Per-model REST API |
-| `/~{model}/` | Generated dashboard (auth required) |
+| `/app/{model}/` | Generated dashboard (auth required) |
 
 ```bash
 # Run multiple models on a single port
