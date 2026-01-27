@@ -13,9 +13,10 @@ import (
 
 // UnifiedGraphQL combines multiple service schemas into a single GraphQL endpoint.
 type UnifiedGraphQL struct {
-	services  map[string]GraphQLService
-	schema    string
-	resolvers map[string]resolverEntry
+	services      map[string]GraphQLService
+	schema        string
+	resolvers     map[string]resolverEntry
+	introspection map[string]any // cached introspection result
 }
 
 type resolverEntry struct {
@@ -45,6 +46,9 @@ func NewUnifiedGraphQL(services []GraphQLService) *UnifiedGraphQL {
 
 	// Combine schemas
 	ug.schema = ug.combineSchemas()
+
+	// Build introspection result from schema
+	ug.introspection = ug.buildIntrospection()
 
 	return ug
 }
@@ -322,6 +326,11 @@ func (ug *UnifiedGraphQL) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // executeGraphQL executes a GraphQL query or mutation.
 func (ug *UnifiedGraphQL) executeGraphQL(ctx context.Context, query, _ string, variables map[string]any) map[string]any {
+	// Handle introspection queries
+	if strings.Contains(query, "__schema") || strings.Contains(query, "__type") {
+		return ug.introspection
+	}
+
 	result := make(map[string]any)
 	data := make(map[string]any)
 	var errors []map[string]any
@@ -382,5 +391,233 @@ func (ug *UnifiedGraphQL) SchemaHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprint(w, ug.schema)
+	}
+}
+
+// buildIntrospection parses the combined SDL schema into a GraphQL introspection result.
+func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
+	lines := strings.Split(ug.schema, "\n")
+
+	var types []map[string]any
+	typeMap := make(map[string]map[string]any)
+
+	// Built-in scalars
+	for _, scalar := range []string{"String", "Int", "Float", "Boolean", "ID", "Time"} {
+		t := map[string]any{
+			"kind": "SCALAR",
+			"name": scalar,
+		}
+		types = append(types, t)
+		typeMap[scalar] = t
+	}
+
+	// Parse schema SDL
+	var currentType map[string]any
+	var currentFields []map[string]any
+	var currentInputFields []map[string]any
+	var currentSection string // "query", "mutation", or ""
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || trimmed == "scalar Time" {
+			continue
+		}
+
+		// Detect type definitions
+		if strings.HasPrefix(trimmed, "type Query {") {
+			currentSection = "query"
+			currentFields = nil
+			continue
+		}
+		if strings.HasPrefix(trimmed, "type Mutation {") {
+			currentSection = "mutation"
+			currentFields = nil
+			continue
+		}
+		if strings.HasPrefix(trimmed, "type ") && strings.HasSuffix(trimmed, "{") {
+			name := strings.TrimSuffix(strings.TrimPrefix(trimmed, "type "), " {")
+			name = strings.TrimSpace(name)
+			currentType = map[string]any{"kind": "OBJECT", "name": name}
+			currentFields = nil
+			currentSection = ""
+			continue
+		}
+		if strings.HasPrefix(trimmed, "input ") && strings.HasSuffix(trimmed, "{") {
+			name := strings.TrimSuffix(strings.TrimPrefix(trimmed, "input "), " {")
+			name = strings.TrimSpace(name)
+			currentType = map[string]any{"kind": "INPUT_OBJECT", "name": name}
+			currentInputFields = nil
+			currentSection = ""
+			continue
+		}
+
+		// End of type/section
+		if trimmed == "}" {
+			if currentSection == "query" {
+				qt := map[string]any{
+					"kind":   "OBJECT",
+					"name":   "Query",
+					"fields": currentFields,
+				}
+				types = append(types, qt)
+				typeMap["Query"] = qt
+				currentSection = ""
+			} else if currentSection == "mutation" {
+				mt := map[string]any{
+					"kind":   "OBJECT",
+					"name":   "Mutation",
+					"fields": currentFields,
+				}
+				types = append(types, mt)
+				typeMap["Mutation"] = mt
+				currentSection = ""
+			} else if currentType != nil {
+				kind := currentType["kind"].(string)
+				if kind == "INPUT_OBJECT" {
+					currentType["inputFields"] = currentInputFields
+					currentType["fields"] = nil
+				} else {
+					currentType["fields"] = currentFields
+				}
+				types = append(types, currentType)
+				typeMap[currentType["name"].(string)] = currentType
+				currentType = nil
+			}
+			continue
+		}
+
+		// Parse field lines
+		if currentSection == "query" || currentSection == "mutation" || currentType != nil {
+			field := parseSchemaField(trimmed)
+			if field != nil {
+				kind := ""
+				if currentType != nil {
+					kind = currentType["kind"].(string)
+				}
+				if kind == "INPUT_OBJECT" {
+					currentInputFields = append(currentInputFields, field)
+				} else {
+					currentFields = append(currentFields, field)
+				}
+			}
+		}
+	}
+
+	// Build the __schema response
+	schema := map[string]any{
+		"queryType":        map[string]any{"name": "Query"},
+		"types":            types,
+		"directives":       []any{},
+		"subscriptionType": nil,
+	}
+	if _, ok := typeMap["Mutation"]; ok {
+		schema["mutationType"] = map[string]any{"name": "Mutation"}
+	} else {
+		schema["mutationType"] = nil
+	}
+
+	return map[string]any{
+		"data": map[string]any{
+			"__schema": schema,
+		},
+	}
+}
+
+// parseSchemaField parses a GraphQL field definition line like:
+//
+//	fieldName(arg: Type!): ReturnType!
+func parseSchemaField(line string) map[string]any {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return nil
+	}
+
+	field := map[string]any{}
+
+	// Extract field name
+	nameEnd := strings.IndexAny(line, "(:")
+	if nameEnd < 0 {
+		return nil
+	}
+	field["name"] = strings.TrimSpace(line[:nameEnd])
+
+	// Extract args if present
+	var args []map[string]any
+	if line[nameEnd] == '(' {
+		argsEnd := strings.Index(line, ")")
+		if argsEnd > nameEnd {
+			argsStr := line[nameEnd+1 : argsEnd]
+			for _, argDef := range strings.Split(argsStr, ",") {
+				argDef = strings.TrimSpace(argDef)
+				if argDef == "" {
+					continue
+				}
+				parts := strings.SplitN(argDef, ":", 2)
+				if len(parts) == 2 {
+					args = append(args, map[string]any{
+						"name":         strings.TrimSpace(parts[0]),
+						"type":         parseTypeRef(strings.TrimSpace(parts[1])),
+						"defaultValue": nil,
+					})
+				}
+			}
+			// Move past args to find return type
+			line = line[argsEnd+1:]
+			nameEnd = 0
+		}
+	}
+	field["args"] = args
+
+	// Extract return type
+	colonIdx := strings.Index(line[nameEnd:], ":")
+	if colonIdx >= 0 {
+		returnType := strings.TrimSpace(line[nameEnd+colonIdx+1:])
+		field["type"] = parseTypeRef(returnType)
+	} else {
+		field["type"] = map[string]any{"kind": "SCALAR", "name": "String", "ofType": nil}
+	}
+
+	return field
+}
+
+// parseTypeRef converts a GraphQL type string like "[String!]!" into a type reference.
+func parseTypeRef(typeStr string) map[string]any {
+	typeStr = strings.TrimSpace(typeStr)
+
+	// NON_NULL wrapper
+	if strings.HasSuffix(typeStr, "!") {
+		inner := typeStr[:len(typeStr)-1]
+		return map[string]any{
+			"kind":   "NON_NULL",
+			"name":   nil,
+			"ofType": parseTypeRef(inner),
+		}
+	}
+
+	// LIST wrapper
+	if strings.HasPrefix(typeStr, "[") && strings.HasSuffix(typeStr, "]") {
+		inner := typeStr[1 : len(typeStr)-1]
+		return map[string]any{
+			"kind":   "LIST",
+			"name":   nil,
+			"ofType": parseTypeRef(inner),
+		}
+	}
+
+	// Named type — determine kind
+	kind := "OBJECT"
+	switch typeStr {
+	case "String", "Int", "Float", "Boolean", "ID", "Time":
+		kind = "SCALAR"
+	}
+	// Input types
+	if strings.HasSuffix(typeStr, "Input") {
+		kind = "INPUT_OBJECT"
+	}
+
+	return map[string]any{
+		"kind":   kind,
+		"name":   typeStr,
+		"ofType": nil,
 	}
 }
