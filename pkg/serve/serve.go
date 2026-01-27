@@ -197,10 +197,10 @@ func RunMultiple(names []string, opts Options) error {
 	if len(graphqlServices) > 0 {
 		unifiedGraphQL := NewUnifiedGraphQL(graphqlServices)
 		mux.Handle("/graphql", unifiedGraphQL.Handler())
-		mux.HandleFunc("/playground", PlaygroundHandler("/graphql"))
+		mux.HandleFunc("/graphql/i", PlaygroundHandler("/graphql"))
 		mux.HandleFunc("/schema", unifiedGraphQL.SchemaHandler())
 		log.Printf("  Unified GraphQL at /graphql (%d services)", len(graphqlServices))
-		log.Printf("  GraphQL Playground at /playground")
+		log.Printf("  GraphQL Playground at /graphql/i")
 	}
 
 	// Mount each service at /{name}/ and /~{name}/

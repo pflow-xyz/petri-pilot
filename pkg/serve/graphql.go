@@ -287,7 +287,17 @@ func toPascalCase(s string) string {
 }
 
 // ServeHTTP handles GraphQL requests.
+// Browser GET requests (Accept: text/html) are redirected to the interactive playground.
 func (ug *UnifiedGraphQL) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		accept := r.Header.Get("Accept")
+		if strings.Contains(accept, "text/html") {
+			http.Redirect(w, r, "/graphql/i", http.StatusSeeOther)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
