@@ -197,9 +197,10 @@ describe('Views and Data Projection', () => {
       await harness.pilot.create();
       await harness.pilot.admin();
 
-      // Should have instances section
-      const hasInstances = await harness.pilot.exists('#admin-instances');
-      expect(hasInstances).toBe(true);
+      // Admin dashboard has quick links including link to instances
+      // The dashboard itself shows stats, not the instance list (that's at /admin/instances)
+      const hasQuickLinks = await harness.pilot.exists('.admin-quick-links, .admin-dashboard');
+      expect(hasQuickLinks).toBe(true);
     });
   });
 

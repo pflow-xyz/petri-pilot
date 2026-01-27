@@ -7,11 +7,15 @@
  * - Restock functionality
  * - Presets and test state application
  * - Component initialization
+ *
+ * SKIPPED: The dashboardPilot API is not currently generated. These tests require
+ * a custom dashboard implementation that was removed. See ROADMAP.md for plans
+ * to reintroduce prediction/simulation dashboard features.
  */
 
 const { TestHarness } = require('../lib/test-harness');
 
-describe('coffeeshop dashboard', () => {
+describe.skip('coffeeshop dashboard', () => {
   let harness;
 
   beforeAll(async () => {
