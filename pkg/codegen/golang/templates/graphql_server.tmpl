@@ -135,19 +135,24 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "create{{pascal .ModelName}}") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	if isMutation && (containsString(query, "create{{pascal .ModelName}}") || containsString(query, "{{.PackageName}}_create")) {
 		state, err := h.resolver.Create{{pascal .ModelName}}(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["create{{pascal .ModelName}}"] = state
+			// Return under whichever key the query used
+			if containsString(query, "{{.PackageName}}_create") {
+				data["{{.PackageName}}_create"] = state
+			} else {
+				data["create{{pascal .ModelName}}"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 {{range .Transitions}}
-	if isMutation && containsString(query, "{{camel .ID}}") {
+	if isMutation && (containsString(query, "{{$.PackageName}}_{{.ID}}") || containsString(query, "{{camel .ID}}")) {
 		input := graph.{{pascal .ID}}Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -185,7 +190,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["{{camel .ID}}"] = res
+			// Return under whichever key the query used
+			if containsString(query, "{{$.PackageName}}_{{.ID}}") {
+				data["{{$.PackageName}}_{{.ID}}"] = res
+			} else {
+				data["{{camel .ID}}"] = res
+			}
 		}
 	}
 {{end}}

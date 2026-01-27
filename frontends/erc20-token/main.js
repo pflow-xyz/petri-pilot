@@ -166,7 +166,10 @@ function renderTransactions() {
 
   const txHtml = state.events.slice().reverse().map(event => {
     const type = event.type || ''
-    const data = event.data || {}
+    let data = event.data || {}
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data) } catch { data = {} }
+    }
 
     let icon = ''
     let iconClass = ''

@@ -211,6 +211,12 @@ func RunMultiple(names []string, opts Options) error {
 		log.Printf("  Petri Net Viewer at /pflow")
 	}
 
+	// Serve shared frontend assets (used by custom frontends via ../shared/ imports)
+	sharedPath := filepath.Join("frontends", "shared")
+	if _, err := os.Stat(sharedPath); err == nil {
+		mux.Handle("/shared/", http.StripPrefix("/shared/", http.FileServer(http.Dir(sharedPath))))
+	}
+
 	// Mount each service at /{name}/ and /app/{name}/
 	for i, svc := range services {
 		name := names[i]
@@ -488,6 +494,12 @@ func runHTTPService(svc Service, port int, opts Options) error {
 
 		// Register auth routes
 		authHandler.RegisterRoutes(mux)
+
+		// Serve shared frontend assets (used by custom frontends via ../shared/ imports)
+		sharedPath := filepath.Join("frontends", "shared")
+		if _, err := os.Stat(sharedPath); err == nil {
+			mux.Handle("/shared/", http.StripPrefix("/shared/", http.FileServer(http.Dir(sharedPath))))
+		}
 
 		genPrefix := "/app/" + name
 		spaHandler := createSPAHandler(generatedPath)

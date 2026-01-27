@@ -133,19 +133,24 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createErc20Token") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	if isMutation && (containsString(query, "createErc20Token") || containsString(query, "erc20token_create")) {
 		state, err := h.resolver.CreateErc20Token(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createErc20Token"] = state
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_create") {
+				data["erc20token_create"] = state
+			} else {
+				data["createErc20Token"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "transfer") {
+	if isMutation && (containsString(query, "erc20token_transfer") || containsString(query, "transfer")) {
 		input := graph.TransferInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -175,11 +180,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["transfer"] = res
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_transfer") {
+				data["erc20token_transfer"] = res
+			} else {
+				data["transfer"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "approve") {
+	if isMutation && (containsString(query, "erc20token_approve") || containsString(query, "approve")) {
 		input := graph.ApproveInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -209,11 +219,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["approve"] = res
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_approve") {
+				data["erc20token_approve"] = res
+			} else {
+				data["approve"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "transferFrom") {
+	if isMutation && (containsString(query, "erc20token_transfer_from") || containsString(query, "transferFrom")) {
 		input := graph.TransferFromInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -249,11 +264,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["transferFrom"] = res
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_transfer_from") {
+				data["erc20token_transfer_from"] = res
+			} else {
+				data["transferFrom"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "mint") {
+	if isMutation && (containsString(query, "erc20token_mint") || containsString(query, "mint")) {
 		input := graph.MintInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -277,11 +297,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["mint"] = res
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_mint") {
+				data["erc20token_mint"] = res
+			} else {
+				data["mint"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "burn") {
+	if isMutation && (containsString(query, "erc20token_burn") || containsString(query, "burn")) {
 		input := graph.BurnInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -305,7 +330,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["burn"] = res
+			// Return under whichever key the query used
+			if containsString(query, "erc20token_burn") {
+				data["erc20token_burn"] = res
+			} else {
+				data["burn"] = res
+			}
 		}
 	}
 
