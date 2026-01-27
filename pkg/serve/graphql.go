@@ -404,8 +404,14 @@ func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
 	// Built-in scalars
 	for _, scalar := range []string{"String", "Int", "Float", "Boolean", "ID", "Time"} {
 		t := map[string]any{
-			"kind": "SCALAR",
-			"name": scalar,
+			"kind":          "SCALAR",
+			"name":          scalar,
+			"description":   nil,
+			"fields":        nil,
+			"inputFields":   nil,
+			"interfaces":    nil,
+			"enumValues":    nil,
+			"possibleTypes": nil,
 		}
 		types = append(types, t)
 		typeMap[scalar] = t
@@ -437,7 +443,14 @@ func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
 		if strings.HasPrefix(trimmed, "type ") && strings.HasSuffix(trimmed, "{") {
 			name := strings.TrimSuffix(strings.TrimPrefix(trimmed, "type "), " {")
 			name = strings.TrimSpace(name)
-			currentType = map[string]any{"kind": "OBJECT", "name": name}
+			currentType = map[string]any{
+				"kind":          "OBJECT",
+				"name":          name,
+				"description":   nil,
+				"interfaces":    []any{},
+				"enumValues":    nil,
+				"possibleTypes": nil,
+			}
 			currentFields = nil
 			currentSection = ""
 			continue
@@ -445,7 +458,14 @@ func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
 		if strings.HasPrefix(trimmed, "input ") && strings.HasSuffix(trimmed, "{") {
 			name := strings.TrimSuffix(strings.TrimPrefix(trimmed, "input "), " {")
 			name = strings.TrimSpace(name)
-			currentType = map[string]any{"kind": "INPUT_OBJECT", "name": name}
+			currentType = map[string]any{
+				"kind":          "INPUT_OBJECT",
+				"name":          name,
+				"description":   nil,
+				"interfaces":    nil,
+				"enumValues":    nil,
+				"possibleTypes": nil,
+			}
 			currentInputFields = nil
 			currentSection = ""
 			continue
@@ -455,18 +475,28 @@ func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
 		if trimmed == "}" {
 			if currentSection == "query" {
 				qt := map[string]any{
-					"kind":   "OBJECT",
-					"name":   "Query",
-					"fields": currentFields,
+					"kind":          "OBJECT",
+					"name":          "Query",
+					"description":   nil,
+					"fields":        currentFields,
+					"interfaces":    []any{},
+					"enumValues":    nil,
+					"possibleTypes": nil,
+					"inputFields":   nil,
 				}
 				types = append(types, qt)
 				typeMap["Query"] = qt
 				currentSection = ""
 			} else if currentSection == "mutation" {
 				mt := map[string]any{
-					"kind":   "OBJECT",
-					"name":   "Mutation",
-					"fields": currentFields,
+					"kind":          "OBJECT",
+					"name":          "Mutation",
+					"description":   nil,
+					"fields":        currentFields,
+					"interfaces":    []any{},
+					"enumValues":    nil,
+					"possibleTypes": nil,
+					"inputFields":   nil,
 				}
 				types = append(types, mt)
 				typeMap["Mutation"] = mt
@@ -478,6 +508,7 @@ func (ug *UnifiedGraphQL) buildIntrospection() map[string]any {
 					currentType["fields"] = nil
 				} else {
 					currentType["fields"] = currentFields
+					currentType["inputFields"] = nil
 				}
 				types = append(types, currentType)
 				typeMap[currentType["name"].(string)] = currentType
@@ -556,6 +587,7 @@ func parseSchemaField(line string) map[string]any {
 				if len(parts) == 2 {
 					args = append(args, map[string]any{
 						"name":         strings.TrimSpace(parts[0]),
+						"description":  nil,
 						"type":         parseTypeRef(strings.TrimSpace(parts[1])),
 						"defaultValue": nil,
 					})
@@ -576,6 +608,10 @@ func parseSchemaField(line string) map[string]any {
 	} else {
 		field["type"] = map[string]any{"kind": "SCALAR", "name": "String", "ofType": nil}
 	}
+
+	field["description"] = nil
+	field["isDeprecated"] = false
+	field["deprecationReason"] = nil
 
 	return field
 }
