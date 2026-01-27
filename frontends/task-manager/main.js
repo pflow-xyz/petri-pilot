@@ -1,9 +1,10 @@
 // Task Manager Frontend
 // Kanban-style board with workflow visualization
 
-function getApiBase() {
-  return window.API_BASE || ''
-}
+import { PetriGraphQL } from '../shared/graphql-client.js'
+
+const APP_NAME = 'taskmanager'
+const gql = new PetriGraphQL('/graphql')
 
 // State
 let state = {
@@ -19,14 +20,11 @@ const STATUS_MAP = {
   completed: 'completed'
 }
 
-// API calls
+// API calls using GraphQL
 async function fetchTasks() {
   try {
-    const response = await fetch(`${getApiBase()}/api/taskmanager`)
-    if (response.ok) {
-      const data = await response.json()
-      state.tasks = data.instances || []
-    }
+    const list = await gql.list(APP_NAME, { page: 1, perPage: 100 })
+    state.tasks = list.items || []
   } catch (err) {
     console.error('Failed to fetch tasks:', err)
   }
@@ -34,18 +32,8 @@ async function fetchTasks() {
 
 async function createTask(title, description) {
   try {
-    const response = await fetch(`${getApiBase()}/api/taskmanager`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: { title, description }
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to create task')
-    }
-
+    const created = await gql.create(APP_NAME)
+    if (!created) throw new Error('Failed to create task')
     return true
   } catch (err) {
     console.error('Failed to create task:', err)
@@ -56,20 +44,7 @@ async function createTask(title, description) {
 
 async function executeTransition(transitionId, aggregateId) {
   try {
-    const response = await fetch(`${getApiBase()}/api/${transitionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: aggregateId,
-        data: {}
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-
+    await gql.execute(APP_NAME, transitionId, aggregateId, {})
     return true
   } catch (err) {
     console.error('Transition failed:', err)

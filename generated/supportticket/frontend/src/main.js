@@ -2373,15 +2373,15 @@ window.pilot = {
   /** Get all transition definitions */
   getTransitions() {
     return [
-      { id: 'assign', name: 'Assign', description: "Assign ticket to an agent", requiredRoles: [], apiPath: '/api/assign' },
-      { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket", requiredRoles: [], apiPath: '/api/start_work' },
-      { id: 'escalate', name: 'Escalate', description: "Escalate to senior support", requiredRoles: [], apiPath: '/api/escalate' },
-      { id: 'request_info', name: 'Request Info', description: "Request more information from customer", requiredRoles: [], apiPath: '/api/request_info' },
-      { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information", requiredRoles: [], apiPath: '/api/customer_reply' },
-      { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress", requiredRoles: [], apiPath: '/api/resolve' },
-      { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved", requiredRoles: [], apiPath: '/api/resolve_escalated' },
-      { id: 'close', name: 'Close', description: "Close the ticket", requiredRoles: [], apiPath: '/api/close' },
-      { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket", requiredRoles: [], apiPath: '/api/reopen' },
+      { id: 'assign', name: 'Assign', description: "Assign ticket to an agent", requiredRoles: ["agent"], apiPath: '/api/assign' },
+      { id: 'start_work', name: 'Start Work', description: "Begin working on the ticket", requiredRoles: ["agent"], apiPath: '/api/start_work' },
+      { id: 'escalate', name: 'Escalate', description: "Escalate to senior support", requiredRoles: ["agent"], apiPath: '/api/escalate' },
+      { id: 'request_info', name: 'Request Info', description: "Request more information from customer", requiredRoles: ["agent"], apiPath: '/api/request_info' },
+      { id: 'customer_reply', name: 'Customer Reply', description: "Customer provides requested information", requiredRoles: ["customer"], apiPath: '/api/customer_reply' },
+      { id: 'resolve', name: 'Resolve', description: "Mark issue as resolved from in_progress", requiredRoles: ["agent"], apiPath: '/api/resolve' },
+      { id: 'resolve_escalated', name: 'Resolve Escalated', description: "Mark escalated issue as resolved", requiredRoles: ["supervisor"], apiPath: '/api/resolve_escalated' },
+      { id: 'close', name: 'Close', description: "Close the ticket", requiredRoles: ["agent"], apiPath: '/api/close' },
+      { id: 'reopen', name: 'Reopen', description: "Customer reopens a closed ticket", requiredRoles: ["customer"], apiPath: '/api/reopen' },
     ]
   },
 

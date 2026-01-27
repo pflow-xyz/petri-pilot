@@ -1,9 +1,10 @@
 // Blog Post Frontend
 // Clean article-focused UI with workflow states
 
-function getApiBase() {
-  return window.API_BASE || ''
-}
+import { PetriGraphQL } from '../shared/graphql-client.js'
+
+const APP_NAME = 'blogpost'
+const gql = new PetriGraphQL('/graphql')
 
 // State
 let state = {
@@ -13,14 +14,11 @@ let state = {
   view: 'list' // list, editor, detail
 }
 
-// API calls
+// API calls using GraphQL
 async function fetchPosts() {
   try {
-    const response = await fetch(`${getApiBase()}/api/blogpost`)
-    if (response.ok) {
-      const data = await response.json()
-      state.posts = data.instances || []
-    }
+    const list = await gql.list(APP_NAME, { page: 1, perPage: 100 })
+    state.posts = list.items || []
   } catch (err) {
     console.error('Failed to fetch posts:', err)
   }
@@ -28,11 +26,8 @@ async function fetchPosts() {
 
 async function fetchPost(id) {
   try {
-    const response = await fetch(`${getApiBase()}/api/blogpost/${id}`)
-    if (response.ok) {
-      const data = await response.json()
-      return data
-    }
+    const aggState = await gql.getState(APP_NAME, id)
+    return aggState
   } catch (err) {
     console.error('Failed to fetch post:', err)
   }
@@ -41,11 +36,7 @@ async function fetchPost(id) {
 
 async function fetchEvents(id) {
   try {
-    const response = await fetch(`${getApiBase()}/api/blogpost/${id}/events`)
-    if (response.ok) {
-      const data = await response.json()
-      return data.events || []
-    }
+    return await gql.getEvents(id)
   } catch (err) {
     console.error('Failed to fetch events:', err)
   }
@@ -55,37 +46,19 @@ async function fetchEvents(id) {
 async function createPost(title, content, tags) {
   try {
     // First create the aggregate
-    const createResp = await fetch(`${getApiBase()}/api/blogpost`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: {} })
-    })
+    const created = await gql.create(APP_NAME)
+    if (!created) throw new Error('Failed to create post')
 
-    if (!createResp.ok) throw new Error('Failed to create post')
-
-    const createData = await createResp.json()
-    const aggregateId = createData.aggregate_id
+    const aggregateId = created.id
 
     // Then fire the create_post transition with content
-    const response = await fetch(`${getApiBase()}/api/create_post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: aggregateId,
-        data: {
-          title: title,
-          content: content,
-          tags: tags,
-          author_id: getCurrentUser()?.id || 'anonymous',
-          author_name: getCurrentUser()?.name || 'Anonymous'
-        }
-      })
+    await gql.execute(APP_NAME, 'create_post', aggregateId, {
+      title: title,
+      content: content,
+      tags: tags,
+      author_id: getCurrentUser()?.id || 'anonymous',
+      author_name: getCurrentUser()?.name || 'Anonymous'
     })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
 
     return aggregateId
   } catch (err) {
@@ -97,20 +70,7 @@ async function createPost(title, content, tags) {
 
 async function updatePost(id, title, content, tags) {
   try {
-    const response = await fetch(`${getApiBase()}/api/update`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: id,
-        data: { title, content, tags }
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-
+    await gql.execute(APP_NAME, 'update', id, { title, content, tags })
     return true
   } catch (err) {
     console.error('Failed to update post:', err)
@@ -121,20 +81,7 @@ async function updatePost(id, title, content, tags) {
 
 async function executeTransition(transitionId, aggregateId, data = {}) {
   try {
-    const response = await fetch(`${getApiBase()}/api/${transitionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: aggregateId,
-        data: data
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-
+    await gql.execute(APP_NAME, transitionId, aggregateId, data)
     return true
   } catch (err) {
     console.error('Transition failed:', err)

@@ -66,6 +66,10 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 
 
 
+	// GraphQL API
+	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
+	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
+
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))

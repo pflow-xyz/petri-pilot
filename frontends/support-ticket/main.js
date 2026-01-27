@@ -1,9 +1,10 @@
 // Support Ticket Frontend
 // Professional ticketing system with priority and status management
 
-function getApiBase() {
-  return window.API_BASE || ''
-}
+import { PetriGraphQL } from '../shared/graphql-client.js'
+
+const APP_NAME = 'supportticket'
+const gql = new PetriGraphQL('/graphql')
 
 // State
 let state = {
@@ -59,14 +60,11 @@ const STATUS_ACTIONS = {
   ]
 }
 
-// API calls
+// API calls using GraphQL
 async function fetchTickets() {
   try {
-    const response = await fetch(`${getApiBase()}/api/supportticket`)
-    if (response.ok) {
-      const data = await response.json()
-      state.tickets = data.instances || []
-    }
+    const list = await gql.list(APP_NAME, { page: 1, perPage: 100 })
+    state.tickets = list.items || []
   } catch (err) {
     console.error('Failed to fetch tickets:', err)
   }
@@ -74,24 +72,8 @@ async function fetchTickets() {
 
 async function createTicket(subject, description, priority, customerName, customerEmail) {
   try {
-    const response = await fetch(`${getApiBase()}/api/supportticket`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          subject,
-          description,
-          priority,
-          customer_name: customerName,
-          customer_email: customerEmail
-        }
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to create ticket')
-    }
-
+    const created = await gql.create(APP_NAME)
+    if (!created) throw new Error('Failed to create ticket')
     return true
   } catch (err) {
     console.error('Failed to create ticket:', err)
@@ -102,20 +84,7 @@ async function createTicket(subject, description, priority, customerName, custom
 
 async function executeTransition(transitionId, aggregateId, data = {}) {
   try {
-    const response = await fetch(`${getApiBase()}/api/${transitionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: aggregateId,
-        data: data
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-
+    await gql.execute(APP_NAME, transitionId, aggregateId, data)
     return true
   } catch (err) {
     console.error('Transition failed:', err)

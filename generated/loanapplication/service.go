@@ -39,6 +39,66 @@ func NewService() (serve.Service, error) {
 
 	// Configure access control rules
 	accessRules := []*AccessControl{
+		{
+			TransitionID: "run_credit_check",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "auto_approve",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "flag_for_review",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "auto_deny",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "underwriter_approve",
+			Roles:        []string{"underwriter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "underwriter_deny",
+			Roles:        []string{"underwriter",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "finalize_approval",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "disburse",
+			Roles:        []string{"admin",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "start_repayment",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "make_payment",
+			Roles:        []string{"applicant",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "complete",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "mark_default",
+			Roles:        []string{"admin",  },
+			Guard:        "",
+		},
 	}
 
 	// Initialize middleware
@@ -66,3 +126,4 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+

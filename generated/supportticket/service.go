@@ -39,6 +39,51 @@ func NewService() (serve.Service, error) {
 
 	// Configure access control rules
 	accessRules := []*AccessControl{
+		{
+			TransitionID: "assign",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "start_work",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "escalate",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "request_info",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "customer_reply",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "resolve",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "resolve_escalated",
+			Roles:        []string{"supervisor",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "close",
+			Roles:        []string{"agent",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "reopen",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
 	}
 
 	// Initialize middleware
@@ -66,3 +111,4 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+

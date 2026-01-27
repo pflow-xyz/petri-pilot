@@ -275,11 +275,19 @@ func TestGenerateFiles(t *testing.T) {
 	// Core files always generated:
 	// service.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go,
 	// api_events.go, README.md
-	// Note: Application construct files (auth.go, views.go, navigation.go, admin.go, etc.) are only
-	// generated when the corresponding extensions are present. The test model has core Petri net
-	// elements only; application constructs are now stored in extensions.
+	// Note: The test model (order-processing.json) has debug, access control (roles/access), views,
+	// navigation, admin, and graphql enabled, which generates additional files.
 	// Note: AsSubmodule mode generates service.go instead of main.go and skips go.mod
-	expectedFiles := []string{"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml", "config.go", "workflow_test.go", "api_events.go", "README.md"}
+	expectedFiles := []string{
+		"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml",
+		"config.go", "workflow_test.go", "api_events.go", "README.md",
+		// Access control files (model has roles and access)
+		"auth.go", "middleware.go", "permissions.go",
+		// Debug file (model has debug enabled)
+		"debug.go",
+		// GraphQL files (model has graphql enabled)
+		"graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml",
+	}
 	if len(files) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
 		for _, f := range files {

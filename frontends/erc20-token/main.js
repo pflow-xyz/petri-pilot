@@ -1,9 +1,10 @@
 // ERC-20 Token Frontend
 // Wallet-focused UI for token transfers and management
 
-function getApiBase() {
-  return window.API_BASE || ''
-}
+import { PetriGraphQL } from '../shared/graphql-client.js'
+
+const APP_NAME = 'erc20token'
+const gql = new PetriGraphQL('/graphql')
 
 // Wallet accounts from model
 const ACCOUNTS = [
@@ -23,50 +24,40 @@ let state = {
   aggregateId: null
 }
 
-// API calls
+// API calls using GraphQL
 async function fetchState() {
   try {
     // Get aggregate ID first (or create one)
     if (!state.aggregateId) {
-      const listResp = await fetch(`${getApiBase()}/api/erc20token`)
-      if (listResp.ok) {
-        const data = await listResp.json()
-        if (data.instances && data.instances.length > 0) {
-          state.aggregateId = data.instances[0].id
-        }
+      const list = await gql.list(APP_NAME, { page: 1, perPage: 1 })
+      if (list.items && list.items.length > 0) {
+        state.aggregateId = list.items[0].id
       }
     }
 
     // If still no aggregate, create one
     if (!state.aggregateId) {
-      const createResp = await fetch(`${getApiBase()}/api/erc20token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: {} })
-      })
-      if (createResp.ok) {
-        const data = await createResp.json()
-        state.aggregateId = data.aggregate_id
+      const created = await gql.create(APP_NAME)
+      if (created) {
+        state.aggregateId = created.id
       }
     }
 
     // Get current state
     if (state.aggregateId) {
-      const stateResp = await fetch(`${getApiBase()}/api/erc20token/${state.aggregateId}`)
-      if (stateResp.ok) {
-        const data = await stateResp.json()
-        if (data.state) {
-          state.balances = data.state.balances || {}
-          state.allowances = data.state.allowances || {}
-          state.totalSupply = data.state.total_supply || 0
-        }
+      const aggState = await gql.getState(APP_NAME, state.aggregateId)
+      if (aggState && aggState.state) {
+        state.balances = aggState.state.balances || {}
+        state.allowances = aggState.state.allowances || {}
+        state.totalSupply = aggState.state.total_supply || aggState.state.totalSupply || 0
       }
 
       // Get events
-      const eventsResp = await fetch(`${getApiBase()}/api/erc20token/${state.aggregateId}/events`)
-      if (eventsResp.ok) {
-        const data = await eventsResp.json()
-        state.events = data.events || []
+      try {
+        state.events = await gql.getEvents(state.aggregateId)
+      } catch {
+        // Events may not be enabled
+        state.events = []
       }
     }
   } catch (err) {
@@ -76,30 +67,9 @@ async function fetchState() {
 
 async function executeTransition(transitionId, data) {
   try {
-    const response = await fetch(`${getApiBase()}/api/${transitionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        aggregate_id: state.aggregateId,
-        data: data
-      })
-    })
+    const result = await gql.execute(APP_NAME, transitionId, state.aggregateId, data)
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-
-    const result = await response.json()
-
-    // Update local state
-    if (result.state) {
-      state.balances = result.state.balances || {}
-      state.allowances = result.state.allowances || {}
-      state.totalSupply = result.state.total_supply || 0
-    }
-
-    // Refresh events
+    // Refresh state after transition
     await fetchState()
     render()
 

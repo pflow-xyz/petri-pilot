@@ -340,6 +340,96 @@ classDiagram
 
 
 
+## Access Control
+
+Role-based access control (RBAC) restricts which users can execute transitions.
+
+
+### Roles
+
+| Role | Description | Inherits |
+|------|-------------|----------|
+| `candidate` | Job applicant | - |
+| `recruiter` | HR recruiter who screens candidates | - |
+| `hiring_manager` | Manager who conducts interviews and makes hiring decisions | - |
+| `admin` | Full access to all operations | `recruiter`, `hiring_manager` |
+
+
+
+### Permissions
+
+| Transition | Required Roles | Guard |
+|------------|----------------|-------|
+| `start_screening` | `recruiter` | - |
+| `begin_checks` | `recruiter` | - |
+| `schedule_phone_screen` | `recruiter` | - |
+| `start_background_check` | `recruiter` | - |
+| `complete_phone_screen` | `recruiter` | - |
+| `complete_background_check` | `recruiter` | - |
+| `advance_to_interview` | `recruiter` | - |
+| `conduct_interview` | `hiring_manager` | - |
+| `extend_offer` | `hiring_manager` | - |
+| `accept_offer` | `candidate` | - |
+| `reject_after_screen` | `recruiter` | - |
+| `reject_after_interview` | `hiring_manager` | - |
+| `decline_offer` | `candidate` | - |
+
+
+```mermaid
+graph TD
+    subgraph Roles
+        role_candidate["candidate"]
+        role_recruiter["recruiter"]
+        role_hiring_manager["hiring_manager"]
+        role_admin["admin"]
+    end
+
+    subgraph Transitions
+        t_start_screening["start_screening"]
+        t_begin_checks["begin_checks"]
+        t_schedule_phone_screen["schedule_phone_screen"]
+        t_start_background_check["start_background_check"]
+        t_complete_phone_screen["complete_phone_screen"]
+        t_complete_background_check["complete_background_check"]
+        t_advance_to_interview["advance_to_interview"]
+        t_conduct_interview["conduct_interview"]
+        t_extend_offer["extend_offer"]
+        t_accept_offer["accept_offer"]
+        t_reject_after_screen["reject_after_screen"]
+        t_reject_after_interview["reject_after_interview"]
+        t_decline_offer["decline_offer"]
+    end
+
+
+    role_recruiter -.->|can execute| t_start_screening
+
+    role_recruiter -.->|can execute| t_begin_checks
+
+    role_recruiter -.->|can execute| t_schedule_phone_screen
+
+    role_recruiter -.->|can execute| t_start_background_check
+
+    role_recruiter -.->|can execute| t_complete_phone_screen
+
+    role_recruiter -.->|can execute| t_complete_background_check
+
+    role_recruiter -.->|can execute| t_advance_to_interview
+
+    role_hiring_manager -.->|can execute| t_conduct_interview
+
+    role_hiring_manager -.->|can execute| t_extend_offer
+
+    role_candidate -.->|can execute| t_accept_offer
+
+    role_recruiter -.->|can execute| t_reject_after_screen
+
+    role_hiring_manager -.->|can execute| t_reject_after_interview
+
+    role_candidate -.->|can execute| t_decline_offer
+
+```
+
+
 ## API Endpoints
 
 ### Core Endpoints
@@ -426,6 +516,9 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
+├── auth.go           # Authentication
+├── middleware.go     # HTTP middleware
+├── permissions.go    # Permission checks
 ├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html

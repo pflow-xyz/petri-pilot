@@ -39,6 +39,61 @@ func NewService() (serve.Service, error) {
 
 	// Configure access control rules
 	accessRules := []*AccessControl{
+		{
+			TransitionID: "start_checkout",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "enter_payment",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "process_payment",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_success",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_1",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "retry_payment_1",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_2",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "retry_payment_2",
+			Roles:        []string{"customer",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "payment_fail_3",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "cancel_order",
+			Roles:        []string{"system",  },
+			Guard:        "",
+		},
+		{
+			TransitionID: "fulfill",
+			Roles:        []string{"fulfillment",  },
+			Guard:        "",
+		},
 	}
 
 	// Initialize middleware
@@ -66,3 +121,4 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+

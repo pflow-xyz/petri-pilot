@@ -742,6 +742,9 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	// Build debug context if debug is enabled
 	ctx.Debug = buildDebugContext(enriched.Debug)
 
+	// Build GraphQL context if GraphQL is enabled
+	ctx.GraphQL = buildGraphQLContext(enriched.GraphQL)
+
 	// Build access control from model if present
 	if enriched.Roles != nil {
 		ctx.Roles = buildRoleContextsFromModel(enriched.Roles)

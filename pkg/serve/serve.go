@@ -41,6 +41,22 @@ type ProcessService interface {
 	RunProcess(ctx context.Context, port int) error
 }
 
+// GraphQLService is an optional interface for services that support the unified GraphQL endpoint.
+// Services implementing this interface will have their schemas combined into a single GraphQL API.
+type GraphQLService interface {
+	Service
+
+	// GraphQLSchema returns the GraphQL schema definition string for this service.
+	GraphQLSchema() string
+
+	// GraphQLResolvers returns a map of resolver functions for this service.
+	// Keys are operation names (e.g., "erc20token", "erc20tokenList", "erc20token_transfer").
+	GraphQLResolvers() map[string]GraphQLResolver
+}
+
+// GraphQLResolver is a function that handles a GraphQL operation.
+type GraphQLResolver func(ctx context.Context, variables map[string]any) (any, error)
+
 // ServiceFactory is a function that creates a new Service instance.
 type ServiceFactory func() (Service, error)
 
@@ -170,6 +186,22 @@ func RunMultiple(names []string, opts Options) error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// Collect GraphQL-enabled services and create unified endpoint
+	var graphqlServices []GraphQLService
+	for _, svc := range services {
+		if gqlSvc, ok := svc.(GraphQLService); ok {
+			graphqlServices = append(graphqlServices, gqlSvc)
+		}
+	}
+	if len(graphqlServices) > 0 {
+		unifiedGraphQL := NewUnifiedGraphQL(graphqlServices)
+		mux.Handle("/graphql", unifiedGraphQL.Handler())
+		mux.HandleFunc("/playground", PlaygroundHandler("/graphql"))
+		mux.HandleFunc("/schema", unifiedGraphQL.SchemaHandler())
+		log.Printf("  Unified GraphQL at /graphql (%d services)", len(graphqlServices))
+		log.Printf("  GraphQL Playground at /playground")
+	}
 
 	// Mount each service at /{name}/ and /~{name}/
 	for i, svc := range services {

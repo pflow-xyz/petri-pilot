@@ -295,6 +295,88 @@ classDiagram
 
 
 
+## Access Control
+
+Role-based access control (RBAC) restricts which users can execute transitions.
+
+
+### Roles
+
+| Role | Description | Inherits |
+|------|-------------|----------|
+| `customer` | End user making a purchase | - |
+| `system` | Automated payment processing system | - |
+| `fulfillment` | Warehouse staff who fulfill orders | - |
+| `admin` | Full access to all operations | `customer`, `system`, `fulfillment` |
+
+
+
+### Permissions
+
+| Transition | Required Roles | Guard |
+|------------|----------------|-------|
+| `start_checkout` | `customer` | - |
+| `enter_payment` | `customer` | - |
+| `process_payment` | `system` | - |
+| `payment_success` | `system` | - |
+| `payment_fail_1` | `system` | - |
+| `retry_payment_1` | `customer` | - |
+| `payment_fail_2` | `system` | - |
+| `retry_payment_2` | `customer` | - |
+| `payment_fail_3` | `system` | - |
+| `cancel_order` | `system` | - |
+| `fulfill` | `fulfillment` | - |
+
+
+```mermaid
+graph TD
+    subgraph Roles
+        role_customer["customer"]
+        role_system["system"]
+        role_fulfillment["fulfillment"]
+        role_admin["admin"]
+    end
+
+    subgraph Transitions
+        t_start_checkout["start_checkout"]
+        t_enter_payment["enter_payment"]
+        t_process_payment["process_payment"]
+        t_payment_success["payment_success"]
+        t_payment_fail_1["payment_fail_1"]
+        t_retry_payment_1["retry_payment_1"]
+        t_payment_fail_2["payment_fail_2"]
+        t_retry_payment_2["retry_payment_2"]
+        t_payment_fail_3["payment_fail_3"]
+        t_cancel_order["cancel_order"]
+        t_fulfill["fulfill"]
+    end
+
+
+    role_customer -.->|can execute| t_start_checkout
+
+    role_customer -.->|can execute| t_enter_payment
+
+    role_system -.->|can execute| t_process_payment
+
+    role_system -.->|can execute| t_payment_success
+
+    role_system -.->|can execute| t_payment_fail_1
+
+    role_customer -.->|can execute| t_retry_payment_1
+
+    role_system -.->|can execute| t_payment_fail_2
+
+    role_customer -.->|can execute| t_retry_payment_2
+
+    role_system -.->|can execute| t_payment_fail_3
+
+    role_system -.->|can execute| t_cancel_order
+
+    role_fulfillment -.->|can execute| t_fulfill
+
+```
+
+
 ## API Endpoints
 
 ### Core Endpoints
@@ -379,6 +461,9 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
+├── auth.go           # Authentication
+├── middleware.go     # HTTP middleware
+├── permissions.go    # Permission checks
 ├── debug.go          # Debug handlers
 ├── frontend/         # Web UI (ES modules)
 │   ├── index.html

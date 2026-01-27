@@ -110,3 +110,4 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+

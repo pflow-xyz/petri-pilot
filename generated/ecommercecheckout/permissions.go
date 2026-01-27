@@ -20,7 +20,7 @@ var AllRolesFor = map[string][]string{
 	RoleCustomer: { "customer" },
 	RoleSystem: { "system" },
 	RoleFulfillment: { "fulfillment" },
-	RoleAdmin: { "fulfillment", "admin", "customer", "system" },
+	RoleAdmin: { "admin", "customer", "system", "fulfillment" },
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
@@ -139,6 +139,182 @@ func CheckRoleAccess(user *User, requiredRoles []string) error {
 	return nil
 }
 
+
+// CheckAccessStartCheckout verifies access for the start_checkout transition.
+func CheckAccessStartCheckout(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "customer" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessEnterPayment verifies access for the enter_payment transition.
+func CheckAccessEnterPayment(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "customer" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessProcessPayment verifies access for the process_payment transition.
+func CheckAccessProcessPayment(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessPaymentSuccess verifies access for the payment_success transition.
+func CheckAccessPaymentSuccess(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessPaymentFail1 verifies access for the payment_fail_1 transition.
+func CheckAccessPaymentFail1(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessRetryPayment1 verifies access for the retry_payment_1 transition.
+func CheckAccessRetryPayment1(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "customer" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessPaymentFail2 verifies access for the payment_fail_2 transition.
+func CheckAccessPaymentFail2(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessRetryPayment2 verifies access for the retry_payment_2 transition.
+func CheckAccessRetryPayment2(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "customer" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessPaymentFail3 verifies access for the payment_fail_3 transition.
+func CheckAccessPaymentFail3(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessCancelOrder verifies access for the cancel_order transition.
+func CheckAccessCancelOrder(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "system" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
+
+// CheckAccessFulfill verifies access for the fulfill transition.
+func CheckAccessFulfill(user *User, state map[string]any) error {
+	if user == nil {
+		return ErrUnauthorized
+	}
+	
+	// Check role requirements (including dynamic role grants based on state)
+	requiredRoles := []string{ "fulfillment" }
+	if !HasAnyRoleWithState(user, requiredRoles, state) {
+		return ErrForbidden
+	}
+	
+	
+	return nil
+}
 
 
 // GetUserRoles returns the effective roles for a user (with inheritance expanded).
