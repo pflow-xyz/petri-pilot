@@ -55,6 +55,33 @@ Add to your MCP configuration:
 
 After configuring, restart your client. The MCP tools (`petri_validate`, `petri_codegen`, etc.) will be available in conversations.
 
+## Live Environment
+
+When running multiple models with `petri-pilot serve`, the server provides a unified interface:
+
+| URL | Description |
+|-----|-------------|
+| `/` | Landing page with links to all models and tools |
+| `/graphql/i` | **GraphQL Playground** - query and mutate all models through a unified API with an operations explorer and model schema browser |
+| `/pflow` | **Petri Net Viewer** - interactive visualization of all models using the [pflow.xyz](https://pflow.xyz) editor |
+| `/{model}/` | Per-model REST API |
+| `/~{model}/` | Generated dashboard (auth required) |
+
+```bash
+# Run multiple models on a single port
+petri-pilot serve tic-tac-toe coffeeshop erc20-token blog-post
+
+# Open the playground
+open http://localhost:8080/graphql/i
+
+# Open the Petri net viewer
+open http://localhost:8080/pflow
+```
+
+The GraphQL playground combines all service schemas into a single endpoint. The operations explorer (left sidebar) groups queries and mutations by service. The models panel (right sidebar) shows Petri net visualizations, events, roles, and access rules for each model, with an "Open in pflow" button for interactive exploration.
+
+See **[pilot.pflow.xyz](https://pilot.pflow.xyz)** for a live instance.
+
 ## Getting Started with Examples
 
 The `examples/` directory contains ready-to-use models. The `generated/` directory contains pre-built applications with both backend and frontend.
@@ -302,10 +329,11 @@ Users will be redirected to GitHub for login. After authorization, they receive 
 
 ## Documentation
 
+- **[Architecture](ARCHITECTURE.md)** - Design philosophy, categorical structure, serving layer, and why Petri nets
 - **[Events First Pattern](docs/events-first-pattern.md)** - Complete guide to Events First schema and binding patterns
 - **[MCP Prompts Guide](docs/mcp-prompts-guide.md)** - How to use design-workflow, add-access-control, and add-views prompts
 - **[E2E Testing Guide](docs/e2e-testing-guide.md)** - Writing tests for generated applications
-- **[Architecture](ARCHITECTURE.md)** - Detailed architecture and design patterns
+- **[GraphQL & pflow Integration](ARCHITECTURE.md#serving-layer)** - Unified GraphQL API, playground UI, and Petri net viewer
 
 ### Living Documentation
 

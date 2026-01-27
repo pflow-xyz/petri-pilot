@@ -207,6 +207,63 @@ An LLM workflow:
 
 The model is the contract. Everything else is derivable.
 
+## Serving Layer
+
+When multiple services run together via `petri-pilot serve`, a unified serving layer provides a single entry point for interacting with all models.
+
+### Unified GraphQL API
+
+All services implementing `GraphQLService` are combined into a single schema at `/graphql`. Operations are namespaced by service (e.g., `blogpost_create`, `tictactoe`). The schema endpoint at `/schema` returns the combined SDL.
+
+```
+Service A (GraphQLSchema + Resolvers) ─┐
+Service B (GraphQLSchema + Resolvers) ──┼─▶ UnifiedGraphQL ─▶ /graphql
+Service C (GraphQLSchema + Resolvers) ─┘
+```
+
+### GraphQL Playground (`/graphql/i`)
+
+The playground (`pkg/serve/playground.go`) is a self-contained HTML page embedding three integrated panels:
+
+1. **Editor** - Standard GraphQL Playground (CDN-hosted React component) with dark theme
+2. **Operations Explorer** (left sidebar) - Parses the SDL schema to list all queries and mutations grouped by service. Clicking an operation auto-generates a query template with default arguments and field selections.
+3. **Models Panel** (right sidebar, alongside Docs/Schema tabs) - Fetches `/models` to list available services, then loads each model's schema from `/{service}/api/schema`. Displays:
+   - SVG visualization of the Petri net (auto-layout with topological layering)
+   - Events with field types
+   - Roles and access rules
+   - Collapsible places, transitions, and arcs tables
+   - "Open in pflow" button linking to the interactive viewer
+
+The playground injects its custom UI by finding styled-component class names in the CDN playground DOM and attaching elements as siblings.
+
+### Petri Net Viewer (`/pflow`)
+
+The pflow viewer (`pkg/serve/playground.go`, `PflowHandler`) renders models using the [pflow.xyz](https://pflow.xyz) `<petri-view>` web component. It operates in two modes:
+
+- **Model picker** (`/pflow`) - Dark modal overlay listing all available models with SVG thumbnail previews, descriptions, and stats. Each card links to the model viewer.
+- **Model viewer** (`/pflow?model={name}`) - Fetches the model JSON from `/{name}/api/schema` and converts it to pflow's JSON-LD format (`@context: https://pflow.xyz/schema`, `@type: PetriNet`). The conversion maps places, transitions, and arcs to pflow's `Place`, `Transition`, and `Arrow` types with auto-layout positioning. Save/share/login UI elements from pflow are hidden via CSS and a MutationObserver.
+
+### Landing Page (`landing/index.html`)
+
+The static landing page serves as the root when the `landing/` directory exists. It provides:
+- Links to the GraphQL Playground and Petri Net Viewer
+- Service cards linking to each model's REST API and generated dashboard
+- GitHub OAuth login integration (token stored in localStorage)
+
+### Route Structure
+
+| Route | Handler | Description |
+|-------|---------|-------------|
+| `/` | Landing page or service listing | Entry point |
+| `/graphql` | `UnifiedGraphQL.Handler()` | Combined GraphQL API |
+| `/graphql/i` | `PlaygroundHandler()` | Interactive playground |
+| `/schema` | `UnifiedGraphQL.SchemaHandler()` | Combined SDL |
+| `/models` | JSON array of service names | Service discovery |
+| `/pflow` | `PflowHandler()` | Petri net viewer |
+| `/{service}/` | Service HTTP handler | Per-service REST API |
+| `/~{service}/` | SPA handler (auth required) | Generated dashboard |
+| `/auth/*` | `AuthHandler` | GitHub OAuth routes |
+
 ## Runtime
 
 Generated applications use shared runtime packages:
