@@ -979,6 +979,248 @@
     .zk-chain-arrow .proof-status.unverified {
       color: #e74c3c;
     }
+
+    /* Interactive step inspection */
+    .zk-hint {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      margin: 0.5rem 0 1rem 0;
+      padding: 0.5rem;
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 6px;
+    }
+
+    .zk-replay-container {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 700px) {
+      .zk-replay-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .zk-chain-node.clickable,
+    .zk-chain-arrow.clickable {
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .zk-chain-node.clickable:hover {
+      background: rgba(102, 126, 234, 0.15);
+      transform: translateX(4px);
+    }
+
+    .zk-chain-arrow.clickable:hover {
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 4px;
+    }
+
+    .click-hint {
+      display: block;
+      font-size: 0.65rem;
+      color: #667eea;
+      margin-top: 0.25rem;
+      opacity: 0.7;
+    }
+
+    .zk-step-detail {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 300px;
+      max-height: 450px;
+      overflow-y: auto;
+    }
+
+    .zk-detail-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: #666;
+    }
+
+    .zk-detail-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .zk-detail-hint {
+      font-size: 0.8rem;
+      color: #667eea;
+      margin-top: 0.5rem;
+    }
+
+    .zk-detail-content h4 {
+      margin: 0 0 1rem 0;
+      color: #fff;
+      font-size: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 0.5rem;
+    }
+
+    .zk-detail-section {
+      margin-bottom: 1rem;
+    }
+
+    .zk-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .zk-detail-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .zk-detail-label.clickable {
+      cursor: pointer;
+    }
+
+    .zk-detail-label.clickable:hover {
+      color: #667eea;
+    }
+
+    .zk-detail-value {
+      display: block;
+      font-size: 0.8rem;
+      color: #2ecc71;
+      word-break: break-all;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .zk-detail-value.small {
+      font-size: 0.7rem;
+    }
+
+    .zk-detail-value.proof-hex {
+      font-size: 0.65rem;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .zk-detail-value.hidden {
+      display: none;
+    }
+
+    .zk-circuit-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+
+    .zk-verify-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .zk-verify-badge.verified {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+    }
+
+    .zk-verify-badge.unverified {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+
+    .zk-public-inputs {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .zk-input-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0,0,0,0.2);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .zk-input-item .input-label {
+      font-size: 0.7rem;
+      color: #888;
+      min-width: 100px;
+    }
+
+    .zk-input-item code {
+      font-size: 0.7rem;
+      color: #667eea;
+    }
+
+    .zk-detail-explainer {
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-left: 3px solid #667eea;
+    }
+
+    .zk-detail-explainer h5 {
+      margin: 0 0 0.5rem 0;
+      color: #667eea;
+      font-size: 0.85rem;
+    }
+
+    .zk-detail-explainer p {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.8rem;
+      color: #ccc;
+      line-height: 1.5;
+    }
+
+    .zk-detail-explainer p:last-child {
+      margin-bottom: 0;
+    }
+
+    .zk-detail-explainer ol {
+      margin: 0.5rem 0;
+      padding-left: 1.25rem;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+
+    .zk-detail-explainer li {
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-detail-explainer strong {
+      color: #fff;
+    }
+
+    .zk-detail-explainer em {
+      color: #f1c40f;
+      font-style: normal;
+    }
+
+    .zk-detail-explainer .valid {
+      color: #2ecc71;
+    }
+
+    .zk-detail-explainer .invalid {
+      color: #e74c3c;
+    }
   </style>
 </head>
 <body>

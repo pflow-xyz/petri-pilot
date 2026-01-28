@@ -407,7 +407,7 @@ export async function verifyGameHistory() {
   return result
 }
 
-// Display replay verification results
+// Display replay verification results with interactive step details
 function showReplayResults(result) {
   // Create or update results modal
   let modal = document.getElementById('zk-replay-modal')
@@ -448,33 +448,192 @@ function showReplayResults(result) {
           </div>
           ` : ''}
         </div>
-        <div class="zk-replay-moves">
-          <h4>Move Chain</h4>
-          <div class="zk-move-chain">
-            <div class="zk-chain-node initial">
-              <span class="label">Initial</span>
-              <code>${result.move_results.length > 0 ? result.move_results[0].pre_root : 'N/A'}</code>
+
+        <p class="zk-hint">👆 Click any step below to inspect its ZK proof details</p>
+
+        <div class="zk-replay-container">
+          <div class="zk-replay-moves">
+            <h4>Move Chain</h4>
+            <div class="zk-move-chain">
+              <div class="zk-chain-node initial clickable" onclick="showStepDetail(-1)">
+                <span class="label">🎯 Initial State</span>
+                <code>${result.move_results.length > 0 ? result.move_results[0].pre_root : 'N/A'}</code>
+                <span class="click-hint">click to learn</span>
+              </div>
+              ${result.move_results.map((m, i) => `
+                <div class="zk-chain-arrow ${m.chain_valid ? '' : 'broken'} clickable" onclick="showStepDetail(${i})">
+                  <span class="move-label">${m.player === 1 ? 'X' : 'O'}→${m.position}</span>
+                  <span class="proof-status ${m.proof_verified ? 'verified' : 'unverified'}">
+                    ${m.proof_verified ? '✓' : '✗'}
+                  </span>
+                </div>
+                <div class="zk-chain-node ${i === result.move_results.length - 1 ? 'final' : ''} clickable" onclick="showStepDetail(${i})">
+                  <span class="label">Move ${m.move}</span>
+                  <code>${m.post_root}</code>
+                  ${m.error ? `<span class="error">${m.error}</span>` : ''}
+                  <span class="click-hint">click to inspect</span>
+                </div>
+              `).join('')}
             </div>
-            ${result.move_results.map((m, i) => `
-              <div class="zk-chain-arrow ${m.chain_valid ? '' : 'broken'}">
-                <span class="move-label">${m.player === 1 ? 'X' : 'O'}→${m.position}</span>
-                <span class="proof-status ${m.proof_verified ? 'verified' : 'unverified'}">
-                  ${m.proof_verified ? '✓' : '✗'}
-                </span>
-              </div>
-              <div class="zk-chain-node ${i === result.move_results.length - 1 ? 'final' : ''}">
-                <span class="label">Move ${m.move}</span>
-                <code>${m.post_root}</code>
-                ${m.error ? `<span class="error">${m.error}</span>` : ''}
-              </div>
-            `).join('')}
+          </div>
+
+          <div id="zk-step-detail" class="zk-step-detail">
+            <div class="zk-detail-placeholder">
+              <div class="zk-detail-icon">🔍</div>
+              <p>Select a step from the chain to see its ZK proof details</p>
+              <p class="zk-detail-hint">Learn how zero-knowledge proofs verify each move!</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   `
 
+  // Store result for detail view
+  window._replayResult = result
+
   modal.style.display = 'flex'
+}
+
+// Show detailed view of a specific step
+window.showStepDetail = function(stepIndex) {
+  const detail = document.getElementById('zk-step-detail')
+  if (!detail) return
+
+  // Initial state explanation
+  if (stepIndex === -1) {
+    const initialRoot = zkState.roots[0]
+    detail.innerHTML = `
+      <div class="zk-detail-content">
+        <h4>🎯 Initial State (Empty Board)</h4>
+
+        <div class="zk-detail-section">
+          <div class="zk-detail-label">State Root</div>
+          <code class="zk-detail-value">${initialRoot}</code>
+        </div>
+
+        <div class="zk-detail-explainer">
+          <h5>🎓 What is a State Root?</h5>
+          <p>A <strong>state root</strong> is a cryptographic fingerprint of the entire game board.
+          It's computed using the <strong>MiMC hash function</strong>, which is efficient to verify inside ZK circuits.</p>
+
+          <p>For an empty board [0,0,0,0,0,0,0,0,0], the MiMC hash produces this unique 256-bit number.</p>
+
+          <h5>🔐 Why does this matter?</h5>
+          <p>The state root lets us <strong>prove the board state without revealing it</strong>.
+          Anyone can verify that a move was made on a specific board configuration
+          just by checking the state root—no need to trust anyone!</p>
+        </div>
+      </div>
+    `
+    return
+  }
+
+  // Move step explanation
+  const move = window._replayResult.move_results[stepIndex]
+  const proofData = zkState.proofHistory[stepIndex]
+  const player = move.player === 1 ? 'X' : 'O'
+  const position = move.position
+  const row = Math.floor(position / 3)
+  const col = position % 3
+
+  detail.innerHTML = `
+    <div class="zk-detail-content">
+      <h4>Move ${move.move}: ${player} plays at (${row}, ${col})</h4>
+
+      <div class="zk-detail-grid">
+        <div class="zk-detail-section">
+          <div class="zk-detail-label">Pre-State Root</div>
+          <code class="zk-detail-value small">${proofData?.preRoot || move.pre_root}</code>
+        </div>
+
+        <div class="zk-detail-section">
+          <div class="zk-detail-label">Post-State Root</div>
+          <code class="zk-detail-value small">${proofData?.postRoot || move.post_root}</code>
+        </div>
+      </div>
+
+      <div class="zk-detail-section">
+        <div class="zk-detail-label">Circuit</div>
+        <span class="zk-circuit-badge">${proofData?.proof?.circuit || 'move'}</span>
+        <span class="zk-verify-badge ${move.proof_verified ? 'verified' : 'unverified'}">
+          ${move.proof_verified ? '✓ Verified' : '✗ Not Verified'}
+        </span>
+      </div>
+
+      ${proofData?.proof ? `
+      <div class="zk-detail-section">
+        <div class="zk-detail-label">Public Inputs (visible to verifier)</div>
+        <div class="zk-public-inputs">
+          <div class="zk-input-item">
+            <span class="input-label">pre_state_root</span>
+            <code>${formatInputShort(proofData.proof.public_inputs?.[0])}</code>
+          </div>
+          <div class="zk-input-item">
+            <span class="input-label">post_state_root</span>
+            <code>${formatInputShort(proofData.proof.public_inputs?.[1])}</code>
+          </div>
+          <div class="zk-input-item">
+            <span class="input-label">position</span>
+            <code>${position}</code>
+          </div>
+          <div class="zk-input-item">
+            <span class="input-label">player</span>
+            <code>${move.player} (${player})</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="zk-detail-section collapsible">
+        <div class="zk-detail-label clickable" onclick="toggleProofHex()">
+          Proof (click to expand) <span id="proof-toggle">▶</span>
+        </div>
+        <code id="proof-hex" class="zk-detail-value proof-hex hidden">${proofData.proof.proof_hex}</code>
+      </div>
+      ` : ''}
+
+      <div class="zk-detail-explainer">
+        <h5>🎓 What does this proof verify?</h5>
+        <p>This ZK proof mathematically guarantees that:</p>
+        <ol>
+          <li><strong>Valid Move:</strong> Position ${position} was empty before the move</li>
+          <li><strong>Correct Player:</strong> It was ${player}'s turn (turn ${stepIndex + 1})</li>
+          <li><strong>State Transition:</strong> The board changed correctly from pre-state to post-state</li>
+          <li><strong>No Cheating:</strong> The prover knows the actual board (private input) that hashes to these roots</li>
+        </ol>
+
+        <h5>🔐 Zero-Knowledge Property</h5>
+        <p>The verifier learns <em>nothing</em> about the board except what's revealed in the public inputs.
+        The proof is ~256 bytes regardless of game complexity!</p>
+
+        <h5>🔗 Chain Integrity</h5>
+        <p class="${move.chain_valid ? 'valid' : 'invalid'}">
+          ${move.chain_valid
+            ? '✓ This move\'s pre-state root matches the previous post-state root, maintaining chain integrity.'
+            : '✗ Chain broken! Pre-state doesn\'t match previous post-state.'}
+        </p>
+      </div>
+    </div>
+  `
+}
+
+// Format public input for display
+function formatInputShort(input) {
+  if (!input) return 'N/A'
+  if (input.length > 24) {
+    return input.slice(0, 10) + '...' + input.slice(-10)
+  }
+  return input
+}
+
+// Toggle proof hex visibility
+window.toggleProofHex = function() {
+  const hex = document.getElementById('proof-hex')
+  const toggle = document.getElementById('proof-toggle')
+  if (hex && toggle) {
+    hex.classList.toggle('hidden')
+    toggle.textContent = hex.classList.contains('hidden') ? '▶' : '▼'
+  }
 }
 
 // Close replay modal
