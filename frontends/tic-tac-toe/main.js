@@ -7,7 +7,7 @@ import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/
 let ZK = null
 async function loadZKModule() {
   if (!ZK) {
-    ZK = await import('./zk.js')
+    ZK = await import('./zk.js?v=2')
     console.log('ZK module loaded:', Object.keys(ZK))
   }
   return ZK
