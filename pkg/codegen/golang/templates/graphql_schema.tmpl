@@ -26,7 +26,7 @@ type Query {
 
 type Mutation {
   # Create a new {{.ModelName}} instance
-  create{{pascal .ModelName}}: AggregateState!
+  create{{pascal .PackageName}}: AggregateState!
 {{range .Transitions}}
   # {{.Description}}
   {{camel .ID}}(input: {{pascal .ID}}Input!): TransitionResult!

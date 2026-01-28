@@ -35,6 +35,12 @@ import (
 type ApplicationSpec struct {
 	// Model is the underlying ExtendedModel from go-pflow.
 	*goflowmodel.ExtendedModel
+
+	// Debug configuration (not an extension, simple config)
+	DebugConfig *goflowmodel.Debug `json:"debug,omitempty"`
+
+	// GraphQL configuration (not an extension, simple config)
+	GraphQLConfig *goflowmodel.GraphQLConfig `json:"graphql,omitempty"`
 }
 
 // NewApplicationSpec creates a new ApplicationSpec from a model.
@@ -133,6 +139,36 @@ func (a *ApplicationSpec) HasAdmin() bool {
 func (a *ApplicationSpec) HasNavigation() bool {
 	pages := a.Pages()
 	return pages != nil && pages.Navigation != nil
+}
+
+// HasDebug returns true if debug is enabled.
+func (a *ApplicationSpec) HasDebug() bool {
+	return a.DebugConfig != nil && a.DebugConfig.Enabled
+}
+
+// HasGraphQL returns true if GraphQL is enabled.
+func (a *ApplicationSpec) HasGraphQL() bool {
+	return a.GraphQLConfig != nil && a.GraphQLConfig.Enabled
+}
+
+// Debug returns the debug config.
+func (a *ApplicationSpec) Debug() *goflowmodel.Debug {
+	return a.DebugConfig
+}
+
+// GraphQL returns the GraphQL config.
+func (a *ApplicationSpec) GraphQL() *goflowmodel.GraphQLConfig {
+	return a.GraphQLConfig
+}
+
+// SetDebug sets the debug config.
+func (a *ApplicationSpec) SetDebug(debug *goflowmodel.Debug) {
+	a.DebugConfig = debug
+}
+
+// SetGraphQL sets the GraphQL config.
+func (a *ApplicationSpec) SetGraphQL(graphql *goflowmodel.GraphQLConfig) {
+	a.GraphQLConfig = graphql
 }
 
 // WithEntities adds or replaces the entity extension.

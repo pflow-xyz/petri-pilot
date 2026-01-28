@@ -135,10 +135,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "create{{pascal .ModelName}}") || matchField(query, "{{.PackageName}}_create")) {
-		state, err := h.resolver.Create{{pascal .ModelName}}(ctx)
+	if isMutation && (matchField(query, "create{{pascal .PackageName}}") || matchField(query, "{{.PackageName}}_create")) {
+		state, err := h.resolver.Create{{pascal .PackageName}}(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -146,7 +146,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "{{.PackageName}}_create") {
 				data["{{.PackageName}}_create"] = state
 			} else {
-				data["create{{pascal .ModelName}}"] = state
+				data["create{{pascal .PackageName}}"] = state
 			}
 		}
 	}
@@ -355,8 +355,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new {{.ModelName}} instance
-  create{{pascal .ModelName}}: AggregateState!
+  # Create a new {{.PackageName}} instance
+  create{{pascal .PackageName}}: AggregateState!
 {{range .Transitions}}
   # {{.Description}}
   {{camel .ID}}(input: {{pascal .ID}}Input!): TransitionResult!
@@ -471,7 +471,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 
 	// Mutation resolvers
 	resolvers["{{.PackageName}}_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.Create{{pascal .ModelName}}(ctx)
+		return resolver.Create{{pascal .PackageName}}(ctx)
 	}
 
 {{range .Transitions}}

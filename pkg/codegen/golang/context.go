@@ -794,6 +794,16 @@ func NewContextFromApp(app *extensions.ApplicationSpec, opts ContextOptions) (*C
 		ctx.AccessRules = buildAccessRuleContextsFromEntities(entitiesExt)
 	}
 
+	// Debug config from app
+	if app.HasDebug() {
+		ctx.Debug = buildDebugContext(app.Debug())
+	}
+
+	// GraphQL config from app
+	if app.HasGraphQL() {
+		ctx.GraphQL = buildGraphQLContext(app.GraphQL())
+	}
+
 	return ctx, nil
 }
 

@@ -203,8 +203,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// Create{{pascal .ModelName}} creates a new aggregate instance.
-func (r *Resolver) Create{{pascal .ModelName}}(ctx context.Context) (*AggregateState, error) {
+// Create{{pascal .PackageName}} creates a new aggregate instance.
+func (r *Resolver) Create{{pascal .PackageName}}(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

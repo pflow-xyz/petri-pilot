@@ -870,16 +870,18 @@ func cmdExamples(args []string) {
 }
 
 // modelWithExtensions is a struct for parsing v1 model JSON that includes extension fields
-// like admin, navigation, roles, access, and views at the top level.
+// like admin, navigation, roles, access, views, debug, and graphql at the top level.
 type modelWithExtensions struct {
 	metamodel.Model
 
 	// Extension fields that may appear at the top level of v1 model JSON
-	Admin      *extensions.Admin      `json:"admin,omitempty"`
-	Navigation *extensions.Navigation `json:"navigation,omitempty"`
-	Roles      []extensions.Role      `json:"roles,omitempty"`
-	Access     []accessRule           `json:"access,omitempty"`
-	Views      []extensions.View      `json:"views,omitempty"`
+	Admin      *extensions.Admin           `json:"admin,omitempty"`
+	Navigation *extensions.Navigation      `json:"navigation,omitempty"`
+	Roles      []extensions.Role           `json:"roles,omitempty"`
+	Access     []accessRule                `json:"access,omitempty"`
+	Views      []extensions.View           `json:"views,omitempty"`
+	Debug      *metamodel.Debug            `json:"debug,omitempty"`
+	GraphQL    *metamodel.GraphQLConfig    `json:"graphql,omitempty"`
 }
 
 // accessRule is a simplified struct for parsing access rules from v1 model JSON.
@@ -934,6 +936,16 @@ func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.Applic
 		pagesExt := extensions.NewPageExtension()
 		pagesExt.SetNavigation(*ext.Navigation)
 		app.WithPages(pagesExt)
+	}
+
+	// Set debug config if present
+	if ext.Debug != nil {
+		app.SetDebug(ext.Debug)
+	}
+
+	// Set GraphQL config if present
+	if ext.GraphQL != nil {
+		app.SetGraphQL(ext.GraphQL)
 	}
 
 	return model, app, nil

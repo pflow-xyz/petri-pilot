@@ -58,7 +58,7 @@ class PetriGraphQL {
    * @returns {Promise<Object>} - Created instance state
    */
   async create(appName) {
-    // Schema uses createBlogPost, createErc20token, etc.
+    // Schema uses createBlogpost, createErc20token, etc. (capitalize package name)
     const mutationName = `create${capitalize(appName)}`
     const query = `
       mutation {
