@@ -2,6 +2,7 @@
 // Uses pflow ODE solver for strategic value computation
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
+import * as ZK from './zk.js'
 
 // Read API_BASE dynamically to avoid race condition with inline script
 function getApiBase() {
@@ -576,6 +577,16 @@ async function newGame() {
     console.log('Enabled transitions:', gameState.enabled)
     updateCurrentPlayer()
 
+    // Create ZK game if ZK mode is enabled
+    if (ZK.zkState.enabled) {
+      try {
+        await ZK.createZkGame()
+        console.log('ZK game created:', ZK.zkState.gameId)
+      } catch (err) {
+        console.error('Failed to create ZK game:', err)
+      }
+    }
+
     // Always recalculate ODE for empty board if heat map is showing
     if (showHeatmap) {
       odeValues = null // Clear first
@@ -680,6 +691,23 @@ async function makeMove(row, col) {
     // Get events
     const eventsResult = await getGameEvents(gameState.id)
     gameState.events = eventsResult.events || []
+
+    // Make ZK move if ZK mode is enabled
+    if (ZK.zkState.enabled && ZK.zkState.gameId) {
+      try {
+        const position = row * 3 + col
+        const zkResult = await ZK.makeZkMove(position)
+        console.log('ZK move result:', zkResult)
+
+        // Check for win with ZK proof
+        if (gameState.gameOver) {
+          const winResult = await ZK.checkZkWin()
+          console.log('ZK win check:', winResult)
+        }
+      } catch (err) {
+        console.error('ZK move failed:', err)
+      }
+    }
 
     // Recalculate ODE values if heat map is showing
     if (showHeatmap && !gameState.gameOver) {
@@ -1637,6 +1665,7 @@ window.makeMove = makeMove
 window.newGame = newGame
 window.resetGame = resetGame
 window.toggleHeatmap = toggleHeatmap
+window.toggleZkMode = ZK.toggleZkMode
 window.setSimMode = setSimMode
 window.revertToMove = revertToMove
 window.downloadSnapshot = downloadSnapshot
