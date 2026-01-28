@@ -42,10 +42,10 @@ Custom components:
 | Example | pilot.pflow.xyz | Dogfooded | Blog Post |
 |---------|-----------------|-----------|-----------|
 | tic-tac-toe | ✅ | ✅ | ✅ |
-| coffeeshop | ✅ | ⬜ | ⬜ |
-| erc20-token | ✅ | ⬜ | ⬜ |
+| coffeeshop | ✅ | ✅ | ⬜ |
+| erc20-token | ✅ | ✅ | ⬜ |
 | order-processing | ✅ | ⬜ | ⬜ |
-| blog-post | ✅ | ⬜ | ⬜ |
+| blog-post | ✅ | ✅ | ⬜ |
 | support-ticket | ✅ | ⬜ | ⬜ |
 
 ## Dogfooding
@@ -75,7 +75,7 @@ Test each example in real usage before writing blog posts.
   - Fixed: Added inline SVG favicon to `index_html.tmpl` template
 
 ### Improvements identified
-- [ ] _Add improvement ideas from dogfooding_
+- [ ] blog-post: Form data (title, content, tags) not saved when creating new post - shows "Untitled Post"
 
 ## Cleanup
 
