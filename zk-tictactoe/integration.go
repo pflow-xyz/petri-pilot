@@ -69,6 +69,9 @@ func (z *ZKIntegration) Handler() http.Handler {
 	// Get circuit info
 	mux.HandleFunc("GET /circuits", z.handleCircuits)
 
+	// Export Solidity verifier contract
+	mux.HandleFunc("GET /verifier/{circuit}", z.handleExportVerifier)
+
 	return mux
 }
 
@@ -152,6 +155,12 @@ type Proof struct {
 	ProofHex     string   `json:"proof_hex"`
 	PublicInputs []string `json:"public_inputs"`
 	Verified     bool     `json:"verified"`
+
+	// Solidity-compatible proof points (for on-chain verification)
+	A        [2]string    `json:"a,omitempty"`
+	B        [2][2]string `json:"b,omitempty"`
+	C        [2]string    `json:"c,omitempty"`
+	RawProof []string     `json:"raw_proof,omitempty"` // Flat array for calldata
 }
 
 func (z *ZKIntegration) handleMove(w http.ResponseWriter, r *http.Request) {
@@ -194,12 +203,7 @@ func (z *ZKIntegration) handleMove(w http.ResponseWriter, r *http.Request) {
 		// Verify the proof
 		verifyErr := z.prover.Verify("move", assignment)
 
-		proof = &Proof{
-			Circuit:      "move",
-			ProofHex:     rawProofToHex(proofResult.RawProof),
-			PublicInputs: proofResult.PublicInputs,
-			Verified:     verifyErr == nil,
-		}
+		proof = proofResultToProof("move", proofResult, verifyErr == nil)
 	}
 
 	// Check for winner
@@ -262,12 +266,7 @@ func (z *ZKIntegration) handleCheckWin(w http.ResponseWriter, r *http.Request) {
 		// Verify the proof
 		verifyErr := z.prover.Verify("win", assignment)
 
-		proof = &Proof{
-			Circuit:      "win",
-			ProofHex:     rawProofToHex(proofResult.RawProof),
-			PublicInputs: proofResult.PublicInputs,
-			Verified:     verifyErr == nil,
-		}
+		proof = proofResultToProof("win", proofResult, verifyErr == nil)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -292,6 +291,20 @@ func (z *ZKIntegration) handleCircuits(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (z *ZKIntegration) handleExportVerifier(w http.ResponseWriter, r *http.Request) {
+	circuitName := r.PathValue("circuit")
+
+	solidity, err := z.prover.ExportVerifier(circuitName)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("circuit not found: %s", circuitName), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s_verifier.sol", circuitName))
+	w.Write([]byte(solidity))
+}
+
 func rootsToStrings(roots []*big.Int) []string {
 	result := make([]string, len(roots))
 	for i, r := range roots {
@@ -306,4 +319,38 @@ func rawProofToHex(rawProof []*big.Int) string {
 		result += fmt.Sprintf("%064x", p)
 	}
 	return result
+}
+
+// proofResultToProof converts a prover.ProofResult to our Proof struct with Solidity-compatible fields.
+func proofResultToProof(circuit string, pr *prover.ProofResult, verified bool) *Proof {
+	// Convert A, B, C to hex strings for Solidity
+	a := [2]string{
+		fmt.Sprintf("0x%064x", pr.A[0]),
+		fmt.Sprintf("0x%064x", pr.A[1]),
+	}
+	b := [2][2]string{
+		{fmt.Sprintf("0x%064x", pr.B[0][0]), fmt.Sprintf("0x%064x", pr.B[0][1])},
+		{fmt.Sprintf("0x%064x", pr.B[1][0]), fmt.Sprintf("0x%064x", pr.B[1][1])},
+	}
+	c := [2]string{
+		fmt.Sprintf("0x%064x", pr.C[0]),
+		fmt.Sprintf("0x%064x", pr.C[1]),
+	}
+
+	// Convert RawProof to hex strings
+	rawProof := make([]string, len(pr.RawProof))
+	for i, p := range pr.RawProof {
+		rawProof[i] = fmt.Sprintf("0x%064x", p)
+	}
+
+	return &Proof{
+		Circuit:      circuit,
+		ProofHex:     rawProofToHex(pr.RawProof),
+		PublicInputs: pr.PublicInputs,
+		Verified:     verified,
+		A:            a,
+		B:            b,
+		C:            c,
+		RawProof:     rawProof,
+	}
 }

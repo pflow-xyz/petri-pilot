@@ -201,7 +201,11 @@ export function renderZkState() {
             ).join('')}
           </div>
         </div>
-        <button class="btn btn-small" onclick="exportProof()">Export Proof</button>
+        <div class="zk-export-buttons">
+          <button class="btn btn-small" onclick="exportProofJSON()">Export JSON</button>
+          <button class="btn btn-small" onclick="exportSolidityCalldata()">Solidity Calldata</button>
+          <button class="btn btn-small" onclick="downloadVerifier()">Download Verifier</button>
+        </div>
       </div>
     </div>
   ` : ''
@@ -245,7 +249,7 @@ window.toggleProofDetails = function() {
 }
 
 // Export proof as JSON
-window.exportProof = function() {
+window.exportProofJSON = function() {
   if (!zkState.lastProof) {
     alert('No proof to export')
     return
@@ -257,6 +261,11 @@ window.exportProof = function() {
     proof_hex: zkState.lastProof.proof_hex,
     public_inputs: zkState.lastProof.public_inputs,
     verified: zkState.lastProof.verified,
+    // Solidity-compatible proof points
+    a: zkState.lastProof.a,
+    b: zkState.lastProof.b,
+    c: zkState.lastProof.c,
+    raw_proof: zkState.lastProof.raw_proof,
     state_root: zkState.stateRoot,
     exported_at: new Date().toISOString()
   }
@@ -269,6 +278,91 @@ window.exportProof = function() {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// Export as Solidity calldata
+window.exportSolidityCalldata = function() {
+  if (!zkState.lastProof) {
+    alert('No proof to export')
+    return
+  }
+
+  const proof = zkState.lastProof
+
+  // Format for Groth16 verifier: verifyProof(uint[2] a, uint[2][2] b, uint[2] c, uint[] input)
+  const calldata = `// Solidity calldata for ${proof.circuit} circuit verification
+// verifyProof(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[] memory input)
+
+// Proof point A
+uint[2] memory a = [
+    ${proof.a?.[0] || '0x0'},
+    ${proof.a?.[1] || '0x0'}
+];
+
+// Proof point B (note: order is reversed for Solidity)
+uint[2][2] memory b = [
+    [${proof.b?.[0]?.[0] || '0x0'}, ${proof.b?.[0]?.[1] || '0x0'}],
+    [${proof.b?.[1]?.[0] || '0x0'}, ${proof.b?.[1]?.[1] || '0x0'}]
+];
+
+// Proof point C
+uint[2] memory c = [
+    ${proof.c?.[0] || '0x0'},
+    ${proof.c?.[1] || '0x0'}
+];
+
+// Public inputs
+uint[] memory input = new uint[](${proof.public_inputs?.length || 0});
+${(proof.public_inputs || []).map((inp, i) => `input[${i}] = ${inp};`).join('\n')}
+
+// Raw calldata for direct contract call (flat array)
+// [a[0], a[1], b[0][0], b[0][1], b[1][0], b[1][1], c[0], c[1], ...inputs]
+bytes memory rawCalldata = abi.encode(
+    ${(proof.raw_proof || []).join(',\n    ')}${proof.raw_proof?.length ? ',' : ''}
+    ${(proof.public_inputs || []).join(',\n    ')}
+);
+`
+
+  const blob = new Blob([calldata], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `zk-${proof.circuit}-calldata-${Date.now()}.sol`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// Download Solidity verifier contract
+window.downloadVerifier = async function() {
+  if (!zkState.lastProof) {
+    alert('No proof available - play a game first')
+    return
+  }
+
+  const circuit = zkState.lastProof.circuit
+
+  try {
+    const response = await fetch(`${getZkApiBase()}/verifier/${circuit}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch verifier: ${response.status}`)
+    }
+
+    const solidity = await response.text()
+
+    const blob = new Blob([solidity], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${circuit}_verifier.sol`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Failed to download verifier:', err)
+    alert('Failed to download verifier contract')
+  }
+}
+
+// Legacy export function (for backwards compatibility)
+window.exportProof = window.exportProofJSON
 
 // Export for console testing
 window.zkState = zkState
