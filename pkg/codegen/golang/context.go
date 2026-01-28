@@ -735,33 +735,9 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
 	}
 
-	// Note: Views and other application constructs may also be stored in extensions.
-	// Use NewContextFromApp with an ApplicationSpec for full extension support.
-	// Below we handle admin, navigation, roles, and access from the model directly.
-
-	// Build debug context if debug is enabled
-	ctx.Debug = buildDebugContext(enriched.Debug)
-
-	// Build GraphQL context if GraphQL is enabled
-	ctx.GraphQL = buildGraphQLContext(enriched.GraphQL)
-
-	// Build admin context from model if present
-	if enriched.Admin != nil {
-		ctx.Admin = buildAdminContext(enriched.Admin)
-	}
-
-	// Build navigation context from model if present
-	if enriched.Navigation != nil {
-		ctx.Navigation = buildNavigationContext(enriched.Navigation)
-	}
-
-	// Build access control from model if present
-	if enriched.Roles != nil {
-		ctx.Roles = buildRoleContextsFromModel(enriched.Roles)
-	}
-	if enriched.Access != nil {
-		ctx.AccessRules = buildAccessRuleContextsFromModel(enriched.Access)
-	}
+	// Note: Application-level constructs (debug, admin, navigation, roles, access, views)
+	// are now in extensions. Use NewContextFromApp with an ApplicationSpec for full support.
+	// This function only handles core Petri net elements.
 
 	// Serialize schema JSON for schema viewer (base64 encoded to avoid escaping issues)
 	schemaBytes, err := json.MarshalIndent(enriched, "", "  ")

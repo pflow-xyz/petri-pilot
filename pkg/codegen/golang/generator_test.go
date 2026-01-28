@@ -28,6 +28,73 @@ func loadTestModel(t *testing.T) *metamodel.Model {
 	return &model
 }
 
+// modelWithExtensions is used for parsing test model JSON with extension fields
+type testModelWithExtensions struct {
+	metamodel.Model
+
+	// Extension fields from the JSON
+	Admin      *extensions.Admin      `json:"admin,omitempty"`
+	Navigation *extensions.Navigation `json:"navigation,omitempty"`
+	Roles      []extensions.Role      `json:"roles,omitempty"`
+	Views      []extensions.View      `json:"views,omitempty"`
+	Debug      *struct {
+		Enabled bool `json:"enabled"`
+		Eval    bool `json:"eval,omitempty"`
+	} `json:"debug,omitempty"`
+	GraphQL *struct {
+		Enabled    bool `json:"enabled"`
+		Playground bool `json:"playground,omitempty"`
+	} `json:"graphql,omitempty"`
+}
+
+// loadTestModelWithExtensions loads the test model and returns an ApplicationSpec with extensions
+func loadTestModelWithExtensions(t *testing.T) *extensions.ApplicationSpec {
+	t.Helper()
+
+	data, err := os.ReadFile("../../../examples/order-processing.json")
+	if err != nil {
+		t.Fatalf("Failed to read example model: %v", err)
+	}
+
+	var ext testModelWithExtensions
+	if err := json.Unmarshal(data, &ext); err != nil {
+		t.Fatalf("Failed to parse example model: %v", err)
+	}
+
+	// Create ApplicationSpec from the core model
+	app := extensions.NewApplicationSpec(&ext.Model)
+
+	// Add roles extension if present
+	if len(ext.Roles) > 0 {
+		rolesExt := extensions.NewRoleExtension()
+		for _, r := range ext.Roles {
+			rolesExt.AddRole(r)
+		}
+		app.WithRoles(rolesExt)
+	}
+
+	// Add views extension if present
+	if len(ext.Views) > 0 || ext.Admin != nil {
+		viewsExt := extensions.NewViewExtension()
+		for _, v := range ext.Views {
+			viewsExt.AddView(v)
+		}
+		if ext.Admin != nil {
+			viewsExt.SetAdmin(*ext.Admin)
+		}
+		app.WithViews(viewsExt)
+	}
+
+	// Add navigation if present
+	if ext.Navigation != nil {
+		pagesExt := extensions.NewPageExtension()
+		pagesExt.SetNavigation(*ext.Navigation)
+		app.WithPages(pagesExt)
+	}
+
+	return app
+}
+
 func TestNaming(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -260,6 +327,7 @@ func TestTemplates(t *testing.T) {
 }
 
 func TestGenerateFiles(t *testing.T) {
+	// Test core model generation (no extensions)
 	model := loadTestModel(t)
 
 	gen, err := New(Options{IncludeTests: true, AsSubmodule: true})
@@ -272,26 +340,18 @@ func TestGenerateFiles(t *testing.T) {
 		t.Fatalf("GenerateFiles failed: %v", err)
 	}
 
-	// Core files always generated:
+	// Core files always generated when using GenerateFiles (no extensions):
 	// service.go, workflow.go, events.go, aggregate.go, api.go, openapi.yaml, config.go, workflow_test.go,
 	// api_events.go, README.md
-	// Note: The test model (order-processing.json) has debug, access control (roles/access), views,
-	// navigation, admin, and graphql enabled, which generates additional files.
-	// Note: AsSubmodule mode generates service.go instead of main.go and skips go.mod
-	expectedFiles := []string{
+	// Note: Extension-based files (auth.go, middleware.go, debug.go, etc.) are only generated
+	// when using GenerateFilesFromApp with extensions. In go-pflow v0.9.0+, extension fields
+	// are no longer part of the core Model.
+	expectedCoreFiles := []string{
 		"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml",
 		"config.go", "workflow_test.go", "api_events.go", "README.md",
-		// Access control files (model has roles and access)
-		"auth.go", "middleware.go", "permissions.go",
-		// Debug file (model has debug enabled)
-		"debug.go",
-		// Navigation and admin (model has these enabled)
-		"navigation.go", "admin.go",
-		// GraphQL files (model has graphql enabled)
-		"graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml",
 	}
-	if len(files) != len(expectedFiles) {
-		t.Errorf("expected %d files, got %d", len(expectedFiles), len(files))
+	if len(files) != len(expectedCoreFiles) {
+		t.Errorf("expected %d files, got %d", len(expectedCoreFiles), len(files))
 		for _, f := range files {
 			t.Logf("  generated: %s", f.Name)
 		}
@@ -302,9 +362,57 @@ func TestGenerateFiles(t *testing.T) {
 		fileNames[f.Name] = true
 	}
 
+	for _, expected := range expectedCoreFiles {
+		if !fileNames[expected] {
+			t.Errorf("missing expected file: %s", expected)
+		}
+	}
+}
+
+func TestGenerateFilesFromApp(t *testing.T) {
+	// Test generation with extensions (roles, views, admin, navigation)
+	app := loadTestModelWithExtensions(t)
+
+	gen, err := New(Options{IncludeTests: true, AsSubmodule: true})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	files, err := gen.GenerateFilesFromApp(app)
+	if err != nil {
+		t.Fatalf("GenerateFilesFromApp failed: %v", err)
+	}
+
+	// Core files plus extension-based files:
+	// Note: Debug and GraphQL are not yet in the extension system, so those files won't be generated.
+	expectedFiles := []string{
+		// Core files
+		"service.go", "workflow.go", "events.go", "aggregate.go", "api.go", "openapi.yaml",
+		"config.go", "workflow_test.go", "api_events.go", "README.md",
+		// Access control files (from roles extension)
+		"auth.go", "middleware.go", "permissions.go",
+		// Navigation and admin (from pages and views extensions)
+		"navigation.go", "admin.go",
+		// Views file (from views extension)
+		"views.go",
+	}
+
+	fileNames := make(map[string]bool)
+	for _, f := range files {
+		fileNames[f.Name] = true
+	}
+
 	for _, expected := range expectedFiles {
 		if !fileNames[expected] {
 			t.Errorf("missing expected file: %s", expected)
+		}
+	}
+
+	// Log what was generated for debugging
+	if t.Failed() {
+		t.Log("Generated files:")
+		for _, f := range files {
+			t.Logf("  %s", f.Name)
 		}
 	}
 }

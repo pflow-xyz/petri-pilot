@@ -902,18 +902,8 @@ func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.Applic
 	// Create the core model from embedded Model
 	model := &ext.Model
 
-	// Copy access rules from the shadowing field to the model
-	// (the ext.Access field shadows the embedded Model.Access field during JSON unmarshaling)
-	if len(ext.Access) > 0 && len(model.Access) == 0 {
-		model.Access = make([]metamodel.AccessRule, len(ext.Access))
-		for i, rule := range ext.Access {
-			model.Access[i] = metamodel.AccessRule{
-				Transition: rule.Transition,
-				Roles:      rule.Roles,
-				Guard:      rule.Guard,
-			}
-		}
-	}
+	// Note: Access rules are now stored in extensions, not in the model.
+	// They will be converted to AccessRuleContexts when using NewContextFromApp.
 
 	// Create ApplicationSpec with extensions
 	app := extensions.NewApplicationSpec(model)

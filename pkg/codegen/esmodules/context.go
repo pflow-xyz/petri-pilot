@@ -226,10 +226,10 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		// Feature flags - event sourcing is always enabled in generated backends
 		HasEventSourcing: true,
 		HasSnapshots:     true,
-		// Feature flags from model
-		HasDebug:  enriched.Debug != nil && enriched.Debug.Enabled,
-		HasAdmin:  enriched.Admin != nil && enriched.Admin.Enabled,
-		HasViews:  len(enriched.Views) > 0,
+		// Feature flags are set via NewContextFromApp when using extensions
+		HasDebug:  false,
+		HasAdmin:  false,
+		HasViews:  false,
 		// Initialize Status with default empty config
 		Status: &StatusContext{
 			PlacesJSON: "{}",
@@ -241,8 +241,8 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	// Build place contexts
 	ctx.Places = buildPlaceContexts(enriched.Places)
 
-	// Build transition contexts (with access control from model)
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Access)
+	// Build transition contexts (access control is set via NewContextFromApp when using extensions)
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, nil)
 
 	// Build route contexts from bridge inference
 	apiRoutes := metamodel.InferAPIRoutes(enriched)
