@@ -141,21 +141,21 @@ Update the tic-tac-toe frontend to use ZK endpoints and display proof informatio
   - [x] Show public inputs
   - [x] Show circuit used (move/win)
 
-### Phase 2: Proof Export & Verification
+### Phase 2: Proof Export & Verification ✅
 
 Enable users to export proofs for on-chain or off-chain verification.
 
-- [ ] Add "Export Proof" button to UI
-  - [ ] Export as JSON (proof + public inputs)
-  - [ ] Export as calldata for Solidity verifier
+- [x] Add "Export Proof" button to UI
+  - [x] Export as JSON (proof + public inputs + Solidity-compatible A/B/C points)
+  - [x] Export as calldata for Solidity verifier
 
-- [ ] Generate Solidity verifier contracts
-  - [ ] Move verifier contract
-  - [ ] Win verifier contract
+- [x] Generate Solidity verifier contracts
+  - [x] Move verifier contract (`GET /zk/verifier/move`)
+  - [x] Win verifier contract (`GET /zk/verifier/win`)
   - [ ] Deploy to testnet (Sepolia)
 
-- [ ] Add verification endpoint
-  - [ ] `POST /zk/verify` - verify a proof without replaying
+- [x] Add verification endpoint
+  - [x] `POST /zk/verify` - delegates to prover service
 
 ### Phase 3: On-Chain Game State
 
@@ -185,12 +185,14 @@ Enable fully on-chain ZK tic-tac-toe games.
 ### ZK API Reference
 
 ```
-GET  /zk/health           - Health check, lists circuits
-POST /zk/game             - Create new ZK game
-GET  /zk/game/{id}        - Get game state with roots
-POST /zk/game/{id}/move   - Make move, returns proof
+GET  /zk/health              - Health check, lists circuits
+POST /zk/game                - Create new ZK game
+GET  /zk/game/{id}           - Get game state with roots
+POST /zk/game/{id}/move      - Make move, returns proof
 POST /zk/game/{id}/check-win - Check winner, returns proof
-GET  /zk/circuits         - List available circuits
+GET  /zk/circuits            - List available circuits
+POST /zk/verify              - Verify a proof
+GET  /zk/verifier/{circuit}  - Download Solidity verifier contract
 ```
 
 ### Example Move Response
