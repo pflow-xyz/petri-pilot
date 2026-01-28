@@ -585,6 +585,16 @@ func createSPAHandler(frontendPath string) http.Handler {
 			return
 		}
 
+		// Serve favicon.svg as fallback for favicon.ico requests
+		if path == "/favicon.ico" {
+			svgPath := filepath.Join(frontendPath, "favicon.svg")
+			if _, err := os.Stat(svgPath); err == nil {
+				w.Header().Set("Content-Type", "image/svg+xml")
+				http.ServeFile(w, r, svgPath)
+				return
+			}
+		}
+
 		// 404 for missing static assets
 		http.NotFound(w, r)
 	})
