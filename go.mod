@@ -10,7 +10,6 @@ require (
 	github.com/mark3labs/mcp-go v0.43.2
 	github.com/pflow-xyz/go-pflow v0.8.0
 	golang.org/x/oauth2 v0.32.0
-	modernc.org/sqlite v1.44.3
 )
 
 require (
@@ -35,4 +34,5 @@ require (
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
+	modernc.org/sqlite v1.44.3 // indirect
 )

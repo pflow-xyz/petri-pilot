@@ -60,7 +60,7 @@ jobs:
         run: go build -o petri-pilot ./cmd/petri-pilot
 
       - name: Build example apps
-        run: make build-examples
+        run: go build ./generated/...
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
