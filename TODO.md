@@ -97,3 +97,135 @@ None currently tracked.
 - Performance benchmarks for simulation
 - Visual workflow editor integration
 - Multi-tenant support
+
+---
+
+## ZK Tic-Tac-Toe Integration
+
+The ZK-enabled tic-tac-toe service is deployed and working on pflow.dev:
+
+- **Base frontend**: https://pilot.pflow.xyz/zk-tic-tac-toe/
+- **ZK endpoints**: https://pilot.pflow.xyz/zk-tic-tac-toe/zk/
+
+### Completed
+
+- [x] ZK circuits (MoveCircuit, WinCircuit) with gnark
+- [x] Game state tracking with MiMC state roots
+- [x] HTTP integration layer (`zk-tictactoe/integration.go`)
+- [x] Service wrapper combining base tic-tac-toe with ZK endpoints
+- [x] Production deployment on pilot.pflow.xyz
+
+### Circuit Stats (Groth16 on BN254)
+
+| Circuit | Constraints | Public Inputs | Private Inputs |
+|---------|-------------|---------------|----------------|
+| Move    | 6,012       | 4             | 10             |
+| Win     | 3,036       | 2             | 9              |
+
+### Phase 1: Frontend ZK Integration
+
+Update the tic-tac-toe frontend to use ZK endpoints and display proof information.
+
+- [ ] Create ZK-aware game client in frontend
+  - [ ] Call `POST /zk/game` to create games
+  - [ ] Call `POST /zk/game/{id}/move` for moves
+  - [ ] Call `POST /zk/game/{id}/check-win` after potential winning moves
+
+- [ ] Display ZK state in UI
+  - [ ] Show current state root (truncated hash)
+  - [ ] Show state root history (breadcrumb trail)
+  - [ ] Indicate proof verification status per move
+
+- [ ] Add proof details panel
+  - [ ] Show proof hex (collapsible)
+  - [ ] Show public inputs
+  - [ ] Show circuit used (move/win)
+
+### Phase 2: Proof Export & Verification
+
+Enable users to export proofs for on-chain or off-chain verification.
+
+- [ ] Add "Export Proof" button to UI
+  - [ ] Export as JSON (proof + public inputs)
+  - [ ] Export as calldata for Solidity verifier
+
+- [ ] Generate Solidity verifier contracts
+  - [ ] Move verifier contract
+  - [ ] Win verifier contract
+  - [ ] Deploy to testnet (Sepolia)
+
+- [ ] Add verification endpoint
+  - [ ] `POST /zk/verify` - verify a proof without replaying
+
+### Phase 3: On-Chain Game State
+
+Enable fully on-chain ZK tic-tac-toe games.
+
+- [ ] Smart contract for game state
+  - [ ] Store state root on-chain
+  - [ ] Verify move proofs before state transitions
+  - [ ] Verify win proofs to determine winner
+
+- [ ] Frontend integration
+  - [ ] Connect wallet (wagmi/viem)
+  - [ ] Submit moves as transactions
+  - [ ] Display on-chain state
+
+- [ ] Gas optimization
+  - [ ] Batch proof verification
+  - [ ] State compression
+
+### Phase 4: Advanced Features
+
+- [ ] Replay verification - verify entire game history
+- [ ] Tournament mode with prize pool
+- [ ] Spectator mode with live proof streaming
+- [ ] Mobile-optimized UI
+
+### ZK API Reference
+
+```
+GET  /zk/health           - Health check, lists circuits
+POST /zk/game             - Create new ZK game
+GET  /zk/game/{id}        - Get game state with roots
+POST /zk/game/{id}/move   - Make move, returns proof
+POST /zk/game/{id}/check-win - Check winner, returns proof
+GET  /zk/circuits         - List available circuits
+```
+
+### Example Move Response
+
+```json
+{
+  "success": true,
+  "position": 4,
+  "player": 1,
+  "pre_state_root": "5703935289983219918...",
+  "post_state_root": "2441967026828943748...",
+  "board": [0, 0, 0, 0, 1, 0, 0, 0, 0],
+  "turn_count": 1,
+  "is_over": false,
+  "proof": {
+    "circuit": "move",
+    "proof_hex": "e3ef7d261dad6dbf...",
+    "public_inputs": [
+      "0x0c9c501e9b7739eb...",
+      "0x05661ab7282a768b...",
+      "0x00000000...0000",
+      "0x00000000...0001"
+    ],
+    "verified": true
+  }
+}
+```
+
+### ZK Files
+
+| File | Description |
+|------|-------------|
+| `zk-tictactoe/circuits.go` | MoveCircuit and WinCircuit definitions |
+| `zk-tictactoe/state.go` | BoardState, MiMC hashing |
+| `zk-tictactoe/game.go` | Game struct, move/win witnesses |
+| `zk-tictactoe/service.go` | Prover service, witness factory |
+| `zk-tictactoe/integration.go` | HTTP endpoints |
+| `zk-tictactoe/zkservice.go` | Service wrapper for registration |
