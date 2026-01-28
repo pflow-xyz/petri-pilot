@@ -313,8 +313,9 @@ function connectWebSocket() {
  * Handle WebSocket messages
  */
 function handleWebSocketMessage(data) {
-  if (data.type === 'state_update') {
-    updateStateFromEvent(data);
+  // Backend realtime.tmpl sends type: "state" with StateChange data
+  if (data.type === 'state' || data.type === 'state_update') {
+    updateStateFromEvent(data.data || data);
   }
 }
 

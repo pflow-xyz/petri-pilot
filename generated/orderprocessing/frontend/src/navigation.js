@@ -22,10 +22,6 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
-  { id: 'customer', description: "End user placing orders" },
-  { id: 'fulfillment', description: "Warehouse staff who validate and ship orders" },
-  { id: 'system', description: "Automated payment processing" },
-  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable
@@ -37,7 +33,6 @@ function getDefaultNavigation() {
       { label: 'order-processing', path: `${base}/order-processing`, icon: '' },
       { label: 'New', path: `${base}/order-processing/new`, icon: '+' },
       { label: 'Schema', path: `${base}/schema`, icon: '⚙' },
-      { label: 'Admin', path: `${base}/admin`, icon: '' },
     ]
   }
 }

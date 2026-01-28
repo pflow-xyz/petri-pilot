@@ -61,12 +61,18 @@ Test each example in real usage before writing blog posts.
 - [ ] Note any UX friction or bugs
 
 ### Known issues to investigate
-- [ ] Custom dashboards not loading for order-processing, blog-post, support-ticket, erc20-token
-  - Apps show generic list view instead of custom `<*-dashboard>` components
-  - Components exist in `custom/components.js` but aren't wired to routing
+- [x] Custom dashboards not loading for order-processing, blog-post, support-ticket, erc20-token
+  - Fixed: Template used `pf-` prefix in element check but components registered without prefix
+  - Fix: Updated `main.tmpl` to use `{{.PackageName}}-dashboard` matching component registration
 - [ ] erc20-token: "No route found" error when clicking "+ Create New"
-- [ ] coffeeshop: WebSocket connection error (simulation still works locally)
-- [ ] Missing favicon.ico (404 error on all apps)
+  - Generated code looks correct with `/erc20-token/new` routes
+  - May be deployment-specific or caching issue - needs testing on production
+- [x] coffeeshop: WebSocket connection error
+  - Fixed: Debug WebSocket and realtime WebSocket were both at `/ws` causing collision
+  - Fix: Moved debug WebSocket to `/ws/debug`, realtime stays at `/ws`
+  - Also fixed message type mismatch in coffeeshop frontend (`state` vs `state_update`)
+- [x] Missing favicon.ico (404 error on all apps)
+  - Fixed: Added inline SVG favicon to `index_html.tmpl` template
 
 ### Improvements identified
 - [ ] _Add improvement ideas from dogfooding_

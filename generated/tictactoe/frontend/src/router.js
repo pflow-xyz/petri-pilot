@@ -62,22 +62,6 @@ export const routes = [
     component: 'Schema',
     title: 'Schema Viewer',
   },
-  // Admin routes
-  {
-    path: '/admin',
-    component: 'AdminDashboard',
-    title: 'Admin Dashboard',
-  },
-  {
-    path: '/admin/instances',
-    component: 'AdminInstances',
-    title: 'Instances',
-  },
-  {
-    path: '/admin/instances/:id',
-    component: 'AdminInstance',
-    title: 'Instance Detail',
-  },
 ]
 
 // Current route state

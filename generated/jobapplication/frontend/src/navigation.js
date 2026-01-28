@@ -22,10 +22,6 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
-  { id: 'candidate', description: "Job applicant" },
-  { id: 'recruiter', description: "HR recruiter who screens candidates" },
-  { id: 'hiring_manager', description: "Manager who conducts interviews and makes hiring decisions" },
-  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable

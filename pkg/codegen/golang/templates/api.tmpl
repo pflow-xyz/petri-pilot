@@ -96,7 +96,7 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 {{if .HasDebug}}
 	// Debug WebSocket and eval endpoints
-	r.GET("/ws", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
+	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 {{- if .HasAccessControl}}

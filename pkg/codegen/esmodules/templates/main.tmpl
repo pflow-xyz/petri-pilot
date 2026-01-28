@@ -16,7 +16,7 @@ import '../custom/components.js'
 
 // Check if a custom dashboard component is registered
 function hasCustomDashboard() {
-  return customElements.get('pf-{{.ModelName}}-dashboard') !== undefined
+  return customElements.get('{{.PackageName}}-dashboard') !== undefined
 }
 
 // API client
@@ -365,7 +365,7 @@ async function renderListPage() {
 
   // Check if a custom dashboard component is registered
   if (hasCustomDashboard()) {
-    app.innerHTML = `<pf-{{.ModelName}}-dashboard></pf-{{.ModelName}}-dashboard>`
+    app.innerHTML = `<{{.PackageName}}-dashboard></{{.PackageName}}-dashboard>`
     return
   }
 
@@ -1941,7 +1941,7 @@ let debugSessionId = null
 function initDebugWebSocket() {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   // Use API_BASE for multi-service mode support
-  const wsUrl = `${wsProtocol}//${window.location.host}${API_BASE}/ws`
+  const wsUrl = `${wsProtocol}//${window.location.host}${API_BASE}/ws/debug`
 
   debugWs = new WebSocket(wsUrl)
 

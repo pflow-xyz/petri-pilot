@@ -22,10 +22,6 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
-  { id: 'customer', description: "End user making a purchase" },
-  { id: 'system', description: "Automated payment processing system" },
-  { id: 'fulfillment', description: "Warehouse staff who fulfill orders" },
-  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable

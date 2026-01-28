@@ -22,10 +22,6 @@ import { navigate } from './router.js'
 
 // Available roles for login
 const availableRoles = [
-  { id: 'customer', description: "End user who submits support tickets" },
-  { id: 'agent', description: "First-line support agent who handles tickets" },
-  { id: 'supervisor', description: "Senior support who handles escalations" },
-  { id: 'admin', description: "Full access to all operations" },
 ]
 
 // Default navigation when backend is unavailable
