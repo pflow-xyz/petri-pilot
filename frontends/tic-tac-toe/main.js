@@ -2,7 +2,18 @@
 // Uses pflow ODE solver for strategic value computation
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
-import * as ZK from './zk.js'
+
+// ZK module - loaded dynamically to ensure proper initialization
+let ZK = null
+async function loadZKModule() {
+  if (!ZK) {
+    ZK = await import('./zk.js')
+    console.log('ZK module loaded:', Object.keys(ZK))
+  }
+  return ZK
+}
+// Initialize ZK module immediately
+loadZKModule()
 
 // Read API_BASE dynamically to avoid race condition with inline script
 function getApiBase() {
@@ -578,10 +589,11 @@ async function newGame() {
     updateCurrentPlayer()
 
     // Create ZK game if ZK mode is enabled
-    if (ZK.zkState.enabled) {
+    const zkModule = await loadZKModule()
+    if (zkModule && zkModule.zkState.enabled) {
       try {
-        await ZK.createZkGame()
-        console.log('ZK game created:', ZK.zkState.gameId)
+        await zkModule.createZkGame()
+        console.log('ZK game created:', zkModule.zkState.gameId)
       } catch (err) {
         console.error('Failed to create ZK game:', err)
       }
@@ -693,15 +705,16 @@ async function makeMove(row, col) {
     gameState.events = eventsResult.events || []
 
     // Make ZK move if ZK mode is enabled
-    if (ZK.zkState.enabled && ZK.zkState.gameId) {
+    const zkModule = await loadZKModule()
+    if (zkModule && zkModule.zkState.enabled && zkModule.zkState.gameId) {
       try {
         const position = row * 3 + col
-        const zkResult = await ZK.makeZkMove(position)
+        const zkResult = await zkModule.makeZkMove(position)
         console.log('ZK move result:', zkResult)
 
         // Check for win with ZK proof
         if (gameState.gameOver) {
-          const winResult = await ZK.checkZkWin()
+          const winResult = await zkModule.checkZkWin()
           console.log('ZK win check:', winResult)
         }
       } catch (err) {
@@ -1665,7 +1678,12 @@ window.makeMove = makeMove
 window.newGame = newGame
 window.resetGame = resetGame
 window.toggleHeatmap = toggleHeatmap
-window.toggleZkMode = ZK.toggleZkMode
+window.toggleZkMode = async function() {
+  const zkModule = await loadZKModule()
+  if (zkModule) {
+    return zkModule.toggleZkMode()
+  }
+}
 window.setSimMode = setSimMode
 window.revertToMove = revertToMove
 window.downloadSnapshot = downloadSnapshot
