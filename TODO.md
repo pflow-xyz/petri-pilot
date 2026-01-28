@@ -122,24 +122,24 @@ The ZK-enabled tic-tac-toe service is deployed and working on pflow.dev:
 | Move    | 6,012       | 4             | 10             |
 | Win     | 3,036       | 2             | 9              |
 
-### Phase 1: Frontend ZK Integration
+### Phase 1: Frontend ZK Integration ✅
 
 Update the tic-tac-toe frontend to use ZK endpoints and display proof information.
 
-- [ ] Create ZK-aware game client in frontend
-  - [ ] Call `POST /zk/game` to create games
-  - [ ] Call `POST /zk/game/{id}/move` for moves
-  - [ ] Call `POST /zk/game/{id}/check-win` after potential winning moves
+- [x] Create ZK-aware game client in frontend
+  - [x] Call `POST /zk/game` to create games
+  - [x] Call `POST /zk/game/{id}/move` for moves
+  - [x] Call `POST /zk/game/{id}/check-win` after potential winning moves
 
-- [ ] Display ZK state in UI
-  - [ ] Show current state root (truncated hash)
-  - [ ] Show state root history (breadcrumb trail)
-  - [ ] Indicate proof verification status per move
+- [x] Display ZK state in UI
+  - [x] Show current state root (truncated hash)
+  - [x] Show state root history (breadcrumb trail)
+  - [x] Indicate proof verification status per move
 
-- [ ] Add proof details panel
-  - [ ] Show proof hex (collapsible)
-  - [ ] Show public inputs
-  - [ ] Show circuit used (move/win)
+- [x] Add proof details panel
+  - [x] Show proof hex (collapsible)
+  - [x] Show public inputs
+  - [x] Show circuit used (move/win)
 
 ### Phase 2: Proof Export & Verification
 
@@ -229,3 +229,4 @@ GET  /zk/circuits         - List available circuits
 | `zk-tictactoe/service.go` | Prover service, witness factory |
 | `zk-tictactoe/integration.go` | HTTP endpoints |
 | `zk-tictactoe/zkservice.go` | Service wrapper for registration |
+| `frontends/tic-tac-toe/zk.js` | Frontend ZK client module |
