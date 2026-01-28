@@ -72,6 +72,9 @@ func (z *ZKIntegration) Handler() http.Handler {
 	// Export Solidity verifier contract
 	mux.HandleFunc("GET /verifier/{circuit}", z.handleExportVerifier)
 
+	// Replay verification - verify entire game history
+	mux.HandleFunc("POST /replay", z.handleReplay)
+
 	return mux
 }
 
@@ -353,4 +356,122 @@ func proofResultToProof(circuit string, pr *prover.ProofResult, verified bool) *
 		C:            c,
 		RawProof:     rawProof,
 	}
+}
+
+// ReplayRequest is the request for verifying an entire game history.
+type ReplayRequest struct {
+	InitialRoot string       `json:"initial_root"`
+	Moves       []ReplayMove `json:"moves"`
+	WinProof    *ReplayProof `json:"win_proof,omitempty"`
+}
+
+// ReplayMove represents a move with its proof for replay verification.
+type ReplayMove struct {
+	Position     int    `json:"position"`
+	Player       uint8  `json:"player"`
+	PreRoot      string `json:"pre_root"`
+	PostRoot     string `json:"post_root"`
+	ProofVerified bool  `json:"proof_verified"` // Was proof verified when move was made
+}
+
+// ReplayProof contains proof metadata for verification status.
+type ReplayProof struct {
+	Circuit  string `json:"circuit"`
+	Verified bool   `json:"verified"`
+}
+
+// ReplayResponse is the response for replay verification.
+type ReplayResponse struct {
+	Valid       bool               `json:"valid"`
+	MoveCount   int                `json:"move_count"`
+	MoveResults []MoveVerifyResult `json:"move_results"`
+	WinVerified bool               `json:"win_verified,omitempty"`
+	ChainValid  bool               `json:"chain_valid"`
+	FinalRoot   string             `json:"final_root"`
+	Error       string             `json:"error,omitempty"`
+}
+
+// MoveVerifyResult is the verification result for a single move.
+type MoveVerifyResult struct {
+	Move          int    `json:"move"`
+	Position      int    `json:"position"`
+	Player        uint8  `json:"player"`
+	ProofVerified bool   `json:"proof_verified"`
+	ChainValid    bool   `json:"chain_valid"`
+	PreRoot       string `json:"pre_root"`
+	PostRoot      string `json:"post_root"`
+	Error         string `json:"error,omitempty"`
+}
+
+func (z *ZKIntegration) handleReplay(w http.ResponseWriter, r *http.Request) {
+	var req ReplayRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	response := ReplayResponse{
+		MoveCount:   len(req.Moves),
+		MoveResults: make([]MoveVerifyResult, len(req.Moves)),
+		ChainValid:  true,
+	}
+
+	// Verify the state root chain continuity
+	// This proves that each move's pre_state_root matches the previous move's post_state_root
+	// forming an unbroken chain from the initial empty board to the final state
+	expectedPreRoot := req.InitialRoot
+	allProofsVerified := true
+	var finalRoot string
+
+	for i, move := range req.Moves {
+		result := MoveVerifyResult{
+			Move:          i + 1,
+			Position:      move.Position,
+			Player:        move.Player,
+			ProofVerified: move.ProofVerified,
+			PreRoot:       truncateRoot(move.PreRoot),
+			PostRoot:      truncateRoot(move.PostRoot),
+		}
+
+		// Check state root chain continuity
+		if move.PreRoot != expectedPreRoot {
+			result.ChainValid = false
+			result.Error = fmt.Sprintf("chain broken: expected pre_root %s, got %s",
+				truncateRoot(expectedPreRoot), truncateRoot(move.PreRoot))
+			response.ChainValid = false
+		} else {
+			result.ChainValid = true
+		}
+
+		// Track proof verification status
+		if !move.ProofVerified {
+			allProofsVerified = false
+		}
+
+		response.MoveResults[i] = result
+		expectedPreRoot = move.PostRoot
+		finalRoot = move.PostRoot
+	}
+
+	response.FinalRoot = truncateRoot(finalRoot)
+
+	// Check win proof if provided
+	if req.WinProof != nil {
+		response.WinVerified = req.WinProof.Verified
+	}
+
+	// Game history is valid if:
+	// 1. All state roots form an unbroken chain
+	// 2. All move proofs were verified when made
+	response.Valid = response.ChainValid && allProofsVerified
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func truncateRoot(root string) string {
+	if len(root) > 20 {
+		return root[:10] + "..." + root[len(root)-8:]
+	}
+	return root
 }

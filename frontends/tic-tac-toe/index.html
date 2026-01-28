@@ -766,6 +766,219 @@
       text-align: center;
       padding: 1rem;
     }
+
+    .zk-verify-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-verify {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-verify:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .zk-verify-hint {
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    /* Replay Modal */
+    .zk-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .zk-modal-content {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 12px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .zk-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .zk-modal-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .zk-modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .zk-modal-close:hover {
+      color: #fff;
+    }
+
+    .zk-modal-body {
+      padding: 1.5rem;
+    }
+
+    .zk-replay-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .zk-replay-stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .zk-replay-stat .label {
+      display: block;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-replay-stat .value {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .zk-replay-stat.valid .value {
+      color: #2ecc71;
+    }
+
+    .zk-replay-stat.invalid .value {
+      color: #e74c3c;
+    }
+
+    .zk-replay-moves h4 {
+      margin: 0 0 1rem 0;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .zk-move-chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .zk-chain-node {
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .zk-chain-node .label {
+      display: block;
+      font-size: 0.7rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-chain-node code {
+      font-size: 0.75rem;
+      color: #667eea;
+    }
+
+    .zk-chain-node.initial {
+      border-left: 3px solid #667eea;
+    }
+
+    .zk-chain-node.final {
+      border-left: 3px solid #2ecc71;
+    }
+
+    .zk-chain-node.final code {
+      color: #2ecc71;
+    }
+
+    .zk-chain-node .error {
+      display: block;
+      font-size: 0.7rem;
+      color: #e74c3c;
+      margin-top: 0.25rem;
+    }
+
+    .zk-chain-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0;
+      color: #667eea;
+      font-size: 0.8rem;
+    }
+
+    .zk-chain-arrow::before {
+      content: '↓';
+    }
+
+    .zk-chain-arrow.broken {
+      color: #e74c3c;
+    }
+
+    .zk-chain-arrow.broken::before {
+      content: '⚠️';
+    }
+
+    .zk-chain-arrow .move-label {
+      background: rgba(102, 126, 234, 0.2);
+      padding: 0.125rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .zk-chain-arrow .proof-status {
+      font-size: 0.8rem;
+    }
+
+    .zk-chain-arrow .proof-status.verified {
+      color: #2ecc71;
+    }
+
+    .zk-chain-arrow .proof-status.unverified {
+      color: #e74c3c;
+    }
   </style>
 </head>
 <body>

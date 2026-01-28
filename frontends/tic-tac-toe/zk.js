@@ -237,6 +237,14 @@ export function renderZkState() {
         `).join('')}
       </div>
     </div>
+    ${zkState.proofHistory.length > 0 ? `
+    <div class="zk-verify-section">
+      <button class="btn btn-verify" onclick="verifyGameHistory()">
+        🔍 Verify Game History
+      </button>
+      <span class="zk-verify-hint">${zkState.proofHistory.length} moves recorded</span>
+    </div>
+    ` : ''}
   `
 }
 
@@ -364,6 +372,119 @@ window.downloadVerifier = async function() {
 // Legacy export function (for backwards compatibility)
 window.exportProof = window.exportProofJSON
 
+// Verify entire game history (replay verification)
+export async function verifyGameHistory() {
+  if (!zkState.gameId || zkState.proofHistory.length === 0) {
+    alert('No game history to verify')
+    return null
+  }
+
+  // Build the replay request
+  const request = {
+    initial_root: zkState.roots[0],
+    moves: zkState.proofHistory.map(h => ({
+      position: h.move,
+      player: h.player,
+      pre_root: h.preRoot,
+      post_root: h.postRoot,
+      proof_verified: h.proof?.verified || false
+    })),
+    win_proof: zkState.lastProof?.circuit === 'win' ? {
+      circuit: zkState.lastProof.circuit,
+      verified: zkState.lastProof.verified
+    } : null
+  }
+
+  const response = await fetch(`${getZkApiBase()}/replay`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request)
+  })
+  const result = await response.json()
+
+  // Display results
+  showReplayResults(result)
+  return result
+}
+
+// Display replay verification results
+function showReplayResults(result) {
+  // Create or update results modal
+  let modal = document.getElementById('zk-replay-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'zk-replay-modal'
+    modal.className = 'zk-modal'
+    document.body.appendChild(modal)
+  }
+
+  const statusIcon = result.valid ? '✅' : '❌'
+  const chainIcon = result.chain_valid ? '🔗' : '⛓️‍💥'
+
+  modal.innerHTML = `
+    <div class="zk-modal-content">
+      <div class="zk-modal-header">
+        <h3>${statusIcon} Game Replay Verification</h3>
+        <button class="zk-modal-close" onclick="closeReplayModal()">×</button>
+      </div>
+      <div class="zk-modal-body">
+        <div class="zk-replay-summary">
+          <div class="zk-replay-stat ${result.valid ? 'valid' : 'invalid'}">
+            <span class="label">Overall</span>
+            <span class="value">${result.valid ? 'VALID' : 'INVALID'}</span>
+          </div>
+          <div class="zk-replay-stat ${result.chain_valid ? 'valid' : 'invalid'}">
+            <span class="label">${chainIcon} State Chain</span>
+            <span class="value">${result.chain_valid ? 'Intact' : 'Broken'}</span>
+          </div>
+          <div class="zk-replay-stat">
+            <span class="label">Moves</span>
+            <span class="value">${result.move_count}</span>
+          </div>
+          ${result.win_verified !== undefined ? `
+          <div class="zk-replay-stat ${result.win_verified ? 'valid' : 'invalid'}">
+            <span class="label">Win Proof</span>
+            <span class="value">${result.win_verified ? '✓ Verified' : '✗ Not Verified'}</span>
+          </div>
+          ` : ''}
+        </div>
+        <div class="zk-replay-moves">
+          <h4>Move Chain</h4>
+          <div class="zk-move-chain">
+            <div class="zk-chain-node initial">
+              <span class="label">Initial</span>
+              <code>${result.move_results.length > 0 ? result.move_results[0].pre_root : 'N/A'}</code>
+            </div>
+            ${result.move_results.map((m, i) => `
+              <div class="zk-chain-arrow ${m.chain_valid ? '' : 'broken'}">
+                <span class="move-label">${m.player === 1 ? 'X' : 'O'}→${m.position}</span>
+                <span class="proof-status ${m.proof_verified ? 'verified' : 'unverified'}">
+                  ${m.proof_verified ? '✓' : '✗'}
+                </span>
+              </div>
+              <div class="zk-chain-node ${i === result.move_results.length - 1 ? 'final' : ''}">
+                <span class="label">Move ${m.move}</span>
+                <code>${m.post_root}</code>
+                ${m.error ? `<span class="error">${m.error}</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+
+  modal.style.display = 'flex'
+}
+
+// Close replay modal
+window.closeReplayModal = function() {
+  const modal = document.getElementById('zk-replay-modal')
+  if (modal) {
+    modal.style.display = 'none'
+  }
+}
+
 // Export for console testing
 window.zkState = zkState
 window.setZkMode = setZkMode
@@ -373,3 +494,4 @@ window.getZkGame = getZkGame
 window.makeZkMove = makeZkMove
 window.checkZkWin = checkZkWin
 window.checkZkHealth = checkZkHealth
+window.verifyGameHistory = verifyGameHistory
