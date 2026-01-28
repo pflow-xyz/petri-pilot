@@ -58,7 +58,8 @@ class PetriGraphQL {
    * @returns {Promise<Object>} - Created instance state
    */
   async create(appName) {
-    const mutationName = `${appName}_create`
+    // Schema uses createBlogPost, createErc20token, etc.
+    const mutationName = `create${capitalize(appName)}`
     const query = `
       mutation {
         ${mutationName} {
@@ -130,14 +131,16 @@ class PetriGraphQL {
   /**
    * Execute a transition on an aggregate
    * @param {string} appName - Application name
-   * @param {string} transition - Transition name (e.g., 'transfer', 'mint')
+   * @param {string} transition - Transition name (e.g., 'transfer', 'mint', 'create_post')
    * @param {string} aggregateId - Aggregate ID
    * @param {Object} [inputData] - Transition input data
    * @returns {Promise<Object>} - Transition result
    */
   async execute(appName, transition, aggregateId, inputData = {}) {
-    const mutationName = `${appName}_${transition}`
-    const inputTypeName = `${capitalize(appName)}${capitalize(transition)}Input`
+    // Convert snake_case to camelCase for mutation name (e.g., create_post -> createPost)
+    const mutationName = snakeToCamel(transition)
+    // Input type is PascalCase (e.g., CreatePostInput)
+    const inputTypeName = `${snakeToPascal(transition)}Input`
 
     // Build the input object
     const input = {
@@ -216,6 +219,19 @@ class PetriGraphQL {
 function capitalize(str) {
   if (!str) return ''
   return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+// Convert snake_case to camelCase (e.g., create_post -> createPost)
+function snakeToCamel(str) {
+  if (!str) return ''
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+// Convert snake_case to PascalCase (e.g., create_post -> CreatePost)
+function snakeToPascal(str) {
+  if (!str) return ''
+  const camel = snakeToCamel(str)
+  return camel.charAt(0).toUpperCase() + camel.slice(1)
 }
 
 // Export for ES modules

@@ -52,10 +52,12 @@ async function createPost(title, content, tags) {
     const aggregateId = created.id
 
     // Then fire the create_post transition with content
+    // Convert tags array to comma-separated string (GraphQL schema expects String)
+    const tagsStr = Array.isArray(tags) ? tags.join(', ') : (tags || '')
     await gql.execute(APP_NAME, 'create_post', aggregateId, {
       title: title,
       content: content,
-      tags: tags,
+      tags: tagsStr,
       author_id: getCurrentUser()?.id || 'anonymous',
       author_name: getCurrentUser()?.name || 'Anonymous'
     })
@@ -70,7 +72,9 @@ async function createPost(title, content, tags) {
 
 async function updatePost(id, title, content, tags) {
   try {
-    await gql.execute(APP_NAME, 'update', id, { title, content, tags })
+    // Convert tags array to comma-separated string (GraphQL schema expects String)
+    const tagsStr = Array.isArray(tags) ? tags.join(', ') : (tags || '')
+    await gql.execute(APP_NAME, 'update', id, { title, content, tags: tagsStr })
     return true
   } catch (err) {
     console.error('Failed to update post:', err)
