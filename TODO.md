@@ -177,7 +177,7 @@ Enable fully on-chain ZK tic-tac-toe games.
 
 ### Phase 4: Advanced Features
 
-- [ ] Replay verification - verify entire game history
+- [x] Replay verification - verify entire game history (`POST /zk/replay`)
 - [ ] Tournament mode with prize pool
 - [ ] Spectator mode with live proof streaming
 - [ ] Mobile-optimized UI
@@ -193,6 +193,7 @@ POST /zk/game/{id}/check-win - Check winner, returns proof
 GET  /zk/circuits            - List available circuits
 POST /zk/verify              - Verify a proof
 GET  /zk/verifier/{circuit}  - Download Solidity verifier contract
+POST /zk/replay              - Verify entire game history (state chain)
 ```
 
 ### Example Move Response
