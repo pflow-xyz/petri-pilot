@@ -134,13 +134,14 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	isMutation := containsString(query, "mutation")
 
 	// Handle create mutation (supports both "createModelName" and "package_create" naming)
-	if isMutation && (containsString(query, "createErc20Token") || containsString(query, "erc20token_create")) {
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createErc20Token") || matchField(query, "erc20token_create")) {
 		state, err := h.resolver.CreateErc20Token(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
 			// Return under whichever key the query used
-			if containsString(query, "erc20token_create") {
+			if matchField(query, "erc20token_create") {
 				data["erc20token_create"] = state
 			} else {
 				data["createErc20Token"] = state
@@ -431,6 +432,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.

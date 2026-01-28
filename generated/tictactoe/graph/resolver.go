@@ -1193,108 +1193,125 @@ func aggregateToState(agg Aggregate) *AggregateState {
 
 func stateToModel(state any) *State {
 	s := &State{}
-	if m, ok := state.(map[string]any); ok {
-		if v, ok := m["p00"].(int); ok {
-			s.P00 = v
-		}
-		if v, ok := m["p01"].(int); ok {
-			s.P01 = v
-		}
-		if v, ok := m["p02"].(int); ok {
-			s.P02 = v
-		}
-		if v, ok := m["p10"].(int); ok {
-			s.P10 = v
-		}
-		if v, ok := m["p11"].(int); ok {
-			s.P11 = v
-		}
-		if v, ok := m["p12"].(int); ok {
-			s.P12 = v
-		}
-		if v, ok := m["p20"].(int); ok {
-			s.P20 = v
-		}
-		if v, ok := m["p21"].(int); ok {
-			s.P21 = v
-		}
-		if v, ok := m["p22"].(int); ok {
-			s.P22 = v
-		}
-		if v, ok := m["x00"].(int); ok {
-			s.X00 = v
-		}
-		if v, ok := m["x01"].(int); ok {
-			s.X01 = v
-		}
-		if v, ok := m["x02"].(int); ok {
-			s.X02 = v
-		}
-		if v, ok := m["x10"].(int); ok {
-			s.X10 = v
-		}
-		if v, ok := m["x11"].(int); ok {
-			s.X11 = v
-		}
-		if v, ok := m["x12"].(int); ok {
-			s.X12 = v
-		}
-		if v, ok := m["x20"].(int); ok {
-			s.X20 = v
-		}
-		if v, ok := m["x21"].(int); ok {
-			s.X21 = v
-		}
-		if v, ok := m["x22"].(int); ok {
-			s.X22 = v
-		}
-		if v, ok := m["o00"].(int); ok {
-			s.O00 = v
-		}
-		if v, ok := m["o01"].(int); ok {
-			s.O01 = v
-		}
-		if v, ok := m["o02"].(int); ok {
-			s.O02 = v
-		}
-		if v, ok := m["o10"].(int); ok {
-			s.O10 = v
-		}
-		if v, ok := m["o11"].(int); ok {
-			s.O11 = v
-		}
-		if v, ok := m["o12"].(int); ok {
-			s.O12 = v
-		}
-		if v, ok := m["o20"].(int); ok {
-			s.O20 = v
-		}
-		if v, ok := m["o21"].(int); ok {
-			s.O21 = v
-		}
-		if v, ok := m["o22"].(int); ok {
-			s.O22 = v
-		}
-		if v, ok := m["x_turn"].(int); ok {
-			s.XTurn = v
-		}
-		if v, ok := m["o_turn"].(int); ok {
-			s.OTurn = v
-		}
-		if v, ok := m["win_x"].(int); ok {
-			s.WinX = v
-		}
-		if v, ok := m["win_o"].(int); ok {
-			s.WinO = v
-		}
-		if v, ok := m["can_reset"].(int); ok {
-			s.CanReset = v
-		}
-		if v, ok := m["game_active"].(int); ok {
-			s.GameActive = v
-		}
+	// Convert struct to map via JSON roundtrip for uniform field access
+	m := stateToMap(state)
+	if v, ok := m["p00"]; ok {
+		s.P00 = v
+	}
+	if v, ok := m["p01"]; ok {
+		s.P01 = v
+	}
+	if v, ok := m["p02"]; ok {
+		s.P02 = v
+	}
+	if v, ok := m["p10"]; ok {
+		s.P10 = v
+	}
+	if v, ok := m["p11"]; ok {
+		s.P11 = v
+	}
+	if v, ok := m["p12"]; ok {
+		s.P12 = v
+	}
+	if v, ok := m["p20"]; ok {
+		s.P20 = v
+	}
+	if v, ok := m["p21"]; ok {
+		s.P21 = v
+	}
+	if v, ok := m["p22"]; ok {
+		s.P22 = v
+	}
+	if v, ok := m["x00"]; ok {
+		s.X00 = v
+	}
+	if v, ok := m["x01"]; ok {
+		s.X01 = v
+	}
+	if v, ok := m["x02"]; ok {
+		s.X02 = v
+	}
+	if v, ok := m["x10"]; ok {
+		s.X10 = v
+	}
+	if v, ok := m["x11"]; ok {
+		s.X11 = v
+	}
+	if v, ok := m["x12"]; ok {
+		s.X12 = v
+	}
+	if v, ok := m["x20"]; ok {
+		s.X20 = v
+	}
+	if v, ok := m["x21"]; ok {
+		s.X21 = v
+	}
+	if v, ok := m["x22"]; ok {
+		s.X22 = v
+	}
+	if v, ok := m["o00"]; ok {
+		s.O00 = v
+	}
+	if v, ok := m["o01"]; ok {
+		s.O01 = v
+	}
+	if v, ok := m["o02"]; ok {
+		s.O02 = v
+	}
+	if v, ok := m["o10"]; ok {
+		s.O10 = v
+	}
+	if v, ok := m["o11"]; ok {
+		s.O11 = v
+	}
+	if v, ok := m["o12"]; ok {
+		s.O12 = v
+	}
+	if v, ok := m["o20"]; ok {
+		s.O20 = v
+	}
+	if v, ok := m["o21"]; ok {
+		s.O21 = v
+	}
+	if v, ok := m["o22"]; ok {
+		s.O22 = v
+	}
+	if v, ok := m["x_turn"]; ok {
+		s.XTurn = v
+	}
+	if v, ok := m["o_turn"]; ok {
+		s.OTurn = v
+	}
+	if v, ok := m["win_x"]; ok {
+		s.WinX = v
+	}
+	if v, ok := m["win_o"]; ok {
+		s.WinO = v
+	}
+	if v, ok := m["can_reset"]; ok {
+		s.CanReset = v
+	}
+	if v, ok := m["game_active"]; ok {
+		s.GameActive = v
 	}
 	return s
+}
+
+func stateToMap(state any) map[string]any {
+	// Try direct map assertion first
+	if m, ok := state.(map[string]any); ok {
+		return m
+	}
+	// Fall back to JSON roundtrip for struct types
+	b, err := json.Marshal(state)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 func placesToModel(places map[string]int) *Places {
@@ -1404,119 +1421,119 @@ func placesToModel(places map[string]int) *Places {
 // GraphQL model types
 
 type AggregateState struct {
-	ID                 string
-	Version            int
-	State              *State
-	Places             *Places
-	EnabledTransitions []string
+	ID                 string   `json:"id"`
+	Version            int      `json:"version"`
+	State              *State   `json:"state"`
+	Places             *Places  `json:"places"`
+	EnabledTransitions []string `json:"enabledTransitions"`
 }
 
 type State struct {
-	P00 int
-	P01 int
-	P02 int
-	P10 int
-	P11 int
-	P12 int
-	P20 int
-	P21 int
-	P22 int
-	X00 int
-	X01 int
-	X02 int
-	X10 int
-	X11 int
-	X12 int
-	X20 int
-	X21 int
-	X22 int
-	O00 int
-	O01 int
-	O02 int
-	O10 int
-	O11 int
-	O12 int
-	O20 int
-	O21 int
-	O22 int
-	XTurn int
-	OTurn int
-	WinX int
-	WinO int
-	CanReset int
-	GameActive int
+	P00 any `json:"p00"`
+	P01 any `json:"p01"`
+	P02 any `json:"p02"`
+	P10 any `json:"p10"`
+	P11 any `json:"p11"`
+	P12 any `json:"p12"`
+	P20 any `json:"p20"`
+	P21 any `json:"p21"`
+	P22 any `json:"p22"`
+	X00 any `json:"x00"`
+	X01 any `json:"x01"`
+	X02 any `json:"x02"`
+	X10 any `json:"x10"`
+	X11 any `json:"x11"`
+	X12 any `json:"x12"`
+	X20 any `json:"x20"`
+	X21 any `json:"x21"`
+	X22 any `json:"x22"`
+	O00 any `json:"o00"`
+	O01 any `json:"o01"`
+	O02 any `json:"o02"`
+	O10 any `json:"o10"`
+	O11 any `json:"o11"`
+	O12 any `json:"o12"`
+	O20 any `json:"o20"`
+	O21 any `json:"o21"`
+	O22 any `json:"o22"`
+	XTurn any `json:"xTurn"`
+	OTurn any `json:"oTurn"`
+	WinX any `json:"winX"`
+	WinO any `json:"winO"`
+	CanReset any `json:"canReset"`
+	GameActive any `json:"gameActive"`
 }
 
 type Places struct {
-	P00 int
-	P01 int
-	P02 int
-	P10 int
-	P11 int
-	P12 int
-	P20 int
-	P21 int
-	P22 int
-	X00 int
-	X01 int
-	X02 int
-	X10 int
-	X11 int
-	X12 int
-	X20 int
-	X21 int
-	X22 int
-	O00 int
-	O01 int
-	O02 int
-	O10 int
-	O11 int
-	O12 int
-	O20 int
-	O21 int
-	O22 int
-	XTurn int
-	OTurn int
-	WinX int
-	WinO int
-	CanReset int
-	GameActive int
+	P00 int `json:"p00"`
+	P01 int `json:"p01"`
+	P02 int `json:"p02"`
+	P10 int `json:"p10"`
+	P11 int `json:"p11"`
+	P12 int `json:"p12"`
+	P20 int `json:"p20"`
+	P21 int `json:"p21"`
+	P22 int `json:"p22"`
+	X00 int `json:"x00"`
+	X01 int `json:"x01"`
+	X02 int `json:"x02"`
+	X10 int `json:"x10"`
+	X11 int `json:"x11"`
+	X12 int `json:"x12"`
+	X20 int `json:"x20"`
+	X21 int `json:"x21"`
+	X22 int `json:"x22"`
+	O00 int `json:"o00"`
+	O01 int `json:"o01"`
+	O02 int `json:"o02"`
+	O10 int `json:"o10"`
+	O11 int `json:"o11"`
+	O12 int `json:"o12"`
+	O20 int `json:"o20"`
+	O21 int `json:"o21"`
+	O22 int `json:"o22"`
+	XTurn int `json:"xTurn"`
+	OTurn int `json:"oTurn"`
+	WinX int `json:"winX"`
+	WinO int `json:"winO"`
+	CanReset int `json:"canReset"`
+	GameActive int `json:"gameActive"`
 }
 
 type TransitionResult struct {
-	Success            bool
-	AggregateID        *string
-	Version            *int
-	State              *Places
-	EnabledTransitions []string
-	Error              *string
+	Success            bool     `json:"success"`
+	AggregateID        *string  `json:"aggregateId"`
+	Version            *int     `json:"version"`
+	State              *Places  `json:"state"`
+	EnabledTransitions []string `json:"enabledTransitions"`
+	Error              *string  `json:"error"`
 }
 
 type AggregateList struct {
-	Items   []*AggregateState
-	Total   int
-	Page    int
-	PerPage int
+	Items   []*AggregateState `json:"items"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PerPage int               `json:"perPage"`
 }
 
 type AdminStats struct {
-	TotalInstances int
-	ByPlace        []*PlaceCount
+	TotalInstances int           `json:"totalInstances"`
+	ByPlace        []*PlaceCount `json:"byPlace"`
 }
 
 type PlaceCount struct {
-	Place string
-	Count int
+	Place string `json:"place"`
+	Count int    `json:"count"`
 }
 
 
 type Event struct {
-	ID        string
-	StreamID  string
-	Type      string
-	Version   int
-	Timestamp any
-	Data      string
+	ID        string `json:"id"`
+	StreamID  string `json:"streamId"`
+	Type      string `json:"type"`
+	Version   int    `json:"version"`
+	Timestamp any    `json:"timestamp"`
+	Data      string `json:"data"`
 }
 
 

@@ -707,7 +707,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 
 	// Build transition contexts with arc information
 	// Data state places are excluded from token counting (guards handle those)
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, placeIDs, dataPlaceIDs)
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, enriched.Events, placeIDs, dataPlaceIDs)
 
 	// Build event contexts from bridge inference
 	eventDefs := metamodel.InferEvents(enriched)
@@ -735,15 +735,25 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
 	}
 
-	// Note: Access control, views, navigation, admin and other application constructs
-	// are now stored in extensions. Use NewContextFromApp with an ApplicationSpec
-	// to populate these fields. The Model only contains core Petri net elements.
+	// Note: Views and other application constructs may also be stored in extensions.
+	// Use NewContextFromApp with an ApplicationSpec for full extension support.
+	// Below we handle admin, navigation, roles, and access from the model directly.
 
 	// Build debug context if debug is enabled
 	ctx.Debug = buildDebugContext(enriched.Debug)
 
 	// Build GraphQL context if GraphQL is enabled
 	ctx.GraphQL = buildGraphQLContext(enriched.GraphQL)
+
+	// Build admin context from model if present
+	if enriched.Admin != nil {
+		ctx.Admin = buildAdminContext(enriched.Admin)
+	}
+
+	// Build navigation context from model if present
+	if enriched.Navigation != nil {
+		ctx.Navigation = buildNavigationContext(enriched.Navigation)
+	}
 
 	// Build access control from model if present
 	if enriched.Roles != nil {
@@ -1077,7 +1087,12 @@ func buildPlaceContexts(places []metamodel.Place) []PlaceContext {
 	return result
 }
 
-func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamodel.Arc, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
+func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamodel.Arc, events []metamodel.Event, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
+	// Build event lookup map for deriving bindings from event fields
+	eventByID := make(map[string]metamodel.Event, len(events))
+	for _, e := range events {
+		eventByID[e.ID] = e
+	}
 	// Build arc maps for each transition
 	// Inputs: arcs where arc.To == transition.ID (place -> transition)
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
@@ -1125,17 +1140,36 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 			eventType = ToEventTypeName(t.ID)
 		}
 
-		// Build binding contexts
-		bindings := make([]BindingContext, len(t.Bindings))
-		for j, b := range t.Bindings {
-			bindings[j] = BindingContext{
-				Name:      b.Name,
-				Type:      bindingTypeToGo(b.Type),
-				FieldName: ToPascalCase(b.Name),
-				JSONName:  b.Name,
-				Keys:      b.Keys,
-				IsValue:   b.Value,
-				Place:     b.Place,
+		// Build binding contexts from explicit bindings or event fields
+		var bindings []BindingContext
+		if len(t.Bindings) > 0 {
+			bindings = make([]BindingContext, len(t.Bindings))
+			for j, b := range t.Bindings {
+				bindings[j] = BindingContext{
+					Name:      b.Name,
+					Type:      bindingTypeToGo(b.Type),
+					FieldName: ToPascalCase(b.Name),
+					JSONName:  b.Name,
+					Keys:      b.Keys,
+					IsValue:   b.Value,
+					Place:     b.Place,
+				}
+			}
+		} else if t.Event != "" && len(t.Fields) > 0 {
+			// Fall back to event fields when transition has UI fields but no explicit bindings.
+			// The presence of transition fields indicates user input is expected.
+			// Transitions without fields (like positional moves) should not get bindings
+			// even if their event has fields.
+			if evt, ok := eventByID[t.Event]; ok {
+				bindings = make([]BindingContext, 0, len(evt.Fields))
+				for _, f := range evt.Fields {
+					bindings = append(bindings, BindingContext{
+						Name:      f.Name,
+						Type:      eventFieldTypeToGo(f.Type),
+						FieldName: ToPascalCase(f.Name),
+						JSONName:  f.Name,
+					})
+				}
 			}
 		}
 
@@ -1183,6 +1217,23 @@ func bindingTypeToGo(typ string) string {
 		return "time.Time"
 	default:
 		// Pass through Go types and map types as-is
+		return typ
+	}
+}
+
+// eventFieldTypeToGo converts an event field type to a Go type string.
+// Event fields use Go-style types (string, int64, []string) directly.
+func eventFieldTypeToGo(typ string) string {
+	switch typ {
+	case "":
+		return "string"
+	case "number":
+		return "float64"
+	case "integer":
+		return "int"
+	case "boolean":
+		return "bool"
+	default:
 		return typ
 	}
 }

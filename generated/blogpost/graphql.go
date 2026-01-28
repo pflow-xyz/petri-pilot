@@ -133,49 +133,127 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createBlogPost") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createBlogPost") || matchField(query, "blogpost_create")) {
 		state, err := h.resolver.CreateBlogPost(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createBlogPost"] = state
+			// Return under whichever key the query used
+			if matchField(query, "blogpost_create") {
+				data["blogpost_create"] = state
+			} else {
+				data["createBlogPost"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "createPost") {
+	if isMutation && (containsString(query, "blogpost_create_post") || containsString(query, "createPost")) {
 		input := graph.CreatePostInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
+			}
+			if v, ok := vars["title"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Title = &val
+				}
+			}
+			if v, ok := vars["content"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Content = &val
+				}
+			}
+			if v, ok := vars["author_id"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.AuthorId = &val
+				}
+			}
+			if v, ok := vars["author_name"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.AuthorName = &val
+				}
+			}
+			if v, ok := vars["tags"]; ok {
+				switch val := v.(type) {
+				case []interface{}:
+					s := make([]string, len(val))
+					for i, item := range val {
+						s[i], _ = item.(string)
+					}
+					input.Tags = &s
+				case string:
+					s := []string{val}
+					input.Tags = &s
+				}
 			}
 		}
 		res, err := h.resolver.CreatePost(ctx, input)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createPost"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_create_post") {
+				data["blogpost_create_post"] = res
+			} else {
+				data["createPost"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "update") {
+	if isMutation && (containsString(query, "blogpost_update") || containsString(query, "update")) {
 		input := graph.UpdateInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
+			}
+			if v, ok := vars["title"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Title = &val
+				}
+			}
+			if v, ok := vars["content"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Content = &val
+				}
+			}
+			if v, ok := vars["tags"]; ok {
+				switch val := v.(type) {
+				case []interface{}:
+					s := make([]string, len(val))
+					for i, item := range val {
+						s[i], _ = item.(string)
+					}
+					input.Tags = &s
+				case string:
+					s := []string{val}
+					input.Tags = &s
+				}
 			}
 		}
 		res, err := h.resolver.Update(ctx, input)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["update"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_update") {
+				data["blogpost_update"] = res
+			} else {
+				data["update"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "submit") {
+	if isMutation && (containsString(query, "blogpost_submit") || containsString(query, "submit")) {
 		input := graph.SubmitInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -186,11 +264,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["submit"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_submit") {
+				data["blogpost_submit"] = res
+			} else {
+				data["submit"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "approve") {
+	if isMutation && (containsString(query, "blogpost_approve") || containsString(query, "approve")) {
 		input := graph.ApproveInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -201,26 +284,48 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["approve"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_approve") {
+				data["blogpost_approve"] = res
+			} else {
+				data["approve"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "reject") {
+	if isMutation && (containsString(query, "blogpost_reject") || containsString(query, "reject")) {
 		input := graph.RejectInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
+			}
+			if v, ok := vars["rejected_by"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.RejectedBy = &val
+				}
+			}
+			if v, ok := vars["reason"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Reason = &val
+				}
 			}
 		}
 		res, err := h.resolver.Reject(ctx, input)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["reject"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_reject") {
+				data["blogpost_reject"] = res
+			} else {
+				data["reject"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "unpublish") {
+	if isMutation && (containsString(query, "blogpost_unpublish") || containsString(query, "unpublish")) {
 		input := graph.UnpublishInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -231,11 +336,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["unpublish"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_unpublish") {
+				data["blogpost_unpublish"] = res
+			} else {
+				data["unpublish"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "restore") {
+	if isMutation && (containsString(query, "blogpost_restore") || containsString(query, "restore")) {
 		input := graph.RestoreInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -246,7 +356,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["restore"] = res
+			// Return under whichever key the query used
+			if containsString(query, "blogpost_restore") {
+				data["blogpost_restore"] = res
+			} else {
+				data["restore"] = res
+			}
 		}
 	}
 
@@ -342,6 +457,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.
@@ -463,11 +601,19 @@ type Event {
 
 input CreatePostInput {
   aggregateId: ID!
+  title: String
+  content: String
+  author_id: String
+  author_name: String
+  tags: String
 }
 
 
 input UpdateInput {
   aggregateId: ID!
+  title: String
+  content: String
+  tags: String
 }
 
 
@@ -483,6 +629,8 @@ input ApproveInput {
 
 input RejectInput {
   aggregateId: ID!
+  rejected_by: String
+  reason: String
 }
 
 
@@ -539,6 +687,43 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
 			}
+			if v, ok := vars["title"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Title = &val
+				}
+			}
+			if v, ok := vars["content"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Content = &val
+				}
+			}
+			if v, ok := vars["author_id"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.AuthorId = &val
+				}
+			}
+			if v, ok := vars["author_name"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.AuthorName = &val
+				}
+			}
+			if v, ok := vars["tags"]; ok {
+				switch val := v.(type) {
+				case []interface{}:
+					s := make([]string, len(val))
+					for i, item := range val {
+						s[i], _ = item.(string)
+					}
+					input.Tags = &s
+				case string:
+					s := []string{val}
+					input.Tags = &s
+				}
+			}
 		}
 		return resolver.CreatePost(ctx, input)
 	}
@@ -549,6 +734,31 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		if vars, ok := variables["input"].(map[string]any); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
+			}
+			if v, ok := vars["title"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Title = &val
+				}
+			}
+			if v, ok := vars["content"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Content = &val
+				}
+			}
+			if v, ok := vars["tags"]; ok {
+				switch val := v.(type) {
+				case []interface{}:
+					s := make([]string, len(val))
+					for i, item := range val {
+						s[i], _ = item.(string)
+					}
+					input.Tags = &s
+				case string:
+					s := []string{val}
+					input.Tags = &s
+				}
 			}
 		}
 		return resolver.Update(ctx, input)
@@ -582,6 +792,18 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		if vars, ok := variables["input"].(map[string]any); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
 				input.AggregateID = id
+			}
+			if v, ok := vars["rejected_by"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.RejectedBy = &val
+				}
+			}
+			if v, ok := vars["reason"]; ok {
+				switch val := v.(type) {
+				case string:
+					input.Reason = &val
+				}
 			}
 		}
 		return resolver.Reject(ctx, input)

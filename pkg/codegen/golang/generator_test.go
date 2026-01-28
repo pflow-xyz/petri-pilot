@@ -285,6 +285,8 @@ func TestGenerateFiles(t *testing.T) {
 		"auth.go", "middleware.go", "permissions.go",
 		// Debug file (model has debug enabled)
 		"debug.go",
+		// Navigation and admin (model has these enabled)
+		"navigation.go", "admin.go",
 		// GraphQL files (model has graphql enabled)
 		"graph/schema.graphqls", "graph/resolver.go", "graphql.go", "gqlgen.yml",
 	}

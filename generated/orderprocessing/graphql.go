@@ -133,19 +133,25 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createOrderProcessing") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createOrderProcessing") || matchField(query, "orderprocessing_create")) {
 		state, err := h.resolver.CreateOrderProcessing(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createOrderProcessing"] = state
+			// Return under whichever key the query used
+			if matchField(query, "orderprocessing_create") {
+				data["orderprocessing_create"] = state
+			} else {
+				data["createOrderProcessing"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "validate") {
+	if isMutation && (containsString(query, "orderprocessing_validate") || containsString(query, "validate")) {
 		input := graph.ValidateInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -186,11 +192,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["validate"] = res
+			// Return under whichever key the query used
+			if containsString(query, "orderprocessing_validate") {
+				data["orderprocessing_validate"] = res
+			} else {
+				data["validate"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "reject") {
+	if isMutation && (containsString(query, "orderprocessing_reject") || containsString(query, "reject")) {
 		input := graph.RejectInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -213,11 +224,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["reject"] = res
+			// Return under whichever key the query used
+			if containsString(query, "orderprocessing_reject") {
+				data["orderprocessing_reject"] = res
+			} else {
+				data["reject"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "processPayment") {
+	if isMutation && (containsString(query, "orderprocessing_process_payment") || containsString(query, "processPayment")) {
 		input := graph.ProcessPaymentInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -246,11 +262,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["processPayment"] = res
+			// Return under whichever key the query used
+			if containsString(query, "orderprocessing_process_payment") {
+				data["orderprocessing_process_payment"] = res
+			} else {
+				data["processPayment"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "ship") {
+	if isMutation && (containsString(query, "orderprocessing_ship") || containsString(query, "ship")) {
 		input := graph.ShipInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -279,11 +300,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["ship"] = res
+			// Return under whichever key the query used
+			if containsString(query, "orderprocessing_ship") {
+				data["orderprocessing_ship"] = res
+			} else {
+				data["ship"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "confirm") {
+	if isMutation && (containsString(query, "orderprocessing_confirm") || containsString(query, "confirm")) {
 		input := graph.ConfirmInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -300,7 +326,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["confirm"] = res
+			// Return under whichever key the query used
+			if containsString(query, "orderprocessing_confirm") {
+				data["orderprocessing_confirm"] = res
+			} else {
+				data["confirm"] = res
+			}
 		}
 	}
 
@@ -396,6 +427,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.

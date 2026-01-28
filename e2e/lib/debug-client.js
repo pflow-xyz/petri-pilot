@@ -55,26 +55,40 @@ class DebugClient {
    * @param {string} code - JavaScript code to execute
    * @returns {Promise<any>} - The result of the evaluation
    */
-  async eval(sessionId, code) {
-    const response = await fetch(`${this.baseUrl}/api/debug/sessions/${sessionId}/eval`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
+  async eval(sessionId, code, retries = 2) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/debug/sessions/${sessionId}/eval`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(`Eval failed: ${error.message || response.status}`);
-    }
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(`Eval failed: ${error.message || response.status}`);
+        }
 
-    const result = await response.json();
-    if (process.env.DEBUG) {
-      console.log(`[DebugClient] Eval response:`, JSON.stringify(result));
+        const result = await response.json();
+        if (process.env.DEBUG) {
+          console.log(`[DebugClient] Eval response:`, JSON.stringify(result));
+        }
+        if (result.error) {
+          throw new Error(`Browser error: ${result.error}`);
+        }
+        return result.result;
+      } catch (err) {
+        const isRetryable = err.cause?.code === 'UND_ERR_SOCKET' ||
+          err.message.includes('other side closed') ||
+          err.message.includes('ECONNRESET') ||
+          err.message.includes('fetch failed');
+        if (isRetryable && attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
     }
-    if (result.error) {
-      throw new Error(`Browser error: ${result.error}`);
-    }
-    return result.result;
   }
 
   /**

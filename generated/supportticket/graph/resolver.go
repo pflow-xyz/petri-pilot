@@ -411,30 +411,47 @@ func aggregateToState(agg Aggregate) *AggregateState {
 
 func stateToModel(state any) *State {
 	s := &State{}
-	if m, ok := state.(map[string]any); ok {
-		if v, ok := m["new"].(int); ok {
-			s.New = v
-		}
-		if v, ok := m["assigned"].(int); ok {
-			s.Assigned = v
-		}
-		if v, ok := m["in_progress"].(int); ok {
-			s.InProgress = v
-		}
-		if v, ok := m["escalated"].(int); ok {
-			s.Escalated = v
-		}
-		if v, ok := m["pending_customer"].(int); ok {
-			s.PendingCustomer = v
-		}
-		if v, ok := m["resolved"].(int); ok {
-			s.Resolved = v
-		}
-		if v, ok := m["closed"].(int); ok {
-			s.Closed = v
-		}
+	// Convert struct to map via JSON roundtrip for uniform field access
+	m := stateToMap(state)
+	if v, ok := m["new"]; ok {
+		s.New = v
+	}
+	if v, ok := m["assigned"]; ok {
+		s.Assigned = v
+	}
+	if v, ok := m["in_progress"]; ok {
+		s.InProgress = v
+	}
+	if v, ok := m["escalated"]; ok {
+		s.Escalated = v
+	}
+	if v, ok := m["pending_customer"]; ok {
+		s.PendingCustomer = v
+	}
+	if v, ok := m["resolved"]; ok {
+		s.Resolved = v
+	}
+	if v, ok := m["closed"]; ok {
+		s.Closed = v
 	}
 	return s
+}
+
+func stateToMap(state any) map[string]any {
+	// Try direct map assertion first
+	if m, ok := state.(map[string]any); ok {
+		return m
+	}
+	// Fall back to JSON roundtrip for struct types
+	b, err := json.Marshal(state)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 func placesToModel(places map[string]int) *Places {
@@ -466,57 +483,57 @@ func placesToModel(places map[string]int) *Places {
 // GraphQL model types
 
 type AggregateState struct {
-	ID                 string
-	Version            int
-	State              *State
-	Places             *Places
-	EnabledTransitions []string
+	ID                 string   `json:"id"`
+	Version            int      `json:"version"`
+	State              *State   `json:"state"`
+	Places             *Places  `json:"places"`
+	EnabledTransitions []string `json:"enabledTransitions"`
 }
 
 type State struct {
-	New int
-	Assigned int
-	InProgress int
-	Escalated int
-	PendingCustomer int
-	Resolved int
-	Closed int
+	New any `json:"new"`
+	Assigned any `json:"assigned"`
+	InProgress any `json:"inProgress"`
+	Escalated any `json:"escalated"`
+	PendingCustomer any `json:"pendingCustomer"`
+	Resolved any `json:"resolved"`
+	Closed any `json:"closed"`
 }
 
 type Places struct {
-	New int
-	Assigned int
-	InProgress int
-	Escalated int
-	PendingCustomer int
-	Resolved int
-	Closed int
+	New int `json:"new"`
+	Assigned int `json:"assigned"`
+	InProgress int `json:"inProgress"`
+	Escalated int `json:"escalated"`
+	PendingCustomer int `json:"pendingCustomer"`
+	Resolved int `json:"resolved"`
+	Closed int `json:"closed"`
 }
 
 type TransitionResult struct {
-	Success            bool
-	AggregateID        *string
-	Version            *int
-	State              *Places
-	EnabledTransitions []string
-	Error              *string
+	Success            bool     `json:"success"`
+	AggregateID        *string  `json:"aggregateId"`
+	Version            *int     `json:"version"`
+	State              *Places  `json:"state"`
+	EnabledTransitions []string `json:"enabledTransitions"`
+	Error              *string  `json:"error"`
 }
 
 type AggregateList struct {
-	Items   []*AggregateState
-	Total   int
-	Page    int
-	PerPage int
+	Items   []*AggregateState `json:"items"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PerPage int               `json:"perPage"`
 }
 
 
 type Event struct {
-	ID        string
-	StreamID  string
-	Type      string
-	Version   int
-	Timestamp any
-	Data      string
+	ID        string `json:"id"`
+	StreamID  string `json:"streamId"`
+	Type      string `json:"type"`
+	Version   int    `json:"version"`
+	Timestamp any    `json:"timestamp"`
+	Data      string `json:"data"`
 }
 
 

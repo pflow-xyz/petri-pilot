@@ -133,19 +133,25 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createSupportTicket") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createSupportTicket") || matchField(query, "supportticket_create")) {
 		state, err := h.resolver.CreateSupportTicket(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createSupportTicket"] = state
+			// Return under whichever key the query used
+			if matchField(query, "supportticket_create") {
+				data["supportticket_create"] = state
+			} else {
+				data["createSupportTicket"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "assign") {
+	if isMutation && (containsString(query, "supportticket_assign") || containsString(query, "assign")) {
 		input := graph.AssignInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -156,11 +162,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["assign"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_assign") {
+				data["supportticket_assign"] = res
+			} else {
+				data["assign"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "startWork") {
+	if isMutation && (containsString(query, "supportticket_start_work") || containsString(query, "startWork")) {
 		input := graph.StartWorkInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -171,11 +182,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["startWork"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_start_work") {
+				data["supportticket_start_work"] = res
+			} else {
+				data["startWork"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "escalate") {
+	if isMutation && (containsString(query, "supportticket_escalate") || containsString(query, "escalate")) {
 		input := graph.EscalateInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -186,11 +202,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["escalate"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_escalate") {
+				data["supportticket_escalate"] = res
+			} else {
+				data["escalate"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "requestInfo") {
+	if isMutation && (containsString(query, "supportticket_request_info") || containsString(query, "requestInfo")) {
 		input := graph.RequestInfoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -201,11 +222,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["requestInfo"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_request_info") {
+				data["supportticket_request_info"] = res
+			} else {
+				data["requestInfo"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "customerReply") {
+	if isMutation && (containsString(query, "supportticket_customer_reply") || containsString(query, "customerReply")) {
 		input := graph.CustomerReplyInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -216,11 +242,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["customerReply"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_customer_reply") {
+				data["supportticket_customer_reply"] = res
+			} else {
+				data["customerReply"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "resolve") {
+	if isMutation && (containsString(query, "supportticket_resolve") || containsString(query, "resolve")) {
 		input := graph.ResolveInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -231,11 +262,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["resolve"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_resolve") {
+				data["supportticket_resolve"] = res
+			} else {
+				data["resolve"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "resolveEscalated") {
+	if isMutation && (containsString(query, "supportticket_resolve_escalated") || containsString(query, "resolveEscalated")) {
 		input := graph.ResolveEscalatedInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -246,11 +282,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["resolveEscalated"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_resolve_escalated") {
+				data["supportticket_resolve_escalated"] = res
+			} else {
+				data["resolveEscalated"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "close") {
+	if isMutation && (containsString(query, "supportticket_close") || containsString(query, "close")) {
 		input := graph.CloseInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -261,11 +302,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["close"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_close") {
+				data["supportticket_close"] = res
+			} else {
+				data["close"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "reopen") {
+	if isMutation && (containsString(query, "supportticket_reopen") || containsString(query, "reopen")) {
 		input := graph.ReopenInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -276,7 +322,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["reopen"] = res
+			// Return under whichever key the query used
+			if containsString(query, "supportticket_reopen") {
+				data["supportticket_reopen"] = res
+			} else {
+				data["reopen"] = res
+			}
 		}
 	}
 
@@ -362,6 +413,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.

@@ -116,11 +116,19 @@ type Event {
 
 input CreatePostInput {
   aggregateId: ID!
+  title: String
+  content: String
+  author_id: String
+  author_name: String
+  tags: String
 }
 
 
 input UpdateInput {
   aggregateId: ID!
+  title: String
+  content: String
+  tags: String
 }
 
 
@@ -136,6 +144,8 @@ input ApproveInput {
 
 input RejectInput {
   aggregateId: ID!
+  rejected_by: String
+  reason: String
 }
 
 

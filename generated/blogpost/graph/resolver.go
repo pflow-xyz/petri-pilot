@@ -200,6 +200,21 @@ func (r *Resolver) CreateBlogPost(ctx context.Context) (*AggregateState, error) 
 // CreatePost executes the create_post transition.
 func (r *Resolver) CreatePost(ctx context.Context, input CreatePostInput) (*TransitionResult, error) {
 	data := make(map[string]any)
+	if input.Title != nil {
+		data["title"] = *input.Title
+	}
+	if input.Content != nil {
+		data["content"] = *input.Content
+	}
+	if input.AuthorId != nil {
+		data["author_id"] = *input.AuthorId
+	}
+	if input.AuthorName != nil {
+		data["author_name"] = *input.AuthorName
+	}
+	if input.Tags != nil {
+		data["tags"] = *input.Tags
+	}
 
 	agg, err := r.App.Execute(ctx, input.AggregateID, "create_post", data)
 	if err != nil {
@@ -228,6 +243,15 @@ func (r *Resolver) CreatePost(ctx context.Context, input CreatePostInput) (*Tran
 // Update executes the update transition.
 func (r *Resolver) Update(ctx context.Context, input UpdateInput) (*TransitionResult, error) {
 	data := make(map[string]any)
+	if input.Title != nil {
+		data["title"] = *input.Title
+	}
+	if input.Content != nil {
+		data["content"] = *input.Content
+	}
+	if input.Tags != nil {
+		data["tags"] = *input.Tags
+	}
 
 	agg, err := r.App.Execute(ctx, input.AggregateID, "update", data)
 	if err != nil {
@@ -312,6 +336,12 @@ func (r *Resolver) Approve(ctx context.Context, input ApproveInput) (*Transition
 // Reject executes the reject transition.
 func (r *Resolver) Reject(ctx context.Context, input RejectInput) (*TransitionResult, error) {
 	data := make(map[string]any)
+	if input.RejectedBy != nil {
+		data["rejected_by"] = *input.RejectedBy
+	}
+	if input.Reason != nil {
+		data["reason"] = *input.Reason
+	}
 
 	agg, err := r.App.Execute(ctx, input.AggregateID, "reject", data)
 	if err != nil {
@@ -409,21 +439,38 @@ func aggregateToState(agg Aggregate) *AggregateState {
 
 func stateToModel(state any) *State {
 	s := &State{}
-	if m, ok := state.(map[string]any); ok {
-		if v, ok := m["draft"].(int); ok {
-			s.Draft = v
-		}
-		if v, ok := m["in_review"].(int); ok {
-			s.InReview = v
-		}
-		if v, ok := m["published"].(int); ok {
-			s.Published = v
-		}
-		if v, ok := m["archived"].(int); ok {
-			s.Archived = v
-		}
+	// Convert struct to map via JSON roundtrip for uniform field access
+	m := stateToMap(state)
+	if v, ok := m["draft"]; ok {
+		s.Draft = v
+	}
+	if v, ok := m["in_review"]; ok {
+		s.InReview = v
+	}
+	if v, ok := m["published"]; ok {
+		s.Published = v
+	}
+	if v, ok := m["archived"]; ok {
+		s.Archived = v
 	}
 	return s
+}
+
+func stateToMap(state any) map[string]any {
+	// Try direct map assertion first
+	if m, ok := state.(map[string]any); ok {
+		return m
+	}
+	// Fall back to JSON roundtrip for struct types
+	b, err := json.Marshal(state)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 func placesToModel(places map[string]int) *Places {
@@ -446,61 +493,61 @@ func placesToModel(places map[string]int) *Places {
 // GraphQL model types
 
 type AggregateState struct {
-	ID                 string
-	Version            int
-	State              *State
-	Places             *Places
-	EnabledTransitions []string
+	ID                 string   `json:"id"`
+	Version            int      `json:"version"`
+	State              *State   `json:"state"`
+	Places             *Places  `json:"places"`
+	EnabledTransitions []string `json:"enabledTransitions"`
 }
 
 type State struct {
-	Draft int
-	InReview int
-	Published int
-	Archived int
+	Draft any `json:"draft"`
+	InReview any `json:"inReview"`
+	Published any `json:"published"`
+	Archived any `json:"archived"`
 }
 
 type Places struct {
-	Draft int
-	InReview int
-	Published int
-	Archived int
+	Draft int `json:"draft"`
+	InReview int `json:"inReview"`
+	Published int `json:"published"`
+	Archived int `json:"archived"`
 }
 
 type TransitionResult struct {
-	Success            bool
-	AggregateID        *string
-	Version            *int
-	State              *Places
-	EnabledTransitions []string
-	Error              *string
+	Success            bool     `json:"success"`
+	AggregateID        *string  `json:"aggregateId"`
+	Version            *int     `json:"version"`
+	State              *Places  `json:"state"`
+	EnabledTransitions []string `json:"enabledTransitions"`
+	Error              *string  `json:"error"`
 }
 
 type AggregateList struct {
-	Items   []*AggregateState
-	Total   int
-	Page    int
-	PerPage int
+	Items   []*AggregateState `json:"items"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PerPage int               `json:"perPage"`
 }
 
 type AdminStats struct {
-	TotalInstances int
-	ByPlace        []*PlaceCount
+	TotalInstances int           `json:"totalInstances"`
+	ByPlace        []*PlaceCount `json:"byPlace"`
 }
 
 type PlaceCount struct {
-	Place string
-	Count int
+	Place string `json:"place"`
+	Count int    `json:"count"`
 }
 
 
 type Event struct {
-	ID        string
-	StreamID  string
-	Type      string
-	Version   int
-	Timestamp any
-	Data      string
+	ID        string `json:"id"`
+	StreamID  string `json:"streamId"`
+	Type      string `json:"type"`
+	Version   int    `json:"version"`
+	Timestamp any    `json:"timestamp"`
+	Data      string `json:"data"`
 }
 
 
@@ -508,11 +555,19 @@ type Event struct {
 
 type CreatePostInput struct {
 	AggregateID string
+	Title *string
+	Content *string
+	AuthorId *string
+	AuthorName *string
+	Tags *[]string
 }
 
 
 type UpdateInput struct {
 	AggregateID string
+	Title *string
+	Content *string
+	Tags *[]string
 }
 
 
@@ -528,6 +583,8 @@ type ApproveInput struct {
 
 type RejectInput struct {
 	AggregateID string
+	RejectedBy *string
+	Reason *string
 }
 
 

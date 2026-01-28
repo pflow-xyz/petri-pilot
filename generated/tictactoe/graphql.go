@@ -133,19 +133,25 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createTicTacToe") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createTicTacToe") || matchField(query, "tictactoe_create")) {
 		state, err := h.resolver.CreateTicTacToe(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createTicTacToe"] = state
+			// Return under whichever key the query used
+			if matchField(query, "tictactoe_create") {
+				data["tictactoe_create"] = state
+			} else {
+				data["createTicTacToe"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "xPlay00") {
+	if isMutation && (containsString(query, "tictactoe_x_play_00") || containsString(query, "xPlay00")) {
 		input := graph.XPlay00Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -156,11 +162,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay00"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_00") {
+				data["tictactoe_x_play_00"] = res
+			} else {
+				data["xPlay00"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay01") {
+	if isMutation && (containsString(query, "tictactoe_x_play_01") || containsString(query, "xPlay01")) {
 		input := graph.XPlay01Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -171,11 +182,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay01"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_01") {
+				data["tictactoe_x_play_01"] = res
+			} else {
+				data["xPlay01"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay02") {
+	if isMutation && (containsString(query, "tictactoe_x_play_02") || containsString(query, "xPlay02")) {
 		input := graph.XPlay02Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -186,11 +202,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay02"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_02") {
+				data["tictactoe_x_play_02"] = res
+			} else {
+				data["xPlay02"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay10") {
+	if isMutation && (containsString(query, "tictactoe_x_play_10") || containsString(query, "xPlay10")) {
 		input := graph.XPlay10Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -201,11 +222,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay10"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_10") {
+				data["tictactoe_x_play_10"] = res
+			} else {
+				data["xPlay10"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay11") {
+	if isMutation && (containsString(query, "tictactoe_x_play_11") || containsString(query, "xPlay11")) {
 		input := graph.XPlay11Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -216,11 +242,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay11"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_11") {
+				data["tictactoe_x_play_11"] = res
+			} else {
+				data["xPlay11"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay12") {
+	if isMutation && (containsString(query, "tictactoe_x_play_12") || containsString(query, "xPlay12")) {
 		input := graph.XPlay12Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -231,11 +262,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay12"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_12") {
+				data["tictactoe_x_play_12"] = res
+			} else {
+				data["xPlay12"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay20") {
+	if isMutation && (containsString(query, "tictactoe_x_play_20") || containsString(query, "xPlay20")) {
 		input := graph.XPlay20Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -246,11 +282,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay20"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_20") {
+				data["tictactoe_x_play_20"] = res
+			} else {
+				data["xPlay20"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay21") {
+	if isMutation && (containsString(query, "tictactoe_x_play_21") || containsString(query, "xPlay21")) {
 		input := graph.XPlay21Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -261,11 +302,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay21"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_21") {
+				data["tictactoe_x_play_21"] = res
+			} else {
+				data["xPlay21"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xPlay22") {
+	if isMutation && (containsString(query, "tictactoe_x_play_22") || containsString(query, "xPlay22")) {
 		input := graph.XPlay22Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -276,11 +322,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xPlay22"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_play_22") {
+				data["tictactoe_x_play_22"] = res
+			} else {
+				data["xPlay22"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay00") {
+	if isMutation && (containsString(query, "tictactoe_o_play_00") || containsString(query, "oPlay00")) {
 		input := graph.OPlay00Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -291,11 +342,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay00"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_00") {
+				data["tictactoe_o_play_00"] = res
+			} else {
+				data["oPlay00"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay01") {
+	if isMutation && (containsString(query, "tictactoe_o_play_01") || containsString(query, "oPlay01")) {
 		input := graph.OPlay01Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -306,11 +362,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay01"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_01") {
+				data["tictactoe_o_play_01"] = res
+			} else {
+				data["oPlay01"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay02") {
+	if isMutation && (containsString(query, "tictactoe_o_play_02") || containsString(query, "oPlay02")) {
 		input := graph.OPlay02Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -321,11 +382,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay02"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_02") {
+				data["tictactoe_o_play_02"] = res
+			} else {
+				data["oPlay02"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay10") {
+	if isMutation && (containsString(query, "tictactoe_o_play_10") || containsString(query, "oPlay10")) {
 		input := graph.OPlay10Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -336,11 +402,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay10"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_10") {
+				data["tictactoe_o_play_10"] = res
+			} else {
+				data["oPlay10"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay11") {
+	if isMutation && (containsString(query, "tictactoe_o_play_11") || containsString(query, "oPlay11")) {
 		input := graph.OPlay11Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -351,11 +422,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay11"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_11") {
+				data["tictactoe_o_play_11"] = res
+			} else {
+				data["oPlay11"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay12") {
+	if isMutation && (containsString(query, "tictactoe_o_play_12") || containsString(query, "oPlay12")) {
 		input := graph.OPlay12Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -366,11 +442,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay12"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_12") {
+				data["tictactoe_o_play_12"] = res
+			} else {
+				data["oPlay12"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay20") {
+	if isMutation && (containsString(query, "tictactoe_o_play_20") || containsString(query, "oPlay20")) {
 		input := graph.OPlay20Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -381,11 +462,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay20"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_20") {
+				data["tictactoe_o_play_20"] = res
+			} else {
+				data["oPlay20"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay21") {
+	if isMutation && (containsString(query, "tictactoe_o_play_21") || containsString(query, "oPlay21")) {
 		input := graph.OPlay21Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -396,11 +482,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay21"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_21") {
+				data["tictactoe_o_play_21"] = res
+			} else {
+				data["oPlay21"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oPlay22") {
+	if isMutation && (containsString(query, "tictactoe_o_play_22") || containsString(query, "oPlay22")) {
 		input := graph.OPlay22Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -411,11 +502,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oPlay22"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_play_22") {
+				data["tictactoe_o_play_22"] = res
+			} else {
+				data["oPlay22"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "reset") {
+	if isMutation && (containsString(query, "tictactoe_reset") || containsString(query, "reset")) {
 		input := graph.ResetInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -426,11 +522,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["reset"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_reset") {
+				data["tictactoe_reset"] = res
+			} else {
+				data["reset"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinRow0") {
+	if isMutation && (containsString(query, "tictactoe_x_win_row0") || containsString(query, "xWinRow0")) {
 		input := graph.XWinRow0Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -441,11 +542,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinRow0"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_row0") {
+				data["tictactoe_x_win_row0"] = res
+			} else {
+				data["xWinRow0"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinRow1") {
+	if isMutation && (containsString(query, "tictactoe_x_win_row1") || containsString(query, "xWinRow1")) {
 		input := graph.XWinRow1Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -456,11 +562,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinRow1"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_row1") {
+				data["tictactoe_x_win_row1"] = res
+			} else {
+				data["xWinRow1"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinRow2") {
+	if isMutation && (containsString(query, "tictactoe_x_win_row2") || containsString(query, "xWinRow2")) {
 		input := graph.XWinRow2Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -471,11 +582,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinRow2"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_row2") {
+				data["tictactoe_x_win_row2"] = res
+			} else {
+				data["xWinRow2"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinCol0") {
+	if isMutation && (containsString(query, "tictactoe_x_win_col0") || containsString(query, "xWinCol0")) {
 		input := graph.XWinCol0Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -486,11 +602,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinCol0"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_col0") {
+				data["tictactoe_x_win_col0"] = res
+			} else {
+				data["xWinCol0"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinCol1") {
+	if isMutation && (containsString(query, "tictactoe_x_win_col1") || containsString(query, "xWinCol1")) {
 		input := graph.XWinCol1Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -501,11 +622,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinCol1"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_col1") {
+				data["tictactoe_x_win_col1"] = res
+			} else {
+				data["xWinCol1"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinCol2") {
+	if isMutation && (containsString(query, "tictactoe_x_win_col2") || containsString(query, "xWinCol2")) {
 		input := graph.XWinCol2Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -516,11 +642,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinCol2"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_col2") {
+				data["tictactoe_x_win_col2"] = res
+			} else {
+				data["xWinCol2"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinDiag") {
+	if isMutation && (containsString(query, "tictactoe_x_win_diag") || containsString(query, "xWinDiag")) {
 		input := graph.XWinDiagInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -531,11 +662,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinDiag"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_diag") {
+				data["tictactoe_x_win_diag"] = res
+			} else {
+				data["xWinDiag"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "xWinAnti") {
+	if isMutation && (containsString(query, "tictactoe_x_win_anti") || containsString(query, "xWinAnti")) {
 		input := graph.XWinAntiInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -546,11 +682,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["xWinAnti"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_x_win_anti") {
+				data["tictactoe_x_win_anti"] = res
+			} else {
+				data["xWinAnti"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinRow0") {
+	if isMutation && (containsString(query, "tictactoe_o_win_row0") || containsString(query, "oWinRow0")) {
 		input := graph.OWinRow0Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -561,11 +702,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinRow0"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_row0") {
+				data["tictactoe_o_win_row0"] = res
+			} else {
+				data["oWinRow0"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinRow1") {
+	if isMutation && (containsString(query, "tictactoe_o_win_row1") || containsString(query, "oWinRow1")) {
 		input := graph.OWinRow1Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -576,11 +722,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinRow1"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_row1") {
+				data["tictactoe_o_win_row1"] = res
+			} else {
+				data["oWinRow1"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinRow2") {
+	if isMutation && (containsString(query, "tictactoe_o_win_row2") || containsString(query, "oWinRow2")) {
 		input := graph.OWinRow2Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -591,11 +742,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinRow2"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_row2") {
+				data["tictactoe_o_win_row2"] = res
+			} else {
+				data["oWinRow2"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinCol0") {
+	if isMutation && (containsString(query, "tictactoe_o_win_col0") || containsString(query, "oWinCol0")) {
 		input := graph.OWinCol0Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -606,11 +762,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinCol0"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_col0") {
+				data["tictactoe_o_win_col0"] = res
+			} else {
+				data["oWinCol0"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinCol1") {
+	if isMutation && (containsString(query, "tictactoe_o_win_col1") || containsString(query, "oWinCol1")) {
 		input := graph.OWinCol1Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -621,11 +782,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinCol1"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_col1") {
+				data["tictactoe_o_win_col1"] = res
+			} else {
+				data["oWinCol1"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinCol2") {
+	if isMutation && (containsString(query, "tictactoe_o_win_col2") || containsString(query, "oWinCol2")) {
 		input := graph.OWinCol2Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -636,11 +802,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinCol2"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_col2") {
+				data["tictactoe_o_win_col2"] = res
+			} else {
+				data["oWinCol2"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinDiag") {
+	if isMutation && (containsString(query, "tictactoe_o_win_diag") || containsString(query, "oWinDiag")) {
 		input := graph.OWinDiagInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -651,11 +822,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinDiag"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_diag") {
+				data["tictactoe_o_win_diag"] = res
+			} else {
+				data["oWinDiag"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "oWinAnti") {
+	if isMutation && (containsString(query, "tictactoe_o_win_anti") || containsString(query, "oWinAnti")) {
 		input := graph.OWinAntiInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -666,7 +842,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["oWinAnti"] = res
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_o_win_anti") {
+				data["tictactoe_o_win_anti"] = res
+			} else {
+				data["oWinAnti"] = res
+			}
 		}
 	}
 
@@ -762,6 +943,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.

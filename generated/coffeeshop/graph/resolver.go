@@ -495,33 +495,50 @@ func aggregateToState(agg Aggregate) *AggregateState {
 
 func stateToModel(state any) *State {
 	s := &State{}
-	if m, ok := state.(map[string]any); ok {
-		if v, ok := m["coffee_beans"].(int); ok {
-			s.CoffeeBeans = v
-		}
-		if v, ok := m["milk"].(int); ok {
-			s.Milk = v
-		}
-		if v, ok := m["cups"].(int); ok {
-			s.Cups = v
-		}
-		if v, ok := m["orders_pending"].(int); ok {
-			s.OrdersPending = v
-		}
-		if v, ok := m["espresso_ready"].(int); ok {
-			s.EspressoReady = v
-		}
-		if v, ok := m["latte_ready"].(int); ok {
-			s.LatteReady = v
-		}
-		if v, ok := m["cappuccino_ready"].(int); ok {
-			s.CappuccinoReady = v
-		}
-		if v, ok := m["orders_complete"].(int); ok {
-			s.OrdersComplete = v
-		}
+	// Convert struct to map via JSON roundtrip for uniform field access
+	m := stateToMap(state)
+	if v, ok := m["coffee_beans"]; ok {
+		s.CoffeeBeans = v
+	}
+	if v, ok := m["milk"]; ok {
+		s.Milk = v
+	}
+	if v, ok := m["cups"]; ok {
+		s.Cups = v
+	}
+	if v, ok := m["orders_pending"]; ok {
+		s.OrdersPending = v
+	}
+	if v, ok := m["espresso_ready"]; ok {
+		s.EspressoReady = v
+	}
+	if v, ok := m["latte_ready"]; ok {
+		s.LatteReady = v
+	}
+	if v, ok := m["cappuccino_ready"]; ok {
+		s.CappuccinoReady = v
+	}
+	if v, ok := m["orders_complete"]; ok {
+		s.OrdersComplete = v
 	}
 	return s
+}
+
+func stateToMap(state any) map[string]any {
+	// Try direct map assertion first
+	if m, ok := state.(map[string]any); ok {
+		return m
+	}
+	// Fall back to JSON roundtrip for struct types
+	b, err := json.Marshal(state)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 func placesToModel(places map[string]int) *Places {
@@ -556,59 +573,59 @@ func placesToModel(places map[string]int) *Places {
 // GraphQL model types
 
 type AggregateState struct {
-	ID                 string
-	Version            int
-	State              *State
-	Places             *Places
-	EnabledTransitions []string
+	ID                 string   `json:"id"`
+	Version            int      `json:"version"`
+	State              *State   `json:"state"`
+	Places             *Places  `json:"places"`
+	EnabledTransitions []string `json:"enabledTransitions"`
 }
 
 type State struct {
-	CoffeeBeans int
-	Milk int
-	Cups int
-	OrdersPending int
-	EspressoReady int
-	LatteReady int
-	CappuccinoReady int
-	OrdersComplete int
+	CoffeeBeans any `json:"coffeeBeans"`
+	Milk any `json:"milk"`
+	Cups any `json:"cups"`
+	OrdersPending any `json:"ordersPending"`
+	EspressoReady any `json:"espressoReady"`
+	LatteReady any `json:"latteReady"`
+	CappuccinoReady any `json:"cappuccinoReady"`
+	OrdersComplete any `json:"ordersComplete"`
 }
 
 type Places struct {
-	CoffeeBeans int
-	Milk int
-	Cups int
-	OrdersPending int
-	EspressoReady int
-	LatteReady int
-	CappuccinoReady int
-	OrdersComplete int
+	CoffeeBeans int `json:"coffeeBeans"`
+	Milk int `json:"milk"`
+	Cups int `json:"cups"`
+	OrdersPending int `json:"ordersPending"`
+	EspressoReady int `json:"espressoReady"`
+	LatteReady int `json:"latteReady"`
+	CappuccinoReady int `json:"cappuccinoReady"`
+	OrdersComplete int `json:"ordersComplete"`
 }
 
 type TransitionResult struct {
-	Success            bool
-	AggregateID        *string
-	Version            *int
-	State              *Places
-	EnabledTransitions []string
-	Error              *string
+	Success            bool     `json:"success"`
+	AggregateID        *string  `json:"aggregateId"`
+	Version            *int     `json:"version"`
+	State              *Places  `json:"state"`
+	EnabledTransitions []string `json:"enabledTransitions"`
+	Error              *string  `json:"error"`
 }
 
 type AggregateList struct {
-	Items   []*AggregateState
-	Total   int
-	Page    int
-	PerPage int
+	Items   []*AggregateState `json:"items"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PerPage int               `json:"perPage"`
 }
 
 
 type Event struct {
-	ID        string
-	StreamID  string
-	Type      string
-	Version   int
-	Timestamp any
-	Data      string
+	ID        string `json:"id"`
+	StreamID  string `json:"streamId"`
+	Type      string `json:"type"`
+	Version   int    `json:"version"`
+	Timestamp any    `json:"timestamp"`
+	Data      string `json:"data"`
 }
 
 

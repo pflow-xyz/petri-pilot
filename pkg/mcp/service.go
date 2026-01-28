@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pflow-xyz/petri-pilot/pkg/serve"
+
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -141,6 +143,30 @@ func isRunning(pid int) bool {
 	return err == nil
 }
 
+// resolveServiceName maps a directory basename (e.g. "blogpost") to a registered
+// service name (e.g. "blog-post"). If the name is already registered, returns it as-is.
+// Otherwise, searches registered services for one whose name matches when hyphens are removed.
+func resolveServiceName(dirName string) string {
+	registered := serve.List()
+
+	// Check exact match first
+	for _, name := range registered {
+		if name == dirName {
+			return name
+		}
+	}
+
+	// Try matching by removing hyphens from registered names
+	for _, name := range registered {
+		if strings.ReplaceAll(name, "-", "") == dirName {
+			return name
+		}
+	}
+
+	// Fallback to original name (will fail at serve time with a clear error)
+	return dirName
+}
+
 // Start launches a generated service.
 func (m *ServiceManager) Start(ctx context.Context, directory string, port int, env map[string]string) (*ServiceState, error) {
 	services, err := m.loadState()
@@ -163,7 +189,7 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 	}
 
 	// Determine service name from directory
-	name := filepath.Base(directory)
+	name := resolveServiceName(filepath.Base(directory))
 
 	// Create log directory
 	logDir := filepath.Join(stateDir(), "logs", name)
@@ -199,7 +225,7 @@ func (m *ServiceManager) Start(ctx context.Context, directory string, port int, 
 			}
 		}
 
-		cmd = exec.Command(petriPilotBin, "serve", name, "-port", fmt.Sprintf("%d", port))
+		cmd = exec.Command(petriPilotBin, "serve", "-port", fmt.Sprintf("%d", port), name)
 		cmd.Dir = directory
 	} else {
 		// Standalone mode: build and run the binary

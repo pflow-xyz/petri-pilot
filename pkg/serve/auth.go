@@ -271,7 +271,7 @@ func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/callback", h.HandleCallback)
 	mux.HandleFunc("POST /auth/logout", h.HandleLogout)
 	mux.HandleFunc("GET /auth/me", h.HandleMe)
-	mux.HandleFunc("POST /api/debug/login", h.HandleDebugLogin)
+	mux.HandleFunc("POST /auth/debug/login", h.HandleDebugLogin)
 }
 
 // RequireAuth returns middleware that requires authentication.

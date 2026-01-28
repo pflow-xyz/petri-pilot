@@ -133,19 +133,25 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation
-	if isMutation && containsString(query, "createCoffeeshop") {
+	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
+	if isMutation && (matchField(query, "createCoffeeshop") || matchField(query, "coffeeshop_create")) {
 		state, err := h.resolver.CreateCoffeeshop(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["createCoffeeshop"] = state
+			// Return under whichever key the query used
+			if matchField(query, "coffeeshop_create") {
+				data["coffeeshop_create"] = state
+			} else {
+				data["createCoffeeshop"] = state
+			}
 		}
 	}
 
-	// Handle transition mutations
+	// Handle transition mutations (supports both "transitionName" and "package_transition" naming)
 
-	if isMutation && containsString(query, "orderEspresso") {
+	if isMutation && (containsString(query, "coffeeshop_order_espresso") || containsString(query, "orderEspresso")) {
 		input := graph.OrderEspressoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -156,11 +162,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["orderEspresso"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_order_espresso") {
+				data["coffeeshop_order_espresso"] = res
+			} else {
+				data["orderEspresso"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "orderLatte") {
+	if isMutation && (containsString(query, "coffeeshop_order_latte") || containsString(query, "orderLatte")) {
 		input := graph.OrderLatteInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -171,11 +182,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["orderLatte"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_order_latte") {
+				data["coffeeshop_order_latte"] = res
+			} else {
+				data["orderLatte"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "orderCappuccino") {
+	if isMutation && (containsString(query, "coffeeshop_order_cappuccino") || containsString(query, "orderCappuccino")) {
 		input := graph.OrderCappuccinoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -186,11 +202,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["orderCappuccino"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_order_cappuccino") {
+				data["coffeeshop_order_cappuccino"] = res
+			} else {
+				data["orderCappuccino"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "makeEspresso") {
+	if isMutation && (containsString(query, "coffeeshop_make_espresso") || containsString(query, "makeEspresso")) {
 		input := graph.MakeEspressoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -201,11 +222,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["makeEspresso"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_make_espresso") {
+				data["coffeeshop_make_espresso"] = res
+			} else {
+				data["makeEspresso"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "makeLatte") {
+	if isMutation && (containsString(query, "coffeeshop_make_latte") || containsString(query, "makeLatte")) {
 		input := graph.MakeLatteInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -216,11 +242,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["makeLatte"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_make_latte") {
+				data["coffeeshop_make_latte"] = res
+			} else {
+				data["makeLatte"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "makeCappuccino") {
+	if isMutation && (containsString(query, "coffeeshop_make_cappuccino") || containsString(query, "makeCappuccino")) {
 		input := graph.MakeCappuccinoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -231,11 +262,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["makeCappuccino"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_make_cappuccino") {
+				data["coffeeshop_make_cappuccino"] = res
+			} else {
+				data["makeCappuccino"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "serveEspresso") {
+	if isMutation && (containsString(query, "coffeeshop_serve_espresso") || containsString(query, "serveEspresso")) {
 		input := graph.ServeEspressoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -246,11 +282,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["serveEspresso"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_serve_espresso") {
+				data["coffeeshop_serve_espresso"] = res
+			} else {
+				data["serveEspresso"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "serveLatte") {
+	if isMutation && (containsString(query, "coffeeshop_serve_latte") || containsString(query, "serveLatte")) {
 		input := graph.ServeLatteInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -261,11 +302,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["serveLatte"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_serve_latte") {
+				data["coffeeshop_serve_latte"] = res
+			} else {
+				data["serveLatte"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "serveCappuccino") {
+	if isMutation && (containsString(query, "coffeeshop_serve_cappuccino") || containsString(query, "serveCappuccino")) {
 		input := graph.ServeCappuccinoInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -276,11 +322,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["serveCappuccino"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_serve_cappuccino") {
+				data["coffeeshop_serve_cappuccino"] = res
+			} else {
+				data["serveCappuccino"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "restockCoffeeBeans") {
+	if isMutation && (containsString(query, "coffeeshop_restock_coffee_beans") || containsString(query, "restockCoffeeBeans")) {
 		input := graph.RestockCoffeeBeansInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -291,11 +342,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["restockCoffeeBeans"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_restock_coffee_beans") {
+				data["coffeeshop_restock_coffee_beans"] = res
+			} else {
+				data["restockCoffeeBeans"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "restockMilk") {
+	if isMutation && (containsString(query, "coffeeshop_restock_milk") || containsString(query, "restockMilk")) {
 		input := graph.RestockMilkInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -306,11 +362,16 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["restockMilk"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_restock_milk") {
+				data["coffeeshop_restock_milk"] = res
+			} else {
+				data["restockMilk"] = res
+			}
 		}
 	}
 
-	if isMutation && containsString(query, "restockCups") {
+	if isMutation && (containsString(query, "coffeeshop_restock_cups") || containsString(query, "restockCups")) {
 		input := graph.RestockCupsInput{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
 			if id, ok := vars["aggregateId"].(string); ok {
@@ -321,7 +382,12 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
-			data["restockCups"] = res
+			// Return under whichever key the query used
+			if containsString(query, "coffeeshop_restock_cups") {
+				data["coffeeshop_restock_cups"] = res
+			} else {
+				data["restockCups"] = res
+			}
 		}
 	}
 
@@ -407,6 +473,29 @@ func containsStringHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// matchField checks if a GraphQL field name appears in a query as a complete identifier.
+// Unlike containsString, it ensures the match is not a prefix of a longer identifier.
+// e.g. matchField("blogpost_create_post(...)", "blogpost_create") returns false.
+func matchField(s, field string) bool {
+	for i := 0; i <= len(s)-len(field); i++ {
+		if s[i:i+len(field)] == field {
+			// Check that the next character is not an identifier char
+			if i+len(field) >= len(s) {
+				return true
+			}
+			next := s[i+len(field)]
+			if !isIdentChar(next) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // GraphQLSchemaString is the GraphQL schema for this service.

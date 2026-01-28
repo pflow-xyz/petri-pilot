@@ -20,7 +20,7 @@ var AllRolesFor = map[string][]string{
 	RoleCustomer: { "customer" },
 	RoleFulfillment: { "fulfillment" },
 	RoleSystem: { "system" },
-	RoleAdmin: { "admin", "fulfillment" },
+	RoleAdmin: { "fulfillment", "admin" },
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
