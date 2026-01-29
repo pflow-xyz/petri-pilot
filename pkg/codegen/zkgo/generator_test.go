@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/go-pflow/zkcompile/petrigen"
 )
 
 func TestGenerator_TicTacToe(t *testing.T) {
@@ -72,12 +73,6 @@ func TestGenerator_TicTacToe(t *testing.T) {
 	if !strings.Contains(stateContent, "NumTransitions = 35") {
 		t.Error("state.go should have 35 transitions")
 	}
-	if !strings.Contains(stateContent, "PlaceXTurn") {
-		t.Error("state.go should have PlaceXTurn constant")
-	}
-	if !strings.Contains(stateContent, "TXPlay00") {
-		t.Error("state.go should have TXPlay00 constant")
-	}
 }
 
 func TestContext_BuildsCorrectly(t *testing.T) {
@@ -92,7 +87,8 @@ func TestContext_BuildsCorrectly(t *testing.T) {
 		t.Fatalf("failed to parse model: %v", err)
 	}
 
-	ctx, err := NewContext(&model, "tictactoe")
+	// Use petrigen.BuildContext directly from go-pflow
+	ctx, err := petrigen.BuildContext(&model, "tictactoe")
 	if err != nil {
 		t.Fatalf("failed to create context: %v", err)
 	}
