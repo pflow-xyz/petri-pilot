@@ -58,8 +58,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
-github.com/pflow-xyz/go-pflow v0.10.0 h1:/qDaQuqOfk01aYhAP1ZYJE1oAkxgWWmwdLQDmPRmuTQ=
-github.com/pflow-xyz/go-pflow v0.10.0/go.mod h1:srVGUDapyHz0y0gWmObVc9e7ZBt+CzUDlcMmjoAEDX8=
+github.com/pflow-xyz/go-pflow v0.10.1 h1:Ny4SjHHfIV/HJmSrpfS8x6w2yOtWRHBwSbGb1IxA3oA=
+github.com/pflow-xyz/go-pflow v0.10.1/go.mod h1:srVGUDapyHz0y0gWmObVc9e7ZBt+CzUDlcMmjoAEDX8=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
