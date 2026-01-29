@@ -15,6 +15,7 @@ import (
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
@@ -1017,9 +1018,9 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	pkgName := request.GetString("package", model.Name)
 	extensionsJSON := request.GetString("extensions", "")
 
-	// Only Go is supported for now
-	if language != "go" && language != "golang" {
-		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (only 'go' is currently supported)", language)), nil
+	// Supported languages: go, zk-go
+	if language != "go" && language != "golang" && language != "zk-go" {
+		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (supported: 'go', 'zk-go')", language)), nil
 	}
 
 	// Validate first
@@ -1059,7 +1060,32 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		}
 	}
 
-	// Create generator
+	// Handle ZK code generation
+	if language == "zk-go" {
+		zkGen, err := zkgo.New(zkgo.Options{
+			PackageName:  pkgName,
+			IncludeTests: true,
+		})
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create ZK generator: %v", err)), nil
+		}
+
+		zkFiles, err := zkGen.GenerateFiles(model)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("ZK code generation failed: %v", err)), nil
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Generated %d ZK circuit files for package '%s':\n\n", len(zkFiles), pkgName))
+		for _, file := range zkFiles {
+			sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
+			sb.WriteString(string(file.Content))
+			sb.WriteString("\n\n")
+		}
+		return mcp.NewToolResultText(sb.String()), nil
+	}
+
+	// Create Go generator
 	gen, err := golang.New(golang.Options{
 		PackageName:  pkgName,
 		IncludeTests: true,

@@ -1,4 +1,5 @@
 // Package zktictactoe provides ZK proof integration for the tic-tac-toe service.
+// This version uses the full Petri net model for ZK proofs, not just the board state.
 package zktictactoe
 
 import (
@@ -11,26 +12,30 @@ import (
 	"github.com/pflow-xyz/go-pflow/prover"
 )
 
-// ZKIntegration provides ZK proof endpoints for tic-tac-toe.
+// ZKIntegration provides ZK proof endpoints for tic-tac-toe using full Petri net semantics.
 type ZKIntegration struct {
 	prover  *prover.Prover
 	service *prover.Service
-	games   map[string]*Game // in-memory game state for ZK proofs
+	games   map[string]*PetriGame // in-memory game state for ZK proofs
 	mu      sync.RWMutex
 }
 
-// NewZKIntegration creates a new ZK integration with compiled circuits.
+// NewZKIntegration creates a new ZK integration with compiled Petri net circuits.
 func NewZKIntegration() (*ZKIntegration, error) {
 	p := prover.NewProver()
 
-	// Compile circuits
-	moveCircuit, err := p.CompileCircuit("move", &MoveCircuit{})
+	// Compile Petri net transition circuit (proves valid transition firing)
+	transitionCircuit, err := p.CompileCircuit("transition", &PetriTransitionCircuit{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to compile move circuit: %w", err)
+		return nil, fmt.Errorf("failed to compile transition circuit: %w", err)
 	}
-	p.StoreCircuit("move", moveCircuit)
+	p.StoreCircuit("transition", transitionCircuit)
 
-	winCircuit, err := p.CompileCircuit("win", &WinCircuit{})
+	// Keep "move" as alias for backwards compatibility
+	p.StoreCircuit("move", transitionCircuit)
+
+	// Compile Petri net win circuit (proves a place has tokens)
+	winCircuit, err := p.CompileCircuit("win", &PetriWinCircuit{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile win circuit: %w", err)
 	}
@@ -41,8 +46,75 @@ func NewZKIntegration() (*ZKIntegration, error) {
 	return &ZKIntegration{
 		prover:  p,
 		service: prover.NewService(p, factory),
-		games:   make(map[string]*Game),
+		games:   make(map[string]*PetriGame),
 	}, nil
+}
+
+// extractBoard extracts the 9-cell board state from the full Petri net marking.
+// Returns a board where 0=empty, 1=X, 2=O.
+func extractBoard(m Marking) [9]uint8 {
+	var board [9]uint8
+	for i := 0; i < 9; i++ {
+		if m[X00+i] > 0 {
+			board[i] = X
+		} else if m[O00+i] > 0 {
+			board[i] = O
+		} else {
+			board[i] = Empty
+		}
+	}
+	return board
+}
+
+// currentPlayer returns whose turn it is based on the marking.
+func currentPlayer(m Marking) uint8 {
+	if m[PlaceXTurn] > 0 {
+		return X
+	}
+	return O
+}
+
+// positionToTransition maps a board position (0-8) to the appropriate Petri net transition
+// based on whose turn it is.
+func positionToTransition(pos int, player uint8) int {
+	return TransitionForMove(player, pos)
+}
+
+// isGameOver checks if the game is over (win or draw) based on the marking.
+func isGameOver(m Marking) bool {
+	// Check for win
+	if m[PlaceWinX] > 0 || m[PlaceWinO] > 0 {
+		return true
+	}
+	// Check for draw (no empty cells)
+	for i := 0; i < 9; i++ {
+		if m[P00+i] > 0 { // Cell is still empty
+			return false
+		}
+	}
+	return true
+}
+
+// getWinner returns the winner (X, O, or Empty) based on the marking.
+func getWinner(m Marking) uint8 {
+	if m[PlaceWinX] > 0 {
+		return X
+	}
+	if m[PlaceWinO] > 0 {
+		return O
+	}
+	return Empty
+}
+
+// turnCount calculates the number of moves made based on the marking.
+func turnCount(m Marking) int {
+	count := 0
+	for i := 0; i < 9; i++ {
+		if m[X00+i] > 0 || m[O00+i] > 0 {
+			count++
+		}
+	}
+	return count
 }
 
 // Handler returns the HTTP handler for ZK endpoints.
@@ -81,7 +153,10 @@ func (z *ZKIntegration) Handler() http.Handler {
 func (z *ZKIntegration) handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"status":   "ok",
-		"circuits": []string{"move", "win"},
+		"circuits": []string{"transition", "win", "move"},
+		"model":    "petri-net",
+		"places":   NumPlaces,
+		"transitions": NumTransitions,
 	})
 }
 
@@ -89,16 +164,18 @@ func (z *ZKIntegration) handleCreateGame(w http.ResponseWriter, r *http.Request)
 	z.mu.Lock()
 	defer z.mu.Unlock()
 
-	game := NewGame()
+	game := NewPetriGame()
 	id := fmt.Sprintf("zk-%d", len(z.games)+1)
 	z.games[id] = game
+
+	board := extractBoard(game.Marking)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"id":         id,
 		"state_root": game.CurrentRoot().String(),
-		"turn":       game.CurrentPlayer(),
-		"board":      game.Board,
+		"turn":       currentPlayer(game.Marking),
+		"board":      board,
 	})
 }
 
@@ -114,19 +191,17 @@ func (z *ZKIntegration) handleGetGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var winner uint8
-	if w := CheckWinner(game.Board); w != Empty {
-		winner = w
-	}
+	board := extractBoard(game.Marking)
+	winner := getWinner(game.Marking)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"id":         id,
 		"state_root": game.CurrentRoot().String(),
-		"turn":       game.CurrentPlayer(),
-		"turn_count": game.TurnCount,
-		"board":      game.Board,
-		"is_over":    game.IsOver(),
+		"turn":       currentPlayer(game.Marking),
+		"turn_count": turnCount(game.Marking),
+		"board":      board,
+		"is_over":    isGameOver(game.Marking),
 		"winner":     winner,
 		"roots":      rootsToStrings(game.Roots),
 	})
@@ -184,8 +259,21 @@ func (z *ZKIntegration) handleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Make the move
-	witness, err := game.MakeMove(req.Position)
+	// Determine which player's turn and map position to transition
+	player := currentPlayer(game.Marking)
+	transition := positionToTransition(req.Position, player)
+	if transition < 0 {
+		z.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(MoveResponse{
+			Success: false,
+			Error:   "invalid position",
+		})
+		return
+	}
+
+	// Fire the Petri net transition
+	witness, err := game.FireTransition(transition)
 	z.mu.Unlock()
 
 	if err != nil {
@@ -197,34 +285,31 @@ func (z *ZKIntegration) handleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate proof
-	assignment := witness.ToMoveAssignment()
-	proofResult, err := z.prover.Prove("move", assignment)
+	// Generate proof using Petri net transition circuit
+	assignment := witness.ToPetriTransitionAssignment()
+	proofResult, err := z.prover.Prove("transition", assignment)
 
 	var proof *Proof
 	if err == nil {
 		// Verify the proof
-		verifyErr := z.prover.Verify("move", assignment)
-
-		proof = proofResultToProof("move", proofResult, verifyErr == nil)
+		verifyErr := z.prover.Verify("transition", assignment)
+		proof = proofResultToProof("transition", proofResult, verifyErr == nil)
 	}
 
-	// Check for winner
-	var winner uint8
-	if w := CheckWinner(game.Board); w != Empty {
-		winner = w
-	}
+	// Get current state from updated marking
+	board := extractBoard(game.Marking)
+	winner := getWinner(game.Marking)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(MoveResponse{
 		Success:       true,
 		Position:      req.Position,
-		Player:        witness.Player,
+		Player:        player,
 		PreStateRoot:  witness.PreStateRoot.String(),
 		PostStateRoot: witness.PostStateRoot.String(),
-		Board:         game.Board,
-		TurnCount:     game.TurnCount,
-		IsOver:        game.IsOver(),
+		Board:         board,
+		TurnCount:     turnCount(game.Marking),
+		IsOver:        isGameOver(game.Marking),
 		Winner:        winner,
 		Proof:         proof,
 	})
@@ -250,7 +335,8 @@ func (z *ZKIntegration) handleCheckWin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	witness := game.CheckWin()
+	// Get win witness (returns nil if no winner)
+	witness := game.GetWinWitness()
 	if witness == nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(WinResponse{
@@ -260,22 +346,29 @@ func (z *ZKIntegration) handleCheckWin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate win proof
-	assignment := witness.ToWinAssignment()
+	// Generate win proof using Petri net win circuit
+	assignment := witness.ToPetriWinAssignment()
 	proofResult, err := z.prover.Prove("win", assignment)
 
 	var proof *Proof
 	if err == nil {
 		// Verify the proof
 		verifyErr := z.prover.Verify("win", assignment)
-
 		proof = proofResultToProof("win", proofResult, verifyErr == nil)
+	}
+
+	// Determine winner from which place has tokens
+	var winner uint8
+	if witness.Winner == PlaceWinX {
+		winner = X
+	} else {
+		winner = O
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(WinResponse{
 		HasWinner: true,
-		Winner:    witness.Winner,
+		Winner:    winner,
 		StateRoot: witness.StateRoot.String(),
 		Proof:     proof,
 	})
