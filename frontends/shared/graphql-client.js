@@ -173,13 +173,14 @@ class PetriGraphQL {
 
   /**
    * Get events for an aggregate (if event sourcing enabled)
+   * @param {string} appName - Application name (e.g., 'blogpost')
    * @param {string} aggregateId - Aggregate ID
    * @param {number} [from] - Start from version
    * @returns {Promise<Array>} - Events array
    */
-  async getEvents(aggregateId, from = 0) {
+  async getEvents(appName, aggregateId, from = 0) {
     // Use namespaced query name for unified endpoint (e.g., blogpostEvents)
-    const eventsField = `${this.appName}Events`
+    const eventsField = `${appName}Events`
     const query = `
       query GetEvents($aggregateId: ID!, $from: Int) {
         ${eventsField}(aggregateId: $aggregateId, from: $from) {

@@ -54,7 +54,7 @@ async function fetchState() {
 
       // Get events
       try {
-        state.events = await gql.getEvents(state.aggregateId)
+        state.events = await gql.getEvents(APP_NAME, state.aggregateId)
       } catch {
         // Events may not be enabled
         state.events = []

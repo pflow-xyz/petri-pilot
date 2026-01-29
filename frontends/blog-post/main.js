@@ -23,7 +23,7 @@ async function fetchPosts() {
 
     // Fetch events for all posts in parallel to get their data
     const eventPromises = state.posts.map(post =>
-      gql.getEvents(post.id).then(events => ({ id: post.id, events }))
+      gql.getEvents(APP_NAME, post.id).then(events => ({ id: post.id, events }))
     )
     const results = await Promise.all(eventPromises)
 
@@ -48,7 +48,7 @@ async function fetchPost(id) {
 
 async function fetchEvents(id) {
   try {
-    return await gql.getEvents(id)
+    return await gql.getEvents(APP_NAME, id)
   } catch (err) {
     console.error('Failed to fetch events:', err)
   }
