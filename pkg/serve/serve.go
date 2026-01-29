@@ -218,12 +218,26 @@ func RunMultiple(names []string, opts Options) error {
 	}
 
 	// Mount each service at /{name}/ and /app/{name}/
+	// Check for custom frontends first and mount them at /{name}/
 	for i, svc := range services {
 		name := names[i]
 		handler := svc.BuildHandler()
 		prefix := "/" + name
-		mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
-		log.Printf("  Mounted %s at %s/", name, prefix)
+		
+		// Check if there's a custom frontend for this service
+		customFrontendPath := filepath.Join("frontends", name)
+		if _, err := os.Stat(customFrontendPath); err == nil {
+			// Mount custom frontend at /{name}/
+			customHandler := createSPAHandler(customFrontendPath)
+			// Combine custom frontend with API handler (API calls go to service)
+			combinedHandler := createGeneratedFrontendHandler(customHandler, handler)
+			mux.Handle(prefix+"/", http.StripPrefix(prefix, combinedHandler))
+			log.Printf("  Mounted %s custom frontend at %s/", name, prefix)
+		} else {
+			// No custom frontend, mount service handler directly
+			mux.Handle(prefix+"/", http.StripPrefix(prefix, handler))
+			log.Printf("  Mounted %s at %s/", name, prefix)
+		}
 
 		// Always mount generated frontend at /app/{name}/ for dashboard access
 		// Dashboard requires authentication
@@ -499,6 +513,13 @@ func runHTTPService(svc Service, port int, opts Options) error {
 		sharedPath := filepath.Join("frontends", "shared")
 		if _, err := os.Stat(sharedPath); err == nil {
 			mux.Handle("/shared/", http.StripPrefix("/shared/", http.FileServer(http.Dir(sharedPath))))
+		}
+
+		// Serve custom frontends from frontends/ directory
+		frontendsPath := "frontends"
+		if _, err := os.Stat(frontendsPath); err == nil {
+			mux.Handle("/frontends/", http.StripPrefix("/frontends/", http.FileServer(http.Dir(frontendsPath))))
+			log.Printf("  Serving custom frontends from /frontends/")
 		}
 
 		genPrefix := "/app/" + name
