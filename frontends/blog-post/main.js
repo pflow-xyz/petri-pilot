@@ -9,6 +9,7 @@ const gql = new PetriGraphQL('/graphql')
 // State
 let state = {
   posts: [],
+  postData: {}, // Cache of post data extracted from events: { postId: { title, content, author_name, tags } }
   currentPost: null,
   filter: 'all',
   view: 'list' // list, editor, detail
@@ -19,6 +20,17 @@ async function fetchPosts() {
   try {
     const list = await gql.list(APP_NAME, { page: 1, perPage: 100 })
     state.posts = list.items || []
+
+    // Fetch events for all posts in parallel to get their data
+    const eventPromises = state.posts.map(post =>
+      gql.getEvents(post.id).then(events => ({ id: post.id, events }))
+    )
+    const results = await Promise.all(eventPromises)
+
+    // Cache the extracted data
+    for (const { id, events } of results) {
+      state.postData[id] = getPostData(events)
+    }
   } catch (err) {
     console.error('Failed to fetch posts:', err)
   }
@@ -179,12 +191,13 @@ function renderPostsList() {
 
   container.innerHTML = filteredPosts.map(post => {
     const status = getPostStatus(post)
-    // Get title from state or use placeholder
-    const title = post.state?.title || 'Untitled Post'
-    const content = post.state?.content || ''
+    // Get data from cached events or use placeholders
+    const data = state.postData[post.id] || {}
+    const title = data.title || 'Untitled Post'
+    const content = data.content || ''
     const excerpt = content.substring(0, 150) + (content.length > 150 ? '...' : '')
-    const tags = post.state?.tags || []
-    const authorName = post.state?.author_name || 'Unknown'
+    const tags = parseTags(data.tags)
+    const authorName = data.author_name || 'Unknown'
 
     return `
       <div class="post-card" data-id="${post.id}">
