@@ -94,14 +94,14 @@ body {
 .poker-table {
   background: linear-gradient(135deg, #0a5f0a 0%, #085808 100%);
   border: 12px solid #654321;
-  border-radius: 200px;
-  padding: 3rem 2rem;
+  border-radius: 50%;
   position: relative;
-  min-height: 500px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  height: 450px;
+  margin: 0 auto;
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
+  overflow: visible;
 }
 
 /* Community Cards Area */
@@ -112,51 +112,62 @@ body {
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pot-display {
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffd700;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  order: 1;
 }
 
 .community-cards {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
-  margin-bottom: 1rem;
-}
-
-.pot-display {
-  background: rgba(0, 0, 0, 0.6);
-  color: #ffd700;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+  order: 2;
 }
 
 .round-indicator {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.6);
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 1px;
+  order: 3;
 }
 
 /* Player Seats */
 .player-seats {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 .player-seat {
   position: absolute;
-  width: 180px;
-  background: rgba(0, 0, 0, 0.7);
-  border: 2px solid #444;
-  border-radius: 12px;
-  padding: 1rem;
+  width: 140px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid #555;
+  border-radius: 10px;
+  padding: 0.6rem;
   color: white;
   transition: all 0.3s ease;
+  pointer-events: auto;
+  z-index: 20;
+  font-size: 0.85rem;
 }
 
 .player-seat.active-turn {
@@ -169,32 +180,36 @@ body {
   filter: grayscale(100%);
 }
 
-/* Position players around the table */
+/* Position players around the oval table - Top center reserved for notices/dealer */
+/* Seat 0: Bottom center (User) */
 .player-seat.seat-0 {
-  bottom: 10%;
+  bottom: -70px;
   left: 50%;
   transform: translateX(-50%);
 }
 
+/* Seat 1: Lower left */
 .player-seat.seat-1 {
-  bottom: 25%;
-  left: 10%;
+  bottom: 40px;
+  left: -80px;
 }
 
+/* Seat 2: Upper left */
 .player-seat.seat-2 {
-  top: 25%;
-  left: 10%;
+  top: 40px;
+  left: -80px;
 }
 
+/* Seat 3: Upper right */
 .player-seat.seat-3 {
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 40px;
+  right: -80px;
 }
 
+/* Seat 4: Lower right */
 .player-seat.seat-4 {
-  top: 25%;
-  right: 10%;
+  bottom: 40px;
+  right: -80px;
 }
 
 .player-name {

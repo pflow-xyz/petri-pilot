@@ -215,18 +215,25 @@ function updateGameState(data) {
   if (data.enabled_transitions) {
     gameState.enabled = data.enabled_transitions
   }
-  
+  if (data.enabled) {
+    gameState.enabled = data.enabled
+  }
+
   // Parse state to extract game info
   parseGameState()
-  
-  // Add event to history
+
+  // Add event to history - handle different event formats
   if (data.event) {
     gameState.events.push(data.event)
-    renderEventHistory()
+  } else if (data.event_type) {
+    gameState.events.push({ type: data.event_type, timestamp: new Date().toISOString() })
+  } else if (data.transition) {
+    gameState.events.push({ type: data.transition, timestamp: new Date().toISOString() })
   }
-  
+
   renderPokerTable()
   renderGameState()
+  renderEventHistory()
 }
 
 /**
@@ -412,24 +419,33 @@ function solveODE(model) {
 function getAvailableActions() {
   const actions = []
   const player = gameState.currentPlayer
-  
-  // Check enabled transitions
-  if (gameState.enabled.includes(`p${player}_fold`)) {
+
+  // Check enabled transitions from API
+  const enabledSet = new Set(gameState.enabled || [])
+
+  if (enabledSet.has(`p${player}_fold`)) {
     actions.push({ id: `p${player}_fold`, type: 'fold', label: 'Fold', amount: 0 })
   }
-  if (gameState.enabled.includes(`p${player}_check`)) {
+  if (enabledSet.has(`p${player}_check`)) {
     actions.push({ id: `p${player}_check`, type: 'check', label: 'Check', amount: 0 })
   }
-  if (gameState.enabled.includes(`p${player}_call`)) {
+  if (enabledSet.has(`p${player}_call`)) {
     actions.push({ id: `p${player}_call`, type: 'call', label: 'Call', amount: 0 })
   }
-  if (gameState.enabled.includes(`p${player}_raise`)) {
-    // Add multiple raise amounts
+  if (enabledSet.has(`p${player}_raise`)) {
     actions.push({ id: `p${player}_raise`, type: 'raise', label: 'Raise $50', amount: 50 })
-    actions.push({ id: `p${player}_raise`, type: 'raise', label: 'Raise $100', amount: 100 })
-    actions.push({ id: `p${player}_raise`, type: 'raise', label: 'Raise $200', amount: 200 })
+    actions.push({ id: `p${player}_raise_100`, type: 'raise', label: 'Raise $100', amount: 100 })
+    actions.push({ id: `p${player}_raise_200`, type: 'raise', label: 'Raise $200', amount: 200 })
   }
-  
+
+  // If it's player 0's turn in an active round and no actions found, show default actions
+  if (actions.length === 0 && player === 0 && gameState.currentRound !== 'waiting' && gameState.currentRound !== 'complete') {
+    actions.push({ id: `p0_fold`, type: 'fold', label: 'Fold', amount: 0 })
+    actions.push({ id: `p0_check`, type: 'check', label: 'Check', amount: 0 })
+    actions.push({ id: `p0_call`, type: 'call', label: 'Call', amount: 0 })
+    actions.push({ id: `p0_raise`, type: 'raise', label: 'Raise', amount: 50 })
+  }
+
   return actions
 }
 
@@ -507,18 +523,24 @@ function renderPokerTable() {
 function renderActionButtons() {
   const actionsEl = document.getElementById('action-buttons')
   const gridEl = document.getElementById('action-grid')
-  
-  // Only show for player 0's turn
-  if (gameState.currentPlayer !== 0 || gameState.currentRound === 'waiting') {
+
+  // Only show for player 0's turn in active rounds
+  if (gameState.currentPlayer !== 0 || gameState.currentRound === 'waiting' || gameState.currentRound === 'complete') {
     actionsEl.style.display = 'none'
     return
   }
-  
-  actionsEl.style.display = 'block'
-  
+
   const actions = getAvailableActions()
+
+  if (actions.length === 0) {
+    actionsEl.style.display = 'none'
+    return
+  }
+
+  actionsEl.style.display = 'block'
+
   const values = odeValues?.values || {}
-  
+
   // Find best action
   let bestAction = null
   let bestValue = -Infinity
@@ -529,17 +551,17 @@ function renderActionButtons() {
       bestAction = action.id
     }
   })
-  
+
   // Render action buttons
   gridEl.innerHTML = actions.map(action => {
     const value = values[action.id] || 0
-    const isRecommended = action.id === bestAction
-    
+    const isRecommended = action.id === bestAction && bestValue > 0
+
     return `
-      <button class="action-button ${isRecommended ? 'recommended' : ''}" 
-              data-action="${action.id}" 
+      <button class="action-button ${isRecommended ? 'recommended' : ''}"
+              data-action="${action.id}"
               data-ode-value="${value}"
-              onclick="window.performAction('${action.id}', ${action.amount})">
+              onclick="window.performAction('${action.id.replace(/_\d+$/, '')}', ${action.amount})">
         <div class="action-label">${action.label}</div>
         <div class="action-ode-value">EV: ${value.toFixed(2)}</div>
       </button>
@@ -587,18 +609,27 @@ function renderGameState() {
  */
 function renderEventHistory() {
   const listEl = document.getElementById('event-list')
-  
-  if (gameState.events.length === 0) {
+
+  if (!gameState.events || gameState.events.length === 0) {
     listEl.innerHTML = '<p style="color: rgba(255,255,255,0.6); font-style: italic;">No events yet</p>'
     return
   }
-  
-  listEl.innerHTML = gameState.events.slice(-10).reverse().map(event => `
-    <div class="event-item">
-      <strong>${event.type}</strong>
-      ${event.timestamp ? `<br><small>${new Date(event.timestamp).toLocaleTimeString()}</small>` : ''}
-    </div>
-  `).join('')
+
+  listEl.innerHTML = gameState.events.slice(-10).reverse().map(event => {
+    // Handle both object events and string events
+    const eventType = typeof event === 'string' ? event : (event.type || event.event_type || 'unknown')
+    const timestamp = event.timestamp || event.created_at
+
+    // Format the event type for display
+    const displayType = eventType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+    return `
+      <div class="event-item">
+        <strong>${displayType}</strong>
+        ${timestamp ? `<br><small>${new Date(timestamp).toLocaleTimeString()}</small>` : ''}
+      </div>
+    `
+  }).join('')
 }
 
 /**
@@ -606,19 +637,30 @@ function renderEventHistory() {
  */
 function renderODEAnalysis() {
   const analysisEl = document.getElementById('ode-analysis')
-  
-  if (!odeValues) {
-    analysisEl.innerHTML = '<p style="color: rgba(255,255,255,0.6); font-style: italic;">No analysis available</p>'
+
+  if (!odeValues || Object.keys(odeValues.values || {}).length === 0) {
+    if (gameState.currentRound === 'waiting') {
+      analysisEl.innerHTML = '<p style="color: rgba(255,255,255,0.6); font-style: italic;">Start a hand to see analysis</p>'
+    } else if (gameState.currentPlayer !== 0) {
+      analysisEl.innerHTML = '<p style="color: rgba(255,255,255,0.6); font-style: italic;">Waiting for your turn...</p>'
+    } else {
+      analysisEl.innerHTML = '<p style="color: rgba(255,255,255,0.6); font-style: italic;">Computing strategic values...</p>'
+    }
     return
   }
-  
-  const { values, details } = odeValues
-  
+
+  const { values } = odeValues
+
+  // Sort by value descending
+  const sortedEntries = Object.entries(values).sort((a, b) => b[1] - a[1])
+
   analysisEl.innerHTML = `
-    <p><strong>Strategic Values:</strong></p>
-    ${Object.entries(values).map(([action, value]) => `
-      <p>${action}: ${value.toFixed(2)}</p>
-    `).join('')}
+    <p style="margin-bottom: 0.5rem;"><strong>Expected Values:</strong></p>
+    ${sortedEntries.map(([action, value]) => {
+      const color = value > 0 ? '#10b981' : value < 0 ? '#ef4444' : '#ffd700'
+      const label = action.replace(/^p\d_/, '').replace(/_/g, ' ')
+      return `<p style="margin: 0.25rem 0;"><span style="color: ${color};">●</span> ${label}: <strong>${value.toFixed(2)}</strong></p>`
+    }).join('')}
   `
 }
 
