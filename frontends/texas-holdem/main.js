@@ -43,16 +43,22 @@ let solverParams = {
   reltol: 1e-3
 }
 
+// Auto-play state
+let autoPlayActive = false
+let autoPlaySpeed = 1000 // ms between actions
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Texas Hold\'em Poker initialized')
-  
+
   // Set up event listeners
   document.getElementById('new-game-btn').addEventListener('click', createNewGame)
   document.getElementById('start-hand-btn').addEventListener('click', startHand)
+  document.getElementById('auto-play-btn').addEventListener('click', startAutoPlay)
+  document.getElementById('stop-play-btn').addEventListener('click', stopAutoPlay)
   document.getElementById('toggle-heatmap-btn').addEventListener('click', toggleHeatmap)
   document.getElementById('toggle-ode-btn').addEventListener('click', toggleODEMode)
-  
+
   // Render initial state
   renderPokerTable()
 })
@@ -154,13 +160,16 @@ async function startHand() {
 async function dealPreflop() {
   try {
     await executeTransition('deal_preflop', {})
-    showStatus('Preflop dealt', 'success')
-    
+    showStatus('Preflop dealt - Click Auto-Play or choose an action', 'success')
+
     // Simulate dealing cards to players (in real game, this comes from backend)
     gameState.players[0].cards = ['Ah', 'Kh']
-    
+
+    // Show auto-play button
+    document.getElementById('auto-play-btn').style.display = 'inline-block'
+
     renderPokerTable()
-    
+
     // Run ODE analysis
     await runODESimulation()
   } catch (err) {
@@ -241,7 +250,7 @@ function updateGameState(data) {
  */
 function parseGameState() {
   const { places } = gameState
-  
+
   // Determine current round
   if (places.waiting > 0) gameState.currentRound = 'waiting'
   else if (places.preflop > 0) gameState.currentRound = 'preflop'
@@ -742,8 +751,356 @@ function toggleODEMode() {
   console.log(`ODE mode: ${useLocalODE ? 'local' : 'API'}`)
 }
 
+// ========================================================================
+// Auto-Play System
+// ========================================================================
+
+/**
+ * Start auto-play mode
+ */
+async function startAutoPlay() {
+  if (!gameState.id) {
+    showStatus('Please create a game first', 'error')
+    return
+  }
+
+  autoPlayActive = true
+  document.getElementById('auto-play-btn').style.display = 'none'
+  document.getElementById('stop-play-btn').style.display = 'inline-block'
+  document.getElementById('action-buttons').style.display = 'none'
+
+  showStatus('Auto-play started!', 'success')
+  console.log('Auto-play started')
+
+  // Start the auto-play loop
+  autoPlayLoop()
+}
+
+/**
+ * Stop auto-play mode
+ */
+function stopAutoPlay() {
+  autoPlayActive = false
+  document.getElementById('auto-play-btn').style.display = 'inline-block'
+  document.getElementById('stop-play-btn').style.display = 'none'
+
+  showStatus('Auto-play stopped', 'info')
+  console.log('Auto-play stopped')
+
+  // Re-render action buttons if it's player 0's turn
+  renderActionButtons()
+}
+
+/**
+ * Main auto-play loop
+ */
+async function autoPlayLoop() {
+  let consecutiveFailures = 0
+
+  while (autoPlayActive && gameState.currentRound !== 'complete' && gameState.currentRound !== 'waiting') {
+    await delay(autoPlaySpeed)
+
+    if (!autoPlayActive) break
+
+    // Safety: stop if too many consecutive failures
+    if (consecutiveFailures > 10) {
+      console.log('Too many failures, stopping auto-play')
+      break
+    }
+
+    const enabledSet = new Set(gameState.enabled || [])
+    console.log('Auto-play enabled transitions:', Array.from(enabledSet))
+
+    // Try dealer actions first (dealing cards, ending rounds)
+    let actionTaken = false
+
+    for (const dealerAction of ['deal_flop', 'deal_turn', 'deal_river', 'end_betting_round', 'go_showdown', 'determine_winner', 'end_hand']) {
+      if (enabledSet.has(dealerAction)) {
+        try {
+          showStatus(`Dealer: ${dealerAction}`, 'info')
+          await executeTransition(dealerAction, {})
+          actionTaken = true
+          consecutiveFailures = 0
+          break
+        } catch (err) {
+          console.log(`${dealerAction} failed:`, err)
+        }
+      }
+    }
+
+    if (actionTaken) continue
+
+    // Try player actions - find any enabled player action
+    for (let p = 0; p < 5; p++) {
+      const prefix = `p${p}_`
+      const actions = ['check', 'call', 'fold', 'raise']
+
+      for (const act of actions) {
+        const transitionId = `${prefix}${act}`
+        if (enabledSet.has(transitionId)) {
+          try {
+            showStatus(`Player ${p}: ${act}`, 'info')
+            await executeTransition(transitionId, act === 'raise' ? { amount: 50 } : {})
+            actionTaken = true
+            consecutiveFailures = 0
+
+            // Add to event history
+            gameState.events.push({
+              type: `Player ${p} ${act}s`,
+              timestamp: new Date().toISOString()
+            })
+            renderEventHistory()
+            break
+          } catch (err) {
+            console.log(`${transitionId} failed:`, err)
+          }
+        }
+      }
+      if (actionTaken) break
+    }
+
+    if (actionTaken) continue
+
+    // Try advance transitions
+    for (let p = 0; p < 5; p++) {
+      const advanceId = `advance_to_p${p}`
+      if (enabledSet.has(advanceId)) {
+        try {
+          console.log(`Advancing to player ${p}`)
+          await executeTransition(advanceId, {})
+          actionTaken = true
+          consecutiveFailures = 0
+          break
+        } catch (err) {
+          console.log(`${advanceId} failed:`, err)
+        }
+      }
+    }
+
+    if (!actionTaken) {
+      consecutiveFailures++
+      console.log(`No action taken, failure count: ${consecutiveFailures}`)
+    }
+  }
+
+  if (autoPlayActive && gameState.currentRound === 'complete') {
+    showStatus('Hand complete!', 'success')
+    stopAutoPlay()
+  }
+}
+
+/**
+ * Check if dealer needs to act (deal cards, end round, etc.)
+ */
+async function checkDealerAction() {
+  const enabledSet = new Set(gameState.enabled || [])
+
+  // Check for dealer actions
+  if (enabledSet.has('deal_flop')) {
+    showStatus('Dealing flop...', 'info')
+    await executeTransition('deal_flop', {})
+    // Simulate flop cards
+    gameState.communityCards.flop = ['Qd', 'Jc', '7h']
+    renderPokerTable()
+    return true
+  }
+
+  if (enabledSet.has('deal_turn')) {
+    showStatus('Dealing turn...', 'info')
+    await executeTransition('deal_turn', {})
+    gameState.communityCards.turn = ['5s']
+    renderPokerTable()
+    return true
+  }
+
+  if (enabledSet.has('deal_river')) {
+    showStatus('Dealing river...', 'info')
+    await executeTransition('deal_river', {})
+    gameState.communityCards.river = ['2d']
+    renderPokerTable()
+    return true
+  }
+
+  if (enabledSet.has('end_betting_round')) {
+    console.log('Ending betting round')
+    await executeTransition('end_betting_round', {})
+    return true
+  }
+
+  if (enabledSet.has('go_showdown')) {
+    showStatus('Going to showdown...', 'info')
+    await executeTransition('go_showdown', {})
+    return true
+  }
+
+  if (enabledSet.has('determine_winner')) {
+    showStatus('Determining winner...', 'info')
+    await executeTransition('determine_winner', {})
+    return true
+  }
+
+  if (enabledSet.has('end_hand')) {
+    showStatus('Ending hand...', 'info')
+    await executeTransition('end_hand', {})
+    return true
+  }
+
+  // Check for player advancement transitions
+  for (let i = 0; i < 5; i++) {
+    if (enabledSet.has(`advance_to_p${i}`)) {
+      console.log(`Advancing to player ${i}`)
+      try {
+        await executeTransition(`advance_to_p${i}`, {})
+        return true
+      } catch (err) {
+        // Transition might have been consumed, continue checking
+        console.log(`advance_to_p${i} failed, continuing...`)
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * Simulate a player's decision using ODE analysis
+ * No bluffing - play straightforwardly based on hand strength
+ */
+async function simulatePlayerDecision(playerIndex) {
+  const enabledSet = new Set(gameState.enabled || [])
+  const prefix = `p${playerIndex}_`
+
+  // Get available actions for this player
+  const availableActions = []
+
+  if (enabledSet.has(`${prefix}fold`)) {
+    availableActions.push({ id: `${prefix}fold`, type: 'fold', label: 'Fold', amount: 0 })
+  }
+  if (enabledSet.has(`${prefix}check`)) {
+    availableActions.push({ id: `${prefix}check`, type: 'check', label: 'Check', amount: 0 })
+  }
+  if (enabledSet.has(`${prefix}call`)) {
+    availableActions.push({ id: `${prefix}call`, type: 'call', label: 'Call', amount: 0 })
+  }
+  if (enabledSet.has(`${prefix}raise`)) {
+    availableActions.push({ id: `${prefix}raise`, type: 'raise', label: 'Raise', amount: 50 })
+  }
+
+  if (availableActions.length === 0) {
+    console.log(`Player ${playerIndex} has no available actions`)
+    return null
+  }
+
+  // Simulate hand strength for this player (random for opponents)
+  const handStrength = playerIndex === 0
+    ? evaluateHandStrength(gameState.players[0].cards, gameState.communityCards)
+    : Math.random() // Random strength for AI players
+
+  console.log(`Player ${playerIndex} hand strength: ${handStrength.toFixed(2)}`)
+
+  // Simple strategy without bluffing:
+  // - Strong hand (>0.7): Raise
+  // - Medium hand (0.4-0.7): Call/Check
+  // - Weak hand (<0.4): Check if free, otherwise fold
+
+  let chosenAction = null
+
+  if (handStrength > 0.7) {
+    // Strong hand - raise if possible
+    chosenAction = availableActions.find(a => a.type === 'raise')
+      || availableActions.find(a => a.type === 'call')
+      || availableActions.find(a => a.type === 'check')
+  } else if (handStrength > 0.4) {
+    // Medium hand - call or check
+    chosenAction = availableActions.find(a => a.type === 'check')
+      || availableActions.find(a => a.type === 'call')
+      || availableActions.find(a => a.type === 'fold')
+  } else {
+    // Weak hand - check if free, otherwise fold
+    chosenAction = availableActions.find(a => a.type === 'check')
+      || availableActions.find(a => a.type === 'fold')
+      || availableActions[0]
+  }
+
+  return chosenAction || availableActions[0]
+}
+
+/**
+ * Execute a player's action
+ */
+async function executePlayerAction(action) {
+  try {
+    const data = action.amount > 0 ? { amount: action.amount } : {}
+    await executeTransition(action.id, data)
+
+    // Add to event history
+    gameState.events.push({
+      type: `Player ${gameState.currentPlayer} ${action.type}s`,
+      timestamp: new Date().toISOString()
+    })
+    renderEventHistory()
+
+  } catch (err) {
+    console.error('Action failed:', err)
+  }
+}
+
+/**
+ * Evaluate hand strength (simplified)
+ * Returns a value between 0 and 1
+ */
+function evaluateHandStrength(holeCards, communityCards) {
+  if (!holeCards || holeCards.length < 2) return 0.5
+
+  // Parse hole cards
+  const cards = holeCards.map(parseCard)
+
+  // Simple evaluation based on hole cards only
+  const ranks = cards.map(c => c.rank)
+  const suits = cards.map(c => c.suit)
+
+  let strength = 0.3 // Base strength
+
+  // High cards bonus
+  const highCardBonus = ranks.reduce((sum, rank) => {
+    const value = '23456789TJQKA'.indexOf(rank)
+    return sum + (value / 13) * 0.1
+  }, 0)
+  strength += highCardBonus
+
+  // Pair bonus
+  if (ranks[0] === ranks[1]) {
+    strength += 0.3
+  }
+
+  // Suited bonus
+  if (suits[0] === suits[1]) {
+    strength += 0.1
+  }
+
+  // Connected cards bonus
+  const values = ranks.map(r => '23456789TJQKA'.indexOf(r))
+  if (Math.abs(values[0] - values[1]) === 1) {
+    strength += 0.05
+  }
+
+  // Add some randomness to make it interesting
+  strength += (Math.random() - 0.5) * 0.2
+
+  return Math.max(0, Math.min(1, strength))
+}
+
+/**
+ * Utility delay function
+ */
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 // Export for console testing
 window.gameState = gameState
 window.runODESimulation = runODESimulation
 window.buildPokerODEPetriNet = buildPokerODEPetriNet
 window.solveODE = solveODE
+window.startAutoPlay = startAutoPlay
+window.stopAutoPlay = stopAutoPlay

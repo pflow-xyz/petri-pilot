@@ -183,33 +183,33 @@ body {
 /* Position players around the oval table - Top center reserved for notices/dealer */
 /* Seat 0: Bottom center (User) */
 .player-seat.seat-0 {
-  bottom: -70px;
+  bottom: -50px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* Seat 1: Lower left */
 .player-seat.seat-1 {
-  bottom: 40px;
-  left: -80px;
+  bottom: 60px;
+  left: -40px;
 }
 
 /* Seat 2: Upper left */
 .player-seat.seat-2 {
-  top: 40px;
-  left: -80px;
+  top: 60px;
+  left: -40px;
 }
 
 /* Seat 3: Upper right */
 .player-seat.seat-3 {
-  top: 40px;
-  right: -80px;
+  top: 60px;
+  right: -40px;
 }
 
 /* Seat 4: Lower right */
 .player-seat.seat-4 {
-  bottom: 40px;
-  right: -80px;
+  bottom: 60px;
+  right: -40px;
 }
 
 .player-name {
@@ -322,7 +322,7 @@ body {
 
 /* Controls */
 .controls {
-  margin-top: 2rem;
+  margin-top: 5rem;
   display: flex;
   gap: 1rem;
   justify-content: center;
