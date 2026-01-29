@@ -132,7 +132,13 @@ function getPostData(events) {
   const data = {}
   for (const event of events) {
     if (event.data) {
-      Object.assign(data, event.data)
+      // event.data is a JSON string, need to parse it
+      try {
+        const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        Object.assign(data, eventData)
+      } catch (e) {
+        console.error('Failed to parse event data:', e)
+      }
     }
   }
   return data
