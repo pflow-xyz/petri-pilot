@@ -11,7 +11,9 @@ describe('texas-holdem frontend', () => {
   let harness;
 
   beforeAll(async () => {
-    harness = new TestHarness('texas-holdem');
+    // Use skipDebug mode since texas-holdem has a custom frontend
+    // that doesn't use the standard debug infrastructure
+    harness = new TestHarness('texas-holdem', { skipDebug: true });
     await harness.setup();
   }, 120000);
 
@@ -29,7 +31,7 @@ describe('texas-holdem frontend', () => {
 
     test('should load poker table', async () => {
       // Navigate to custom frontend
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -45,25 +47,27 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should create new game', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
       // Click new game button
       await harness.page.waitForSelector('#new-game-btn', { timeout: 10000 });
       await harness.page.click('#new-game-btn');
-      
-      // Wait for game to be created
-      await harness.page.waitForSelector('#start-hand-btn', { timeout: 5000 });
-      
-      // Verify start hand button is visible
+
+      // Wait for game to be created - check that start hand button becomes visible
+      await harness.page.waitForFunction(() => {
+        const btn = document.querySelector('#start-hand-btn');
+        return btn && btn.style.display !== 'none';
+      }, { timeout: 5000 });
+
+      // Verify start hand button exists and is in DOM
       const startHandBtn = await harness.page.$('#start-hand-btn');
-      const isVisible = await startHandBtn.isIntersectingViewport();
-      expect(isVisible).toBe(true);
+      expect(startHandBtn).toBeTruthy();
     });
 
     test('should display initial game state', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -90,25 +94,32 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should start hand and deal preflop', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
       // Create game and start hand
       await harness.page.click('#new-game-btn');
-      await harness.page.waitForSelector('#start-hand-btn', { timeout: 5000 });
+      await harness.page.waitForFunction(() => {
+        const btn = document.querySelector('#start-hand-btn');
+        return btn && btn.style.display !== 'none';
+      }, { timeout: 5000 });
       await harness.page.click('#start-hand-btn');
-      
-      // Wait for preflop to be dealt (round should change)
-      await harness.page.waitForTimeout(2000);
-      
-      // Check that round changed from waiting
+
+      // Wait for round indicator to show PREFLOP (after deal_preflop auto-runs)
+      // start_hand moves token to dealer_action, then deal_preflop runs after 500ms
+      await harness.page.waitForFunction(() => {
+        const indicator = document.querySelector('#round-indicator');
+        return indicator && indicator.textContent.includes('PREFLOP');
+      }, { timeout: 10000 });
+
+      // Check that round is preflop
       const roundIndicator = await harness.page.$eval('#round-indicator', el => el.textContent);
-      expect(roundIndicator).not.toContain('WAITING');
+      expect(roundIndicator).toContain('PREFLOP');
     });
 
     test('should display community card placeholders', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -122,7 +133,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should show dealer button', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -141,7 +152,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should have ODE solver loaded', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -162,7 +173,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should toggle ODE mode', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -179,7 +190,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should build Petri net model', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -207,7 +218,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should toggle heatmap overlay', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -230,13 +241,18 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should display game state info', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
       await harness.page.click('#new-game-btn');
-      await harness.page.waitForSelector('#start-hand-btn', { timeout: 5000 });
-      
+
+      // Wait for game state info to be populated with Game ID
+      await harness.page.waitForFunction(() => {
+        const info = document.querySelector('#game-state-info');
+        return info && info.textContent.includes('Game ID');
+      }, { timeout: 5000 });
+
       // Check game state info is updated
       const gameStateInfo = await harness.page.$eval('#game-state-info', el => el.textContent);
       expect(gameStateInfo).toContain('Game ID');
@@ -245,7 +261,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should show player seats with correct layout', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 
@@ -270,7 +286,7 @@ describe('texas-holdem frontend', () => {
     });
 
     test('should work on mobile viewport', async () => {
-      await harness.page.goto(`${harness.server.baseUrl}/frontends/texas-holdem/`, {
+      await harness.page.goto(`${harness.server.baseUrl}/`, {
         waitUntil: 'networkidle0'
       });
 

@@ -44,7 +44,10 @@ class AppServer {
     this.baseUrl = `http://localhost:${this.port}`;
     this.rootDir = options.rootDir || path.resolve(__dirname, '../..');
     this.pkgName = getPkgName(appName);
-    this.generatedDir = path.join(this.rootDir, 'generated', this.pkgName);
+    // Try original name first (e.g., texas-holdem), then hyphen-stripped (e.g., blogpost)
+    const originalDir = path.join(this.rootDir, 'generated', appName);
+    const pkgDir = path.join(this.rootDir, 'generated', this.pkgName);
+    this.generatedDir = fs.existsSync(originalDir) ? originalDir : pkgDir;
     this.petriPilotBin = path.join(this.rootDir, 'petri-pilot');
     this.server = null;
     this.logs = [];
@@ -67,14 +70,29 @@ class AppServer {
   }
 
   /**
+   * Check if this is a standalone service (has its own go.mod and main.go).
+   */
+  isStandalone() {
+    const goModPath = path.join(this.generatedDir, 'go.mod');
+    const mainPath = path.join(this.generatedDir, 'main.go');
+    return fs.existsSync(goModPath) && fs.existsSync(mainPath);
+  }
+
+  /**
+   * Build standalone service binary.
+   */
+  async buildStandalone() {
+    const binaryPath = path.join(this.generatedDir, this.appName);
+    // Always rebuild to ensure latest code
+    console.log(`Building ${this.appName} standalone binary...`);
+    execSync('go build -o ' + this.appName, { cwd: this.generatedDir, stdio: 'inherit', shell: true });
+    return binaryPath;
+  }
+
+  /**
    * Start the server and wait for it to be healthy.
    */
   async start() {
-    // Check if the petri-pilot binary exists
-    if (!fs.existsSync(this.petriPilotBin)) {
-      throw new Error(`petri-pilot binary not found at ${this.petriPilotBin}. Run 'make build-examples' first.`);
-    }
-
     // Build frontend if needed
     const frontendDir = path.join(this.generatedDir, 'frontend');
     const frontendDistPath = path.join(frontendDir, 'dist', 'index.html');
@@ -84,16 +102,38 @@ class AppServer {
 
     console.log(`Starting ${this.appName} on port ${this.port}...`);
 
-    // Use the unified CLI to start the service
-    this.server = spawn(this.petriPilotBin, ['serve', '-port', String(this.port), this.appName], {
-      cwd: this.generatedDir, // Set cwd so static files can be found
-      env: {
-        ...process.env,
-        PORT: String(this.port),
-        MOCK_AUTH: 'true',
-      },
-      stdio: 'pipe',
-    });
+    // Check if this is a standalone service
+    if (this.isStandalone()) {
+      // Build and run the standalone binary
+      const binaryPath = await this.buildStandalone();
+
+      // Run from project root so custom frontends can be found
+      this.server = spawn(binaryPath, [], {
+        cwd: this.rootDir,
+        env: {
+          ...process.env,
+          PORT: String(this.port),
+          MOCK_AUTH: 'true',
+        },
+        stdio: 'pipe',
+      });
+    } else {
+      // Check if the petri-pilot binary exists
+      if (!fs.existsSync(this.petriPilotBin)) {
+        throw new Error(`petri-pilot binary not found at ${this.petriPilotBin}. Run 'make build-examples' first.`);
+      }
+
+      // Use the unified CLI to start the service - run from project root
+      this.server = spawn(this.petriPilotBin, ['serve', '-port', String(this.port), this.appName], {
+        cwd: this.rootDir,
+        env: {
+          ...process.env,
+          PORT: String(this.port),
+          MOCK_AUTH: 'true',
+        },
+        stdio: 'pipe',
+      });
+    }
 
     // Capture logs
     this.server.stdout.on('data', (data) => {

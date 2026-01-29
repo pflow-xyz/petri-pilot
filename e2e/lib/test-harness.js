@@ -42,6 +42,8 @@ class TestHarness {
     this.debugClient = null;
     this.sessionId = null;
     this.pilot = createPilotProxy(this);
+    // Skip debug infrastructure for custom frontends
+    this.skipDebug = options.skipDebug || false;
   }
 
   /**
@@ -52,8 +54,10 @@ class TestHarness {
     this.server = new AppServer(this.appName, this.options);
     await this.server.start();
 
-    // Create debug client
-    this.debugClient = new DebugClient(this.server.baseUrl);
+    // Create debug client (unless skipping debug)
+    if (!this.skipDebug) {
+      this.debugClient = new DebugClient(this.server.baseUrl);
+    }
 
     // Launch browser
     this.browser = await puppeteer.launch({
@@ -75,18 +79,21 @@ class TestHarness {
     // Navigate to the app
     await this.page.goto(this.server.baseUrl, { waitUntil: 'networkidle0' });
 
-    // Wait for debug WebSocket connection
-    await this.page.waitForFunction(() => {
-      return window.debugSessionId && window.debugSessionId() !== null;
-    }, { timeout: 10000 });
+    // Skip debug-specific setup if requested
+    if (!this.skipDebug) {
+      // Wait for debug WebSocket connection
+      await this.page.waitForFunction(() => {
+        return window.debugSessionId && window.debugSessionId() !== null;
+      }, { timeout: 10000 });
 
-    // Get session ID
-    this.sessionId = await this.debugClient.waitForSession();
+      // Get session ID
+      this.sessionId = await this.debugClient.waitForSession();
 
-    // Wait for pilot API to be available
-    await this.page.waitForFunction(() => {
-      return typeof window.pilot === 'object' && window.pilot !== null;
-    }, { timeout: 10000 });
+      // Wait for pilot API to be available
+      await this.page.waitForFunction(() => {
+        return typeof window.pilot === 'object' && window.pilot !== null;
+      }, { timeout: 10000 });
+    }
 
     return this;
   }
@@ -175,6 +182,12 @@ class TestHarness {
    * @param {string|string[]} roles - Single role string or array of roles
    */
   async login(roles = ['admin', 'fulfillment', 'system', 'customer']) {
+    // Skip login for apps without debug login endpoint
+    if (this.skipDebug) {
+      console.log('Skipping login in skipDebug mode');
+      return { token: null, roles };
+    }
+
     // Normalize roles to array if a single string is provided
     const rolesArray = typeof roles === 'string' ? [roles] : roles;
 
