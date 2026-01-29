@@ -22,7 +22,7 @@ type Query {
 
 type Mutation {
   # Create a new erc20-token instance
-  createErc20Token: AggregateState!
+  createErc20token: AggregateState!
 
   # Transfer tokens from sender to recipient
   transfer(input: TransferInput!): TransitionResult!

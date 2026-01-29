@@ -181,8 +181,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// CreateBlogPost creates a new aggregate instance.
-func (r *Resolver) CreateBlogPost(ctx context.Context) (*AggregateState, error) {
+// CreateBlogpost creates a new aggregate instance.
+func (r *Resolver) CreateBlogpost(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

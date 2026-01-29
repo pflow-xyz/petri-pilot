@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createOrderProcessing") || matchField(query, "orderprocessing_create")) {
-		state, err := h.resolver.CreateOrderProcessing(ctx)
+	if isMutation && (matchField(query, "createOrderprocessing") || matchField(query, "orderprocessing_create")) {
+		state, err := h.resolver.CreateOrderprocessing(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "orderprocessing_create") {
 				data["orderprocessing_create"] = state
 			} else {
-				data["createOrderProcessing"] = state
+				data["createOrderprocessing"] = state
 			}
 		}
 	}
@@ -476,8 +476,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new order-processing instance
-  createOrderProcessing: AggregateState!
+  # Create a new orderprocessing instance
+  createOrderprocessing: AggregateState!
 
   # Check order validity
   validate(input: ValidateInput!): TransitionResult!
@@ -637,10 +637,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.OrderProcessingList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["orderprocessing_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateOrderProcessing(ctx)
+		return resolver.CreateOrderprocessing(ctx)
 	}
+	resolvers["createOrderprocessing"] = resolvers["orderprocessing_create"]
 
 
 	resolvers["orderprocessing_validate"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -682,6 +683,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Validate(ctx, input)
 	}
+	resolvers["validate"] = resolvers["orderprocessing_validate"]
 
 
 	resolvers["orderprocessing_reject"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -705,6 +707,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Reject(ctx, input)
 	}
+	resolvers["reject"] = resolvers["orderprocessing_reject"]
 
 
 	resolvers["orderprocessing_process_payment"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -734,6 +737,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.ProcessPayment(ctx, input)
 	}
+	resolvers["processPayment"] = resolvers["orderprocessing_process_payment"]
 
 
 	resolvers["orderprocessing_ship"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -763,6 +767,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Ship(ctx, input)
 	}
+	resolvers["ship"] = resolvers["orderprocessing_ship"]
 
 
 	resolvers["orderprocessing_confirm"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -780,15 +785,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Confirm(ctx, input)
 	}
+	resolvers["confirm"] = resolvers["orderprocessing_confirm"]
 
 
 
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["orderprocessing_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["orderprocessing_adminStats"]
+	resolvers["orderprocessingAdminStats"] = resolvers["orderprocessing_adminStats"]
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["orderprocessing_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -797,6 +807,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["orderprocessing_events"]
+	resolvers["orderprocessingEvents"] = resolvers["orderprocessing_events"]
 
 
 	return resolvers

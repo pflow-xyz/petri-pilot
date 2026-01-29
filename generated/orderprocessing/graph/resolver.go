@@ -181,8 +181,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// CreateOrderProcessing creates a new aggregate instance.
-func (r *Resolver) CreateOrderProcessing(ctx context.Context) (*AggregateState, error) {
+// CreateOrderprocessing creates a new aggregate instance.
+func (r *Resolver) CreateOrderprocessing(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

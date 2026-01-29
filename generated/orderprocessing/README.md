@@ -209,64 +209,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `customer` | End user placing orders | - |
-| `fulfillment` | Warehouse staff who validate and ship orders | - |
-| `system` | Automated payment processing | - |
-| `admin` | Full access to all operations | `fulfillment` |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `validate` | `fulfillment` | - |
-| `reject` | `fulfillment` | - |
-| `process_payment` | `system` | - |
-| `ship` | `fulfillment` | - |
-| `confirm` | `fulfillment` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_customer["customer"]
-        role_fulfillment["fulfillment"]
-        role_system["system"]
-        role_admin["admin"]
-    end
-
-    subgraph Transitions
-        t_validate["validate"]
-        t_reject["reject"]
-        t_process_payment["process_payment"]
-        t_ship["ship"]
-        t_confirm["confirm"]
-    end
-
-
-    role_fulfillment -.->|can execute| t_validate
-
-    role_fulfillment -.->|can execute| t_reject
-
-    role_system -.->|can execute| t_process_payment
-
-    role_fulfillment -.->|can execute| t_ship
-
-    role_fulfillment -.->|can execute| t_confirm
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -360,9 +302,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
 ├── navigation.go     # Navigation menu
 ├── admin.go          # Admin handlers
 ├── debug.go          # Debug handlers

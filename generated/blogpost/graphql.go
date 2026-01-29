@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createBlogPost") || matchField(query, "blogpost_create")) {
-		state, err := h.resolver.CreateBlogPost(ctx)
+	if isMutation && (matchField(query, "createBlogpost") || matchField(query, "blogpost_create")) {
+		state, err := h.resolver.CreateBlogpost(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "blogpost_create") {
 				data["blogpost_create"] = state
 			} else {
-				data["createBlogPost"] = state
+				data["createBlogpost"] = state
 			}
 		}
 	}
@@ -506,8 +506,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new blog-post instance
-  createBlogPost: AggregateState!
+  # Create a new blogpost instance
+  createBlogpost: AggregateState!
 
   # Create a new blog post
   createPost(input: CreatePostInput!): TransitionResult!
@@ -675,10 +675,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.BlogPostList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["blogpost_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateBlogPost(ctx)
+		return resolver.CreateBlogpost(ctx)
 	}
+	resolvers["createBlogpost"] = resolvers["blogpost_create"]
 
 
 	resolvers["blogpost_create_post"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -727,6 +728,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.CreatePost(ctx, input)
 	}
+	resolvers["createPost"] = resolvers["blogpost_create_post"]
 
 
 	resolvers["blogpost_update"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -763,6 +765,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Update(ctx, input)
 	}
+	resolvers["update"] = resolvers["blogpost_update"]
 
 
 	resolvers["blogpost_submit"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -774,6 +777,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Submit(ctx, input)
 	}
+	resolvers["submit"] = resolvers["blogpost_submit"]
 
 
 	resolvers["blogpost_approve"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -785,6 +789,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Approve(ctx, input)
 	}
+	resolvers["approve"] = resolvers["blogpost_approve"]
 
 
 	resolvers["blogpost_reject"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -808,6 +813,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Reject(ctx, input)
 	}
+	resolvers["reject"] = resolvers["blogpost_reject"]
 
 
 	resolvers["blogpost_unpublish"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -819,6 +825,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Unpublish(ctx, input)
 	}
+	resolvers["unpublish"] = resolvers["blogpost_unpublish"]
 
 
 	resolvers["blogpost_restore"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -830,15 +837,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Restore(ctx, input)
 	}
+	resolvers["restore"] = resolvers["blogpost_restore"]
 
 
 
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["blogpost_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["blogpost_adminStats"]
+	resolvers["blogpostAdminStats"] = resolvers["blogpost_adminStats"]
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["blogpost_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -847,6 +859,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["blogpost_events"]
+	resolvers["blogpostEvents"] = resolvers["blogpost_events"]
 
 
 	return resolvers

@@ -22,7 +22,7 @@ type Query {
 
 type Mutation {
   # Create a new task-manager instance
-  createTaskManager: AggregateState!
+  createTaskmanager: AggregateState!
 
   # Start working on a task
   start(input: StartInput!): TransitionResult!

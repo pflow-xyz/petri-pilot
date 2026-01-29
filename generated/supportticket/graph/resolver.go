@@ -127,8 +127,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// CreateSupportTicket creates a new aggregate instance.
-func (r *Resolver) CreateSupportTicket(ctx context.Context) (*AggregateState, error) {
+// CreateSupportticket creates a new aggregate instance.
+func (r *Resolver) CreateSupportticket(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

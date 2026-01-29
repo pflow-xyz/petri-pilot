@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createTaskManager") || matchField(query, "taskmanager_create")) {
-		state, err := h.resolver.CreateTaskManager(ctx)
+	if isMutation && (matchField(query, "createTaskmanager") || matchField(query, "taskmanager_create")) {
+		state, err := h.resolver.CreateTaskmanager(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "taskmanager_create") {
 				data["taskmanager_create"] = state
 			} else {
-				data["createTaskManager"] = state
+				data["createTaskmanager"] = state
 			}
 		}
 	}
@@ -372,8 +372,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new task-manager instance
-  createTaskManager: AggregateState!
+  # Create a new taskmanager instance
+  createTaskmanager: AggregateState!
 
   # Start working on a task
   start(input: StartInput!): TransitionResult!
@@ -509,7 +509,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 
 	// Mutation resolvers
 	resolvers["taskmanager_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateTaskManager(ctx)
+		return resolver.CreateTaskmanager(ctx)
 	}
 
 

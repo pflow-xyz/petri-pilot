@@ -181,8 +181,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// CreateErc20Token creates a new aggregate instance.
-func (r *Resolver) CreateErc20Token(ctx context.Context) (*AggregateState, error) {
+// CreateErc20token creates a new aggregate instance.
+func (r *Resolver) CreateErc20token(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

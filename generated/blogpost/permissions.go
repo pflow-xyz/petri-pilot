@@ -18,7 +18,7 @@ const (
 var AllRolesFor = map[string][]string{
 	RoleAuthor: { "author" },
 	RoleEditor: { "editor" },
-	RoleAdmin: { "admin", "author", "editor" },
+	RoleAdmin: { "author", "editor", "admin" },
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
@@ -137,118 +137,6 @@ func CheckRoleAccess(user *User, requiredRoles []string) error {
 	return nil
 }
 
-
-// CheckAccessCreatePost verifies access for the create_post transition.
-func CheckAccessCreatePost(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "author" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessUpdate verifies access for the update transition.
-func CheckAccessUpdate(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "author" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessSubmit verifies access for the submit transition.
-func CheckAccessSubmit(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "author" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessApprove verifies access for the approve transition.
-func CheckAccessApprove(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "editor" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessReject verifies access for the reject transition.
-func CheckAccessReject(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "editor" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessUnpublish verifies access for the unpublish transition.
-func CheckAccessUnpublish(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "editor" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessRestore verifies access for the restore transition.
-func CheckAccessRestore(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "admin" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
 
 
 // GetUserRoles returns the effective roles for a user (with inheritance expanded).

@@ -181,8 +181,8 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 
 // Mutation resolvers
 
-// CreateTicTacToe creates a new aggregate instance.
-func (r *Resolver) CreateTicTacToe(ctx context.Context) (*AggregateState, error) {
+// CreateTictactoe creates a new aggregate instance.
+func (r *Resolver) CreateTictactoe(ctx context.Context) (*AggregateState, error) {
 	id, err := r.App.Create(ctx)
 	if err != nil {
 		return nil, err

@@ -20,7 +20,7 @@ var AllRolesFor = map[string][]string{
 	RoleCustomer: { "customer" },
 	RoleFulfillment: { "fulfillment" },
 	RoleSystem: { "system" },
-	RoleAdmin: { "fulfillment", "admin" },
+	RoleAdmin: { "admin", "fulfillment" },
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
@@ -139,86 +139,6 @@ func CheckRoleAccess(user *User, requiredRoles []string) error {
 	return nil
 }
 
-
-// CheckAccessValidate verifies access for the validate transition.
-func CheckAccessValidate(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "fulfillment" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessReject verifies access for the reject transition.
-func CheckAccessReject(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "fulfillment" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessProcessPayment verifies access for the process_payment transition.
-func CheckAccessProcessPayment(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "system" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessShip verifies access for the ship transition.
-func CheckAccessShip(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "fulfillment" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
-
-// CheckAccessConfirm verifies access for the confirm transition.
-func CheckAccessConfirm(user *User, state map[string]any) error {
-	if user == nil {
-		return ErrUnauthorized
-	}
-	
-	// Check role requirements (including dynamic role grants based on state)
-	requiredRoles := []string{ "fulfillment" }
-	if !HasAnyRoleWithState(user, requiredRoles, state) {
-		return ErrForbidden
-	}
-	
-	
-	return nil
-}
 
 
 // GetUserRoles returns the effective roles for a user (with inheritance expanded).

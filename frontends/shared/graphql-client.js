@@ -178,9 +178,11 @@ class PetriGraphQL {
    * @returns {Promise<Array>} - Events array
    */
   async getEvents(aggregateId, from = 0) {
+    // Use namespaced query name for unified endpoint (e.g., blogpostEvents)
+    const eventsField = `${this.appName}Events`
     const query = `
       query GetEvents($aggregateId: ID!, $from: Int) {
-        events(aggregateId: $aggregateId, from: $from) {
+        ${eventsField}(aggregateId: $aggregateId, from: $from) {
           id
           streamId
           type
@@ -191,7 +193,7 @@ class PetriGraphQL {
       }
     `
     const data = await this.query(query, { aggregateId, from })
-    return data.events || []
+    return data[eventsField] || []
   }
 
   /**
@@ -199,9 +201,11 @@ class PetriGraphQL {
    * @returns {Promise<Object>} - Admin stats
    */
   async getAdminStats() {
+    // Use namespaced query name for unified endpoint (e.g., blogpostAdminStats)
+    const statsField = `${this.appName}AdminStats`
     const query = `
       query {
-        adminStats {
+        ${statsField} {
           totalInstances
           byPlace {
             place
@@ -211,7 +215,7 @@ class PetriGraphQL {
       }
     `
     const data = await this.query(query)
-    return data.adminStats
+    return data[statsField]
   }
 }
 

@@ -165,58 +165,6 @@ classDiagram
 
 
 
-## Access Control
-
-Role-based access control (RBAC) restricts which users can execute transitions.
-
-
-### Roles
-
-| Role | Description | Inherits |
-|------|-------------|----------|
-| `user` | - | - |
-| `reviewer` | - | - |
-| `admin` | - | `user`, `reviewer` |
-
-
-
-### Permissions
-
-| Transition | Required Roles | Guard |
-|------------|----------------|-------|
-| `start` | `user` | - |
-| `submit` | `user` | - |
-| `approve` | `reviewer` | - |
-| `reject` | `reviewer` | - |
-
-
-```mermaid
-graph TD
-    subgraph Roles
-        role_user["user"]
-        role_reviewer["reviewer"]
-        role_admin["admin"]
-    end
-
-    subgraph Transitions
-        t_start["start"]
-        t_submit["submit"]
-        t_approve["approve"]
-        t_reject["reject"]
-    end
-
-
-    role_user -.->|can execute| t_start
-
-    role_user -.->|can execute| t_submit
-
-    role_reviewer -.->|can execute| t_approve
-
-    role_reviewer -.->|can execute| t_reject
-
-```
-
-
 ## API Endpoints
 
 ### Core Endpoints
@@ -310,9 +258,6 @@ curl -X POST http://localhost:8080/api/<transition> \
 ├── aggregate.go      # Event-sourced aggregate
 ├── events.go         # Event type definitions
 ├── api.go            # HTTP handlers
-├── auth.go           # Authentication
-├── middleware.go     # HTTP middleware
-├── permissions.go    # Permission checks
 ├── navigation.go     # Navigation menu
 ├── admin.go          # Admin handlers
 ├── debug.go          # Debug handlers

@@ -19,7 +19,7 @@ type Query {
 
 type Mutation {
   # Create a new support-ticket instance
-  createSupportTicket: AggregateState!
+  createSupportticket: AggregateState!
 
   # Assign ticket to an agent
   assign(input: AssignInput!): TransitionResult!

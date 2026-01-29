@@ -40,41 +40,6 @@ func NewService() (serve.Service, error) {
 
 	// Configure access control rules
 	accessRules := []*AccessControl{
-		{
-			TransitionID: "create_post",
-			Roles:        []string{"author",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "update",
-			Roles:        []string{"author",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "submit",
-			Roles:        []string{"author",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "approve",
-			Roles:        []string{"editor",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "reject",
-			Roles:        []string{"editor",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "unpublish",
-			Roles:        []string{"editor",  },
-			Guard:        "",
-		},
-		{
-			TransitionID: "restore",
-			Roles:        []string{"admin",  },
-			Guard:        "",
-		},
 	}
 
 	// Initialize middleware

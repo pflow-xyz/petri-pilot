@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createTicTacToe") || matchField(query, "tictactoe_create")) {
-		state, err := h.resolver.CreateTicTacToe(ctx)
+	if isMutation && (matchField(query, "createTictactoe") || matchField(query, "tictactoe_create")) {
+		state, err := h.resolver.CreateTictactoe(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "tictactoe_create") {
 				data["tictactoe_create"] = state
 			} else {
-				data["createTicTacToe"] = state
+				data["createTictactoe"] = state
 			}
 		}
 	}
@@ -992,8 +992,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new tic-tac-toe instance
-  createTicTacToe: AggregateState!
+  # Create a new tictactoe instance
+  createTictactoe: AggregateState!
 
   # X plays at (0,0)
   xPlay00(input: XPlay00Input!): TransitionResult!
@@ -1435,7 +1435,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 
 	// Mutation resolvers
 	resolvers["tictactoe_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateTicTacToe(ctx)
+		return resolver.CreateTictactoe(ctx)
 	}
 
 

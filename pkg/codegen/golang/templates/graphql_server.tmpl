@@ -469,10 +469,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.{{pascal .ModelName}}List(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["{{.PackageName}}_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.Create{{pascal .PackageName}}(ctx)
 	}
+	resolvers["create{{pascal .PackageName}}"] = resolvers["{{.PackageName}}_create"]
 
 {{range .Transitions}}
 	resolvers["{{$.PackageName}}_{{.ID}}"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -521,15 +522,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.{{pascal .ID}}(ctx, input)
 	}
+	resolvers["{{camel .ID}}"] = resolvers["{{$.PackageName}}_{{.ID}}"]
 
 {{end}}
 {{if .HasAdmin}}
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["{{.PackageName}}_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["{{.PackageName}}_adminStats"]
+	resolvers["{{.PackageName}}AdminStats"] = resolvers["{{.PackageName}}_adminStats"]
 {{end}}
 {{if .HasEventSourcing}}
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["{{.PackageName}}_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -538,6 +544,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["{{.PackageName}}_events"]
+	resolvers["{{.PackageName}}Events"] = resolvers["{{.PackageName}}_events"]
 {{end}}
 
 	return resolvers

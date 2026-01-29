@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createErc20Token") || matchField(query, "erc20token_create")) {
-		state, err := h.resolver.CreateErc20Token(ctx)
+	if isMutation && (matchField(query, "createErc20token") || matchField(query, "erc20token_create")) {
+		state, err := h.resolver.CreateErc20token(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "erc20token_create") {
 				data["erc20token_create"] = state
 			} else {
-				data["createErc20Token"] = state
+				data["createErc20token"] = state
 			}
 		}
 	}
@@ -481,8 +481,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new erc20-token instance
-  createErc20Token: AggregateState!
+  # Create a new erc20token instance
+  createErc20token: AggregateState!
 
   # Transfer tokens from sender to recipient
   transfer(input: TransferInput!): TransitionResult!
@@ -636,10 +636,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Erc20TokenList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["erc20token_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateErc20Token(ctx)
+		return resolver.CreateErc20token(ctx)
 	}
+	resolvers["createErc20token"] = resolvers["erc20token_create"]
 
 
 	resolvers["erc20token_transfer"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -670,6 +671,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Transfer(ctx, input)
 	}
+	resolvers["transfer"] = resolvers["erc20token_transfer"]
 
 
 	resolvers["erc20token_approve"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -700,6 +702,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Approve(ctx, input)
 	}
+	resolvers["approve"] = resolvers["erc20token_approve"]
 
 
 	resolvers["erc20token_transfer_from"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -736,6 +739,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.TransferFrom(ctx, input)
 	}
+	resolvers["transferFrom"] = resolvers["erc20token_transfer_from"]
 
 
 	resolvers["erc20token_mint"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -760,6 +764,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Mint(ctx, input)
 	}
+	resolvers["mint"] = resolvers["erc20token_mint"]
 
 
 	resolvers["erc20token_burn"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -784,15 +789,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Burn(ctx, input)
 	}
+	resolvers["burn"] = resolvers["erc20token_burn"]
 
 
 
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["erc20token_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["erc20token_adminStats"]
+	resolvers["erc20tokenAdminStats"] = resolvers["erc20token_adminStats"]
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["erc20token_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -801,6 +811,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["erc20token_events"]
+	resolvers["erc20tokenEvents"] = resolvers["erc20token_events"]
 
 
 	return resolvers

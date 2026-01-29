@@ -133,10 +133,10 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 	// Detect mutation vs query
 	isMutation := containsString(query, "mutation")
 
-	// Handle create mutation (supports both "createModelName" and "package_create" naming)
+	// Handle create mutation (supports both "createPackageName" and "package_create" naming)
 	// Use matchField to avoid substring collision (e.g. "blogpost_create" vs "blogpost_create_post")
-	if isMutation && (matchField(query, "createSupportTicket") || matchField(query, "supportticket_create")) {
-		state, err := h.resolver.CreateSupportTicket(ctx)
+	if isMutation && (matchField(query, "createSupportticket") || matchField(query, "supportticket_create")) {
+		state, err := h.resolver.CreateSupportticket(ctx)
 		if err != nil {
 			errors = append(errors, map[string]interface{}{"message": err.Error()})
 		} else {
@@ -144,7 +144,7 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			if matchField(query, "supportticket_create") {
 				data["supportticket_create"] = state
 			} else {
-				data["createSupportTicket"] = state
+				data["createSupportticket"] = state
 			}
 		}
 	}
@@ -459,8 +459,8 @@ type Query {
 }
 
 type Mutation {
-  # Create a new support-ticket instance
-  createSupportTicket: AggregateState!
+  # Create a new supportticket instance
+  createSupportticket: AggregateState!
 
   # Assign ticket to an agent
   assign(input: AssignInput!): TransitionResult!
@@ -629,10 +629,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.SupportTicketList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["supportticket_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
-		return resolver.CreateSupportTicket(ctx)
+		return resolver.CreateSupportticket(ctx)
 	}
+	resolvers["createSupportticket"] = resolvers["supportticket_create"]
 
 
 	resolvers["supportticket_assign"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -644,6 +645,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Assign(ctx, input)
 	}
+	resolvers["assign"] = resolvers["supportticket_assign"]
 
 
 	resolvers["supportticket_start_work"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -655,6 +657,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.StartWork(ctx, input)
 	}
+	resolvers["startWork"] = resolvers["supportticket_start_work"]
 
 
 	resolvers["supportticket_escalate"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -666,6 +669,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Escalate(ctx, input)
 	}
+	resolvers["escalate"] = resolvers["supportticket_escalate"]
 
 
 	resolvers["supportticket_request_info"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -677,6 +681,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.RequestInfo(ctx, input)
 	}
+	resolvers["requestInfo"] = resolvers["supportticket_request_info"]
 
 
 	resolvers["supportticket_customer_reply"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -688,6 +693,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.CustomerReply(ctx, input)
 	}
+	resolvers["customerReply"] = resolvers["supportticket_customer_reply"]
 
 
 	resolvers["supportticket_resolve"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -699,6 +705,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Resolve(ctx, input)
 	}
+	resolvers["resolve"] = resolvers["supportticket_resolve"]
 
 
 	resolvers["supportticket_resolve_escalated"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -710,6 +717,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.ResolveEscalated(ctx, input)
 	}
+	resolvers["resolveEscalated"] = resolvers["supportticket_resolve_escalated"]
 
 
 	resolvers["supportticket_close"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -721,6 +729,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Close(ctx, input)
 	}
+	resolvers["close"] = resolvers["supportticket_close"]
 
 
 	resolvers["supportticket_reopen"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -732,11 +741,13 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Reopen(ctx, input)
 	}
+	resolvers["reopen"] = resolvers["supportticket_reopen"]
 
 
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["supportticket_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -745,6 +756,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["supportticket_events"]
+	resolvers["supportticketEvents"] = resolvers["supportticket_events"]
 
 
 	return resolvers

@@ -22,7 +22,7 @@ type Query {
 
 type Mutation {
   # Create a new order-processing instance
-  createOrderProcessing: AggregateState!
+  createOrderprocessing: AggregateState!
 
   # Check order validity
   validate(input: ValidateInput!): TransitionResult!
