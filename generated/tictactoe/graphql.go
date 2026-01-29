@@ -1433,10 +1433,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.TicTacToeList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["tictactoe_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.CreateTictactoe(ctx)
 	}
+	resolvers["createTictactoe"] = resolvers["tictactoe_create"]
 
 
 	resolvers["tictactoe_x_play_00"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1448,6 +1449,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay00(ctx, input)
 	}
+	resolvers["xPlay00"] = resolvers["tictactoe_x_play_00"]
 
 
 	resolvers["tictactoe_x_play_01"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1459,6 +1461,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay01(ctx, input)
 	}
+	resolvers["xPlay01"] = resolvers["tictactoe_x_play_01"]
 
 
 	resolvers["tictactoe_x_play_02"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1470,6 +1473,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay02(ctx, input)
 	}
+	resolvers["xPlay02"] = resolvers["tictactoe_x_play_02"]
 
 
 	resolvers["tictactoe_x_play_10"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1481,6 +1485,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay10(ctx, input)
 	}
+	resolvers["xPlay10"] = resolvers["tictactoe_x_play_10"]
 
 
 	resolvers["tictactoe_x_play_11"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1492,6 +1497,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay11(ctx, input)
 	}
+	resolvers["xPlay11"] = resolvers["tictactoe_x_play_11"]
 
 
 	resolvers["tictactoe_x_play_12"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1503,6 +1509,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay12(ctx, input)
 	}
+	resolvers["xPlay12"] = resolvers["tictactoe_x_play_12"]
 
 
 	resolvers["tictactoe_x_play_20"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1514,6 +1521,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay20(ctx, input)
 	}
+	resolvers["xPlay20"] = resolvers["tictactoe_x_play_20"]
 
 
 	resolvers["tictactoe_x_play_21"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1525,6 +1533,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay21(ctx, input)
 	}
+	resolvers["xPlay21"] = resolvers["tictactoe_x_play_21"]
 
 
 	resolvers["tictactoe_x_play_22"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1536,6 +1545,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XPlay22(ctx, input)
 	}
+	resolvers["xPlay22"] = resolvers["tictactoe_x_play_22"]
 
 
 	resolvers["tictactoe_o_play_00"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1547,6 +1557,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay00(ctx, input)
 	}
+	resolvers["oPlay00"] = resolvers["tictactoe_o_play_00"]
 
 
 	resolvers["tictactoe_o_play_01"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1558,6 +1569,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay01(ctx, input)
 	}
+	resolvers["oPlay01"] = resolvers["tictactoe_o_play_01"]
 
 
 	resolvers["tictactoe_o_play_02"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1569,6 +1581,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay02(ctx, input)
 	}
+	resolvers["oPlay02"] = resolvers["tictactoe_o_play_02"]
 
 
 	resolvers["tictactoe_o_play_10"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1580,6 +1593,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay10(ctx, input)
 	}
+	resolvers["oPlay10"] = resolvers["tictactoe_o_play_10"]
 
 
 	resolvers["tictactoe_o_play_11"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1591,6 +1605,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay11(ctx, input)
 	}
+	resolvers["oPlay11"] = resolvers["tictactoe_o_play_11"]
 
 
 	resolvers["tictactoe_o_play_12"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1602,6 +1617,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay12(ctx, input)
 	}
+	resolvers["oPlay12"] = resolvers["tictactoe_o_play_12"]
 
 
 	resolvers["tictactoe_o_play_20"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1613,6 +1629,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay20(ctx, input)
 	}
+	resolvers["oPlay20"] = resolvers["tictactoe_o_play_20"]
 
 
 	resolvers["tictactoe_o_play_21"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1624,6 +1641,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay21(ctx, input)
 	}
+	resolvers["oPlay21"] = resolvers["tictactoe_o_play_21"]
 
 
 	resolvers["tictactoe_o_play_22"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1635,6 +1653,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OPlay22(ctx, input)
 	}
+	resolvers["oPlay22"] = resolvers["tictactoe_o_play_22"]
 
 
 	resolvers["tictactoe_reset"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1646,6 +1665,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Reset(ctx, input)
 	}
+	resolvers["reset"] = resolvers["tictactoe_reset"]
 
 
 	resolvers["tictactoe_x_win_row0"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1657,6 +1677,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinRow0(ctx, input)
 	}
+	resolvers["xWinRow0"] = resolvers["tictactoe_x_win_row0"]
 
 
 	resolvers["tictactoe_x_win_row1"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1668,6 +1689,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinRow1(ctx, input)
 	}
+	resolvers["xWinRow1"] = resolvers["tictactoe_x_win_row1"]
 
 
 	resolvers["tictactoe_x_win_row2"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1679,6 +1701,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinRow2(ctx, input)
 	}
+	resolvers["xWinRow2"] = resolvers["tictactoe_x_win_row2"]
 
 
 	resolvers["tictactoe_x_win_col0"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1690,6 +1713,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinCol0(ctx, input)
 	}
+	resolvers["xWinCol0"] = resolvers["tictactoe_x_win_col0"]
 
 
 	resolvers["tictactoe_x_win_col1"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1701,6 +1725,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinCol1(ctx, input)
 	}
+	resolvers["xWinCol1"] = resolvers["tictactoe_x_win_col1"]
 
 
 	resolvers["tictactoe_x_win_col2"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1712,6 +1737,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinCol2(ctx, input)
 	}
+	resolvers["xWinCol2"] = resolvers["tictactoe_x_win_col2"]
 
 
 	resolvers["tictactoe_x_win_diag"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1723,6 +1749,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinDiag(ctx, input)
 	}
+	resolvers["xWinDiag"] = resolvers["tictactoe_x_win_diag"]
 
 
 	resolvers["tictactoe_x_win_anti"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1734,6 +1761,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.XWinAnti(ctx, input)
 	}
+	resolvers["xWinAnti"] = resolvers["tictactoe_x_win_anti"]
 
 
 	resolvers["tictactoe_o_win_row0"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1745,6 +1773,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinRow0(ctx, input)
 	}
+	resolvers["oWinRow0"] = resolvers["tictactoe_o_win_row0"]
 
 
 	resolvers["tictactoe_o_win_row1"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1756,6 +1785,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinRow1(ctx, input)
 	}
+	resolvers["oWinRow1"] = resolvers["tictactoe_o_win_row1"]
 
 
 	resolvers["tictactoe_o_win_row2"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1767,6 +1797,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinRow2(ctx, input)
 	}
+	resolvers["oWinRow2"] = resolvers["tictactoe_o_win_row2"]
 
 
 	resolvers["tictactoe_o_win_col0"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1778,6 +1809,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinCol0(ctx, input)
 	}
+	resolvers["oWinCol0"] = resolvers["tictactoe_o_win_col0"]
 
 
 	resolvers["tictactoe_o_win_col1"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1789,6 +1821,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinCol1(ctx, input)
 	}
+	resolvers["oWinCol1"] = resolvers["tictactoe_o_win_col1"]
 
 
 	resolvers["tictactoe_o_win_col2"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1800,6 +1833,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinCol2(ctx, input)
 	}
+	resolvers["oWinCol2"] = resolvers["tictactoe_o_win_col2"]
 
 
 	resolvers["tictactoe_o_win_diag"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1811,6 +1845,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinDiag(ctx, input)
 	}
+	resolvers["oWinDiag"] = resolvers["tictactoe_o_win_diag"]
 
 
 	resolvers["tictactoe_o_win_anti"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1822,15 +1857,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.OWinAnti(ctx, input)
 	}
+	resolvers["oWinAnti"] = resolvers["tictactoe_o_win_anti"]
 
 
 
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["tictactoe_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["tictactoe_adminStats"]
+	resolvers["tictactoeAdminStats"] = resolvers["tictactoe_adminStats"]
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["tictactoe_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -1839,6 +1879,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["tictactoe_events"]
+	resolvers["tictactoeEvents"] = resolvers["tictactoe_events"]
 
 
 	return resolvers
