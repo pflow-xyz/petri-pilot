@@ -507,10 +507,11 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.TaskManagerList(ctx, place, page, perPage)
 	}
 
-	// Mutation resolvers
+	// Mutation resolvers (register both underscore and camelCase names for compatibility)
 	resolvers["taskmanager_create"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.CreateTaskmanager(ctx)
 	}
+	resolvers["createTaskmanager"] = resolvers["taskmanager_create"]
 
 
 	resolvers["taskmanager_start"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -522,6 +523,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Start(ctx, input)
 	}
+	resolvers["start"] = resolvers["taskmanager_start"]
 
 
 	resolvers["taskmanager_submit"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -533,6 +535,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Submit(ctx, input)
 	}
+	resolvers["submit"] = resolvers["taskmanager_submit"]
 
 
 	resolvers["taskmanager_approve"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -544,6 +547,7 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Approve(ctx, input)
 	}
+	resolvers["approve"] = resolvers["taskmanager_approve"]
 
 
 	resolvers["taskmanager_reject"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -555,15 +559,20 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Reject(ctx, input)
 	}
+	resolvers["reject"] = resolvers["taskmanager_reject"]
 
 
 
-	resolvers["adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
+	// Admin stats resolver (namespace for unified endpoint)
+	resolvers["taskmanager_adminStats"] = func(ctx context.Context, _ map[string]any) (any, error) {
 		return resolver.AdminStats(ctx)
 	}
+	resolvers["adminStats"] = resolvers["taskmanager_adminStats"]
+	resolvers["taskmanagerAdminStats"] = resolvers["taskmanager_adminStats"]
 
 
-	resolvers["events"] = func(ctx context.Context, variables map[string]any) (any, error) {
+	// Events resolver (namespace for unified endpoint)
+	resolvers["taskmanager_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		aggID, _ := variables["aggregateId"].(string)
 		var from *int
 		if f, ok := variables["from"].(float64); ok {
@@ -572,6 +581,8 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		}
 		return resolver.Events(ctx, aggID, from)
 	}
+	resolvers["events"] = resolvers["taskmanager_events"]
+	resolvers["taskmanagerEvents"] = resolvers["taskmanager_events"]
 
 
 	return resolvers

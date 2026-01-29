@@ -18,7 +18,7 @@ const (
 var AllRolesFor = map[string][]string{
 	RoleAuthor: { "author" },
 	RoleEditor: { "editor" },
-	RoleAdmin: { "author", "editor", "admin" },
+	RoleAdmin: { "admin", "author", "editor" },
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
