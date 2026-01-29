@@ -58,8 +58,8 @@ class PetriGraphQL {
    * @returns {Promise<Object>} - Created instance state
    */
   async create(appName) {
-    // Schema uses createBlogpost, createErc20token, etc. (capitalize package name)
-    const mutationName = `create${capitalize(appName)}`
+    // Use namespaced mutation for unified endpoint (e.g., blogpost_create)
+    const mutationName = `${appName}_create`
     const query = `
       mutation {
         ${mutationName} {
@@ -137,10 +137,10 @@ class PetriGraphQL {
    * @returns {Promise<Object>} - Transition result
    */
   async execute(appName, transition, aggregateId, inputData = {}) {
-    // Convert snake_case to camelCase for mutation name (e.g., create_post -> createPost)
-    const mutationName = snakeToCamel(transition)
-    // Input type is PascalCase (e.g., CreatePostInput)
-    const inputTypeName = `${snakeToPascal(transition)}Input`
+    // Use namespaced mutation name for unified endpoint (e.g., blogpost_submit)
+    const mutationName = `${appName}_${transition}`
+    // Input type is namespaced PascalCase (e.g., BlogpostSubmitInput)
+    const inputTypeName = `${capitalize(appName)}${snakeToPascal(transition)}Input`
 
     // Build the input object
     const input = {
