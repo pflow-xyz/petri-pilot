@@ -1,0 +1,1370 @@
+openapi: "3.0.3"
+info:
+  title: "texas-holdem API"
+  version: "1.0.0"
+  description: "Generated API for texas-holdem workflow"
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/main:
+    post:
+      summary: Create new texas-holdem
+      operationId: createTexasHoldem
+      tags:
+        - main
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/main/{id}:
+    get:
+      summary: Get texas-holdem state
+      operationId: getTexasHoldem
+      tags:
+        - main
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Aggregate ID
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/start_hand:
+    post:
+      summary: "Start a new hand"
+      operationId: startHand
+      tags:
+        - transitions
+      x-transition-id: start_hand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/deal_preflop:
+    post:
+      summary: "Deal hole cards to all players"
+      operationId: dealPreflop
+      tags:
+        - transitions
+      x-transition-id: deal_preflop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/deal_flop:
+    post:
+      summary: "Deal the flop (3 community cards)"
+      operationId: dealFlop
+      tags:
+        - transitions
+      x-transition-id: deal_flop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/deal_turn:
+    post:
+      summary: "Deal the turn (1 community card)"
+      operationId: dealTurn
+      tags:
+        - transitions
+      x-transition-id: deal_turn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/deal_river:
+    post:
+      summary: "Deal the river (1 community card)"
+      operationId: dealRiver
+      tags:
+        - transitions
+      x-transition-id: deal_river
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/go_showdown:
+    post:
+      summary: "Proceed to showdown"
+      operationId: goShowdown
+      tags:
+        - transitions
+      x-transition-id: go_showdown
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/determine_winner:
+    post:
+      summary: "Determine the winner"
+      operationId: determineWinner
+      tags:
+        - transitions
+      x-transition-id: determine_winner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/end_hand:
+    post:
+      summary: "End the hand"
+      operationId: endHand
+      tags:
+        - transitions
+      x-transition-id: end_hand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/advance_to_p1:
+    post:
+      summary: "Pass turn to player 1"
+      operationId: advanceToP1
+      tags:
+        - transitions
+      x-transition-id: advance_to_p1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/advance_to_p2:
+    post:
+      summary: "Pass turn to player 2"
+      operationId: advanceToP2
+      tags:
+        - transitions
+      x-transition-id: advance_to_p2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/advance_to_p3:
+    post:
+      summary: "Pass turn to player 3"
+      operationId: advanceToP3
+      tags:
+        - transitions
+      x-transition-id: advance_to_p3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/advance_to_p4:
+    post:
+      summary: "Pass turn to player 4"
+      operationId: advanceToP4
+      tags:
+        - transitions
+      x-transition-id: advance_to_p4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/advance_to_p0:
+    post:
+      summary: "Pass turn to player 0"
+      operationId: advanceToP0
+      tags:
+        - transitions
+      x-transition-id: advance_to_p0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/end_betting_round:
+    post:
+      summary: "End the betting round"
+      operationId: endBettingRound
+      tags:
+        - transitions
+      x-transition-id: end_betting_round
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p0_fold:
+    post:
+      summary: "Player 0 folds"
+      operationId: p0Fold
+      tags:
+        - transitions
+      x-transition-id: p0_fold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p0_check:
+    post:
+      summary: "Player 0 checks"
+      operationId: p0Check
+      tags:
+        - transitions
+      x-transition-id: p0_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p0_call:
+    post:
+      summary: "Player 0 calls"
+      operationId: p0Call
+      tags:
+        - transitions
+      x-transition-id: p0_call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p0_raise:
+    post:
+      summary: "Player 0 raises"
+      operationId: p0Raise
+      tags:
+        - transitions
+      x-transition-id: p0_raise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p1_fold:
+    post:
+      summary: "Player 1 folds"
+      operationId: p1Fold
+      tags:
+        - transitions
+      x-transition-id: p1_fold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p1_check:
+    post:
+      summary: "Player 1 checks"
+      operationId: p1Check
+      tags:
+        - transitions
+      x-transition-id: p1_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p1_call:
+    post:
+      summary: "Player 1 calls"
+      operationId: p1Call
+      tags:
+        - transitions
+      x-transition-id: p1_call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p1_raise:
+    post:
+      summary: "Player 1 raises"
+      operationId: p1Raise
+      tags:
+        - transitions
+      x-transition-id: p1_raise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p2_fold:
+    post:
+      summary: "Player 2 folds"
+      operationId: p2Fold
+      tags:
+        - transitions
+      x-transition-id: p2_fold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p2_check:
+    post:
+      summary: "Player 2 checks"
+      operationId: p2Check
+      tags:
+        - transitions
+      x-transition-id: p2_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p2_call:
+    post:
+      summary: "Player 2 calls"
+      operationId: p2Call
+      tags:
+        - transitions
+      x-transition-id: p2_call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p2_raise:
+    post:
+      summary: "Player 2 raises"
+      operationId: p2Raise
+      tags:
+        - transitions
+      x-transition-id: p2_raise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p3_fold:
+    post:
+      summary: "Player 3 folds"
+      operationId: p3Fold
+      tags:
+        - transitions
+      x-transition-id: p3_fold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p3_check:
+    post:
+      summary: "Player 3 checks"
+      operationId: p3Check
+      tags:
+        - transitions
+      x-transition-id: p3_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p3_call:
+    post:
+      summary: "Player 3 calls"
+      operationId: p3Call
+      tags:
+        - transitions
+      x-transition-id: p3_call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p3_raise:
+    post:
+      summary: "Player 3 raises"
+      operationId: p3Raise
+      tags:
+        - transitions
+      x-transition-id: p3_raise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p4_fold:
+    post:
+      summary: "Player 4 folds"
+      operationId: p4Fold
+      tags:
+        - transitions
+      x-transition-id: p4_fold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p4_check:
+    post:
+      summary: "Player 4 checks"
+      operationId: p4Check
+      tags:
+        - transitions
+      x-transition-id: p4_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p4_call:
+    post:
+      summary: "Player 4 calls"
+      operationId: p4Call
+      tags:
+        - transitions
+      x-transition-id: p4_call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/p4_raise:
+    post:
+      summary: "Player 4 raises"
+      operationId: p4Raise
+      tags:
+        - transitions
+      x-transition-id: p4_raise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+components:
+  schemas:
+    TransitionRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    TransitionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
+    StateResponse:
+      type: object
+      properties:
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          $ref: "#/components/schemas/TexasHoldemState"
+        places:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Current Petri net marking
+        enabled_transitions:
+          type: array
+          items:
+            type: string
+          description: Transitions that can currently fire
+
+    TexasHoldemState:
+      type: object
+      description: Aggregate state for texas-holdem
+      properties:
+        waiting:
+          type: integer
+        preflop:
+          type: integer
+        flop:
+          type: integer
+        turn_round:
+          type: integer
+        river:
+          type: integer
+        showdown:
+          type: integer
+        complete:
+          type: integer
+        dealer_action:
+          type: integer
+        p0_turn:
+          type: integer
+        p1_turn:
+          type: integer
+        p2_turn:
+          type: integer
+        p3_turn:
+          type: integer
+        p4_turn:
+          type: integer
+        p0_active:
+          type: integer
+        p1_active:
+          type: integer
+        p2_active:
+          type: integer
+        p3_active:
+          type: integer
+        p4_active:
+          type: integer
+        p0_folded:
+          type: integer
+        p1_folded:
+          type: integer
+        p2_folded:
+          type: integer
+        p3_folded:
+          type: integer
+        p4_folded:
+          type: integer
+        p0_acted:
+          type: integer
+        p1_acted:
+          type: integer
+        p2_acted:
+          type: integer
+        p3_acted:
+          type: integer
+        p4_acted:
+          type: integer
+        round_open:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: system
+    description: System endpoints
+  - name: main
+    description: texas-holdem aggregate operations
+  - name: transitions
+    description: Petri net transition endpoints
