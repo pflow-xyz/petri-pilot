@@ -1252,9 +1252,31 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		if hasTrips {
 			bestHand = "Three of a Kind"
 		}
-		// Check for straight and flush in description
+		// Check for straight
+		hasStraight := false
+		rankOrder := "AKQJT98765432A"
+		for i := 0; i <= len(rankOrder)-5; i++ {
+			straightRanks := rankOrder[i : i+5]
+			hasAll := true
+			for _, r := range straightRanks {
+				if rankCounts[string(r)] == 0 {
+					hasAll = false
+					break
+				}
+			}
+			if hasAll {
+				hasStraight = true
+				break
+			}
+		}
+		if hasStraight {
+			bestHand = "Straight"
+		}
+		// Check for flush
+		hasFlush := false
 		for _, count := range suitCounts {
 			if count >= 5 {
+				hasFlush = true
 				bestHand = "Flush"
 			}
 		}
@@ -1265,6 +1287,10 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			if count >= 4 {
 				bestHand = "Four of a Kind"
 			}
+		}
+		// Straight flush
+		if hasStraight && hasFlush {
+			bestHand = "Straight Flush"
 		}
 
 		description = fmt.Sprintf("Poker Hand - Hole: %s, Board: %s → %s", holeStr, communityStr, bestHand)
