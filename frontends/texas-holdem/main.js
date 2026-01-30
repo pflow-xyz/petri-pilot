@@ -1044,25 +1044,95 @@ function toggleODEMode() {
 // ========================================================================
 
 /**
- * Start auto-play mode
+ * Start tournament mode - creates game, starts hand, and runs automatically
  */
 async function startAutoPlay() {
-  if (!gameState.id) {
-    showStatus('Please create a game first', 'error')
-    return
+  try {
+    // Create a new game if none exists
+    if (!gameState.id) {
+      showStatus('Creating tournament...', 'info')
+
+      const response = await fetch(`${getApiBase()}/api/texasholdem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to create game: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('Tournament game created:', data)
+
+      // Initialize game state
+      gameState.id = data.aggregate_id
+      gameState.version = data.version
+      gameState.places = data.state
+      gameState.enabled = data.enabled_transitions || []
+
+      // Reset local state
+      gameState.events = []
+      gameState.pot = 0
+      gameState.currentRound = 'waiting'
+      gameState.currentBet = 0
+      gameState.players.forEach(p => {
+        p.chips = 1000
+        p.cards = []
+        p.bet = 0
+        p.folded = false
+      })
+      gameState.communityCards = { flop: [], turn: [], river: [] }
+      gameState.blindLevel = 0
+      gameState.handsPlayed = 0
+      gameState.smallBlind = BLIND_SCHEDULE[0].small
+      gameState.bigBlind = BLIND_SCHEDULE[0].big
+    }
+
+    // Start the first hand if in waiting state
+    if (gameState.currentRound === 'waiting') {
+      showStatus('Starting first hand...', 'info')
+
+      const response = await fetch(`${getApiBase()}/api/start_hand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aggregate_id: gameState.id, data: {} })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to start hand: ${response.status}`)
+      }
+
+      const data = await response.json()
+      updateGameState(data)
+
+      // Post blinds and deal cards
+      postBlinds()
+      createDeck()
+      for (let i = 0; i < 5; i++) {
+        gameState.players[i].cards = dealCards(2)
+      }
+
+      renderPokerTable()
+      renderEventHistory()
+    }
+
+    autoPlayActive = true
+    document.getElementById('auto-play-btn').style.display = 'none'
+    document.getElementById('stop-play-btn').style.display = 'inline-block'
+    document.getElementById('speed-control').style.display = 'flex'
+    document.getElementById('action-buttons').style.display = 'none'
+    document.getElementById('start-hand-btn').style.display = 'none'
+
+    showStatus('🏆 Tournament started!', 'success')
+    console.log('Tournament started')
+
+    // Start the auto-play loop
+    autoPlayLoop()
+  } catch (err) {
+    console.error('Failed to start tournament:', err)
+    showStatus(`Error: ${err.message}`, 'error')
   }
-
-  autoPlayActive = true
-  document.getElementById('auto-play-btn').style.display = 'none'
-  document.getElementById('stop-play-btn').style.display = 'inline-block'
-  document.getElementById('speed-control').style.display = 'flex'
-  document.getElementById('action-buttons').style.display = 'none'
-
-  showStatus('🏆 Tournament started!', 'success')
-  console.log('Tournament started')
-
-  // Start the auto-play loop
-  autoPlayLoop()
 }
 
 /**
@@ -1073,6 +1143,8 @@ function stopAutoPlay() {
   document.getElementById('auto-play-btn').style.display = 'inline-block'
   document.getElementById('stop-play-btn').style.display = 'none'
   document.getElementById('speed-control').style.display = 'none'
+  document.getElementById('new-game-btn').style.display = 'inline-block'
+  document.getElementById('start-hand-btn').style.display = gameState.currentRound === 'waiting' ? 'inline-block' : 'none'
 
   showStatus('Tournament paused', 'info')
   console.log('Tournament paused')
