@@ -1231,12 +1231,10 @@ async function autoPlayLoop() {
 
     if (actionTaken) continue
 
-    // Try player actions - find any enabled player action
+    // Try player actions - use strategic decision making
     for (let p = 0; p < 5; p++) {
       const prefix = `p${p}_`
       const player = gameState.players[p]
-      const callAmount = Math.max(0, gameState.currentBet - player.bet)
-      const raiseAmount = gameState.bigBlind * 3
 
       // First check if this player is eliminated and should skip
       if (player.chips <= 0 || player.folded) {
@@ -1255,58 +1253,61 @@ async function autoPlayLoop() {
         }
       }
 
-      const actions = ['check', 'call', 'fold', 'raise']
+      // Check if this player has any action available
+      const hasAction = ['fold', 'check', 'call', 'raise'].some(a => enabledSet.has(`${prefix}${a}`))
+      if (!hasAction) continue
 
-      for (const act of actions) {
-        const transitionId = `${prefix}${act}`
-        if (enabledSet.has(transitionId)) {
-          try {
-            let betAmount = 0
-            let actionLabel = act
+      // Use strategic decision making based on hand strength
+      const decision = await simulatePlayerDecision(p)
+      if (!decision) continue
 
-            if (act === 'call' && callAmount > 0) {
-              betAmount = Math.min(callAmount, player.chips)
-              actionLabel = `calls $${betAmount}`
-            } else if (act === 'raise') {
-              betAmount = callAmount + raiseAmount
-              betAmount = Math.min(betAmount, player.chips)
-              actionLabel = `raises to $${player.bet + betAmount}`
-            } else if (act === 'fold') {
-              actionLabel = 'folds'
-            } else {
-              actionLabel = 'checks'
-            }
+      try {
+        const callAmount = Math.max(0, gameState.currentBet - player.bet)
+        const raiseAmount = gameState.bigBlind * 3
+        let betAmount = 0
+        let actionLabel = decision.type
 
-            showStatus(`Player ${p}: ${actionLabel}`, 'info')
-            await executeTransition(transitionId, act === 'raise' ? { amount: raiseAmount } : {})
+        if (decision.type === 'call' && callAmount > 0) {
+          betAmount = Math.min(callAmount, player.chips)
+          actionLabel = `calls $${betAmount}`
+        } else if (decision.type === 'raise') {
+          betAmount = callAmount + raiseAmount
+          betAmount = Math.min(betAmount, player.chips)
+          actionLabel = `raises to $${player.bet + betAmount}`
+        } else if (decision.type === 'fold') {
+          actionLabel = 'folds'
+          player.folded = true
+        } else {
+          actionLabel = 'checks'
+        }
 
-            // Update player's bet and chips
-            if (betAmount > 0) {
-              player.chips -= betAmount
-              player.bet += betAmount
-              gameState.pot += betAmount
-              if (act === 'raise') {
-                gameState.currentBet = player.bet
-              }
-            }
+        showStatus(`Player ${p}: ${actionLabel}`, 'info')
+        await executeTransition(decision.id, decision.type === 'raise' ? { amount: raiseAmount } : {})
 
-            actionTaken = true
-            consecutiveFailures = 0
-
-            // Add to event history
-            gameState.events.push({
-              type: `Player ${p} ${actionLabel}`,
-              timestamp: new Date().toISOString()
-            })
-            renderEventHistory()
-            renderPokerTable()
-            break
-          } catch (err) {
-            console.log(`${transitionId} failed:`, err)
+        // Update player's bet and chips
+        if (betAmount > 0) {
+          player.chips -= betAmount
+          player.bet += betAmount
+          gameState.pot += betAmount
+          if (decision.type === 'raise') {
+            gameState.currentBet = player.bet
           }
         }
+
+        actionTaken = true
+        consecutiveFailures = 0
+
+        // Add to event history
+        gameState.events.push({
+          type: `Player ${p} ${actionLabel}`,
+          timestamp: new Date().toISOString()
+        })
+        renderEventHistory()
+        renderPokerTable()
+        break
+      } catch (err) {
+        console.log(`${decision.id} failed:`, err)
       }
-      if (actionTaken) break
     }
 
     if (actionTaken) continue
@@ -1575,12 +1576,11 @@ async function simulatePlayerDecision(playerIndex) {
     return null
   }
 
-  // Simulate hand strength for this player (random for opponents)
-  const handStrength = playerIndex === 0
-    ? evaluateHandStrength(gameState.players[0].cards, gameState.communityCards)
-    : Math.random() // Random strength for AI players
+  // Evaluate hand strength using actual dealt cards
+  const playerCards = gameState.players[playerIndex].cards
+  const handStrength = evaluateHandStrength(playerCards, gameState.communityCards)
 
-  console.log(`Player ${playerIndex} hand strength: ${handStrength.toFixed(2)}, callAmount: $${callAmount}`)
+  console.log(`Player ${playerIndex} cards: ${playerCards.join(', ')}, strength: ${handStrength.toFixed(2)}, callAmount: $${callAmount}`)
 
   // Strategy considering pot odds and hand strength:
   // - Strong hand (>0.7): Raise
@@ -1686,46 +1686,113 @@ function awardPotToWinner() {
 }
 
 /**
- * Evaluate hand strength (simplified)
+ * Evaluate hand strength (simplified but considers community cards)
  * Returns a value between 0 and 1
  */
 function evaluateHandStrength(holeCards, communityCards) {
   if (!holeCards || holeCards.length < 2) return 0.5
 
   // Parse hole cards
-  const cards = holeCards.map(parseCard)
+  const holeCardsParsed = holeCards.map(parseCard)
 
-  // Simple evaluation based on hole cards only
-  const ranks = cards.map(c => c.rank)
-  const suits = cards.map(c => c.suit)
+  // Combine with community cards
+  const allCommunity = [
+    ...(communityCards.flop || []),
+    ...(communityCards.turn || []),
+    ...(communityCards.river || [])
+  ].map(parseCard)
 
-  let strength = 0.3 // Base strength
+  const allCards = [...holeCardsParsed, ...allCommunity]
+  const allRanks = allCards.map(c => c.rank)
+  const allSuits = allCards.map(c => c.suit)
+  const allValues = allRanks.map(r => '23456789TJQKA'.indexOf(r))
 
-  // High cards bonus
-  const highCardBonus = ranks.reduce((sum, rank) => {
-    const value = '23456789TJQKA'.indexOf(rank)
-    return sum + (value / 13) * 0.1
-  }, 0)
+  // Hole card specific analysis
+  const holeRanks = holeCardsParsed.map(c => c.rank)
+  const holeSuits = holeCardsParsed.map(c => c.suit)
+  const holeValues = holeRanks.map(r => '23456789TJQKA'.indexOf(r))
+
+  let strength = 0.2 // Base strength
+
+  // High cards bonus (hole cards)
+  const highCardBonus = holeValues.reduce((sum, v) => sum + (v / 13) * 0.08, 0)
   strength += highCardBonus
 
-  // Pair bonus
-  if (ranks[0] === ranks[1]) {
-    strength += 0.3
+  // Pocket pair bonus
+  if (holeRanks[0] === holeRanks[1]) {
+    const pairValue = holeValues[0]
+    strength += 0.25 + (pairValue / 13) * 0.15 // Higher pairs are better
   }
 
-  // Suited bonus
-  if (suits[0] === suits[1]) {
-    strength += 0.1
+  // Suited hole cards bonus
+  if (holeSuits[0] === holeSuits[1]) {
+    strength += 0.08
   }
 
-  // Connected cards bonus
-  const values = ranks.map(r => '23456789TJQKA'.indexOf(r))
-  if (Math.abs(values[0] - values[1]) === 1) {
+  // Connected hole cards bonus
+  if (Math.abs(holeValues[0] - holeValues[1]) === 1) {
     strength += 0.05
   }
 
-  // Add some randomness to make it interesting
-  strength += (Math.random() - 0.5) * 0.2
+  // Community card analysis (if available)
+  if (allCommunity.length > 0) {
+    // Check for pairs with community cards
+    for (const holeRank of holeRanks) {
+      const communityMatches = allCommunity.filter(c => c.rank === holeRank).length
+      if (communityMatches > 0) {
+        strength += 0.15 * communityMatches // Pair or trips with board
+      }
+    }
+
+    // Check for flush draws/made flushes
+    const suitCounts = {}
+    for (const suit of allSuits) {
+      suitCounts[suit] = (suitCounts[suit] || 0) + 1
+    }
+    const maxSuitCount = Math.max(...Object.values(suitCounts))
+    if (maxSuitCount >= 5) {
+      strength += 0.35 // Made flush
+    } else if (maxSuitCount === 4 && holeSuits[0] === holeSuits[1]) {
+      strength += 0.12 // Flush draw with suited hole cards
+    }
+
+    // Check for straight potential
+    const uniqueValues = [...new Set(allValues)].sort((a, b) => a - b)
+    let maxConsecutive = 1
+    let consecutive = 1
+    for (let i = 1; i < uniqueValues.length; i++) {
+      if (uniqueValues[i] === uniqueValues[i - 1] + 1) {
+        consecutive++
+        maxConsecutive = Math.max(maxConsecutive, consecutive)
+      } else {
+        consecutive = 1
+      }
+    }
+    if (maxConsecutive >= 5) {
+      strength += 0.3 // Made straight
+    } else if (maxConsecutive === 4) {
+      strength += 0.1 // Straight draw
+    }
+
+    // Check for full house / quads
+    const rankCounts = {}
+    for (const rank of allRanks) {
+      rankCounts[rank] = (rankCounts[rank] || 0) + 1
+    }
+    const counts = Object.values(rankCounts).sort((a, b) => b - a)
+    if (counts[0] >= 4) {
+      strength += 0.45 // Four of a kind
+    } else if (counts[0] >= 3 && counts[1] >= 2) {
+      strength += 0.4 // Full house
+    } else if (counts[0] >= 3) {
+      strength += 0.25 // Three of a kind
+    } else if (counts[0] >= 2 && counts[1] >= 2) {
+      strength += 0.18 // Two pair
+    }
+  }
+
+  // Add small randomness to prevent predictability
+  strength += (Math.random() - 0.5) * 0.08
 
   return Math.max(0, Math.min(1, strength))
 }
