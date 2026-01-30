@@ -574,11 +574,19 @@ func runHTTPService(svc Service, port int, opts Options) error {
 	return nil
 }
 
-// createGeneratedFrontendHandler creates a handler that serves only the generated frontend.
-// API calls should go to the main service URL (without /app/ prefix), not through the dash.
-func createGeneratedFrontendHandler(spaHandler, _ http.Handler) http.Handler {
-	// Dash only serves the frontend - no API proxying
-	return spaHandler
+// createGeneratedFrontendHandler creates a handler that combines frontend and API routing.
+// API calls (paths starting with /api/) are routed to the service handler.
+// All other requests are served by the SPA handler.
+func createGeneratedFrontendHandler(spaHandler, serviceHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Route API calls to the service handler
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			serviceHandler.ServeHTTP(w, r)
+			return
+		}
+		// Everything else goes to the SPA handler
+		spaHandler.ServeHTTP(w, r)
+	})
 }
 
 // createSPAHandler creates an HTTP handler for serving a single-page application.
