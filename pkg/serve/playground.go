@@ -1223,7 +1223,15 @@ func PflowHandler() http.HandlerFunc {
     }
 
     // Fetch the Petri net model and convert to pflow JSON-LD format
-    fetch('/' + encodeURIComponent(modelName) + '/api/schema')
+    // Pass through any additional query params (e.g., hole, community for hand-strength)
+    var extraParams = '';
+    var hole = params.get('hole');
+    var community = params.get('community');
+    if (hole) extraParams += '&hole=' + encodeURIComponent(hole);
+    if (community) extraParams += '&community=' + encodeURIComponent(community);
+    if (extraParams) extraParams = '?' + extraParams.substring(1);
+
+    fetch('/' + encodeURIComponent(modelName) + '/api/schema' + extraParams)
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();

@@ -146,10 +146,46 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('speed-slider').addEventListener('input', updateSpeed)
   document.getElementById('toggle-heatmap-btn').addEventListener('click', toggleHeatmap)
   document.getElementById('toggle-ode-btn').addEventListener('click', toggleODEMode)
+  document.getElementById('view-petri-btn').addEventListener('click', viewPetriNetModel)
 
   // Render initial state
   renderPokerTable()
 })
+
+/**
+ * Open the hand strength Petri net model in /pflow viewer
+ */
+function viewPetriNetModel() {
+  // Get current player's cards
+  const playerCards = gameState.players[0].cards
+  if (!playerCards || playerCards.length < 2) {
+    showStatus('No cards to analyze yet', 'warning')
+    return
+  }
+
+  // Format hole cards
+  const holeStr = playerCards.join(',')
+
+  // Format community cards
+  const community = [
+    ...(gameState.communityCards.flop || []),
+    ...(gameState.communityCards.turn || []),
+    ...(gameState.communityCards.river || [])
+  ]
+  const communityStr = community.length > 0 ? community.join(',') : ''
+
+  // Build URL
+  let url = `/pflow?model=hand-strength`
+  if (holeStr) {
+    url += `&hole=${encodeURIComponent(holeStr)}`
+  }
+  if (communityStr) {
+    url += `&community=${encodeURIComponent(communityStr)}`
+  }
+
+  // Open in new tab
+  window.open(url, '_blank')
+}
 
 // ========================================================================
 // API Integration
@@ -1309,6 +1345,13 @@ function renderEventHistory() {
  */
 function renderODEAnalysis() {
   const analysisEl = document.getElementById('ode-analysis')
+  const viewPetriBtn = document.getElementById('view-petri-btn')
+
+  // Show/hide the Petri net viewer button based on whether we have cards
+  const hasCards = gameState.players[0].cards && gameState.players[0].cards.length >= 2
+  if (viewPetriBtn) {
+    viewPetriBtn.style.display = hasCards ? 'block' : 'none'
+  }
 
   if (!odeValues || Object.keys(odeValues.values || {}).length === 0) {
     if (gameState.currentRound === 'waiting') {

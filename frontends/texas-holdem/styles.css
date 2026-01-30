@@ -678,6 +678,11 @@ body {
   color: white;
 }
 
+.btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
 /* Action Buttons with ODE Values */
 .action-buttons {
   margin-top: 2rem;
