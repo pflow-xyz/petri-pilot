@@ -3,5 +3,6 @@ package generated
 
 import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/coffeeshop"
+	_ "github.com/pflow-xyz/petri-pilot/generated/texasholdem"
 	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoe"
 )
