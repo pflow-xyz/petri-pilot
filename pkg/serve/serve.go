@@ -1005,11 +1005,12 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 
 	// === CARD PLACES (organized by rank for pattern detection) ===
 	// Each card has token=1 if in hand, 0 if not
+	// Layout: 4 columns (suits) x 13 rows (ranks)
 	for rankIdx, rank := range ranks {
 		for suitIdx, suit := range suits {
 			cardID := rank + suit
-			x := 50 + suitIdx*50
-			y := 100 + rankIdx*40
+			x := 50 + suitIdx*60
+			y := 50 + rankIdx*45
 
 			initial := 0
 			if inHand[cardID] {
@@ -1026,203 +1027,171 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	}
 
 	// === HAND STRENGTH OUTPUT PLACES ===
-	// These accumulate tokens when patterns are detected
 	handPlaces := []struct {
 		id       string
 		strength int
-		y        int
 	}{
-		{"high_card", 1, 100},
-		{"pair", 2, 140},
-		{"two_pair", 3, 180},
-		{"three_kind", 4, 220},
-		{"straight", 5, 260},
-		{"flush", 6, 300},
-		{"full_house", 7, 340},
-		{"four_kind", 8, 380},
-		{"straight_flush", 9, 420},
+		{"pair", 2},
+		{"three_kind", 4},
+		{"four_kind", 8},
+		{"flush", 6},
+		{"straight", 5},
 	}
 
-	for _, hp := range handPlaces {
+	for i, hp := range handPlaces {
 		places = append(places, map[string]interface{}{
 			"id":      hp.id,
 			"initial": 0,
-			"x":       450,
-			"y":       hp.y,
+			"x":       750,
+			"y":       100 + i*120,
 		})
 	}
 
-	// Final hand strength place
-	places = append(places, map[string]interface{}{
-		"id":      "hand_strength",
-		"initial": 0,
-		"x":       550,
-		"y":       260,
-	})
-
-	// === PATTERN DETECTION TRANSITIONS ===
-
-	// Pair detection for each rank (need 2+ of same rank)
+	// === PAIR DETECTION TRANSITIONS (13 - one per rank) ===
+	// Each transition requires 2 cards of the same rank
 	for rankIdx, rank := range ranks {
-		count := rankCounts[rank]
-		if count >= 2 {
-			transID := fmt.Sprintf("detect_pair_%s", rank)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    300,
-				"y":    100 + rankIdx*40,
-				"rate": 2.0, // Pair value
-			})
+		transID := fmt.Sprintf("pair_%s", rank)
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  350,
+			"y":  50 + rankIdx*45,
+		})
 
-			// Arcs from cards to transition (read arcs - don't consume)
+		// Arcs from all 4 cards of this rank to the pair detector
+		// Weight 2 means need 2 tokens (cards) to fire
+		for _, suit := range suits {
+			cardID := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			arcs = append(arcs, map[string]interface{}{
+				"from": cardID,
+				"to":   transID,
+			})
+		}
+		// Output arc to pair place
+		arcs = append(arcs, map[string]interface{}{
+			"from": transID,
+			"to":   "pair",
+		})
+	}
+
+	// === THREE OF A KIND DETECTION (13 transitions) ===
+	for rankIdx, rank := range ranks {
+		transID := fmt.Sprintf("trips_%s", rank)
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  420,
+			"y":  50 + rankIdx*45,
+		})
+
+		for _, suit := range suits {
+			cardID := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			arcs = append(arcs, map[string]interface{}{
+				"from": cardID,
+				"to":   transID,
+			})
+		}
+		arcs = append(arcs, map[string]interface{}{
+			"from": transID,
+			"to":   "three_kind",
+		})
+	}
+
+	// === FOUR OF A KIND DETECTION (13 transitions) ===
+	for rankIdx, rank := range ranks {
+		transID := fmt.Sprintf("quads_%s", rank)
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  490,
+			"y":  50 + rankIdx*45,
+		})
+
+		for _, suit := range suits {
+			cardID := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			arcs = append(arcs, map[string]interface{}{
+				"from": cardID,
+				"to":   transID,
+			})
+		}
+		arcs = append(arcs, map[string]interface{}{
+			"from": transID,
+			"to":   "four_kind",
+		})
+	}
+
+	// === FLUSH DETECTION (4 transitions - one per suit) ===
+	// Each transition is connected to all 13 cards of that suit
+	suitNames := map[string]string{"h": "hearts", "d": "diamonds", "c": "clubs", "s": "spades"}
+	for suitIdx, suit := range suits {
+		transID := fmt.Sprintf("flush_%s", suitNames[suit])
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  560,
+			"y":  50 + suitIdx*150,
+		})
+
+		// Connect all 13 cards of this suit
+		for _, rank := range ranks {
+			cardID := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			arcs = append(arcs, map[string]interface{}{
+				"from": cardID,
+				"to":   transID,
+			})
+		}
+		arcs = append(arcs, map[string]interface{}{
+			"from": transID,
+			"to":   "flush",
+		})
+	}
+
+	// === STRAIGHT DETECTION (10 transitions - one per possible straight) ===
+	// A-high (Broadway) down to 5-high (Wheel)
+	straightNames := []struct {
+		name  string
+		ranks string
+	}{
+		{"straight_broadway", "AKQJT"},
+		{"straight_K_high", "KQJT9"},
+		{"straight_Q_high", "QJT98"},
+		{"straight_J_high", "JT987"},
+		{"straight_T_high", "T9876"},
+		{"straight_9_high", "98765"},
+		{"straight_8_high", "87654"},
+		{"straight_7_high", "76543"},
+		{"straight_6_high", "65432"},
+		{"straight_wheel", "5432A"},
+	}
+
+	for i, st := range straightNames {
+		transID := st.name
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  630,
+			"y":  50 + i*60,
+		})
+
+		// Connect one card of each rank in this straight (from any suit)
+		// We connect all suits for each rank to show the pattern
+		for _, r := range st.ranks {
+			rank := string(r)
 			for _, suit := range suits {
 				cardID := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
-				if inHand[rank+suit] {
-					arcs = append(arcs, map[string]interface{}{
-						"from":   cardID,
-						"to":     transID,
-						"weight": 1,
-					})
-				}
-			}
-			// Arc to pair output
-			arcs = append(arcs, map[string]interface{}{
-				"from":   transID,
-				"to":     "pair",
-				"weight": 1,
-			})
-		}
-
-		// Three of a kind detection
-		if count >= 3 {
-			transID := fmt.Sprintf("detect_trips_%s", rank)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    320,
-				"y":    100 + rankIdx*40,
-				"rate": 4.0, // Trips value
-			})
-			arcs = append(arcs, map[string]interface{}{
-				"from":   transID,
-				"to":     "three_kind",
-				"weight": 1,
-			})
-		}
-
-		// Four of a kind detection
-		if count >= 4 {
-			transID := fmt.Sprintf("detect_quads_%s", rank)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    340,
-				"y":    100 + rankIdx*40,
-				"rate": 8.0, // Quads value
-			})
-			arcs = append(arcs, map[string]interface{}{
-				"from":   transID,
-				"to":     "four_kind",
-				"weight": 1,
-			})
-		}
-	}
-
-	// Flush detection for each suit (need 5+ of same suit)
-	for suitIdx, suit := range suits {
-		count := suitCounts[suit]
-		if count >= 5 {
-			transID := fmt.Sprintf("detect_flush_%s", suit)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    360,
-				"y":    300 + suitIdx*30,
-				"rate": 6.0, // Flush value
-			})
-			arcs = append(arcs, map[string]interface{}{
-				"from":   transID,
-				"to":     "flush",
-				"weight": 1,
-			})
-		} else if count >= 4 {
-			// Flush draw
-			transID := fmt.Sprintf("flush_draw_%s", suit)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    360,
-				"y":    300 + suitIdx*30,
-				"rate": 1.8, // ~36% to complete
-			})
-		}
-	}
-
-	// Straight detection - check for 5 consecutive ranks
-	rankOrder := "AKQJT98765432A" // A can be high or low
-	for i := 0; i <= len(rankOrder)-5; i++ {
-		straightRanks := rankOrder[i : i+5]
-		hasAll := true
-		for _, r := range straightRanks {
-			if rankCounts[string(r)] == 0 {
-				hasAll = false
-				break
+				arcs = append(arcs, map[string]interface{}{
+					"from": cardID,
+					"to":   transID,
+				})
 			}
 		}
-		if hasAll {
-			transID := fmt.Sprintf("detect_straight_%d", i)
-			transitions = append(transitions, map[string]interface{}{
-				"id":   transID,
-				"x":    380,
-				"y":    260,
-				"rate": 5.0, // Straight value
-			})
-			arcs = append(arcs, map[string]interface{}{
-				"from":   transID,
-				"to":     "straight",
-				"weight": 1,
-			})
-			break // Only need one straight
-		}
-	}
-
-	// Compute aggregate transition
-	transitions = append(transitions, map[string]interface{}{
-		"id":   "compute_total",
-		"x":    500,
-		"y":    260,
-		"rate": 1.0,
-	})
-
-	// Arcs from hand type places to compute_total
-	for _, hp := range handPlaces {
 		arcs = append(arcs, map[string]interface{}{
-			"from":   hp.id,
-			"to":     "compute_total",
-			"weight": hp.strength,
+			"from": transID,
+			"to":   "straight",
 		})
 	}
-	arcs = append(arcs, map[string]interface{}{
-		"from":   "compute_total",
-		"to":     "hand_strength",
-		"weight": 1,
-	})
 
-	// Count pairs for two-pair detection
+	// Count pairs for description
 	pairCount := 0
 	for _, count := range rankCounts {
 		if count >= 2 {
 			pairCount++
 		}
-	}
-	if pairCount >= 2 {
-		transitions = append(transitions, map[string]interface{}{
-			"id":   "detect_two_pair",
-			"x":    300,
-			"y":    180,
-			"rate": 3.0,
-		})
-		arcs = append(arcs, map[string]interface{}{
-			"from":   "detect_two_pair",
-			"to":     "two_pair",
-			"weight": 1,
-		})
 	}
 
 	// Full house detection (trips + pair)
@@ -1233,20 +1202,6 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			break
 		}
 	}
-	if hasTrips && pairCount >= 2 { // trips + another pair
-		transitions = append(transitions, map[string]interface{}{
-			"id":   "detect_full_house",
-			"x":    300,
-			"y":    340,
-			"rate": 7.0,
-		})
-		arcs = append(arcs, map[string]interface{}{
-			"from":   "detect_full_house",
-			"to":     "full_house",
-			"weight": 1,
-		})
-	}
-
 	description := "Poker Hand Evaluator"
 	if holeStr != "" || communityStr != "" {
 		// Determine best hand
