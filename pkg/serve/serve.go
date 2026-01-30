@@ -515,13 +515,6 @@ func runHTTPService(svc Service, port int, opts Options) error {
 			mux.Handle("/shared/", http.StripPrefix("/shared/", http.FileServer(http.Dir(sharedPath))))
 		}
 
-		// Serve custom frontends from frontends/ directory
-		frontendsPath := "frontends"
-		if _, err := os.Stat(frontendsPath); err == nil {
-			mux.Handle("/frontends/", http.StripPrefix("/frontends/", http.FileServer(http.Dir(frontendsPath))))
-			log.Printf("  Serving custom frontends from /frontends/")
-		}
-
 		genPrefix := "/app/" + name
 		spaHandler := createSPAHandler(generatedPath)
 		genHandler := createGeneratedFrontendHandler(spaHandler, handler)
