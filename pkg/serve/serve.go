@@ -1165,8 +1165,152 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		})
 	}
 
-	// Note: Flush and straight detection omitted - would require thousands of transitions
-	// (C(13,5) × 4 = 5148 flush transitions, straights even more complex)
+	// === STRAIGHT FLUSH DETECTION (40 total: 10 straights × 4 suits) ===
+	// Specific 5-card sequences in the same suit
+	straightStarts := []string{"A", "K", "Q", "J", "T", "9", "8", "7", "6", "5"} // A-high through 5-high (wheel)
+	straightRanks := map[string][]string{
+		"A": {"A", "K", "Q", "J", "T"}, // Royal/Broadway
+		"K": {"K", "Q", "J", "T", "9"},
+		"Q": {"Q", "J", "T", "9", "8"},
+		"J": {"J", "T", "9", "8", "7"},
+		"T": {"T", "9", "8", "7", "6"},
+		"9": {"9", "8", "7", "6", "5"},
+		"8": {"8", "7", "6", "5", "4"},
+		"7": {"7", "6", "5", "4", "3"},
+		"6": {"6", "5", "4", "3", "2"},
+		"5": {"5", "4", "3", "2", "A"}, // Wheel (A plays low)
+	}
+	for startIdx, start := range straightStarts {
+		for suitIdx, suit := range suits {
+			transID := fmt.Sprintf("sf_%s_%s", start, suit)
+			transitions = append(transitions, map[string]interface{}{
+				"id": transID,
+				"x":  600 + suitIdx*80,
+				"y":  1400 + startIdx*60,
+			})
+			// Input arcs from all 5 cards in the straight flush
+			for _, rank := range straightRanks[start] {
+				arcs = append(arcs, map[string]interface{}{
+					"from": fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
+					"to":   transID,
+				})
+			}
+			// Output arc to straight_flush place
+			arcs = append(arcs, map[string]interface{}{
+				"from": transID,
+				"to":   "straight_flush",
+			})
+		}
+	}
+
+	// === FLUSH DETECTION (simplified - 4 suits × representative combinations) ===
+	// Full detection would need C(13,5)=1287 per suit, so we detect common flush patterns
+	// For demonstration, detect when the 5 highest cards of a suit are present
+	flushPatterns := [][]string{
+		{"A", "K", "Q", "J", "T"}, // Ace-high flush
+		{"A", "K", "Q", "J", "9"}, // Ace-high flush variant
+		{"K", "Q", "J", "T", "9"}, // King-high flush
+		{"Q", "J", "T", "9", "8"}, // Queen-high flush
+		{"J", "T", "9", "8", "7"}, // Jack-high flush
+		{"T", "9", "8", "7", "6"}, // Ten-high flush
+		{"9", "8", "7", "6", "5"}, // Nine-high flush
+		{"8", "7", "6", "5", "4"}, // Eight-high flush
+		{"7", "6", "5", "4", "3"}, // Seven-high flush
+		{"6", "5", "4", "3", "2"}, // Six-high flush
+	}
+	for patIdx, pattern := range flushPatterns {
+		for suitIdx, suit := range suits {
+			transID := fmt.Sprintf("flush_%d_%s", patIdx, suit)
+			transitions = append(transitions, map[string]interface{}{
+				"id": transID,
+				"x":  1000 + suitIdx*80,
+				"y":  1400 + patIdx*60,
+			})
+			// Input arcs from the 5 cards
+			for _, rank := range pattern {
+				arcs = append(arcs, map[string]interface{}{
+					"from": fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
+					"to":   transID,
+				})
+			}
+			// Output arc to flush place
+			arcs = append(arcs, map[string]interface{}{
+				"from": transID,
+				"to":   "flush",
+			})
+		}
+	}
+
+	// === STRAIGHT DETECTION (10 straights × 4^5 suit combinations is too many) ===
+	// Simplified: detect straights using a single suit combination per straight
+	// This demonstrates the pattern - full detection would need 10,240 transitions
+	for startIdx, start := range straightStarts {
+		// Use hearts for demonstration (one transition per straight pattern)
+		transID := fmt.Sprintf("straight_%s", start)
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  1400,
+			"y":  1400 + startIdx*60,
+		})
+		// Input arcs - one card per rank, cycling through suits
+		for i, rank := range straightRanks[start] {
+			suit := suits[i%4]
+			arcs = append(arcs, map[string]interface{}{
+				"from": fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
+				"to":   transID,
+			})
+		}
+		// Output arc to straight place
+		arcs = append(arcs, map[string]interface{}{
+			"from": transID,
+			"to":   "straight",
+		})
+	}
+
+	// === TWO PAIR DETECTION (using pair output) ===
+	// Add an intermediate place that collects pair detections
+	places = append(places, map[string]interface{}{
+		"id":      "pair_count",
+		"initial": 0,
+		"x":       1450,
+		"y":       50,
+	})
+	// Modify pair transitions to also output to pair_count (already done via pair place)
+	// Two pair fires when pair_count has 2 tokens
+	transitions = append(transitions, map[string]interface{}{
+		"id": "detect_two_pair",
+		"x":  1500,
+		"y":  200,
+	})
+	arcs = append(arcs, map[string]interface{}{
+		"from":   "pair",
+		"to":     "detect_two_pair",
+		"weight": 2,
+	})
+	arcs = append(arcs, map[string]interface{}{
+		"from": "detect_two_pair",
+		"to":   "two_pair",
+	})
+
+	// === FULL HOUSE DETECTION (trips + pair) ===
+	transitions = append(transitions, map[string]interface{}{
+		"id": "detect_full_house",
+		"x":  1500,
+		"y":  600,
+	})
+	arcs = append(arcs, map[string]interface{}{
+		"from": "three_kind",
+		"to":   "detect_full_house",
+	})
+	arcs = append(arcs, map[string]interface{}{
+		"from": "pair",
+		"to":   "detect_full_house",
+	})
+	arcs = append(arcs, map[string]interface{}{
+		"from": "detect_full_house",
+		"to":   "full_house",
+	})
+
 	_ = suitCounts // Used for description
 
 	// Count pairs for description
