@@ -9,6 +9,21 @@ function getApiBase() {
   return window.API_BASE || ''
 }
 
+// Blind schedule - increases every N hands
+const BLIND_SCHEDULE = [
+  { small: 10, big: 20 },
+  { small: 15, big: 30 },
+  { small: 25, big: 50 },
+  { small: 50, big: 100 },
+  { small: 75, big: 150 },
+  { small: 100, big: 200 },
+  { small: 150, big: 300 },
+  { small: 200, big: 400 },
+  { small: 300, big: 600 },
+  { small: 500, big: 1000 }
+]
+const HANDS_PER_BLIND_LEVEL = 5
+
 // Game state
 let gameState = {
   id: null,
@@ -27,7 +42,13 @@ let gameState = {
   pot: 0,
   currentRound: 'waiting',
   dealer: 0,
-  currentPlayer: 0
+  currentPlayer: 0,
+  // Blind tracking
+  blindLevel: 0,
+  handsPlayed: 0,
+  smallBlind: 10,
+  bigBlind: 20,
+  currentBet: 0  // The current bet to call
 }
 
 // ODE simulation results cache
@@ -97,6 +118,7 @@ async function createNewGame() {
     gameState.events = []
     gameState.pot = 0
     gameState.currentRound = 'waiting'
+    gameState.currentBet = 0
     gameState.players.forEach(p => {
       p.chips = 1000
       p.cards = []
@@ -104,6 +126,12 @@ async function createNewGame() {
       p.folded = false
     })
     gameState.communityCards = { flop: [], turn: [], river: [] }
+
+    // Reset blinds for new game
+    gameState.blindLevel = 0
+    gameState.handsPlayed = 0
+    gameState.smallBlind = BLIND_SCHEDULE[0].small
+    gameState.bigBlind = BLIND_SCHEDULE[0].big
     
     showStatus('Game created! Click "Start Hand" to begin.', 'success')
     document.getElementById('start-hand-btn').style.display = 'inline-block'
@@ -155,12 +183,80 @@ async function startHand() {
 }
 
 /**
+ * Post blinds at the start of a hand
+ */
+function postBlinds() {
+  // Small blind is player after dealer, big blind is next
+  const sbPosition = (gameState.dealer + 1) % 5
+  const bbPosition = (gameState.dealer + 2) % 5
+
+  // Find active players for blind positions
+  let sbPlayer = sbPosition
+  let bbPlayer = bbPosition
+
+  // Post small blind
+  const sbAmount = Math.min(gameState.smallBlind, gameState.players[sbPlayer].chips)
+  gameState.players[sbPlayer].chips -= sbAmount
+  gameState.players[sbPlayer].bet = sbAmount
+  gameState.pot += sbAmount
+
+  // Post big blind
+  const bbAmount = Math.min(gameState.bigBlind, gameState.players[bbPlayer].chips)
+  gameState.players[bbPlayer].chips -= bbAmount
+  gameState.players[bbPlayer].bet = bbAmount
+  gameState.pot += bbAmount
+
+  // Set current bet to big blind
+  gameState.currentBet = gameState.bigBlind
+
+  // Log blinds
+  gameState.events.push({
+    type: `${gameState.players[sbPlayer].name} posts SB $${sbAmount}`,
+    timestamp: new Date().toISOString()
+  })
+  gameState.events.push({
+    type: `${gameState.players[bbPlayer].name} posts BB $${bbAmount}`,
+    timestamp: new Date().toISOString()
+  })
+
+  console.log(`Blinds posted: SB=$${sbAmount} (P${sbPlayer}), BB=$${bbAmount} (P${bbPlayer})`)
+}
+
+/**
+ * Update blind level based on hands played
+ */
+function updateBlindLevel() {
+  gameState.handsPlayed++
+  const newLevel = Math.min(
+    Math.floor(gameState.handsPlayed / HANDS_PER_BLIND_LEVEL),
+    BLIND_SCHEDULE.length - 1
+  )
+
+  if (newLevel > gameState.blindLevel) {
+    gameState.blindLevel = newLevel
+    gameState.smallBlind = BLIND_SCHEDULE[newLevel].small
+    gameState.bigBlind = BLIND_SCHEDULE[newLevel].big
+
+    showStatus(`Blinds increased! SB: $${gameState.smallBlind}, BB: $${gameState.bigBlind}`, 'info')
+    gameState.events.push({
+      type: `Blinds increased to $${gameState.smallBlind}/$${gameState.bigBlind}`,
+      timestamp: new Date().toISOString()
+    })
+  }
+}
+
+/**
  * Deal preflop cards
  */
 async function dealPreflop() {
   try {
     await executeTransition('deal_preflop', {})
-    showStatus('Preflop dealt - Click Auto-Play or choose an action', 'success')
+
+    // Update blind level and post blinds
+    updateBlindLevel()
+    postBlinds()
+
+    showStatus(`Preflop - Blinds: $${gameState.smallBlind}/$${gameState.bigBlind}`, 'success')
 
     // Simulate dealing cards to players (in real game, this comes from backend)
     gameState.players[0].cards = ['Ah', 'Kh']
@@ -169,6 +265,7 @@ async function dealPreflop() {
     document.getElementById('auto-play-btn').style.display = 'inline-block'
 
     renderPokerTable()
+    renderEventHistory()
 
     // Run ODE analysis
     await runODESimulation()
@@ -466,9 +563,10 @@ function getAvailableActions() {
  * Render the poker table
  */
 function renderPokerTable() {
-  // Update pot
-  document.getElementById('pot-display').textContent = `Pot: $${gameState.pot}`
-  
+  // Update pot with blinds info
+  const blindsInfo = `Blinds: $${gameState.smallBlind}/$${gameState.bigBlind}`
+  document.getElementById('pot-display').innerHTML = `Pot: $${gameState.pot}<br><small>${blindsInfo}</small>`
+
   // Update round indicator
   document.getElementById('round-indicator').textContent = gameState.currentRound.toUpperCase()
   
@@ -608,8 +706,11 @@ function renderGameState() {
     <p><strong>Game ID:</strong> ${gameState.id.slice(0, 8)}...</p>
     <p><strong>Round:</strong> ${gameState.currentRound}</p>
     <p><strong>Pot:</strong> $${gameState.pot}</p>
+    <p><strong>Blinds:</strong> $${gameState.smallBlind}/$${gameState.bigBlind} (Level ${gameState.blindLevel + 1})</p>
+    <p><strong>Current Bet:</strong> $${gameState.currentBet}</p>
     <p><strong>Current Player:</strong> Player ${gameState.currentPlayer}</p>
     <p><strong>Active Players:</strong> ${gameState.players.filter(p => !p.folded).length}</p>
+    <p><strong>Hands Played:</strong> ${gameState.handsPlayed}</p>
   `
 }
 
@@ -833,23 +934,55 @@ async function autoPlayLoop() {
     // Try player actions - find any enabled player action
     for (let p = 0; p < 5; p++) {
       const prefix = `p${p}_`
+      const player = gameState.players[p]
+      const callAmount = Math.max(0, gameState.currentBet - player.bet)
+      const raiseAmount = gameState.bigBlind * 3
+
       const actions = ['check', 'call', 'fold', 'raise']
 
       for (const act of actions) {
         const transitionId = `${prefix}${act}`
         if (enabledSet.has(transitionId)) {
           try {
-            showStatus(`Player ${p}: ${act}`, 'info')
-            await executeTransition(transitionId, act === 'raise' ? { amount: 50 } : {})
+            let betAmount = 0
+            let actionLabel = act
+
+            if (act === 'call' && callAmount > 0) {
+              betAmount = Math.min(callAmount, player.chips)
+              actionLabel = `calls $${betAmount}`
+            } else if (act === 'raise') {
+              betAmount = callAmount + raiseAmount
+              betAmount = Math.min(betAmount, player.chips)
+              actionLabel = `raises to $${player.bet + betAmount}`
+            } else if (act === 'fold') {
+              actionLabel = 'folds'
+            } else {
+              actionLabel = 'checks'
+            }
+
+            showStatus(`Player ${p}: ${actionLabel}`, 'info')
+            await executeTransition(transitionId, act === 'raise' ? { amount: raiseAmount } : {})
+
+            // Update player's bet and chips
+            if (betAmount > 0) {
+              player.chips -= betAmount
+              player.bet += betAmount
+              gameState.pot += betAmount
+              if (act === 'raise') {
+                gameState.currentBet = player.bet
+              }
+            }
+
             actionTaken = true
             consecutiveFailures = 0
 
             // Add to event history
             gameState.events.push({
-              type: `Player ${p} ${act}s`,
+              type: `Player ${p} ${actionLabel}`,
               timestamp: new Date().toISOString()
             })
             renderEventHistory()
+            renderPokerTable()
             break
           } catch (err) {
             console.log(`${transitionId} failed:`, err)
@@ -969,6 +1102,14 @@ async function checkDealerAction() {
 async function simulatePlayerDecision(playerIndex) {
   const enabledSet = new Set(gameState.enabled || [])
   const prefix = `p${playerIndex}_`
+  const player = gameState.players[playerIndex]
+
+  // Calculate call amount (difference between current bet and player's bet)
+  const callAmount = Math.max(0, gameState.currentBet - player.bet)
+
+  // Raise amounts based on big blind
+  const minRaise = gameState.bigBlind * 2
+  const standardRaise = gameState.bigBlind * 3
 
   // Get available actions for this player
   const availableActions = []
@@ -976,14 +1117,14 @@ async function simulatePlayerDecision(playerIndex) {
   if (enabledSet.has(`${prefix}fold`)) {
     availableActions.push({ id: `${prefix}fold`, type: 'fold', label: 'Fold', amount: 0 })
   }
-  if (enabledSet.has(`${prefix}check`)) {
+  if (enabledSet.has(`${prefix}check`) && callAmount === 0) {
     availableActions.push({ id: `${prefix}check`, type: 'check', label: 'Check', amount: 0 })
   }
-  if (enabledSet.has(`${prefix}call`)) {
-    availableActions.push({ id: `${prefix}call`, type: 'call', label: 'Call', amount: 0 })
+  if (enabledSet.has(`${prefix}call`) && callAmount > 0 && player.chips >= callAmount) {
+    availableActions.push({ id: `${prefix}call`, type: 'call', label: `Call $${callAmount}`, amount: callAmount })
   }
-  if (enabledSet.has(`${prefix}raise`)) {
-    availableActions.push({ id: `${prefix}raise`, type: 'raise', label: 'Raise', amount: 50 })
+  if (enabledSet.has(`${prefix}raise`) && player.chips >= callAmount + minRaise) {
+    availableActions.push({ id: `${prefix}raise`, type: 'raise', label: `Raise $${standardRaise}`, amount: standardRaise })
   }
 
   if (availableActions.length === 0) {
@@ -996,12 +1137,12 @@ async function simulatePlayerDecision(playerIndex) {
     ? evaluateHandStrength(gameState.players[0].cards, gameState.communityCards)
     : Math.random() // Random strength for AI players
 
-  console.log(`Player ${playerIndex} hand strength: ${handStrength.toFixed(2)}`)
+  console.log(`Player ${playerIndex} hand strength: ${handStrength.toFixed(2)}, callAmount: $${callAmount}`)
 
-  // Simple strategy without bluffing:
+  // Strategy considering pot odds and hand strength:
   // - Strong hand (>0.7): Raise
-  // - Medium hand (0.4-0.7): Call/Check
-  // - Weak hand (<0.4): Check if free, otherwise fold
+  // - Medium hand (0.4-0.7): Call if reasonable, check if free
+  // - Weak hand (<0.4): Check if free, fold if facing a bet
 
   let chosenAction = null
 
@@ -1011,15 +1152,22 @@ async function simulatePlayerDecision(playerIndex) {
       || availableActions.find(a => a.type === 'call')
       || availableActions.find(a => a.type === 'check')
   } else if (handStrength > 0.4) {
-    // Medium hand - call or check
-    chosenAction = availableActions.find(a => a.type === 'check')
-      || availableActions.find(a => a.type === 'call')
-      || availableActions.find(a => a.type === 'fold')
+    // Medium hand - call reasonable bets, check if free
+    if (callAmount === 0) {
+      chosenAction = availableActions.find(a => a.type === 'check')
+    } else if (callAmount <= player.chips * 0.2) {
+      // Call if it's less than 20% of stack
+      chosenAction = availableActions.find(a => a.type === 'call')
+    } else {
+      chosenAction = availableActions.find(a => a.type === 'fold')
+    }
   } else {
     // Weak hand - check if free, otherwise fold
-    chosenAction = availableActions.find(a => a.type === 'check')
-      || availableActions.find(a => a.type === 'fold')
-      || availableActions[0]
+    if (callAmount === 0) {
+      chosenAction = availableActions.find(a => a.type === 'check')
+    } else {
+      chosenAction = availableActions.find(a => a.type === 'fold')
+    }
   }
 
   return chosenAction || availableActions[0]
