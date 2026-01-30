@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('toggle-heatmap-btn').addEventListener('click', toggleHeatmap)
   document.getElementById('toggle-ode-btn').addEventListener('click', toggleODEMode)
   document.getElementById('view-petri-btn').addEventListener('click', viewPetriNetModel)
+  document.getElementById('view-deck-btn').addEventListener('click', viewDeckTracker)
 
   // Render initial state
   renderPokerTable()
@@ -176,6 +177,41 @@ function viewPetriNetModel() {
 
   // Build URL
   let url = `/pflow?model=hand-strength`
+  if (holeStr) {
+    url += `&hole=${encodeURIComponent(holeStr)}`
+  }
+  if (communityStr) {
+    url += `&community=${encodeURIComponent(communityStr)}`
+  }
+
+  // Open in new tab
+  window.open(url, '_blank')
+}
+
+/**
+ * Open the deck tracker Petri net model in /pflow viewer
+ */
+function viewDeckTracker() {
+  // Get current player's cards
+  const playerCards = gameState.players[0].cards
+  if (!playerCards || playerCards.length < 2) {
+    showStatus('No cards to track yet', 'warning')
+    return
+  }
+
+  // Format hole cards
+  const holeStr = playerCards.join(',')
+
+  // Format community cards
+  const community = [
+    ...(gameState.communityCards.flop || []),
+    ...(gameState.communityCards.turn || []),
+    ...(gameState.communityCards.river || [])
+  ]
+  const communityStr = community.length > 0 ? community.join(',') : ''
+
+  // Build URL
+  let url = `/pflow?model=deck-tracker`
   if (holeStr) {
     url += `&hole=${encodeURIComponent(holeStr)}`
   }
@@ -1127,11 +1163,15 @@ function renderPokerTable() {
     }
   })
 
-  // Update View Petri Net Model button visibility
+  // Update analysis button visibility
+  const hasCards = gameState.players[0].cards && gameState.players[0].cards.length >= 2
   const viewPetriBtn = document.getElementById('view-petri-btn')
+  const viewDeckBtn = document.getElementById('view-deck-btn')
   if (viewPetriBtn) {
-    const hasCards = gameState.players[0].cards && gameState.players[0].cards.length >= 2
-    viewPetriBtn.style.display = hasCards ? 'block' : 'none'
+    viewPetriBtn.style.display = hasCards ? 'inline-block' : 'none'
+  }
+  if (viewDeckBtn) {
+    viewDeckBtn.style.display = hasCards ? 'inline-block' : 'none'
   }
 }
 
