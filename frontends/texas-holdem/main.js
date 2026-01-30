@@ -1058,8 +1058,8 @@ async function startAutoPlay() {
   document.getElementById('speed-control').style.display = 'flex'
   document.getElementById('action-buttons').style.display = 'none'
 
-  showStatus('Auto-play started!', 'success')
-  console.log('Auto-play started')
+  showStatus('🏆 Tournament started!', 'success')
+  console.log('Tournament started')
 
   // Start the auto-play loop
   autoPlayLoop()
@@ -1074,8 +1074,8 @@ function stopAutoPlay() {
   document.getElementById('stop-play-btn').style.display = 'none'
   document.getElementById('speed-control').style.display = 'none'
 
-  showStatus('Auto-play stopped', 'info')
-  console.log('Auto-play stopped')
+  showStatus('Tournament paused', 'info')
+  console.log('Tournament paused')
 
   // Re-render action buttons if it's player 0's turn
   renderActionButtons()
@@ -1270,10 +1270,30 @@ async function autoPlayLoop() {
 }
 
 /**
- * Start the next hand (used by auto-play for continuous play)
+ * Start the next hand (used by tournament for continuous play)
  */
 async function startNextHand() {
   try {
+    // First, refresh game state from server to get current enabled transitions
+    const stateResponse = await fetch(`${getApiBase()}/api/texasholdem/${gameState.id}`)
+    if (stateResponse.ok) {
+      const stateData = await stateResponse.json()
+      updateGameState(stateData)
+    }
+
+    // Check if start_hand is enabled
+    const enabledSet = new Set(gameState.enabled || [])
+    if (!enabledSet.has('start_hand')) {
+      console.log('start_hand not enabled, enabled:', gameState.enabled)
+      // Wait a bit and try again - the state might need to settle
+      await delay(500)
+      const retryResponse = await fetch(`${getApiBase()}/api/texasholdem/${gameState.id}`)
+      if (retryResponse.ok) {
+        const retryData = await retryResponse.json()
+        updateGameState(retryData)
+      }
+    }
+
     // Reset player states for new hand
     gameState.players.forEach(p => {
       p.cards = []
@@ -1293,10 +1313,12 @@ async function startNextHand() {
     const response = await fetch(`${getApiBase()}/api/start_hand`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aggregate_id: gameState.id })
+      body: JSON.stringify({ aggregate_id: gameState.id, data: {} })
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('start_hand failed:', response.status, errorText)
       throw new Error(`Failed to start hand: ${response.status}`)
     }
 
