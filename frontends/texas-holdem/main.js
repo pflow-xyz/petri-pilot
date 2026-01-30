@@ -438,8 +438,382 @@ function parseGameState() {
 }
 
 // ========================================================================
-// ODE Strategic Analysis
+// ODE Strategic Analysis - Hand Strength via Petri Net
 // ========================================================================
+
+// Hand rank values (higher = better)
+const HAND_RANKS = {
+  HIGH_CARD: 0,
+  PAIR: 1,
+  TWO_PAIR: 2,
+  THREE_OF_A_KIND: 3,
+  STRAIGHT: 4,
+  FLUSH: 5,
+  FULL_HOUSE: 6,
+  FOUR_OF_A_KIND: 7,
+  STRAIGHT_FLUSH: 8,
+  ROYAL_FLUSH: 9
+}
+
+/**
+ * Analyze draws for a hand
+ * Returns draw potential information for ODE model
+ */
+function analyzeDraws(holeCards, communityCards) {
+  const allCommunity = [
+    ...(communityCards.flop || []),
+    ...(communityCards.turn || []),
+    ...(communityCards.river || [])
+  ]
+
+  const allCards = [...holeCards, ...allCommunity].map(parseCard)
+  const holeCardsParsed = holeCards.map(parseCard)
+
+  // Count suits for flush draw detection
+  const suitCounts = { h: 0, d: 0, c: 0, s: 0 }
+  const holeSuits = { h: 0, d: 0, c: 0, s: 0 }
+
+  for (const card of allCards) {
+    suitCounts[card.suit]++
+  }
+  for (const card of holeCardsParsed) {
+    holeSuits[card.suit]++
+  }
+
+  // Flush draw detection
+  let flushDraw = 0
+  let flushMade = false
+  let flushSuit = null
+  for (const [suit, count] of Object.entries(suitCounts)) {
+    if (count >= 5) {
+      flushMade = true
+      flushSuit = suit
+    } else if (count === 4 && holeSuits[suit] >= 1) {
+      flushDraw = 9 // 9 outs for flush draw
+      flushSuit = suit
+    }
+  }
+
+  // Get rank values for straight detection
+  const rankValues = allCards.map(c => '23456789TJQKA'.indexOf(c.rank))
+  const uniqueRanks = [...new Set(rankValues)].sort((a, b) => a - b)
+
+  // Straight draw detection (OESD = 8 outs, gutshot = 4 outs)
+  let straightDraw = 0
+  let straightMade = false
+
+  // Check for made straight or draws
+  if (uniqueRanks.length >= 4) {
+    // Count consecutive sequences
+    let maxConsec = 1
+    let consec = 1
+    let gaps = []
+
+    for (let i = 1; i < uniqueRanks.length; i++) {
+      const diff = uniqueRanks[i] - uniqueRanks[i-1]
+      if (diff === 1) {
+        consec++
+        maxConsec = Math.max(maxConsec, consec)
+      } else if (diff === 2) {
+        gaps.push(uniqueRanks[i-1] + 1) // Gutshot gap
+        consec = 1
+      } else {
+        consec = 1
+      }
+    }
+
+    if (maxConsec >= 5) {
+      straightMade = true
+    } else if (maxConsec === 4) {
+      // Open-ended straight draw (8 outs)
+      const minInSeq = Math.min(...uniqueRanks.filter((_, i, arr) => {
+        if (i >= 3) return arr[i] - arr[i-3] === 3
+        return false
+      }))
+      if (minInSeq > 0 && minInSeq < 9) {
+        straightDraw = 8 // OESD
+      } else {
+        straightDraw = 4 // Gutshot at the ends
+      }
+    } else if (gaps.length > 0 && maxConsec >= 3) {
+      straightDraw = 4 // Gutshot
+    }
+  }
+
+  // Check for wheel draw (A-2-3-4-5)
+  const hasAce = rankValues.includes(12)
+  const lowCards = uniqueRanks.filter(r => r <= 3)
+  if (hasAce && lowCards.length >= 3) {
+    straightDraw = Math.max(straightDraw, 4)
+  }
+
+  // Pair/set draw - overcards to board
+  let overcardDraw = 0
+  if (allCommunity.length > 0) {
+    const boardRanks = allCommunity.map(c => parseCard(c)).map(c => '23456789TJQKA'.indexOf(c.rank))
+    const maxBoard = Math.max(...boardRanks)
+    const holeRanks = holeCardsParsed.map(c => '23456789TJQKA'.indexOf(c.rank))
+
+    for (const rank of holeRanks) {
+      if (rank > maxBoard) {
+        overcardDraw += 3 // 3 outs per overcard to pair
+      }
+    }
+  }
+
+  // Cards remaining in deck
+  const cardsDealt = holeCards.length + allCommunity.length
+  const cardsRemaining = 52 - cardsDealt
+  const cardsToCome = allCommunity.length < 3 ? 5 - allCommunity.length :
+                      allCommunity.length < 4 ? 2 :
+                      allCommunity.length < 5 ? 1 : 0
+
+  return {
+    flushDraw: flushMade ? 0 : flushDraw,
+    flushMade,
+    straightDraw: straightMade ? 0 : straightDraw,
+    straightMade,
+    overcardDraw,
+    cardsRemaining,
+    cardsToCome,
+    totalOuts: (flushMade ? 0 : flushDraw) + (straightMade ? 0 : straightDraw) + overcardDraw
+  }
+}
+
+/**
+ * Build Petri net model for hand strength computation
+ * Models current hand + draw completion probabilities
+ */
+function buildHandStrengthPetriNet(holeCards, communityCards) {
+  const draws = analyzeDraws(holeCards, communityCards)
+  const currentHand = evaluateCurrentHand(holeCards, communityCards)
+
+  // Calculate draw completion probability using rule of 2/4
+  // Flop to river: outs * 4%, Turn to river: outs * 2%
+  const outMultiplier = draws.cardsToCome >= 2 ? 0.04 : 0.02
+
+  const flushProb = Math.min(0.95, draws.flushDraw * outMultiplier)
+  const straightProb = Math.min(0.95, draws.straightDraw * outMultiplier)
+  const pairProb = Math.min(0.95, draws.overcardDraw * outMultiplier)
+
+  const places = {
+    // Current hand strength (normalized 0-1)
+    'current_hand': {
+      '@type': 'Place',
+      initial: [currentHand.rank / 9], // Normalize to 0-1
+      x: 100, y: 100
+    },
+    // High card kicker value
+    'kicker_value': {
+      '@type': 'Place',
+      initial: [currentHand.highCard / 14],
+      x: 100, y: 150
+    },
+    // Draw potential places
+    'flush_draw': {
+      '@type': 'Place',
+      initial: [draws.flushMade ? 1 : flushProb],
+      x: 200, y: 100
+    },
+    'straight_draw': {
+      '@type': 'Place',
+      initial: [draws.straightMade ? 1 : straightProb],
+      x: 200, y: 150
+    },
+    'pair_draw': {
+      '@type': 'Place',
+      initial: [pairProb],
+      x: 200, y: 200
+    },
+    // Combined hand strength output
+    'hand_strength': {
+      '@type': 'Place',
+      initial: [0],
+      x: 400, y: 150
+    },
+    // Improvement potential
+    'improvement_potential': {
+      '@type': 'Place',
+      initial: [draws.totalOuts / 20], // Normalize outs
+      x: 300, y: 200
+    }
+  }
+
+  const transitions = {
+    'compute_strength': {
+      '@type': 'Transition',
+      x: 300, y: 150,
+      rate: 1.0
+    },
+    'add_flush_value': {
+      '@type': 'Transition',
+      x: 350, y: 100,
+      rate: draws.flushMade ? 0.55 : flushProb * 0.55 // Flush = ~0.55 hand strength
+    },
+    'add_straight_value': {
+      '@type': 'Transition',
+      x: 350, y: 150,
+      rate: draws.straightMade ? 0.45 : straightProb * 0.45 // Straight = ~0.45
+    },
+    'add_pair_value': {
+      '@type': 'Transition',
+      x: 350, y: 200,
+      rate: pairProb * 0.15 // Pair improvement = ~0.15
+    }
+  }
+
+  const arcs = [
+    // Current hand feeds into strength computation
+    { '@type': 'Arrow', source: 'current_hand', target: 'compute_strength', weight: [1] },
+    { '@type': 'Arrow', source: 'kicker_value', target: 'compute_strength', weight: [0.1] },
+    { '@type': 'Arrow', source: 'compute_strength', target: 'hand_strength', weight: [1] },
+
+    // Draw completions add to hand strength
+    { '@type': 'Arrow', source: 'flush_draw', target: 'add_flush_value', weight: [1] },
+    { '@type': 'Arrow', source: 'add_flush_value', target: 'hand_strength', weight: [1] },
+
+    { '@type': 'Arrow', source: 'straight_draw', target: 'add_straight_value', weight: [1] },
+    { '@type': 'Arrow', source: 'add_straight_value', target: 'hand_strength', weight: [1] },
+
+    { '@type': 'Arrow', source: 'pair_draw', target: 'add_pair_value', weight: [1] },
+    { '@type': 'Arrow', source: 'add_pair_value', target: 'hand_strength', weight: [1] },
+
+    // Improvement potential modifies output
+    { '@type': 'Arrow', source: 'improvement_potential', target: 'compute_strength', weight: [0.5] }
+  ]
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    places,
+    transitions,
+    arcs,
+    // Store metadata for debugging
+    _draws: draws,
+    _currentHand: currentHand
+  }
+}
+
+/**
+ * Evaluate current made hand (before draws)
+ */
+function evaluateCurrentHand(holeCards, communityCards) {
+  if (!holeCards || holeCards.length < 2) {
+    return { rank: 0, highCard: 0 }
+  }
+
+  const allCommunity = [
+    ...(communityCards.flop || []),
+    ...(communityCards.turn || []),
+    ...(communityCards.river || [])
+  ]
+
+  const allCards = [...holeCards, ...allCommunity].map(parseCard)
+
+  if (allCards.length < 2) {
+    return { rank: 0, highCard: 0 }
+  }
+
+  // Count ranks and suits
+  const rankCounts = {}
+  const suitCounts = {}
+  const rankValues = []
+
+  for (const card of allCards) {
+    const rankVal = '23456789TJQKA'.indexOf(card.rank)
+    rankValues.push(rankVal)
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1
+    suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1
+  }
+
+  const counts = Object.values(rankCounts).sort((a, b) => b - a)
+  const maxSuit = Math.max(...Object.values(suitCounts))
+  const highCard = Math.max(...rankValues)
+
+  // Check for flush
+  const hasFlush = maxSuit >= 5
+
+  // Check for straight
+  const uniqueRanks = [...new Set(rankValues)].sort((a, b) => a - b)
+  let hasStraight = false
+  for (let i = 0; i <= uniqueRanks.length - 5; i++) {
+    if (uniqueRanks[i + 4] - uniqueRanks[i] === 4) {
+      hasStraight = true
+      break
+    }
+  }
+  // Check wheel (A-2-3-4-5)
+  if (uniqueRanks.includes(12) && uniqueRanks.includes(0) &&
+      uniqueRanks.includes(1) && uniqueRanks.includes(2) && uniqueRanks.includes(3)) {
+    hasStraight = true
+  }
+
+  // Determine hand rank
+  let rank = HAND_RANKS.HIGH_CARD
+
+  if (hasStraight && hasFlush) {
+    rank = highCard === 12 ? HAND_RANKS.ROYAL_FLUSH : HAND_RANKS.STRAIGHT_FLUSH
+  } else if (counts[0] === 4) {
+    rank = HAND_RANKS.FOUR_OF_A_KIND
+  } else if (counts[0] === 3 && counts[1] >= 2) {
+    rank = HAND_RANKS.FULL_HOUSE
+  } else if (hasFlush) {
+    rank = HAND_RANKS.FLUSH
+  } else if (hasStraight) {
+    rank = HAND_RANKS.STRAIGHT
+  } else if (counts[0] === 3) {
+    rank = HAND_RANKS.THREE_OF_A_KIND
+  } else if (counts[0] === 2 && counts[1] === 2) {
+    rank = HAND_RANKS.TWO_PAIR
+  } else if (counts[0] === 2) {
+    rank = HAND_RANKS.PAIR
+  }
+
+  return { rank, highCard }
+}
+
+/**
+ * Compute hand strength using ODE solver
+ */
+function computeODEHandStrength(holeCards, communityCards) {
+  try {
+    const model = buildHandStrengthPetriNet(holeCards, communityCards)
+
+    const net = Solver.fromJSON(model)
+    const initialState = Solver.setState(net)
+    const rates = Solver.setRates(net)
+
+    const prob = new Solver.ODEProblem(net, initialState, [0, solverParams.tspan], rates)
+    const opts = { dt: solverParams.dt, adaptive: solverParams.adaptive }
+    const solution = Solver.solve(prob, Solver.Tsit5(), opts)
+
+    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
+    if (!finalState) {
+      console.log('ODE solve returned no final state')
+      return { strength: 0.5, draws: model._draws, hand: model._currentHand }
+    }
+
+    // Combine hand strength with draw potential
+    const baseStrength = finalState['hand_strength'] || 0
+    const currentHandValue = finalState['current_hand'] || 0
+    const improvement = finalState['improvement_potential'] || 0
+
+    // Weighted combination: current hand + improvement potential + draw completions
+    const strength = Math.min(1, Math.max(0,
+      currentHandValue * 0.6 + baseStrength * 0.3 + improvement * 0.1
+    ))
+
+    return {
+      strength,
+      draws: model._draws,
+      hand: model._currentHand,
+      finalState
+    }
+  } catch (err) {
+    console.error('ODE hand strength computation failed:', err)
+    return { strength: 0.5, draws: null, hand: null }
+  }
+}
 
 /**
  * Run ODE simulation to compute strategic values for all actions
@@ -447,140 +821,67 @@ function parseGameState() {
 async function runODESimulation() {
   try {
     showLoading(true)
-    
+
     const values = {}
     const details = {}
-    
+
     // Get available actions for current player
     const availableActions = getAvailableActions()
-    
+
     console.log('Running ODE for actions:', availableActions)
-    
-    // For each available action, build Petri net and solve ODE
+
+    // Compute hand strength using ODE
+    const playerCards = gameState.players[gameState.currentPlayer].cards
+    const odeResult = computeODEHandStrength(playerCards, gameState.communityCards)
+
+    console.log('ODE hand strength:', odeResult)
+
+    // Calculate action values based on hand strength
     for (const action of availableActions) {
-      const model = buildPokerODEPetriNet(gameState, action)
-      const result = solveODE(model)
-      
-      if (result) {
-        values[action.id] = result.expectedValue
-        details[action.id] = result
-      } else {
-        values[action.id] = 0
+      let ev = 0
+      const callAmount = Math.max(0, gameState.currentBet - gameState.players[gameState.currentPlayer].bet)
+      const potSize = gameState.pot
+
+      if (action.type === 'fold') {
+        ev = 0 // Folding has 0 EV
+      } else if (action.type === 'check') {
+        // Check EV = hand strength * pot equity
+        ev = odeResult.strength * potSize * 0.2
+      } else if (action.type === 'call') {
+        // Call EV = (hand strength * pot) - call amount
+        const potOdds = callAmount / (potSize + callAmount)
+        ev = (odeResult.strength * (potSize + callAmount)) - callAmount
+        // Adjust for pot odds
+        if (odeResult.strength < potOdds) {
+          ev *= 0.5 // Penalize calling with bad odds
+        }
+      } else if (action.type === 'raise') {
+        // Raise EV higher for strong hands
+        const raiseAmount = action.amount || gameState.bigBlind * 3
+        if (odeResult.strength > 0.6) {
+          ev = odeResult.strength * (potSize + raiseAmount) * 1.5
+        } else if (odeResult.strength > 0.4) {
+          ev = odeResult.strength * potSize * 0.8
+        } else {
+          ev = -raiseAmount * 0.5 // Bluff value
+        }
       }
+
+      values[action.id] = ev
+      details[action.id] = { ev, strength: odeResult.strength, draws: odeResult.draws }
     }
-    
-    odeValues = { values, details }
+
+    odeValues = { values, details, handStrength: odeResult }
     console.log('ODE values:', odeValues)
-    
+
     showLoading(false)
     renderActionButtons()
     renderODEAnalysis()
-    
+
     return odeValues
   } catch (err) {
     console.error('ODE simulation failed:', err)
     showLoading(false)
-    return null
-  }
-}
-
-/**
- * Build Petri net model for poker state with hypothetical action
- * This is a simplified model focusing on win probability
- */
-function buildPokerODEPetriNet(gameState, action) {
-  const places = {}
-  const transitions = {}
-  const arcs = []
-  
-  // Simple model: track active players and pot
-  // Places for each player (active/folded)
-  for (let i = 0; i < 5; i++) {
-    const isActive = !gameState.players[i].folded
-    const willBeActive = !(action.type === 'fold' && i === gameState.currentPlayer)
-    
-    places[`P${i}_Active`] = {
-      '@type': 'Place',
-      initial: [isActive && willBeActive ? 1 : 0],
-      x: 50 + i * 100,
-      y: 50
-    }
-    
-    places[`P${i}_Folded`] = {
-      '@type': 'Place',
-      initial: [isActive && willBeActive ? 0 : 1],
-      x: 50 + i * 100,
-      y: 150
-    }
-  }
-  
-  // Pot and win places
-  places['Pot'] = {
-    '@type': 'Place',
-    initial: [gameState.pot + (action.amount || 0)],
-    x: 300,
-    y: 250
-  }
-  
-  places['Win'] = {
-    '@type': 'Place',
-    initial: [0],
-    x: 300,
-    y: 350
-  }
-  
-  // Simplified win transitions (player wins if others fold)
-  const activePlayers = gameState.players.filter((p, i) => {
-    if (i === gameState.currentPlayer && action.type === 'fold') return false
-    return !p.folded
-  })
-  
-  if (activePlayers.length === 1) {
-    // Only one player left, they win
-    const tid = 'WinByFold'
-    transitions[tid] = { '@type': 'Transition', x: 300, y: 300 }
-    arcs.push({ '@type': 'Arrow', source: 'Pot', target: tid, weight: [1] })
-    arcs.push({ '@type': 'Arrow', source: tid, target: 'Win', weight: [1] })
-  }
-  
-  return {
-    '@context': 'https://pflow.xyz/schema',
-    '@type': 'PetriNet',
-    places,
-    transitions,
-    arcs
-  }
-}
-
-/**
- * Solve ODE and extract expected value
- */
-function solveODE(model) {
-  try {
-    const net = Solver.fromJSON(model)
-    const initialState = Solver.setState(net)
-    const rates = Solver.setRates(net)
-    
-    const prob = new Solver.ODEProblem(net, initialState, [0, solverParams.tspan], rates)
-    const opts = { dt: solverParams.dt, adaptive: solverParams.adaptive }
-    if (solverParams.adaptive) {
-      opts.abstol = solverParams.abstol
-      opts.reltol = solverParams.reltol
-    }
-    const solution = Solver.solve(prob, Solver.Tsit5(), opts)
-    
-    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
-    if (!finalState) return null
-    
-    // Expected value is the Win place value
-    const expectedValue = finalState['Win'] || 0
-    
-    return {
-      expectedValue,
-      finalState
-    }
-  } catch (err) {
-    console.error('ODE solve error:', err)
     return null
   }
 }
@@ -1685,16 +1986,43 @@ function awardPotToWinner() {
 }
 
 /**
- * Evaluate hand strength (simplified but considers community cards)
+ * Evaluate hand strength using ODE-based computation
  * Returns a value between 0 and 1
  */
 function evaluateHandStrength(holeCards, communityCards) {
   if (!holeCards || holeCards.length < 2) return 0.5
 
-  // Parse hole cards
-  const holeCardsParsed = holeCards.map(parseCard)
+  try {
+    // Use ODE computation for hand strength
+    const result = computeODEHandStrength(holeCards, communityCards)
 
-  // Combine with community cards
+    // Add small randomness to prevent predictability
+    const noise = (Math.random() - 0.5) * 0.06
+    const strength = Math.max(0, Math.min(1, result.strength + noise))
+
+    // Log draw information for debugging
+    if (result.draws) {
+      const draws = result.draws
+      if (draws.flushDraw > 0 || draws.straightDraw > 0) {
+        console.log(`  Draws: flush=${draws.flushDraw} outs, straight=${draws.straightDraw} outs, overcards=${draws.overcardDraw}`)
+      }
+    }
+
+    return strength
+  } catch (err) {
+    console.error('ODE evaluation failed, using fallback:', err)
+    return evaluateHandStrengthFallback(holeCards, communityCards)
+  }
+}
+
+/**
+ * Fallback hand strength evaluation (heuristic-based)
+ * Used when ODE computation fails
+ */
+function evaluateHandStrengthFallback(holeCards, communityCards) {
+  if (!holeCards || holeCards.length < 2) return 0.5
+
+  const holeCardsParsed = holeCards.map(parseCard)
   const allCommunity = [
     ...(communityCards.flop || []),
     ...(communityCards.turn || []),
@@ -1702,98 +2030,63 @@ function evaluateHandStrength(holeCards, communityCards) {
   ].map(parseCard)
 
   const allCards = [...holeCardsParsed, ...allCommunity]
-  const allRanks = allCards.map(c => c.rank)
-  const allSuits = allCards.map(c => c.suit)
-  const allValues = allRanks.map(r => '23456789TJQKA'.indexOf(r))
-
-  // Hole card specific analysis
   const holeRanks = holeCardsParsed.map(c => c.rank)
   const holeSuits = holeCardsParsed.map(c => c.suit)
   const holeValues = holeRanks.map(r => '23456789TJQKA'.indexOf(r))
 
-  let strength = 0.2 // Base strength
+  let strength = 0.2
 
-  // High cards bonus (hole cards)
-  const highCardBonus = holeValues.reduce((sum, v) => sum + (v / 13) * 0.08, 0)
-  strength += highCardBonus
+  // High cards bonus
+  strength += holeValues.reduce((sum, v) => sum + (v / 13) * 0.08, 0)
 
   // Pocket pair bonus
   if (holeRanks[0] === holeRanks[1]) {
-    const pairValue = holeValues[0]
-    strength += 0.25 + (pairValue / 13) * 0.15 // Higher pairs are better
+    strength += 0.25 + (holeValues[0] / 13) * 0.15
   }
 
-  // Suited hole cards bonus
+  // Suited bonus
   if (holeSuits[0] === holeSuits[1]) {
     strength += 0.08
   }
 
-  // Connected hole cards bonus
+  // Connected bonus
   if (Math.abs(holeValues[0] - holeValues[1]) === 1) {
     strength += 0.05
   }
 
-  // Community card analysis (if available)
+  // Community card analysis
   if (allCommunity.length > 0) {
-    // Check for pairs with community cards
+    const allRanks = allCards.map(c => c.rank)
+    const allSuits = allCards.map(c => c.suit)
+
+    // Check for pairs
     for (const holeRank of holeRanks) {
-      const communityMatches = allCommunity.filter(c => c.rank === holeRank).length
-      if (communityMatches > 0) {
-        strength += 0.15 * communityMatches // Pair or trips with board
-      }
+      const matches = allCommunity.filter(c => c.rank === holeRank).length
+      if (matches > 0) strength += 0.15 * matches
     }
 
-    // Check for flush draws/made flushes
+    // Flush check
     const suitCounts = {}
     for (const suit of allSuits) {
       suitCounts[suit] = (suitCounts[suit] || 0) + 1
     }
-    const maxSuitCount = Math.max(...Object.values(suitCounts))
-    if (maxSuitCount >= 5) {
-      strength += 0.35 // Made flush
-    } else if (maxSuitCount === 4 && holeSuits[0] === holeSuits[1]) {
-      strength += 0.12 // Flush draw with suited hole cards
-    }
+    const maxSuit = Math.max(...Object.values(suitCounts))
+    if (maxSuit >= 5) strength += 0.35
+    else if (maxSuit === 4 && holeSuits[0] === holeSuits[1]) strength += 0.12
 
-    // Check for straight potential
-    const uniqueValues = [...new Set(allValues)].sort((a, b) => a - b)
-    let maxConsecutive = 1
-    let consecutive = 1
-    for (let i = 1; i < uniqueValues.length; i++) {
-      if (uniqueValues[i] === uniqueValues[i - 1] + 1) {
-        consecutive++
-        maxConsecutive = Math.max(maxConsecutive, consecutive)
-      } else {
-        consecutive = 1
-      }
-    }
-    if (maxConsecutive >= 5) {
-      strength += 0.3 // Made straight
-    } else if (maxConsecutive === 4) {
-      strength += 0.1 // Straight draw
-    }
-
-    // Check for full house / quads
+    // Hand rank check
     const rankCounts = {}
     for (const rank of allRanks) {
       rankCounts[rank] = (rankCounts[rank] || 0) + 1
     }
     const counts = Object.values(rankCounts).sort((a, b) => b - a)
-    if (counts[0] >= 4) {
-      strength += 0.45 // Four of a kind
-    } else if (counts[0] >= 3 && counts[1] >= 2) {
-      strength += 0.4 // Full house
-    } else if (counts[0] >= 3) {
-      strength += 0.25 // Three of a kind
-    } else if (counts[0] >= 2 && counts[1] >= 2) {
-      strength += 0.18 // Two pair
-    }
+    if (counts[0] >= 4) strength += 0.45
+    else if (counts[0] >= 3 && counts[1] >= 2) strength += 0.4
+    else if (counts[0] >= 3) strength += 0.25
+    else if (counts[0] >= 2 && counts[1] >= 2) strength += 0.18
   }
 
-  // Add small randomness to prevent predictability
-  strength += (Math.random() - 0.5) * 0.08
-
-  return Math.max(0, Math.min(1, strength))
+  return Math.max(0, Math.min(1, strength + (Math.random() - 0.5) * 0.08))
 }
 
 /**
