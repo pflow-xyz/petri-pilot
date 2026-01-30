@@ -1009,8 +1009,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	for rankIdx, rank := range ranks {
 		for suitIdx, suit := range suits {
 			cardID := rank + suit
-			x := 50 + suitIdx*80
-			y := 50 + rankIdx*65
+			x := 50 + suitIdx*120
+			y := 50 + rankIdx*100
 
 			initial := 0
 			if inHand[cardID] {
@@ -1046,8 +1046,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		places = append(places, map[string]interface{}{
 			"id":      hp.id,
 			"initial": 0,
-			"x":       1100,
-			"y":       50 + i*100,
+			"x":       1600,
+			"y":       50 + i*150,
 		})
 	}
 
@@ -1056,8 +1056,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		transID := fmt.Sprintf("score_%s", hp.id)
 		transitions = append(transitions, map[string]interface{}{
 			"id": transID,
-			"x":  1250,
-			"y":  50 + i*100,
+			"x":  1800,
+			"y":  50 + i*150,
 		})
 		// Arc from hand type place to scoring transition
 		arcs = append(arcs, map[string]interface{}{
@@ -1076,8 +1076,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	places = append(places, map[string]interface{}{
 		"id":      "hand_strength",
 		"initial": 0,
-		"x":       1400,
-		"y":       400,
+		"x":       2000,
+		"y":       600,
 	})
 
 	// === PAIR DETECTION TRANSITIONS (78 total: 6 combinations × 13 ranks) ===
@@ -1089,8 +1089,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			transID := fmt.Sprintf("pair_%s_%s%s", rank, s1, s2)
 			transitions = append(transitions, map[string]interface{}{
 				"id": transID,
-				"x":  420 + comboIdx*40,
-				"y":  50 + rankIdx*65,
+				"x":  600 + comboIdx*60,
+				"y":  50 + rankIdx*100,
 			})
 			// Input arcs from the two specific cards
 			arcs = append(arcs, map[string]interface{}{
@@ -1118,8 +1118,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			transID := fmt.Sprintf("trips_%s_%s%s%s", rank, s1, s2, s3)
 			transitions = append(transitions, map[string]interface{}{
 				"id": transID,
-				"x":  700 + comboIdx*40,
-				"y":  50 + rankIdx*65,
+				"x":  1020 + comboIdx*60,
+				"y":  50 + rankIdx*100,
 			})
 			// Input arcs from the three specific cards
 			arcs = append(arcs, map[string]interface{}{
@@ -1148,8 +1148,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		transID := fmt.Sprintf("quads_%s", rank)
 		transitions = append(transitions, map[string]interface{}{
 			"id": transID,
-			"x":  900,
-			"y":  50 + rankIdx*65,
+			"x":  1320,
+			"y":  50 + rankIdx*100,
 		})
 		// Input arcs from all 4 cards
 		for _, suit := range suits {
