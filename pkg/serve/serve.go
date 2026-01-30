@@ -1005,12 +1005,12 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 
 	// === CARD PLACES (organized by rank for pattern detection) ===
 	// Each card has token=1 if in hand, 0 if not
-	// Layout: 4 columns (suits) x 13 rows (ranks)
+	// Layout: 4 columns (suits) x 13 rows (ranks) - with generous spacing
 	for rankIdx, rank := range ranks {
 		for suitIdx, suit := range suits {
 			cardID := rank + suit
-			x := 50 + suitIdx*60
-			y := 50 + rankIdx*45
+			x := 50 + suitIdx*80
+			y := 50 + rankIdx*65
 
 			initial := 0
 			if inHand[cardID] {
@@ -1046,8 +1046,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		places = append(places, map[string]interface{}{
 			"id":      hp.id,
 			"initial": 0,
-			"x":       720,
-			"y":       50 + i*75,
+			"x":       1100,
+			"y":       50 + i*100,
 		})
 	}
 
@@ -1056,8 +1056,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		transID := fmt.Sprintf("score_%s", hp.id)
 		transitions = append(transitions, map[string]interface{}{
 			"id": transID,
-			"x":  820,
-			"y":  50 + i*75,
+			"x":  1250,
+			"y":  50 + i*100,
 		})
 		// Arc from hand type place to scoring transition
 		arcs = append(arcs, map[string]interface{}{
@@ -1076,8 +1076,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	places = append(places, map[string]interface{}{
 		"id":      "hand_strength",
 		"initial": 0,
-		"x":       920,
-		"y":       300,
+		"x":       1400,
+		"y":       400,
 	})
 
 	// === PAIR DETECTION TRANSITIONS (78 total: 6 combinations × 13 ranks) ===
@@ -1089,8 +1089,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			transID := fmt.Sprintf("pair_%s_%s%s", rank, s1, s2)
 			transitions = append(transitions, map[string]interface{}{
 				"id": transID,
-				"x":  300 + comboIdx*25,
-				"y":  50 + rankIdx*45,
+				"x":  420 + comboIdx*40,
+				"y":  50 + rankIdx*65,
 			})
 			// Input arcs from the two specific cards
 			arcs = append(arcs, map[string]interface{}{
@@ -1118,8 +1118,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 			transID := fmt.Sprintf("trips_%s_%s%s%s", rank, s1, s2, s3)
 			transitions = append(transitions, map[string]interface{}{
 				"id": transID,
-				"x":  480 + comboIdx*25,
-				"y":  50 + rankIdx*45,
+				"x":  700 + comboIdx*40,
+				"y":  50 + rankIdx*65,
 			})
 			// Input arcs from the three specific cards
 			arcs = append(arcs, map[string]interface{}{
@@ -1148,8 +1148,8 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		transID := fmt.Sprintf("quads_%s", rank)
 		transitions = append(transitions, map[string]interface{}{
 			"id": transID,
-			"x":  600,
-			"y":  50 + rankIdx*45,
+			"x":  900,
+			"y":  50 + rankIdx*65,
 		})
 		// Input arcs from all 4 cards
 		for _, suit := range suits {
