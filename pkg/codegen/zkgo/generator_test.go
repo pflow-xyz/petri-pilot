@@ -12,7 +12,7 @@ import (
 
 func TestGenerator_TicTacToe(t *testing.T) {
 	// Load the tic-tac-toe model
-	data, err := os.ReadFile("../../../examples/tic-tac-toe.json")
+	data, err := os.ReadFile("../../../services/tic-tac-toe.json")
 	if err != nil {
 		t.Fatalf("failed to read model: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestGenerator_TicTacToe(t *testing.T) {
 
 func TestContext_BuildsCorrectly(t *testing.T) {
 	// Load the tic-tac-toe model
-	data, err := os.ReadFile("../../../examples/tic-tac-toe.json")
+	data, err := os.ReadFile("../../../services/tic-tac-toe.json")
 	if err != nil {
 		t.Fatalf("failed to read model: %v", err)
 	}

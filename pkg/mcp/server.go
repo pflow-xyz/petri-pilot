@@ -11,7 +11,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/pflow-xyz/petri-pilot/examples"
+	"github.com/pflow-xyz/petri-pilot/services"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
@@ -110,7 +110,7 @@ func registerResources(s *server.MCPServer) {
 	// Example models index
 	s.AddResource(
 		mcp.NewResource(
-			"petri://examples",
+			"petri://services",
 			"Example Models Index",
 			mcp.WithResourceDescription("List of available example Petri net models. Each example demonstrates different model features."),
 			mcp.WithMIMEType("application/json"),
@@ -119,11 +119,11 @@ func registerResources(s *server.MCPServer) {
 	)
 
 	// Individual example resources
-	for _, name := range examples.List() {
+	for _, name := range services.List() {
 		exampleName := name // capture for closure
 		s.AddResource(
 			mcp.NewResource(
-				"petri://examples/"+exampleName,
+				"petri://services/"+exampleName,
 				exampleName+" example",
 				mcp.WithResourceDescription("Example Petri net model: "+exampleName),
 				mcp.WithMIMEType("application/json"),
@@ -146,7 +146,7 @@ func handleSchemaResource(ctx context.Context, request mcp.ReadResourceRequest) 
 }
 
 func handleExamplesIndexResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-	exampleList := examples.List()
+	exampleList := services.List()
 	index := struct {
 		Examples []string `json:"examples"`
 		Count    int      `json:"count"`
@@ -162,7 +162,7 @@ func handleExamplesIndexResource(ctx context.Context, request mcp.ReadResourceRe
 
 	return []mcp.ResourceContents{
 		mcp.TextResourceContents{
-			URI:      "petri://examples",
+			URI:      "petri://services",
 			MIMEType: "application/json",
 			Text:     string(data),
 		},
@@ -170,14 +170,14 @@ func handleExamplesIndexResource(ctx context.Context, request mcp.ReadResourceRe
 }
 
 func handleExampleResource(ctx context.Context, request mcp.ReadResourceRequest, name string) ([]mcp.ResourceContents, error) {
-	content, err := examples.Get(name)
+	content, err := services.Get(name)
 	if err != nil {
 		return nil, fmt.Errorf("example not found: %s", name)
 	}
 
 	return []mcp.ResourceContents{
 		mcp.TextResourceContents{
-			URI:      "petri://examples/" + name,
+			URI:      "petri://services/" + name,
 			MIMEType: "application/json",
 			Text:     string(content),
 		},

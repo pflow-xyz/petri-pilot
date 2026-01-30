@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
-	"github.com/pflow-xyz/petri-pilot/examples"
+	"github.com/pflow-xyz/petri-pilot/services"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
@@ -55,8 +55,8 @@ func main() {
 		cmdMcp()
 	case "schema":
 		cmdSchema()
-	case "examples":
-		cmdExamples(os.Args[2:])
+	case "services":
+		cmdServices(os.Args[2:])
 	case "help", "-h", "--help":
 		printUsage()
 	case "version", "-v", "--version":
@@ -85,7 +85,7 @@ Commands:
   delegate    Delegate tasks to GitHub Copilot coding agent
   mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
   schema      Print the JSON Schema for Petri net models
-  examples    List or show embedded example models
+  services    List or show embedded service models
 
 Options:
   -h, --help      Show this help message
@@ -846,23 +846,23 @@ func cmdSchema() {
 	fmt.Println(string(jsonschema.SchemaJSON))
 }
 
-func cmdExamples(args []string) {
+func cmdServices(args []string) {
 	if len(args) == 0 {
-		// List all examples
-		fmt.Println("Available examples:")
-		for _, name := range examples.List() {
+		// List all services
+		fmt.Println("Available services:")
+		for _, name := range services.List() {
 			fmt.Printf("  %s\n", name)
 		}
-		fmt.Println("\nUsage: petri-pilot examples <name>")
+		fmt.Println("\nUsage: petri-pilot services <name>")
 		return
 	}
 
-	// Show specific example
+	// Show specific service
 	name := args[0]
-	content, err := examples.Get(name)
+	content, err := services.Get(name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Example not found: %s\n", name)
-		fmt.Fprintf(os.Stderr, "Run 'petri-pilot examples' to see available examples\n")
+		fmt.Fprintf(os.Stderr, "Service not found: %s\n", name)
+		fmt.Fprintf(os.Stderr, "Run 'petri-pilot services' to see available services\n")
 		os.Exit(1)
 	}
 
