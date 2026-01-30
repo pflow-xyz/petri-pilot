@@ -1003,62 +1003,62 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	transitions := []map[string]interface{}{}
 	arcs := []map[string]interface{}{}
 
-	// === DECK PLACE (source for dealing cards) ===
-	// Starts with tokens representing cards available to draw
-	// 7 tokens = 2 hole cards + 5 community cards in Texas Hold'em
-	cardsInHand := len(inHand)
-	cardsToDrawInitial := 7 - cardsInHand // Remaining cards to deal
-	if cardsToDrawInitial < 0 {
-		cardsToDrawInitial = 0
-	}
-	places = append(places, map[string]interface{}{
-		"id":      "deck",
-		"initial": cardsToDrawInitial,
-		"x":       -150,
-		"y":       650,
-	})
-
 	// === CARD PLACES (organized by rank for pattern detection) ===
-	// Each card has token=1 if in hand, 0 if not
+	// Each card has two places:
+	//   - Hand place (e.g., "A♥") - token=1 if card is in hand
+	//   - Deck place (e.g., "deck_A♥") - token=1 if card is still in deck
 	// Layout: 4 columns (suits) x 13 rows (ranks) - with generous spacing
+	// Deck places are positioned to the left of hand places
 	for rankIdx, rank := range ranks {
 		for suitIdx, suit := range suits {
 			cardID := rank + suit
-			x := 50 + suitIdx*120
+			cardSymbol := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			handX := 150 + suitIdx*120
+			deckX := -350 + suitIdx*120
 			y := 50 + rankIdx*100
 
-			initial := 0
+			inHandInitial := 0
+			inDeckInitial := 1
 			if inHand[cardID] {
-				initial = 1
+				inHandInitial = 1
+				inDeckInitial = 0
 			}
 
+			// Hand place (where cards go when dealt)
 			places = append(places, map[string]interface{}{
-				"id":      fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
-				"initial": initial,
-				"x":       x,
+				"id":      cardSymbol,
+				"initial": inHandInitial,
+				"x":       handX,
 				"y":       y,
 			})
 
-			// === DEAL TRANSITIONS (draw from deck to populate card places) ===
-			// Only create deal transition if card is NOT already in hand
-			if !inHand[cardID] {
-				dealTransID := fmt.Sprintf("deal_%s%s", rank, suitSymbols[suit])
-				transitions = append(transitions, map[string]interface{}{
-					"id": dealTransID,
-					"x":  x - 60,
-					"y":  y,
-				})
-				// Input arc from deck (consume one draw)
-				arcs = append(arcs, map[string]interface{}{
-					"from": "deck",
-					"to":   dealTransID,
-				})
-				// Output arc to card place
-				arcs = append(arcs, map[string]interface{}{
-					"from": dealTransID,
-					"to":   fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
-				})
-			}
+			// Deck place (where cards start before being dealt)
+			deckPlaceID := fmt.Sprintf("deck_%s", cardSymbol)
+			places = append(places, map[string]interface{}{
+				"id":      deckPlaceID,
+				"initial": inDeckInitial,
+				"x":       deckX,
+				"y":       y,
+			})
+
+			// === DEAL TRANSITIONS (move card from deck to hand) ===
+			// Only enabled if card is in deck (has token in deck place)
+			dealTransID := fmt.Sprintf("deal_%s", cardSymbol)
+			transitions = append(transitions, map[string]interface{}{
+				"id": dealTransID,
+				"x":  (deckX + handX) / 2,
+				"y":  y,
+			})
+			// Input arc from deck place (consume card from deck)
+			arcs = append(arcs, map[string]interface{}{
+				"from": deckPlaceID,
+				"to":   dealTransID,
+			})
+			// Output arc to hand place (card appears in hand)
+			arcs = append(arcs, map[string]interface{}{
+				"from": dealTransID,
+				"to":   cardSymbol,
+			})
 		}
 	}
 
