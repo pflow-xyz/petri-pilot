@@ -1026,26 +1026,59 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		}
 	}
 
-	// === HAND STRENGTH OUTPUT PLACES ===
+	// === HAND TYPE OUTPUT PLACES ===
+	// These collect tokens when patterns are detected
 	handPlaces := []struct {
 		id       string
-		strength int
+		strength int // Poker hand ranking value
 	}{
 		{"pair", 2},
+		{"two_pair", 3},
 		{"three_kind", 4},
-		{"four_kind", 8},
-		{"flush", 6},
 		{"straight", 5},
+		{"flush", 6},
+		{"full_house", 7},
+		{"four_kind", 8},
+		{"straight_flush", 9},
 	}
 
 	for i, hp := range handPlaces {
 		places = append(places, map[string]interface{}{
 			"id":      hp.id,
 			"initial": 0,
-			"x":       750,
-			"y":       100 + i*120,
+			"x":       720,
+			"y":       50 + i*75,
 		})
 	}
+
+	// === SCORING TRANSITIONS (convert hand types to numeric strength) ===
+	for i, hp := range handPlaces {
+		transID := fmt.Sprintf("score_%s", hp.id)
+		transitions = append(transitions, map[string]interface{}{
+			"id": transID,
+			"x":  820,
+			"y":  50 + i*75,
+		})
+		// Arc from hand type place to scoring transition
+		arcs = append(arcs, map[string]interface{}{
+			"from": hp.id,
+			"to":   transID,
+		})
+		// Arc from scoring transition to hand_strength with weight = hand value
+		arcs = append(arcs, map[string]interface{}{
+			"from":   transID,
+			"to":     "hand_strength",
+			"weight": hp.strength,
+		})
+	}
+
+	// === FINAL HAND STRENGTH PLACE ===
+	places = append(places, map[string]interface{}{
+		"id":      "hand_strength",
+		"initial": 0,
+		"x":       920,
+		"y":       300,
+	})
 
 	// === PAIR DETECTION TRANSITIONS (13 - one per rank) ===
 	// Each transition requires 2 cards of the same rank
