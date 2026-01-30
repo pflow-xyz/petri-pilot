@@ -190,28 +190,28 @@ body {
   transform: translateX(-50%);
 }
 
-/* Seat 1: Left side (middle-low) */
+/* Seat 1: Left side (lower) */
 .player-seat.seat-1 {
-  bottom: 120px;
-  left: -60px;
+  bottom: 30px;
+  left: -70px;
 }
 
-/* Seat 2: Left side (middle-high) */
+/* Seat 2: Left side (upper) */
 .player-seat.seat-2 {
-  top: 80px;
-  left: -60px;
+  top: 30px;
+  left: -70px;
 }
 
-/* Seat 3: Right side (middle-high) */
+/* Seat 3: Right side (upper) */
 .player-seat.seat-3 {
-  top: 80px;
-  right: -60px;
+  top: 30px;
+  right: -70px;
 }
 
-/* Seat 4: Right side (middle-low) */
+/* Seat 4: Right side (lower) */
 .player-seat.seat-4 {
-  bottom: 120px;
-  right: -60px;
+  bottom: 30px;
+  right: -70px;
 }
 
 /* Blind markers */
