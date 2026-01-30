@@ -255,6 +255,11 @@ func RunMultiple(names []string, opts Options) error {
 		}
 	}
 
+	// Explicitly return 404 for /frontends/ routes (legacy path)
+	mux.HandleFunc("/frontends/", func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	})
+
 	// Root handler - serve landing page if it exists, otherwise list services
 	if _, err := os.Stat("landing"); err == nil {
 		// Serve landing page directory
