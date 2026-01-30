@@ -200,15 +200,28 @@ func RunMultiple(names []string, opts Options) error {
 		mux.Handle("/graphql", unifiedGraphQL.Handler())
 		mux.HandleFunc("/graphql/i", PlaygroundHandler("/graphql"))
 		mux.HandleFunc("/schema", unifiedGraphQL.SchemaHandler())
+
+		// Add virtual models (analysis tools) to the model list
+		allModels := append([]string{}, names...)
+		allModels = append(allModels, "hand-strength")
+
 		mux.HandleFunc("/models", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			json.NewEncoder(w).Encode(names)
+			json.NewEncoder(w).Encode(allModels)
 		})
+
+		// Hand strength Petri net model endpoint
+		mux.HandleFunc("/hand-strength/api/schema", HandStrengthModelHandler())
+		mux.HandleFunc("/hand-strength/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/pflow?model=hand-strength", http.StatusTemporaryRedirect)
+		})
+
 		mux.HandleFunc("/pflow", PflowHandler())
 		log.Printf("  Unified GraphQL at /graphql (%d services)", len(graphqlServices))
 		log.Printf("  GraphQL Playground at /graphql/i")
 		log.Printf("  Petri Net Viewer at /pflow")
+		log.Printf("  Hand Strength Model at /hand-strength/")
 	}
 
 	// Serve shared frontend assets (used by custom frontends via ../shared/ imports)
@@ -625,4 +638,153 @@ func createSPAHandler(frontendPath string) http.Handler {
 		// 404 for missing static assets
 		http.NotFound(w, r)
 	})
+}
+
+// HandStrengthModelHandler returns a handler that serves the hand strength Petri net model.
+// Query params: hole (e.g., "Ah,Kd"), community (e.g., "Qs,Jh,Tc")
+func HandStrengthModelHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Parse query parameters for cards
+		holeStr := r.URL.Query().Get("hole")
+		communityStr := r.URL.Query().Get("community")
+
+		// Default example hand: AK suited vs QJs flop
+		if holeStr == "" {
+			holeStr = "Ah,Kh"
+		}
+		if communityStr == "" {
+			communityStr = "Qs,Jh,Tc"
+		}
+
+		// Build the hand strength model
+		model := buildHandStrengthModel(holeStr, communityStr)
+		json.NewEncoder(w).Encode(model)
+	}
+}
+
+// buildHandStrengthModel creates a Petri net model for hand strength computation.
+func buildHandStrengthModel(holeStr, communityStr string) map[string]interface{} {
+	// Parse cards to compute example values
+	holeCards := strings.Split(holeStr, ",")
+	communityCards := strings.Split(communityStr, ",")
+
+	// Calculate preflop quality (simplified)
+	preflopQuality := 0.0
+	if len(holeCards) >= 2 {
+		// Check for high cards, pairs, suited, connected
+		c1, c2 := strings.TrimSpace(holeCards[0]), strings.TrimSpace(holeCards[1])
+		r1 := strings.Index("23456789TJQKA", string(c1[0]))
+		r2 := strings.Index("23456789TJQKA", string(c2[0]))
+		if r1 < 0 {
+			r1 = 0
+		}
+		if r2 < 0 {
+			r2 = 0
+		}
+		highRank := r1
+		if r2 > r1 {
+			highRank = r2
+		}
+		lowRank := r1
+		if r2 < r1 {
+			lowRank = r2
+		}
+
+		// Pocket pair
+		if r1 == r2 {
+			preflopQuality = 0.4 + float64(highRank)/12*0.5
+		} else {
+			// High cards + connectivity
+			preflopQuality = float64(highRank)/12*0.25 + float64(lowRank)/12*0.1
+			// Suited bonus
+			if len(c1) > 1 && len(c2) > 1 && c1[len(c1)-1] == c2[len(c2)-1] {
+				preflopQuality += 0.1
+			}
+			// Connectivity
+			gap := highRank - lowRank
+			if gap == 1 {
+				preflopQuality += 0.12
+			} else if gap == 2 {
+				preflopQuality += 0.08
+			}
+			// Broadway
+			if lowRank >= 8 {
+				preflopQuality += 0.15
+			}
+		}
+		if preflopQuality > 1 {
+			preflopQuality = 1
+		}
+	}
+
+	// Count community cards for decay factor
+	numCommunity := len(communityCards)
+	if communityStr == "" {
+		numCommunity = 0
+	}
+	preflopWeight := 1.0 - float64(numCommunity)*0.15
+	if preflopWeight < 0.2 {
+		preflopWeight = 0.2
+	}
+
+	// Calculate draws (simplified)
+	flushDraw := 0.0
+	straightDraw := 0.0
+	if numCommunity >= 3 {
+		// Check for flush draw (simplified - count suits)
+		suits := make(map[byte]int)
+		for _, c := range append(holeCards, communityCards...) {
+			c = strings.TrimSpace(c)
+			if len(c) > 1 {
+				suits[c[len(c)-1]]++
+			}
+		}
+		for _, count := range suits {
+			if count >= 4 {
+				flushDraw = 0.36 // 9 outs * 4%
+			} else if count == 3 {
+				flushDraw = 0.18 // Backdoor flush draw
+			}
+		}
+		// Simplified straight draw detection
+		straightDraw = 0.16 // Assume OESD (8 outs * 2%)
+	}
+
+	// Build the Petri net model
+	return map[string]interface{}{
+		"name":        "hand-strength",
+		"description": fmt.Sprintf("Hand Strength ODE Model - Hole: %s, Community: %s", holeStr, communityStr),
+		"places": []map[string]interface{}{
+			{"id": "preflop_quality", "initial": int(preflopQuality * preflopWeight * 100), "x": 100, "y": 50},
+			{"id": "current_hand", "initial": 0, "x": 100, "y": 150},
+			{"id": "kicker_value", "initial": 0, "x": 100, "y": 250},
+			{"id": "flush_draw", "initial": int(flushDraw * 100), "x": 300, "y": 50},
+			{"id": "straight_draw", "initial": int(straightDraw * 100), "x": 300, "y": 150},
+			{"id": "pair_draw", "initial": 0, "x": 300, "y": 250},
+			{"id": "improvement_potential", "initial": 0, "x": 200, "y": 350},
+			{"id": "hand_strength", "initial": 0, "x": 500, "y": 150},
+		},
+		"transitions": []map[string]interface{}{
+			{"id": "compute_strength", "x": 350, "y": 150},
+			{"id": "add_flush_value", "x": 420, "y": 50},
+			{"id": "add_straight_value", "x": 420, "y": 150},
+			{"id": "add_pair_value", "x": 420, "y": 250},
+		},
+		"arcs": []map[string]interface{}{
+			{"from": "preflop_quality", "to": "compute_strength"},
+			{"from": "current_hand", "to": "compute_strength"},
+			{"from": "kicker_value", "to": "compute_strength"},
+			{"from": "improvement_potential", "to": "compute_strength"},
+			{"from": "compute_strength", "to": "hand_strength"},
+			{"from": "flush_draw", "to": "add_flush_value"},
+			{"from": "add_flush_value", "to": "hand_strength"},
+			{"from": "straight_draw", "to": "add_straight_value"},
+			{"from": "add_straight_value", "to": "hand_strength"},
+			{"from": "pair_draw", "to": "add_pair_value"},
+			{"from": "add_pair_value", "to": "hand_strength"},
+		},
+	}
 }
