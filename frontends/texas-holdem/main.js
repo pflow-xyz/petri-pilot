@@ -1166,6 +1166,23 @@ async function autoPlayLoop() {
       const callAmount = Math.max(0, gameState.currentBet - player.bet)
       const raiseAmount = gameState.bigBlind * 3
 
+      // First check if this player is eliminated and should skip
+      if (player.chips <= 0 || player.folded) {
+        const skipId = `${prefix}skip`
+        if (enabledSet.has(skipId)) {
+          try {
+            console.log(`Player ${p} eliminated/folded - using skip`)
+            showStatus(`Player ${p}: skipped (eliminated)`, 'info')
+            await executeTransition(skipId, {})
+            actionTaken = true
+            consecutiveFailures = 0
+            break
+          } catch (err) {
+            console.log(`${skipId} failed:`, err)
+          }
+        }
+      }
+
       const actions = ['check', 'call', 'fold', 'raise']
 
       for (const act of actions) {
