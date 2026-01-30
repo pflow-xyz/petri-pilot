@@ -1235,21 +1235,19 @@ async function autoPlayLoop() {
     for (let p = 0; p < 5; p++) {
       const prefix = `p${p}_`
       const player = gameState.players[p]
+      const skipId = `${prefix}skip`
 
-      // First check if this player is eliminated and should skip
-      if (player.chips <= 0 || player.folded) {
-        const skipId = `${prefix}skip`
-        if (enabledSet.has(skipId)) {
-          try {
-            console.log(`Player ${p} eliminated/folded - using skip`)
-            showStatus(`Player ${p}: skipped (eliminated)`, 'info')
-            await executeTransition(skipId, {})
-            actionTaken = true
-            consecutiveFailures = 0
-            break
-          } catch (err) {
-            console.log(`${skipId} failed:`, err)
-          }
+      // First check if skip is enabled (player is folded/eliminated/all-in)
+      if (enabledSet.has(skipId)) {
+        try {
+          console.log(`Player ${p} - using skip (folded/eliminated/all-in)`)
+          showStatus(`Player ${p}: skipped`, 'info')
+          await executeTransition(skipId, {})
+          actionTaken = true
+          consecutiveFailures = 0
+          break
+        } catch (err) {
+          console.log(`${skipId} failed:`, err)
         }
       }
 
