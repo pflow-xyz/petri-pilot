@@ -227,6 +227,15 @@ gh run list --branch main --status success --limit 5
 
 ## Generated File Structure
 
+**IMPORTANT:** This project uses a single-module architecture. The `generated/` directory contains subpackages (NOT standalone modules). Never create a `go.mod` file inside `generated/` - all generated apps are part of the main `github.com/pflow-xyz/petri-pilot` module.
+
+When using the CLI to regenerate apps, always use the `-submodule` flag:
+```bash
+petri-pilot codegen -o generated/myapp -pkg myapp -submodule model.json
+```
+
+Note: Flags must come **before** the model file argument (Go's flag package requirement).
+
 Each generated app contains:
 - `main.go` - Entry point
 - `workflow.go` - Petri net definition
