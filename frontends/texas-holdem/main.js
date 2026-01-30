@@ -587,6 +587,7 @@ function analyzeDraws(holeCards, communityCards) {
 function buildHandStrengthPetriNet(holeCards, communityCards) {
   const draws = analyzeDraws(holeCards, communityCards)
   const currentHand = evaluateCurrentHand(holeCards, communityCards)
+  const preflopQuality = evaluatePreflopQuality(holeCards)
 
   // Calculate draw completion probability using rule of 2/4
   // Flop to river: outs * 4%, Turn to river: outs * 2%
@@ -596,12 +597,24 @@ function buildHandStrengthPetriNet(holeCards, communityCards) {
   const straightProb = Math.min(0.95, draws.straightDraw * outMultiplier)
   const pairProb = Math.min(0.95, draws.overcardDraw * outMultiplier)
 
+  // Preflop quality decays as community cards are revealed (made hand becomes more important)
+  const communityCount = (communityCards.flop?.length || 0) +
+                         (communityCards.turn?.length || 0) +
+                         (communityCards.river?.length || 0)
+  const preflopWeight = Math.max(0.2, 1 - communityCount * 0.15) // 1.0 preflop -> 0.55 flop -> 0.40 turn -> 0.25 river
+
   const places = {
-    // Current hand strength (normalized 0-1)
+    // Current made hand strength (normalized 0-1)
     'current_hand': {
       '@type': 'Place',
       initial: [currentHand.rank / 9], // Normalize to 0-1
       x: 100, y: 100
+    },
+    // Preflop hand quality (high cards, pairs, suited, connected)
+    'preflop_quality': {
+      '@type': 'Place',
+      initial: [preflopQuality * preflopWeight],
+      x: 100, y: 50
     },
     // High card kicker value
     'kicker_value': {
@@ -665,6 +678,7 @@ function buildHandStrengthPetriNet(holeCards, communityCards) {
   const arcs = [
     // Current hand feeds into strength computation
     { '@type': 'Arrow', source: 'current_hand', target: 'compute_strength', weight: [1] },
+    { '@type': 'Arrow', source: 'preflop_quality', target: 'compute_strength', weight: [1] },
     { '@type': 'Arrow', source: 'kicker_value', target: 'compute_strength', weight: [0.1] },
     { '@type': 'Arrow', source: 'compute_strength', target: 'hand_strength', weight: [1] },
 
@@ -690,8 +704,70 @@ function buildHandStrengthPetriNet(holeCards, communityCards) {
     arcs,
     // Store metadata for debugging
     _draws: draws,
-    _currentHand: currentHand
+    _currentHand: currentHand,
+    _preflopQuality: preflopQuality
   }
+}
+
+/**
+ * Evaluate preflop hand quality (0-1 scale)
+ * Based on high cards, pairs, suitedness, and connectivity
+ */
+function evaluatePreflopQuality(holeCards) {
+  if (!holeCards || holeCards.length < 2) {
+    return 0.3 // Default medium-low quality
+  }
+
+  const parsed = holeCards.map(parseCard)
+  const ranks = parsed.map(c => '23456789TJQKA'.indexOf(c.rank))
+  const suits = parsed.map(c => c.suit)
+
+  const highRank = Math.max(...ranks)
+  const lowRank = Math.min(...ranks)
+  const gap = highRank - lowRank
+  const suited = suits[0] === suits[1]
+  const paired = ranks[0] === ranks[1]
+
+  let quality = 0
+
+  // Pocket pairs: 0.4 base + up to 0.5 for high pairs
+  if (paired) {
+    quality = 0.4 + (highRank / 12) * 0.5 // AA = 0.9, 22 = 0.4
+    return Math.min(1, quality)
+  }
+
+  // High card value: up to 0.35 for both cards
+  quality += (highRank / 12) * 0.25 // A high = 0.25
+  quality += (lowRank / 12) * 0.1  // Second card contribution
+
+  // Suited bonus: +0.1
+  if (suited) {
+    quality += 0.1
+  }
+
+  // Connectivity bonus: better for connected cards
+  if (gap === 1) {
+    quality += 0.12 // Connectors (KQ, JT, etc.)
+  } else if (gap === 2) {
+    quality += 0.08 // One-gappers (KJ, QT, etc.)
+  } else if (gap === 3) {
+    quality += 0.04 // Two-gappers (KT, QJ, etc.)
+  }
+
+  // Broadway bonus: both cards T or higher
+  if (lowRank >= 8) { // Both cards are T or higher
+    quality += 0.15
+  }
+
+  // Premium hands bonus
+  // AK, AQ, AJ, KQ
+  if (highRank === 12 && lowRank >= 9) { // Ace with J/Q/K
+    quality += 0.15
+  } else if (highRank === 11 && lowRank >= 10) { // King with Q
+    quality += 0.1
+  }
+
+  return Math.min(1, quality)
 }
 
 /**
@@ -793,20 +869,23 @@ function computeODEHandStrength(holeCards, communityCards) {
       return { strength: 0.5, draws: model._draws, hand: model._currentHand }
     }
 
-    // Combine hand strength with draw potential
+    // Combine hand strength with preflop quality and draw potential
     const baseStrength = finalState['hand_strength'] || 0
     const currentHandValue = finalState['current_hand'] || 0
+    const preflopQuality = finalState['preflop_quality'] || 0
     const improvement = finalState['improvement_potential'] || 0
 
-    // Weighted combination: current hand + improvement potential + draw completions
+    // Weighted combination: preflop quality + current hand + draws + improvement
+    // Preflop quality already has its weight adjusted based on community cards
     const strength = Math.min(1, Math.max(0,
-      currentHandValue * 0.6 + baseStrength * 0.3 + improvement * 0.1
+      preflopQuality * 0.5 + currentHandValue * 0.3 + baseStrength * 0.15 + improvement * 0.05
     ))
 
     return {
       strength,
       draws: model._draws,
       hand: model._currentHand,
+      preflopQuality: model._preflopQuality,
       finalState
     }
   } catch (err) {
