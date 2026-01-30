@@ -1237,10 +1237,13 @@ async function autoPlayLoop() {
       const player = gameState.players[p]
       const skipId = `${prefix}skip`
 
-      // First check if skip is enabled (player is folded/eliminated/all-in)
-      if (enabledSet.has(skipId)) {
+      // Check if this player has any real action available
+      const hasAction = ['fold', 'check', 'call', 'raise'].some(a => enabledSet.has(`${prefix}${a}`))
+
+      // If no real actions but skip is available, use skip (player is folded/eliminated/all-in)
+      if (!hasAction && enabledSet.has(skipId)) {
         try {
-          console.log(`Player ${p} - using skip (folded/eliminated/all-in)`)
+          console.log(`Player ${p} - using skip (no actions available)`)
           showStatus(`Player ${p}: skipped`, 'info')
           await executeTransition(skipId, {})
           actionTaken = true
@@ -1251,8 +1254,6 @@ async function autoPlayLoop() {
         }
       }
 
-      // Check if this player has any action available
-      const hasAction = ['fold', 'check', 'call', 'raise'].some(a => enabledSet.has(`${prefix}${a}`))
       if (!hasAction) continue
 
       // Use strategic decision making based on hand strength
