@@ -401,6 +401,89 @@ Requires `GITHUB_TOKEN` environment variable for status commands.
 export GITHUB_TOKEN=$(gh auth token)
 ```
 
+## Adding a New Service to Landing Page
+
+To add a new service/app to the petri-pilot landing page and deployment:
+
+### 1. Create the Model
+
+Add your Petri net model JSON file to `examples/`:
+
+```bash
+examples/my-app.json
+```
+
+### 2. Generate the Service Module
+
+Generate as a submodule (no separate go.mod):
+
+```bash
+./petri-pilot codegen -submodule -pkg myapp -o generated/myapp examples/my-app.json
+```
+
+### 3. Register the Service
+
+Add an import to `generated/imports.go`:
+
+```go
+import (
+    // ... existing imports
+    _ "github.com/pflow-xyz/petri-pilot/generated/myapp"
+)
+```
+
+### 4. Create Custom Frontend (Optional)
+
+If you have a custom frontend, add it to `frontends/my-app/`:
+
+```
+frontends/my-app/
+├── index.html
+├── main.js
+├── styles.css
+└── ...
+```
+
+Custom frontends are served instead of generated ones when they exist.
+
+### 5. Add Landing Page Card
+
+Edit `landing/index.html` and add a card in the "Explore Models" section:
+
+```html
+<a href="/my-app/" class="demo-card">
+  <span class="demo-icon">🎯</span>
+  <h3 class="demo-name">My App</h3>
+  <p class="demo-desc">Brief description of what this demo shows.</p>
+  <div class="demo-meta">
+    <span class="demo-tag">tag1</span>
+    <span class="demo-tag">tag2</span>
+  </div>
+</a>
+```
+
+### 6. Update Makefile
+
+Add the service to the `dev-run` target in `Makefile`:
+
+```makefile
+dev-run: build
+    ./$(BINARY) serve -port 8083 tic-tac-toe coffeeshop ... my-app
+```
+
+### 7. Build and Test
+
+```bash
+go build ./...                    # Verify compilation
+make dev-run                      # Test locally
+```
+
+### 8. Deploy
+
+```bash
+./publish.sh "Add my-app service"
+```
+
 ## Deploying to pflow.dev
 
 Use `publish.sh` to deploy changes to production.
@@ -419,7 +502,7 @@ Use `publish.sh` to deploy changes to production.
 **Production server:**
 - Host: `pflow.dev` (user: `ubuntu`)
 - Service runs on port 8083 in tmux session `servers:0`
-- Command: `./petri-pilot serve -port 8083 tic-tac-toe coffeeshop`
+- Command: `./petri-pilot serve -port 8083 tic-tac-toe coffeeshop erc20-token blog-post task-manager support-ticket texas-holdem`
 
 ### Tmux Session Structure
 

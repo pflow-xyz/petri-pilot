@@ -86,9 +86,11 @@ body {
 .poker-table-container {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  padding: 2rem;
+  padding: 4rem 6rem;
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+  margin: 2rem auto;
 }
 
 .poker-table {
@@ -111,7 +113,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  z-index: 10;
+  z-index: 25;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -183,33 +185,53 @@ body {
 /* Position players around the oval table - Top center reserved for notices/dealer */
 /* Seat 0: Bottom center (User) */
 .player-seat.seat-0 {
-  bottom: -50px;
+  bottom: -60px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-/* Seat 1: Lower left */
+/* Seat 1: Left side (middle-low) */
 .player-seat.seat-1 {
-  bottom: 60px;
-  left: -40px;
+  bottom: 120px;
+  left: -60px;
 }
 
-/* Seat 2: Upper left */
+/* Seat 2: Left side (middle-high) */
 .player-seat.seat-2 {
-  top: 60px;
-  left: -40px;
+  top: 80px;
+  left: -60px;
 }
 
-/* Seat 3: Upper right */
+/* Seat 3: Right side (middle-high) */
 .player-seat.seat-3 {
-  top: 60px;
-  right: -40px;
+  top: 80px;
+  right: -60px;
 }
 
-/* Seat 4: Lower right */
+/* Seat 4: Right side (middle-low) */
 .player-seat.seat-4 {
-  bottom: 60px;
-  right: -40px;
+  bottom: 120px;
+  right: -60px;
+}
+
+/* Blind markers */
+.blind-marker {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 0.3rem;
+}
+
+.blind-marker.sb {
+  background: #3b82f6;
+  color: white;
+}
+
+.blind-marker.bb {
+  background: #f59e0b;
+  color: black;
 }
 
 .player-name {
@@ -327,6 +349,60 @@ body {
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  z-index: 5;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.speed-control label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.speed-control input[type="range"] {
+  width: 100px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.speed-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #f59e0b;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.speed-control input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #f59e0b;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+#speed-label {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: #f59e0b;
 }
 
 .btn {
@@ -381,6 +457,8 @@ body {
   padding: 1.5rem;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
+  position: relative;
+  z-index: 5;
 }
 
 .action-buttons h3 {
@@ -488,6 +566,15 @@ body {
   margin: 1rem 0;
   border-radius: 8px;
   font-weight: 600;
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+}
+
+.status-message.visible {
+  visibility: visible;
 }
 
 .status-message.info {

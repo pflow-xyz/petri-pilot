@@ -48,8 +48,11 @@ func main() {
 	// Initialize middleware
 	middleware := NewMiddleware(sessions, accessRules)
 
+	// Initialize debug broker for WebSocket eval
+	debugBroker := NewDebugBroker()
+
 	// Build HTTP router
-	router := BuildRouter(app, middleware, sessions)
+	router := BuildRouter(app, middleware, sessions, debugBroker)
 
 	// Configure server
 	server := &http.Server{

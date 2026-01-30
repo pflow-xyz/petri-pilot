@@ -1,0 +1,926 @@
+/* Texas Hold'em Poker Table Styles */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  min-height: 100vh;
+  color: #333;
+}
+
+.top-nav {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-nav .nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.top-nav .nav-brand:hover {
+  opacity: 0.9;
+}
+
+.top-nav .nav-brand img {
+  height: 28px;
+  width: auto;
+}
+
+.top-nav .nav-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.top-nav a {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.top-nav a:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.app-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+}
+
+/* Poker Table */
+.poker-table-container {
+  background: linear-gradient(145deg, rgba(30, 30, 50, 0.9) 0%, rgba(20, 20, 35, 0.95) 100%);
+  border-radius: 24px;
+  padding: 4rem 6rem;
+  backdrop-filter: blur(15px);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  overflow: visible;
+  margin: 2rem auto;
+  position: relative;
+}
+
+.poker-table {
+  /* Multi-layer wood rail effect */
+  background:
+    /* Felt texture overlay */
+    radial-gradient(ellipse at 30% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(0, 0, 0, 0.1) 0%, transparent 50%),
+    /* Base felt gradient */
+    linear-gradient(180deg, #1a7a1a 0%, #0d5c0d 40%, #085808 100%);
+  border: 20px solid transparent;
+  border-radius: 50%;
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 450px;
+  margin: 0 auto;
+  overflow: visible;
+  /* Wood rail with grain effect */
+  background-clip: padding-box;
+  box-shadow:
+    /* Inner felt shadow - only at bottom for depth */
+    inset 0 -40px 60px rgba(0, 0, 0, 0.35),
+    /* Table drop shadow */
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Wood grain rail - using pseudo element for texture */
+.poker-table-container::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - 2.5rem);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 8rem);
+  max-width: 840px;
+  height: 490px;
+  border-radius: 50%;
+  /* Wood grain pattern */
+  background:
+    /* Grain lines */
+    repeating-linear-gradient(
+      92deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 0, 0, 0.08) 3px,
+      rgba(0, 0, 0, 0.08) 4px,
+      transparent 4px,
+      transparent 12px
+    ),
+    repeating-linear-gradient(
+      88deg,
+      transparent,
+      transparent 8px,
+      rgba(255, 255, 255, 0.04) 8px,
+      rgba(255, 255, 255, 0.04) 9px,
+      transparent 9px,
+      transparent 20px
+    ),
+    /* Wood knots suggestion */
+    radial-gradient(ellipse 8px 12px at 15% 30%, rgba(60, 30, 15, 0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 6px 10px at 85% 70%, rgba(60, 30, 15, 0.15) 0%, transparent 100%),
+    radial-gradient(ellipse 5px 8px at 45% 80%, rgba(60, 30, 15, 0.15) 0%, transparent 100%),
+    /* Base wood color - much lighter at top */
+    linear-gradient(
+      180deg,
+      #b8917a 0%,
+      #a8816a 10%,
+      #8b6350 30%,
+      #7a5240 60%,
+      #6b4535 100%
+    );
+  box-shadow:
+    inset 0 40px 50px rgba(255, 255, 255, 0.2),
+    inset 0 -15px 25px rgba(0, 0, 0, 0.2),
+    0 0 0 3px #5a3d2a,
+    0 0 0 5px #4a2f22;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Betting line ring */
+.poker-table::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 70%;
+  border: 2px solid rgba(255, 215, 0, 0.15);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    0 0 10px rgba(255, 215, 0, 0.1),
+    inset 0 0 10px rgba(255, 215, 0, 0.05);
+}
+
+/* Center spotlight effect */
+.poker-table::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50%;
+  height: 45%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Community Cards Area */
+.community-cards-area {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pot-display {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(20, 20, 20, 0.9) 100%);
+  color: #ffd700;
+  padding: 0.6rem 1.5rem;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  order: 1;
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 20px rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.community-cards {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  order: 2;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.round-indicator {
+  background: linear-gradient(180deg, rgba(40, 40, 60, 0.9) 0%, rgba(30, 30, 45, 0.95) 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 600;
+  order: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Player Seats */
+.player-seats {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.player-seat {
+  position: absolute;
+  width: 145px;
+  background: linear-gradient(180deg, rgba(35, 35, 50, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 0.75rem;
+  color: white;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  z-index: 20;
+  font-size: 0.85rem;
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.player-seat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  border-radius: 12px 12px 0 0;
+  pointer-events: none;
+}
+
+.player-seat.active-turn {
+  border-color: #ffd700;
+  box-shadow:
+    0 0 30px rgba(255, 215, 0, 0.5),
+    0 0 60px rgba(255, 215, 0, 0.2),
+    0 8px 25px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 215, 0, 0.3);
+  transform: scale(1.02);
+}
+
+.player-seat.folded {
+  opacity: 0.4;
+  filter: grayscale(80%);
+  transform: scale(0.98);
+}
+
+/* Position players around the oval table - Top center reserved for notices/dealer */
+/* Seat 0: Bottom center (User) */
+.player-seat.seat-0 {
+  bottom: -90px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Seat 1: Left side (lower) */
+.player-seat.seat-1 {
+  bottom: -80px;
+  left: -70px;
+}
+
+/* Seat 2: Left side (upper) */
+.player-seat.seat-2 {
+  top: -80px;
+  left: -70px;
+}
+
+/* Seat 3: Right side (upper) */
+.player-seat.seat-3 {
+  top: -80px;
+  right: -70px;
+}
+
+/* Seat 4: Right side (lower) */
+.player-seat.seat-4 {
+  bottom: -80px;
+  right: -70px;
+}
+
+/* Blind markers */
+.blind-marker {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  margin-left: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.blind-marker.sb {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+}
+
+.blind-marker.bb {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+.player-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.dealer-button {
+  background: linear-gradient(145deg, #ffffff 0%, #e8e8e8 100%);
+  color: #1a1a1a;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.75rem;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border: 2px solid #c0c0c0;
+  text-shadow: none;
+}
+
+.player-chips {
+  color: #ffd700;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.player-cards {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+  min-height: 60px;
+  justify-content: center;
+}
+
+.player-bet {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 180, 0, 0.2) 100%);
+  color: #ffd700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
+}
+
+/* Cards */
+.card {
+  width: 52px;
+  height: 72px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f8f8 50%, #eeeeee 100%);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-8px) rotateX(5deg);
+  box-shadow:
+    0 12px 20px rgba(0, 0, 0, 0.4),
+    0 6px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.card-back {
+  background:
+    /* Diamond pattern */
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 8px,
+      rgba(255, 255, 255, 0.08) 8px,
+      rgba(255, 255, 255, 0.08) 16px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 8px,
+      rgba(255, 255, 255, 0.08) 8px,
+      rgba(255, 255, 255, 0.08) 16px
+    ),
+    /* Base gradient */
+    linear-gradient(145deg, #c41e3a 0%, #9a1830 50%, #7a1020 100%);
+  border: 2px solid #5a0a15;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.card-pattern {
+  width: 40px;
+  height: 60px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.1) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
+.card-placeholder {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.card-face {
+  padding: 0.25rem;
+}
+
+.card-rank {
+  font-size: 1.3rem;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.card-suit {
+  font-size: 1.6rem;
+  line-height: 1;
+  margin-top: 0.2rem;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.1));
+}
+
+.card-red {
+  color: #c41e3a;
+}
+
+.card-black {
+  color: #1a1a1a;
+}
+
+/* Controls */
+.controls {
+  margin-top: 7rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  z-index: 5;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.speed-control label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.speed-control input[type="range"] {
+  width: 100px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.speed-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #f59e0b;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.speed-control input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #f59e0b;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+#speed-label {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.btn {
+  padding: 0.8rem 1.75rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow:
+    0 4px 15px rgba(34, 197, 94, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-success:hover:not(:disabled) {
+  box-shadow:
+    0 8px 25px rgba(34, 197, 94, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow:
+    0 4px 15px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger:hover:not(:disabled) {
+  box-shadow:
+    0 8px 25px rgba(239, 68, 68, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+}
+
+/* Action Buttons with ODE Values */
+.action-buttons {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  position: relative;
+  z-index: 5;
+}
+
+.action-buttons h3 {
+  color: white;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.action-button {
+  position: relative;
+  padding: 1rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  border-color: white;
+}
+
+.action-button.recommended {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.action-label {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.action-ode-value {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Heatmap Overlay */
+.heatmap-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.heatmap-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+}
+
+.heatmap-content h3 {
+  margin-bottom: 1rem;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.heatmap-item {
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.heatmap-item.positive {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.heatmap-item.neutral {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.heatmap-item.negative {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+/* Status Messages */
+.status-message {
+  text-align: center;
+  padding: 0.75rem 1.5rem;
+  margin: 0.5rem 0 1.5rem 0;
+  border-radius: 8px;
+  font-weight: 600;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+.status-message.visible {
+  visibility: visible;
+}
+
+.status-message.info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.status-message.success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.status-message.error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Game Info */
+.game-info {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.info-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.info-card h3 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.info-card-content {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.event-list {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.event-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 3px solid #667eea;
+  color: white;
+}
+
+.event-item strong {
+  color: #ffd700;
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .poker-table {
+    min-height: 400px;
+    padding: 2rem 1rem;
+  }
+
+  .player-seat {
+    width: 140px;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .card {
+    width: 40px;
+    height: 56px;
+  }
+
+  .card-rank {
+    font-size: 1rem;
+  }
+
+  .card-suit {
+    font-size: 1.2rem;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

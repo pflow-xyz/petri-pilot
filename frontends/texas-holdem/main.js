@@ -68,6 +68,72 @@ let solverParams = {
 let autoPlayActive = false
 let autoPlaySpeed = 1000 // ms between actions
 
+// Card deck for dealing random cards
+const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+const SUITS = ['h', 'd', 'c', 's'] // hearts, diamonds, clubs, spades
+let deck = []
+let randomSeed = null
+
+/**
+ * Seeded random number generator (Mulberry32)
+ */
+function seededRandom() {
+  if (randomSeed === null) {
+    return Math.random()
+  }
+  randomSeed |= 0
+  randomSeed = randomSeed + 0x6D2B79F5 | 0
+  let t = Math.imul(randomSeed ^ randomSeed >>> 15, 1 | randomSeed)
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+  return ((t ^ t >>> 14) >>> 0) / 4294967296
+}
+
+/**
+ * Set the random seed for reproducible shuffles
+ */
+function setRandomSeed(seed) {
+  randomSeed = seed
+  console.log(`Random seed set to: ${seed}`)
+}
+window.setRandomSeed = setRandomSeed
+
+/**
+ * Create and shuffle a new deck
+ */
+function createDeck(seed = null) {
+  deck = []
+  for (const rank of RANKS) {
+    for (const suit of SUITS) {
+      deck.push(rank + suit)
+    }
+  }
+  // Use provided seed or generate a new random one
+  if (seed !== null) {
+    randomSeed = seed
+  } else {
+    randomSeed = Math.floor(Math.random() * 2147483647)
+  }
+  console.log(`Deck created with seed: ${randomSeed}`)
+  shuffleDeck()
+}
+
+/**
+ * Shuffle the deck using Fisher-Yates algorithm with seeded random
+ */
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom() * (i + 1))
+    ;[deck[i], deck[j]] = [deck[j], deck[i]]
+  }
+}
+
+/**
+ * Deal n cards from the deck
+ */
+function dealCards(n) {
+  return deck.splice(0, n)
+}
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Texas Hold\'em Poker initialized')
@@ -77,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('start-hand-btn').addEventListener('click', startHand)
   document.getElementById('auto-play-btn').addEventListener('click', startAutoPlay)
   document.getElementById('stop-play-btn').addEventListener('click', stopAutoPlay)
+  document.getElementById('speed-slider').addEventListener('input', updateSpeed)
   document.getElementById('toggle-heatmap-btn').addEventListener('click', toggleHeatmap)
   document.getElementById('toggle-ode-btn').addEventListener('click', toggleODEMode)
 
@@ -172,10 +239,29 @@ async function startHand() {
     console.log('Hand started:', data)
     
     updateGameState(data)
-    showStatus('Hand started!', 'success')
-    
-    // Auto-deal preflop after a short delay
-    setTimeout(() => dealPreflop(), 500)
+
+    // Update blind level and post blinds
+    updateBlindLevel()
+    postBlinds()
+
+    showStatus(`Preflop - Blinds: $${gameState.smallBlind}/$${gameState.bigBlind}`, 'success')
+
+    // Create a new shuffled deck and deal hole cards to all players
+    createDeck()
+    for (let i = 0; i < 5; i++) {
+      gameState.players[i].cards = dealCards(2)
+    }
+    console.log('Dealt hole cards:', gameState.players.map(p => p.cards))
+
+    // Show auto-play button
+    document.getElementById('auto-play-btn').style.display = 'inline-block'
+
+    // Update UI
+    renderPokerTable()
+    renderEventHistory()
+
+    // Run ODE analysis
+    await runODESimulation()
   } catch (err) {
     console.error('Failed to start hand:', err)
     showStatus(`Error: ${err.message}`, 'error')
@@ -246,32 +332,12 @@ function updateBlindLevel() {
 }
 
 /**
- * Deal preflop cards
+ * Deal preflop cards (deprecated - start_hand now handles preflop directly)
  */
 async function dealPreflop() {
-  try {
-    await executeTransition('deal_preflop', {})
-
-    // Update blind level and post blinds
-    updateBlindLevel()
-    postBlinds()
-
-    showStatus(`Preflop - Blinds: $${gameState.smallBlind}/$${gameState.bigBlind}`, 'success')
-
-    // Simulate dealing cards to players (in real game, this comes from backend)
-    gameState.players[0].cards = ['Ah', 'Kh']
-
-    // Show auto-play button
-    document.getElementById('auto-play-btn').style.display = 'inline-block'
-
-    renderPokerTable()
-    renderEventHistory()
-
-    // Run ODE analysis
-    await runODESimulation()
-  } catch (err) {
-    console.error('Failed to deal preflop:', err)
-  }
+  // In the new model, start_hand transitions directly to preflop with p0_turn
+  // This function is kept for compatibility but does nothing
+  console.log('dealPreflop called - no longer needed in new model')
 }
 
 /**
@@ -599,6 +665,28 @@ function renderPokerTable() {
     } else {
       dealerBtn.style.display = 'none'
     }
+
+    // Update blind markers (SB is after dealer, BB is after SB)
+    const sbPosition = (gameState.dealer + 1) % 5
+    const bbPosition = (gameState.dealer + 2) % 5
+    let blindMarker = seatEl.querySelector('.blind-marker')
+    if (!blindMarker) {
+      blindMarker = document.createElement('span')
+      blindMarker.className = 'blind-marker'
+      seatEl.querySelector('.player-name').appendChild(blindMarker)
+    }
+
+    if (i === sbPosition && gameState.currentRound !== 'waiting') {
+      blindMarker.textContent = 'SB'
+      blindMarker.className = 'blind-marker sb'
+      blindMarker.style.display = 'inline-block'
+    } else if (i === bbPosition && gameState.currentRound !== 'waiting') {
+      blindMarker.textContent = 'BB'
+      blindMarker.className = 'blind-marker bb'
+      blindMarker.style.display = 'inline-block'
+    } else {
+      blindMarker.style.display = 'none'
+    }
     
     // Update chips
     seatEl.querySelector('.player-chips').textContent = `$${player.chips}`
@@ -683,12 +771,106 @@ window.performAction = async function(transitionId, amount = 0) {
   try {
     const data = amount > 0 ? { amount } : {}
     await executeTransition(transitionId, data)
-    
+
+    // Automatically execute dealer actions (deal flop, turn, river, etc.)
+    await processGameUntilPlayerTurn()
+
     // Recalculate ODE
     await runODESimulation()
   } catch (err) {
     console.error('Action failed:', err)
   }
+}
+
+/**
+ * Process all automatic game actions until Player 0 needs to act
+ * This handles AI player decisions and dealer actions (dealing cards, etc.)
+ */
+async function processGameUntilPlayerTurn() {
+  let iterations = 0
+  const maxIterations = 50 // Safety limit for full betting rounds
+
+  while (iterations < maxIterations) {
+    iterations++
+
+    // Check if game is over or waiting
+    if (gameState.currentRound === 'complete' || gameState.currentRound === 'waiting') {
+      break
+    }
+
+    // If it's Player 0's turn, stop and let human play
+    if (gameState.currentPlayer === 0 && hasPlayerAction(0)) {
+      renderActionButtons()
+      break
+    }
+
+    // Try dealer actions first (deal cards, end round, etc.)
+    const dealerActed = await checkDealerAction()
+    if (dealerActed) {
+      await delay(300)
+      continue
+    }
+
+    // If it's an AI player's turn (P1-P4), have them act
+    const aiActed = await processAIPlayerTurn()
+    if (aiActed) {
+      await delay(200)
+      continue
+    }
+
+    // No action taken, break to avoid infinite loop
+    break
+  }
+}
+
+/**
+ * Check if a player has an available action
+ */
+function hasPlayerAction(playerIndex) {
+  const enabledSet = new Set(gameState.enabled || [])
+  const prefix = `p${playerIndex}_`
+
+  for (const action of ['fold', 'check', 'call', 'raise']) {
+    if (enabledSet.has(prefix + action)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Process AI player turn (P1-P4)
+ * Simple AI: check if possible, otherwise call, rarely fold
+ */
+async function processAIPlayerTurn() {
+  const enabledSet = new Set(gameState.enabled || [])
+
+  // Find which AI player can act
+  for (let i = 1; i <= 4; i++) {
+    const prefix = `p${i}_`
+
+    // Simple AI strategy: check > call > fold
+    if (enabledSet.has(prefix + 'check')) {
+      showStatus(`Player ${i} checks`, 'info')
+      await executeTransition(prefix + 'check', {})
+      return true
+    }
+
+    if (enabledSet.has(prefix + 'call')) {
+      showStatus(`Player ${i} calls`, 'info')
+      await executeTransition(prefix + 'call', {})
+      return true
+    }
+
+    if (enabledSet.has(prefix + 'fold')) {
+      // Only fold if no other option (shouldn't happen with check available)
+      showStatus(`Player ${i} folds`, 'info')
+      await executeTransition(prefix + 'fold', {})
+      return true
+    }
+  }
+
+  return false
 }
 
 /**
@@ -781,14 +963,19 @@ function renderODEAnalysis() {
 /**
  * Show status message
  */
+let statusTimeout = null
 function showStatus(message, type = 'info') {
   const statusEl = document.getElementById('status-message')
   statusEl.textContent = message
-  statusEl.className = `status-message ${type}`
-  statusEl.style.display = 'block'
-  
-  setTimeout(() => {
-    statusEl.style.display = 'none'
+  statusEl.className = `status-message ${type} visible`
+
+  // Clear any existing timeout
+  if (statusTimeout) {
+    clearTimeout(statusTimeout)
+  }
+
+  statusTimeout = setTimeout(() => {
+    statusEl.classList.remove('visible')
   }, 3000)
 }
 
@@ -868,6 +1055,7 @@ async function startAutoPlay() {
   autoPlayActive = true
   document.getElementById('auto-play-btn').style.display = 'none'
   document.getElementById('stop-play-btn').style.display = 'inline-block'
+  document.getElementById('speed-control').style.display = 'flex'
   document.getElementById('action-buttons').style.display = 'none'
 
   showStatus('Auto-play started!', 'success')
@@ -884,12 +1072,34 @@ function stopAutoPlay() {
   autoPlayActive = false
   document.getElementById('auto-play-btn').style.display = 'inline-block'
   document.getElementById('stop-play-btn').style.display = 'none'
+  document.getElementById('speed-control').style.display = 'none'
 
   showStatus('Auto-play stopped', 'info')
   console.log('Auto-play stopped')
 
   // Re-render action buttons if it's player 0's turn
   renderActionButtons()
+}
+
+/**
+ * Update auto-play speed from slider
+ */
+function updateSpeed() {
+  const slider = document.getElementById('speed-slider')
+  const label = document.getElementById('speed-label')
+  const value = parseInt(slider.value)
+
+  // Map 0-100 to 2000ms (slow) to 50ms (fast)
+  // Using exponential scale for better feel
+  const minSpeed = 50
+  const maxSpeed = 2000
+  autoPlaySpeed = Math.round(maxSpeed - (value / 100) * (maxSpeed - minSpeed))
+
+  // Calculate multiplier for display (1x = 1000ms)
+  const multiplier = (1000 / autoPlaySpeed).toFixed(1)
+  label.textContent = `${multiplier}x`
+
+  console.log(`Speed: ${autoPlaySpeed}ms (${multiplier}x)`)
 }
 
 /**
@@ -920,6 +1130,24 @@ async function autoPlayLoop() {
         try {
           showStatus(`Dealer: ${dealerAction}`, 'info')
           await executeTransition(dealerAction, {})
+
+          // Deal community cards when appropriate
+          if (dealerAction === 'deal_flop') {
+            gameState.communityCards.flop = dealCards(3)
+            console.log('Auto-play flop:', gameState.communityCards.flop)
+          } else if (dealerAction === 'deal_turn') {
+            gameState.communityCards.turn = dealCards(1)
+            console.log('Auto-play turn:', gameState.communityCards.turn)
+          } else if (dealerAction === 'deal_river') {
+            gameState.communityCards.river = dealCards(1)
+            console.log('Auto-play river:', gameState.communityCards.river)
+          } else if (dealerAction === 'determine_winner') {
+            awardPotToWinner()
+          } else if (dealerAction === 'end_hand' && gameState.pot > 0) {
+            awardPotToWinner()
+          }
+
+          renderPokerTable()
           actionTaken = true
           consecutiveFailures = 0
           break
@@ -1017,7 +1245,83 @@ async function autoPlayLoop() {
   }
 
   if (autoPlayActive && gameState.currentRound === 'complete') {
-    showStatus('Hand complete!', 'success')
+    // Check how many players still have chips
+    const playersWithChips = gameState.players.filter(p => p.chips > 0)
+
+    if (playersWithChips.length <= 1) {
+      // Tournament over - we have a winner!
+      const winner = playersWithChips[0] || gameState.players[0]
+      showStatus(`🏆 ${winner.name} wins the tournament with $${winner.chips}!`, 'success')
+      stopAutoPlay()
+    } else {
+      // More players remain - start next hand
+      showStatus(`Hand complete! ${playersWithChips.length} players remain. Starting next hand...`, 'info')
+
+      // Reset for next hand
+      await delay(1500)
+
+      if (autoPlayActive) {
+        await startNextHand()
+        // Continue the auto-play loop
+        autoPlayLoop()
+      }
+    }
+  }
+}
+
+/**
+ * Start the next hand (used by auto-play for continuous play)
+ */
+async function startNextHand() {
+  try {
+    // Reset player states for new hand
+    gameState.players.forEach(p => {
+      p.cards = []
+      p.bet = 0
+      p.folded = p.chips <= 0 // Fold out players with no chips
+    })
+    gameState.communityCards = { flop: [], turn: [], river: [] }
+    gameState.pot = 0
+    gameState.currentBet = 0
+
+    // Move dealer button
+    do {
+      gameState.dealer = (gameState.dealer + 1) % 5
+    } while (gameState.players[gameState.dealer].chips <= 0)
+
+    // Call start_hand API
+    const response = await fetch(`${getApiBase()}/api/start_hand`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aggregate_id: gameState.id })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to start hand: ${response.status}`)
+    }
+
+    const data = await response.json()
+    updateGameState(data)
+
+    // Update blinds and post them
+    updateBlindLevel()
+    postBlinds()
+
+    // Create new deck and deal cards
+    createDeck()
+    for (let i = 0; i < 5; i++) {
+      if (gameState.players[i].chips > 0) {
+        gameState.players[i].cards = dealCards(2)
+      }
+    }
+
+    showStatus(`Hand #${gameState.handsPlayed} - Blinds: $${gameState.smallBlind}/$${gameState.bigBlind}`, 'info')
+    renderPokerTable()
+    renderEventHistory()
+
+  } catch (err) {
+    console.error('Failed to start next hand:', err)
+    showStatus(`Error starting hand: ${err.message}`, 'error')
     stopAutoPlay()
   }
 }
@@ -1032,8 +1336,9 @@ async function checkDealerAction() {
   if (enabledSet.has('deal_flop')) {
     showStatus('Dealing flop...', 'info')
     await executeTransition('deal_flop', {})
-    // Simulate flop cards
-    gameState.communityCards.flop = ['Qd', 'Jc', '7h']
+    // Deal 3 cards for the flop
+    gameState.communityCards.flop = dealCards(3)
+    console.log('Flop:', gameState.communityCards.flop)
     renderPokerTable()
     return true
   }
@@ -1041,7 +1346,9 @@ async function checkDealerAction() {
   if (enabledSet.has('deal_turn')) {
     showStatus('Dealing turn...', 'info')
     await executeTransition('deal_turn', {})
-    gameState.communityCards.turn = ['5s']
+    // Deal 1 card for the turn
+    gameState.communityCards.turn = dealCards(1)
+    console.log('Turn:', gameState.communityCards.turn)
     renderPokerTable()
     return true
   }
@@ -1049,7 +1356,9 @@ async function checkDealerAction() {
   if (enabledSet.has('deal_river')) {
     showStatus('Dealing river...', 'info')
     await executeTransition('deal_river', {})
-    gameState.communityCards.river = ['2d']
+    // Deal 1 card for the river
+    gameState.communityCards.river = dealCards(1)
+    console.log('River:', gameState.communityCards.river)
     renderPokerTable()
     return true
   }
@@ -1069,12 +1378,20 @@ async function checkDealerAction() {
   if (enabledSet.has('determine_winner')) {
     showStatus('Determining winner...', 'info')
     await executeTransition('determine_winner', {})
+
+    // Award pot to winner
+    awardPotToWinner()
     return true
   }
 
   if (enabledSet.has('end_hand')) {
     showStatus('Ending hand...', 'info')
     await executeTransition('end_hand', {})
+
+    // If pot wasn't awarded yet (e.g., everyone folded), award it now
+    if (gameState.pot > 0) {
+      awardPotToWinner()
+    }
     return true
   }
 
@@ -1190,6 +1507,55 @@ async function executePlayerAction(action) {
 
   } catch (err) {
     console.error('Action failed:', err)
+  }
+}
+
+/**
+ * Award the pot to the winner
+ */
+function awardPotToWinner() {
+  // Find active players (not folded and have chips)
+  const activePlayers = gameState.players
+    .map((p, i) => ({ ...p, index: i }))
+    .filter(p => !p.folded)
+
+  if (activePlayers.length === 0) {
+    console.log('No active players to award pot')
+    return
+  }
+
+  let winner
+  if (activePlayers.length === 1) {
+    // Only one player left - they win by default
+    winner = activePlayers[0]
+  } else {
+    // Multiple players - evaluate hands at showdown
+    let bestStrength = -1
+    for (const player of activePlayers) {
+      const strength = evaluateHandStrength(player.cards, gameState.communityCards)
+      console.log(`Player ${player.index} showdown strength: ${strength.toFixed(3)}`)
+      if (strength > bestStrength) {
+        bestStrength = strength
+        winner = player
+      }
+    }
+  }
+
+  if (winner) {
+    const potAmount = gameState.pot
+    gameState.players[winner.index].chips += potAmount
+    showStatus(`${winner.name} wins $${potAmount}!`, 'success')
+
+    gameState.events.push({
+      type: `${winner.name} wins $${potAmount}`,
+      timestamp: new Date().toISOString()
+    })
+
+    console.log(`${winner.name} wins pot of $${potAmount}, now has $${gameState.players[winner.index].chips}`)
+    gameState.pot = 0
+
+    renderPokerTable()
+    renderEventHistory()
   }
 }
 

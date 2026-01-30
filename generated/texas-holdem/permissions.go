@@ -8,11 +8,6 @@ import (
 
 // Role constants
 const (
-	RolePlayer0 = "player_0"
-	RolePlayer1 = "player_1"
-	RolePlayer2 = "player_2"
-	RolePlayer3 = "player_3"
-	RolePlayer4 = "player_4"
 	RoleDealer = "dealer"
 	RoleAdmin = "admin"
 )
@@ -20,11 +15,6 @@ const (
 // AllRolesFor maps each role to its effective roles (including inherited).
 // For example, if admin inherits from user, AllRolesFor[RoleAdmin] = []string{"admin", "user"}.
 var AllRolesFor = map[string][]string{
-	RolePlayer0: { "player_0" },
-	RolePlayer1: { "player_1" },
-	RolePlayer2: { "player_2" },
-	RolePlayer3: { "player_3" },
-	RolePlayer4: { "player_4" },
 	RoleDealer: { "dealer" },
 	RoleAdmin: { "admin", "dealer" },
 }

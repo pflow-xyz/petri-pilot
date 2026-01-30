@@ -11,7 +11,6 @@ const (
 	PlaceRiver = "river"
 	PlaceShowdown = "showdown"
 	PlaceComplete = "complete"
-	PlaceDealerAction = "dealer_action"
 	PlaceP0Turn = "p0_turn"
 	PlaceP1Turn = "p1_turn"
 	PlaceP2Turn = "p2_turn"
@@ -22,35 +21,18 @@ const (
 	PlaceP2Active = "p2_active"
 	PlaceP3Active = "p3_active"
 	PlaceP4Active = "p4_active"
-	PlaceP0Folded = "p0_folded"
-	PlaceP1Folded = "p1_folded"
-	PlaceP2Folded = "p2_folded"
-	PlaceP3Folded = "p3_folded"
-	PlaceP4Folded = "p4_folded"
-	PlaceP0Acted = "p0_acted"
-	PlaceP1Acted = "p1_acted"
-	PlaceP2Acted = "p2_acted"
-	PlaceP3Acted = "p3_acted"
-	PlaceP4Acted = "p4_acted"
-	PlaceRoundOpen = "round_open"
+	PlaceBettingDone = "betting_done"
 )
 
 // Transition constants
 const (
 	TransitionStartHand = "start_hand"
-	TransitionDealPreflop = "deal_preflop"
 	TransitionDealFlop = "deal_flop"
 	TransitionDealTurn = "deal_turn"
 	TransitionDealRiver = "deal_river"
 	TransitionGoShowdown = "go_showdown"
 	TransitionDetermineWinner = "determine_winner"
 	TransitionEndHand = "end_hand"
-	TransitionAdvanceToP1 = "advance_to_p1"
-	TransitionAdvanceToP2 = "advance_to_p2"
-	TransitionAdvanceToP3 = "advance_to_p3"
-	TransitionAdvanceToP4 = "advance_to_p4"
-	TransitionAdvanceToP0 = "advance_to_p0"
-	TransitionEndBettingRound = "end_betting_round"
 	TransitionP0Fold = "p0_fold"
 	TransitionP0Check = "p0_check"
 	TransitionP0Call = "p0_call"
@@ -71,44 +53,47 @@ const (
 	TransitionP4Check = "p4_check"
 	TransitionP4Call = "p4_call"
 	TransitionP4Raise = "p4_raise"
+	TransitionP0Skip = "p0_skip"
+	TransitionP1Skip = "p1_skip"
+	TransitionP2Skip = "p2_skip"
+	TransitionP3Skip = "p3_skip"
+	TransitionP4Skip = "p4_skip"
 )
 
 // Event type constants
 const (
 	EventTypeStartHand = "hand_started"
-	EventTypeDealPreflop = "preflop_dealt"
 	EventTypeDealFlop = "flop_dealt"
 	EventTypeDealTurn = "turn_dealt"
 	EventTypeDealRiver = "river_dealt"
 	EventTypeGoShowdown = "showdown_reached"
 	EventTypeDetermineWinner = "winner_determined"
 	EventTypeEndHand = "hand_ended"
-	EventTypeAdvanceToP1 = "AdvanceToP1ed"
-	EventTypeAdvanceToP2 = "AdvanceToP2ed"
-	EventTypeAdvanceToP3 = "AdvanceToP3ed"
-	EventTypeAdvanceToP4 = "AdvanceToP4ed"
-	EventTypeAdvanceToP0 = "AdvanceToP0ed"
-	EventTypeEndBettingRound = "EndBettingRounded"
-	EventTypeP0Fold = "player_folded"
-	EventTypeP0Check = "player_checked"
-	EventTypeP0Call = "player_called"
-	EventTypeP0Raise = "player_raised"
-	EventTypeP1Fold = "player_folded"
-	EventTypeP1Check = "player_checked"
-	EventTypeP1Call = "player_called"
-	EventTypeP1Raise = "player_raised"
-	EventTypeP2Fold = "player_folded"
-	EventTypeP2Check = "player_checked"
-	EventTypeP2Call = "player_called"
-	EventTypeP2Raise = "player_raised"
-	EventTypeP3Fold = "player_folded"
-	EventTypeP3Check = "player_checked"
-	EventTypeP3Call = "player_called"
-	EventTypeP3Raise = "player_raised"
-	EventTypeP4Fold = "player_folded"
-	EventTypeP4Check = "player_checked"
-	EventTypeP4Call = "player_called"
-	EventTypeP4Raise = "player_raised"
+	EventTypeP0Fold = "p0_folded"
+	EventTypeP0Check = "p0_checked"
+	EventTypeP0Call = "p0_called"
+	EventTypeP0Raise = "p0_raised"
+	EventTypeP1Fold = "p1_folded"
+	EventTypeP1Check = "p1_checked"
+	EventTypeP1Call = "p1_called"
+	EventTypeP1Raise = "p1_raised"
+	EventTypeP2Fold = "p2_folded"
+	EventTypeP2Check = "p2_checked"
+	EventTypeP2Call = "p2_called"
+	EventTypeP2Raise = "p2_raised"
+	EventTypeP3Fold = "p3_folded"
+	EventTypeP3Check = "p3_checked"
+	EventTypeP3Call = "p3_called"
+	EventTypeP3Raise = "p3_raised"
+	EventTypeP4Fold = "p4_folded"
+	EventTypeP4Check = "p4_checked"
+	EventTypeP4Call = "p4_called"
+	EventTypeP4Raise = "p4_raised"
+	EventTypeP0Skip = "p0_skipped"
+	EventTypeP1Skip = "p1_skipped"
+	EventTypeP2Skip = "p2_skipped"
+	EventTypeP3Skip = "p3_skipped"
+	EventTypeP4Skip = "p4_skipped"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
@@ -133,7 +118,6 @@ func AllPlaces() []string {
 		PlaceRiver,
 		PlaceShowdown,
 		PlaceComplete,
-		PlaceDealerAction,
 		PlaceP0Turn,
 		PlaceP1Turn,
 		PlaceP2Turn,
@@ -144,17 +128,7 @@ func AllPlaces() []string {
 		PlaceP2Active,
 		PlaceP3Active,
 		PlaceP4Active,
-		PlaceP0Folded,
-		PlaceP1Folded,
-		PlaceP2Folded,
-		PlaceP3Folded,
-		PlaceP4Folded,
-		PlaceP0Acted,
-		PlaceP1Acted,
-		PlaceP2Acted,
-		PlaceP3Acted,
-		PlaceP4Acted,
-		PlaceRoundOpen,
+		PlaceBettingDone,
 	}
 }
 
@@ -162,19 +136,12 @@ func AllPlaces() []string {
 func AllTransitions() []string {
 	return []string{
 		TransitionStartHand,
-		TransitionDealPreflop,
 		TransitionDealFlop,
 		TransitionDealTurn,
 		TransitionDealRiver,
 		TransitionGoShowdown,
 		TransitionDetermineWinner,
 		TransitionEndHand,
-		TransitionAdvanceToP1,
-		TransitionAdvanceToP2,
-		TransitionAdvanceToP3,
-		TransitionAdvanceToP4,
-		TransitionAdvanceToP0,
-		TransitionEndBettingRound,
 		TransitionP0Fold,
 		TransitionP0Check,
 		TransitionP0Call,
@@ -195,5 +162,10 @@ func AllTransitions() []string {
 		TransitionP4Check,
 		TransitionP4Call,
 		TransitionP4Raise,
+		TransitionP0Skip,
+		TransitionP1Skip,
+		TransitionP2Skip,
+		TransitionP3Skip,
+		TransitionP4Skip,
 	}
 }

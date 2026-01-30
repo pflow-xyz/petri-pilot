@@ -109,43 +109,9 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/deal_preflop:
-    post:
-      summary: "Deal hole cards to all players"
-      operationId: dealPreflop
-      tags:
-        - transitions
-      x-transition-id: deal_preflop
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
   /api/deal_flop:
     post:
-      summary: "Deal the flop (3 community cards)"
+      summary: "Deal the flop"
       operationId: dealFlop
       tags:
         - transitions
@@ -179,7 +145,7 @@ paths:
 
   /api/deal_turn:
     post:
-      summary: "Deal the turn (1 community card)"
+      summary: "Deal the turn"
       operationId: dealTurn
       tags:
         - transitions
@@ -213,7 +179,7 @@ paths:
 
   /api/deal_river:
     post:
-      summary: "Deal the river (1 community card)"
+      summary: "Deal the river"
       operationId: dealRiver
       tags:
         - transitions
@@ -247,7 +213,7 @@ paths:
 
   /api/go_showdown:
     post:
-      summary: "Proceed to showdown"
+      summary: "Go to showdown"
       operationId: goShowdown
       tags:
         - transitions
@@ -281,7 +247,7 @@ paths:
 
   /api/determine_winner:
     post:
-      summary: "Determine the winner"
+      summary: "Determine winner"
       operationId: determineWinner
       tags:
         - transitions
@@ -320,210 +286,6 @@ paths:
       tags:
         - transitions
       x-transition-id: end_hand
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/advance_to_p1:
-    post:
-      summary: "Pass turn to player 1"
-      operationId: advanceToP1
-      tags:
-        - transitions
-      x-transition-id: advance_to_p1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/advance_to_p2:
-    post:
-      summary: "Pass turn to player 2"
-      operationId: advanceToP2
-      tags:
-        - transitions
-      x-transition-id: advance_to_p2
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/advance_to_p3:
-    post:
-      summary: "Pass turn to player 3"
-      operationId: advanceToP3
-      tags:
-        - transitions
-      x-transition-id: advance_to_p3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/advance_to_p4:
-    post:
-      summary: "Pass turn to player 4"
-      operationId: advanceToP4
-      tags:
-        - transitions
-      x-transition-id: advance_to_p4
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/advance_to_p0:
-    post:
-      summary: "Pass turn to player 0"
-      operationId: advanceToP0
-      tags:
-        - transitions
-      x-transition-id: advance_to_p0
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/end_betting_round:
-    post:
-      summary: "End the betting round"
-      operationId: endBettingRound
-      tags:
-        - transitions
-      x-transition-id: end_betting_round
       requestBody:
         required: true
         content:
@@ -1299,8 +1061,6 @@ components:
           type: integer
         complete:
           type: integer
-        dealer_action:
-          type: integer
         p0_turn:
           type: integer
         p1_turn:
@@ -1321,27 +1081,7 @@ components:
           type: integer
         p4_active:
           type: integer
-        p0_folded:
-          type: integer
-        p1_folded:
-          type: integer
-        p2_folded:
-          type: integer
-        p3_folded:
-          type: integer
-        p4_folded:
-          type: integer
-        p0_acted:
-          type: integer
-        p1_acted:
-          type: integer
-        p2_acted:
-          type: integer
-        p3_acted:
-          type: integer
-        p4_acted:
-          type: integer
-        round_open:
+        betting_done:
           type: integer
 
     ErrorResponse:

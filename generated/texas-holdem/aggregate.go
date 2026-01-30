@@ -20,7 +20,6 @@ type State struct {
 	River int `json:"river"`
 	Showdown int `json:"showdown"`
 	Complete int `json:"complete"`
-	DealerAction int `json:"dealer_action"`
 	P0Turn int `json:"p0_turn"`
 	P1Turn int `json:"p1_turn"`
 	P2Turn int `json:"p2_turn"`
@@ -31,17 +30,7 @@ type State struct {
 	P2Active int `json:"p2_active"`
 	P3Active int `json:"p3_active"`
 	P4Active int `json:"p4_active"`
-	P0Folded int `json:"p0_folded"`
-	P1Folded int `json:"p1_folded"`
-	P2Folded int `json:"p2_folded"`
-	P3Folded int `json:"p3_folded"`
-	P4Folded int `json:"p4_folded"`
-	P0Acted int `json:"p0_acted"`
-	P1Acted int `json:"p1_acted"`
-	P2Acted int `json:"p2_acted"`
-	P3Acted int `json:"p3_acted"`
-	P4Acted int `json:"p4_acted"`
-	RoundOpen int `json:"round_open"`
+	BettingDone int `json:"betting_done"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -70,19 +59,8 @@ func NewAggregate(id string) *Aggregate {
 			PlaceWaiting: 1,
 		},
 		Outputs: map[string]int{
-			PlaceDealerAction: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionDealPreflop,
-		EventType: EventTypeDealPreflop,
-		Inputs: map[string]int{
-			PlaceDealerAction: 1,
-		},
-		Outputs: map[string]int{
 			PlacePreflop: 1,
 			PlaceP0Turn: 1,
-			PlaceRoundOpen: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -90,12 +68,11 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeDealFlop,
 		Inputs: map[string]int{
 			PlacePreflop: 1,
-			PlaceDealerAction: 1,
+			PlaceBettingDone: 1,
 		},
 		Outputs: map[string]int{
 			PlaceFlop: 1,
 			PlaceP0Turn: 1,
-			PlaceRoundOpen: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -103,12 +80,11 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeDealTurn,
 		Inputs: map[string]int{
 			PlaceFlop: 1,
-			PlaceDealerAction: 1,
+			PlaceBettingDone: 1,
 		},
 		Outputs: map[string]int{
 			PlaceTurnRound: 1,
 			PlaceP0Turn: 1,
-			PlaceRoundOpen: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -116,12 +92,11 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeDealRiver,
 		Inputs: map[string]int{
 			PlaceTurnRound: 1,
-			PlaceDealerAction: 1,
+			PlaceBettingDone: 1,
 		},
 		Outputs: map[string]int{
 			PlaceRiver: 1,
 			PlaceP0Turn: 1,
-			PlaceRoundOpen: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -129,7 +104,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeGoShowdown,
 		Inputs: map[string]int{
 			PlaceRiver: 1,
-			PlaceDealerAction: 1,
+			PlaceBettingDone: 1,
 		},
 		Outputs: map[string]int{
 			PlaceShowdown: 1,
@@ -153,81 +128,11 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceWaiting: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionAdvanceToP1,
-		EventType: EventTypeAdvanceToP1,
-		Inputs: map[string]int{
-			PlaceP0Acted: 1,
-			PlaceP1Active: 1,
-		},
-		Outputs: map[string]int{
-			PlaceP1Turn: 1,
-			PlaceP1Active: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionAdvanceToP2,
-		EventType: EventTypeAdvanceToP2,
-		Inputs: map[string]int{
-			PlaceP1Acted: 1,
-			PlaceP2Active: 1,
-		},
-		Outputs: map[string]int{
-			PlaceP2Turn: 1,
-			PlaceP2Active: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionAdvanceToP3,
-		EventType: EventTypeAdvanceToP3,
-		Inputs: map[string]int{
-			PlaceP2Acted: 1,
-			PlaceP3Active: 1,
-		},
-		Outputs: map[string]int{
-			PlaceP3Turn: 1,
-			PlaceP3Active: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionAdvanceToP4,
-		EventType: EventTypeAdvanceToP4,
-		Inputs: map[string]int{
-			PlaceP3Acted: 1,
-			PlaceP4Active: 1,
-		},
-		Outputs: map[string]int{
-			PlaceP4Turn: 1,
-			PlaceP4Active: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionAdvanceToP0,
-		EventType: EventTypeAdvanceToP0,
-		Inputs: map[string]int{
-			PlaceP4Acted: 1,
 			PlaceP0Active: 1,
-		},
-		Outputs: map[string]int{
-			PlaceP0Turn: 1,
-			PlaceP0Active: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionEndBettingRound,
-		EventType: EventTypeEndBettingRound,
-		Inputs: map[string]int{
-			PlaceRoundOpen: 1,
-			PlaceP0Acted: 1,
-			PlaceP1Acted: 1,
-			PlaceP2Acted: 1,
-			PlaceP3Acted: 1,
-			PlaceP4Acted: 1,
-		},
-		Outputs: map[string]int{
-			PlaceDealerAction: 1,
+			PlaceP1Active: 1,
+			PlaceP2Active: 1,
+			PlaceP3Active: 1,
+			PlaceP4Active: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -238,8 +143,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceP0Active: 1,
 		},
 		Outputs: map[string]int{
-			PlaceP0Folded: 1,
-			PlaceP0Acted: 1,
+			PlaceP1Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -251,7 +155,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP0Active: 1,
-			PlaceP0Acted: 1,
+			PlaceP1Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -263,7 +167,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP0Active: 1,
-			PlaceP0Acted: 1,
+			PlaceP1Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -275,7 +179,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP0Active: 1,
-			PlaceP0Acted: 1,
+			PlaceP1Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -286,8 +190,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceP1Active: 1,
 		},
 		Outputs: map[string]int{
-			PlaceP1Folded: 1,
-			PlaceP1Acted: 1,
+			PlaceP2Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -299,7 +202,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP1Active: 1,
-			PlaceP1Acted: 1,
+			PlaceP2Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -311,7 +214,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP1Active: 1,
-			PlaceP1Acted: 1,
+			PlaceP2Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -323,7 +226,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP1Active: 1,
-			PlaceP1Acted: 1,
+			PlaceP2Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -334,8 +237,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceP2Active: 1,
 		},
 		Outputs: map[string]int{
-			PlaceP2Folded: 1,
-			PlaceP2Acted: 1,
+			PlaceP3Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -347,7 +249,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP2Active: 1,
-			PlaceP2Acted: 1,
+			PlaceP3Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -359,7 +261,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP2Active: 1,
-			PlaceP2Acted: 1,
+			PlaceP3Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -371,7 +273,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP2Active: 1,
-			PlaceP2Acted: 1,
+			PlaceP3Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -382,8 +284,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceP3Active: 1,
 		},
 		Outputs: map[string]int{
-			PlaceP3Folded: 1,
-			PlaceP3Acted: 1,
+			PlaceP4Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -395,7 +296,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP3Active: 1,
-			PlaceP3Acted: 1,
+			PlaceP4Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -407,7 +308,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP3Active: 1,
-			PlaceP3Acted: 1,
+			PlaceP4Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -419,7 +320,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP3Active: 1,
-			PlaceP3Acted: 1,
+			PlaceP4Turn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -430,8 +331,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceP4Active: 1,
 		},
 		Outputs: map[string]int{
-			PlaceP4Folded: 1,
-			PlaceP4Acted: 1,
+			PlaceBettingDone: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -443,7 +343,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP4Active: 1,
-			PlaceP4Acted: 1,
+			PlaceBettingDone: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -455,7 +355,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP4Active: 1,
-			PlaceP4Acted: 1,
+			PlaceBettingDone: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -467,16 +367,63 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceP4Active: 1,
-			PlaceP4Acted: 1,
+			PlaceBettingDone: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionP0Skip,
+		EventType: EventTypeP0Skip,
+		Inputs: map[string]int{
+			PlaceP0Turn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceP1Turn: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionP1Skip,
+		EventType: EventTypeP1Skip,
+		Inputs: map[string]int{
+			PlaceP1Turn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceP2Turn: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionP2Skip,
+		EventType: EventTypeP2Skip,
+		Inputs: map[string]int{
+			PlaceP2Turn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceP3Turn: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionP3Skip,
+		EventType: EventTypeP3Skip,
+		Inputs: map[string]int{
+			PlaceP3Turn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceP4Turn: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionP4Skip,
+		EventType: EventTypeP4Skip,
+		Inputs: map[string]int{
+			PlaceP4Turn: 1,
+		},
+		Outputs: map[string]int{
+			PlaceBettingDone: 1,
 		},
 	})
 
 	// Register event handlers for state updates
 	sm.RegisterHandler(EventTypeStartHand, func(state *State, event *eventsource.Event) error {
 		return applyStartHand(state, event)
-	})
-	sm.RegisterHandler(EventTypeDealPreflop, func(state *State, event *eventsource.Event) error {
-		return applyDealPreflop(state, event)
 	})
 	sm.RegisterHandler(EventTypeDealFlop, func(state *State, event *eventsource.Event) error {
 		return applyDealFlop(state, event)
@@ -495,24 +442,6 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeEndHand, func(state *State, event *eventsource.Event) error {
 		return applyEndHand(state, event)
-	})
-	sm.RegisterHandler(EventTypeAdvanceToP1, func(state *State, event *eventsource.Event) error {
-		return applyAdvanceToP1(state, event)
-	})
-	sm.RegisterHandler(EventTypeAdvanceToP2, func(state *State, event *eventsource.Event) error {
-		return applyAdvanceToP2(state, event)
-	})
-	sm.RegisterHandler(EventTypeAdvanceToP3, func(state *State, event *eventsource.Event) error {
-		return applyAdvanceToP3(state, event)
-	})
-	sm.RegisterHandler(EventTypeAdvanceToP4, func(state *State, event *eventsource.Event) error {
-		return applyAdvanceToP4(state, event)
-	})
-	sm.RegisterHandler(EventTypeAdvanceToP0, func(state *State, event *eventsource.Event) error {
-		return applyAdvanceToP0(state, event)
-	})
-	sm.RegisterHandler(EventTypeEndBettingRound, func(state *State, event *eventsource.Event) error {
-		return applyEndBettingRound(state, event)
 	})
 	sm.RegisterHandler(EventTypeP0Fold, func(state *State, event *eventsource.Event) error {
 		return applyP0Fold(state, event)
@@ -574,6 +503,21 @@ func NewAggregate(id string) *Aggregate {
 	sm.RegisterHandler(EventTypeP4Raise, func(state *State, event *eventsource.Event) error {
 		return applyP4Raise(state, event)
 	})
+	sm.RegisterHandler(EventTypeP0Skip, func(state *State, event *eventsource.Event) error {
+		return applyP0Skip(state, event)
+	})
+	sm.RegisterHandler(EventTypeP1Skip, func(state *State, event *eventsource.Event) error {
+		return applyP1Skip(state, event)
+	})
+	sm.RegisterHandler(EventTypeP2Skip, func(state *State, event *eventsource.Event) error {
+		return applyP2Skip(state, event)
+	})
+	sm.RegisterHandler(EventTypeP3Skip, func(state *State, event *eventsource.Event) error {
+		return applyP3Skip(state, event)
+	})
+	sm.RegisterHandler(EventTypeP4Skip, func(state *State, event *eventsource.Event) error {
+		return applyP4Skip(state, event)
+	})
 	return &Aggregate{sm: sm}
 }
 
@@ -631,13 +575,6 @@ func applyStartHand(state *State, event *eventsource.Event) error {
 	return nil
 }
 
-func applyDealPreflop(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
 func applyDealFlop(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
@@ -674,48 +611,6 @@ func applyDetermineWinner(state *State, event *eventsource.Event) error {
 }
 
 func applyEndHand(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyAdvanceToP1(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyAdvanceToP2(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyAdvanceToP3(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyAdvanceToP4(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyAdvanceToP0(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
-func applyEndBettingRound(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -856,6 +751,41 @@ func applyP4Call(state *State, event *eventsource.Event) error {
 }
 
 func applyP4Raise(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyP0Skip(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyP1Skip(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyP2Skip(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyP3Skip(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyP4Skip(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

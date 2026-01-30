@@ -28,8 +28,8 @@
       <p>Strategic Analysis with ODE-Based Value Computation</p>
     </div>
 
-    <!-- Status Message -->
-    <div id="status-message" class="status-message" style="display: none;"></div>
+    <!-- Status Message (fixed height to prevent layout shift) -->
+    <div id="status-message" class="status-message"></div>
 
     <!-- Poker Table Container -->
     <div class="poker-table-container">
@@ -124,6 +124,11 @@
         <button class="btn btn-secondary" id="start-hand-btn" style="display: none;">Start Hand</button>
         <button class="btn btn-success" id="auto-play-btn" style="display: none;">▶ Auto-Play</button>
         <button class="btn btn-danger" id="stop-play-btn" style="display: none;">⏹ Stop</button>
+        <div class="speed-control" id="speed-control" style="display: none;">
+          <label for="speed-slider">Speed:</label>
+          <input type="range" id="speed-slider" min="0" max="100" value="50">
+          <span id="speed-label">1.0x</span>
+        </div>
         <button class="btn btn-secondary" id="toggle-heatmap-btn">Toggle Heatmap</button>
         <button class="btn btn-secondary" id="toggle-ode-btn">
           ODE: <span id="ode-mode">Local</span>
@@ -185,8 +190,8 @@
 
   <!-- API Base URL Configuration -->
   <script>
-    // Set API base URL dynamically
-    window.API_BASE = window.location.port === '8080' ? '' : '';
+    // Set API base URL dynamically - empty string means use relative URLs (same origin)
+    window.API_BASE = '';
   </script>
 </body>
 </html>

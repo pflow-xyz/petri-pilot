@@ -101,7 +101,7 @@ deploy() {
 
     # Start with environment variables
     # The start command runs the MCP server with demo apps
-    ssh "$REMOTE_USER@$REMOTE_HOST" "tmux send-keys -t $TMUX_SESSION:$TMUX_WINDOW './petri-pilot serve -port $SERVICE_PORT tic-tac-toe zk-tic-tac-toe coffeeshop erc20-token blog-post task-manager support-ticket' Enter"
+    ssh "$REMOTE_USER@$REMOTE_HOST" "tmux send-keys -t $TMUX_SESSION:$TMUX_WINDOW './petri-pilot serve -port $SERVICE_PORT tic-tac-toe zk-tic-tac-toe coffeeshop erc20-token blog-post task-manager support-ticket texas-holdem' Enter"
 
     # Wait for startup
     sleep 2

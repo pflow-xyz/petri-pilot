@@ -1,6 +1,6 @@
 {
   "name": "texas-holdem",
-  "description": "Texas Hold'em Poker (5-player table)",
+  "description": "Texas Hold'em Poker - Simplified 5-player table",
   "places": [
     {"id": "waiting", "initial": 1, "description": "Waiting for hand to start"},
     {"id": "preflop", "description": "Pre-flop betting round"},
@@ -9,8 +9,6 @@
     {"id": "river", "description": "River betting round"},
     {"id": "showdown", "description": "Showdown - compare hands"},
     {"id": "complete", "description": "Hand complete"},
-
-    {"id": "dealer_action", "description": "Dealer can deal cards"},
 
     {"id": "p0_turn", "description": "Player 0's turn to act"},
     {"id": "p1_turn", "description": "Player 1's turn to act"},
@@ -24,231 +22,192 @@
     {"id": "p3_active", "initial": 1, "description": "Player 3 is in the hand"},
     {"id": "p4_active", "initial": 1, "description": "Player 4 is in the hand"},
 
-    {"id": "p0_folded", "description": "Player 0 has folded"},
-    {"id": "p1_folded", "description": "Player 1 has folded"},
-    {"id": "p2_folded", "description": "Player 2 has folded"},
-    {"id": "p3_folded", "description": "Player 3 has folded"},
-    {"id": "p4_folded", "description": "Player 4 has folded"},
-
-    {"id": "p0_acted", "description": "Player 0 has acted this round"},
-    {"id": "p1_acted", "description": "Player 1 has acted this round"},
-    {"id": "p2_acted", "description": "Player 2 has acted this round"},
-    {"id": "p3_acted", "description": "Player 3 has acted this round"},
-    {"id": "p4_acted", "description": "Player 4 has acted this round"},
-
-    {"id": "round_open", "description": "Betting round is open"}
+    {"id": "betting_done", "description": "Current betting round is complete"}
   ],
   "transitions": [
-    {"id": "start_hand", "description": "Start a new hand", "event": "hand_started"},
-    {"id": "deal_preflop", "description": "Deal hole cards to all players", "event": "preflop_dealt"},
-    {"id": "deal_flop", "description": "Deal the flop (3 community cards)", "event": "flop_dealt"},
-    {"id": "deal_turn", "description": "Deal the turn (1 community card)", "event": "turn_dealt"},
-    {"id": "deal_river", "description": "Deal the river (1 community card)", "event": "river_dealt"},
-    {"id": "go_showdown", "description": "Proceed to showdown", "event": "showdown_reached"},
-    {"id": "determine_winner", "description": "Determine the winner", "event": "winner_determined"},
-    {"id": "end_hand", "description": "End the hand", "event": "hand_ended"},
+    {"id": "start_hand", "description": "Start a new hand", "event_type": "hand_started"},
+    {"id": "deal_flop", "description": "Deal the flop", "event_type": "flop_dealt"},
+    {"id": "deal_turn", "description": "Deal the turn", "event_type": "turn_dealt"},
+    {"id": "deal_river", "description": "Deal the river", "event_type": "river_dealt"},
+    {"id": "go_showdown", "description": "Go to showdown", "event_type": "showdown_reached"},
+    {"id": "determine_winner", "description": "Determine winner", "event_type": "winner_determined"},
+    {"id": "end_hand", "description": "End the hand", "event_type": "hand_ended"},
 
-    {"id": "advance_to_p1", "description": "Pass turn to player 1"},
-    {"id": "advance_to_p2", "description": "Pass turn to player 2"},
-    {"id": "advance_to_p3", "description": "Pass turn to player 3"},
-    {"id": "advance_to_p4", "description": "Pass turn to player 4"},
-    {"id": "advance_to_p0", "description": "Pass turn to player 0"},
-    {"id": "end_betting_round", "description": "End the betting round"},
+    {"id": "p0_fold", "description": "Player 0 folds", "event_type": "p0_folded"},
+    {"id": "p0_check", "description": "Player 0 checks", "event_type": "p0_checked"},
+    {"id": "p0_call", "description": "Player 0 calls", "event_type": "p0_called"},
+    {"id": "p0_raise", "description": "Player 0 raises", "event_type": "p0_raised"},
 
-    {"id": "p0_fold", "description": "Player 0 folds", "event": "player_folded"},
-    {"id": "p0_check", "description": "Player 0 checks", "event": "player_checked"},
-    {"id": "p0_call", "description": "Player 0 calls", "event": "player_called"},
-    {"id": "p0_raise", "description": "Player 0 raises", "event": "player_raised"},
+    {"id": "p1_fold", "description": "Player 1 folds", "event_type": "p1_folded"},
+    {"id": "p1_check", "description": "Player 1 checks", "event_type": "p1_checked"},
+    {"id": "p1_call", "description": "Player 1 calls", "event_type": "p1_called"},
+    {"id": "p1_raise", "description": "Player 1 raises", "event_type": "p1_raised"},
 
-    {"id": "p1_fold", "description": "Player 1 folds", "event": "player_folded"},
-    {"id": "p1_check", "description": "Player 1 checks", "event": "player_checked"},
-    {"id": "p1_call", "description": "Player 1 calls", "event": "player_called"},
-    {"id": "p1_raise", "description": "Player 1 raises", "event": "player_raised"},
+    {"id": "p2_fold", "description": "Player 2 folds", "event_type": "p2_folded"},
+    {"id": "p2_check", "description": "Player 2 checks", "event_type": "p2_checked"},
+    {"id": "p2_call", "description": "Player 2 calls", "event_type": "p2_called"},
+    {"id": "p2_raise", "description": "Player 2 raises", "event_type": "p2_raised"},
 
-    {"id": "p2_fold", "description": "Player 2 folds", "event": "player_folded"},
-    {"id": "p2_check", "description": "Player 2 checks", "event": "player_checked"},
-    {"id": "p2_call", "description": "Player 2 calls", "event": "player_called"},
-    {"id": "p2_raise", "description": "Player 2 raises", "event": "player_raised"},
+    {"id": "p3_fold", "description": "Player 3 folds", "event_type": "p3_folded"},
+    {"id": "p3_check", "description": "Player 3 checks", "event_type": "p3_checked"},
+    {"id": "p3_call", "description": "Player 3 calls", "event_type": "p3_called"},
+    {"id": "p3_raise", "description": "Player 3 raises", "event_type": "p3_raised"},
 
-    {"id": "p3_fold", "description": "Player 3 folds", "event": "player_folded"},
-    {"id": "p3_check", "description": "Player 3 checks", "event": "player_checked"},
-    {"id": "p3_call", "description": "Player 3 calls", "event": "player_called"},
-    {"id": "p3_raise", "description": "Player 3 raises", "event": "player_raised"},
+    {"id": "p4_fold", "description": "Player 4 folds", "event_type": "p4_folded"},
+    {"id": "p4_check", "description": "Player 4 checks", "event_type": "p4_checked"},
+    {"id": "p4_call", "description": "Player 4 calls", "event_type": "p4_called"},
+    {"id": "p4_raise", "description": "Player 4 raises", "event_type": "p4_raised"},
 
-    {"id": "p4_fold", "description": "Player 4 folds", "event": "player_folded"},
-    {"id": "p4_check", "description": "Player 4 checks", "event": "player_checked"},
-    {"id": "p4_call", "description": "Player 4 calls", "event": "player_called"},
-    {"id": "p4_raise", "description": "Player 4 raises", "event": "player_raised"}
+    {"id": "p0_skip", "description": "Skip player 0 (all-in/eliminated)", "event_type": "p0_skipped"},
+    {"id": "p1_skip", "description": "Skip player 1 (all-in/eliminated)", "event_type": "p1_skipped"},
+    {"id": "p2_skip", "description": "Skip player 2 (all-in/eliminated)", "event_type": "p2_skipped"},
+    {"id": "p3_skip", "description": "Skip player 3 (all-in/eliminated)", "event_type": "p3_skipped"},
+    {"id": "p4_skip", "description": "Skip player 4 (all-in/eliminated)", "event_type": "p4_skipped"}
   ],
   "arcs": [
     {"from": "waiting", "to": "start_hand"},
-    {"from": "start_hand", "to": "dealer_action"},
-
-    {"from": "dealer_action", "to": "deal_preflop"},
-    {"from": "deal_preflop", "to": "preflop"},
-    {"from": "deal_preflop", "to": "p0_turn"},
-    {"from": "deal_preflop", "to": "round_open"},
+    {"from": "start_hand", "to": "preflop"},
+    {"from": "start_hand", "to": "p0_turn"},
 
     {"from": "p0_turn", "to": "p0_fold"},
     {"from": "p0_active", "to": "p0_fold"},
-    {"from": "p0_fold", "to": "p0_folded"},
-    {"from": "p0_fold", "to": "p0_acted"},
+    {"from": "p0_fold", "to": "p1_turn"},
 
     {"from": "p0_turn", "to": "p0_check"},
     {"from": "p0_active", "to": "p0_check"},
     {"from": "p0_check", "to": "p0_active"},
-    {"from": "p0_check", "to": "p0_acted"},
+    {"from": "p0_check", "to": "p1_turn"},
 
     {"from": "p0_turn", "to": "p0_call"},
     {"from": "p0_active", "to": "p0_call"},
     {"from": "p0_call", "to": "p0_active"},
-    {"from": "p0_call", "to": "p0_acted"},
+    {"from": "p0_call", "to": "p1_turn"},
 
     {"from": "p0_turn", "to": "p0_raise"},
     {"from": "p0_active", "to": "p0_raise"},
     {"from": "p0_raise", "to": "p0_active"},
-    {"from": "p0_raise", "to": "p0_acted"},
+    {"from": "p0_raise", "to": "p1_turn"},
 
     {"from": "p1_turn", "to": "p1_fold"},
     {"from": "p1_active", "to": "p1_fold"},
-    {"from": "p1_fold", "to": "p1_folded"},
-    {"from": "p1_fold", "to": "p1_acted"},
+    {"from": "p1_fold", "to": "p2_turn"},
 
     {"from": "p1_turn", "to": "p1_check"},
     {"from": "p1_active", "to": "p1_check"},
     {"from": "p1_check", "to": "p1_active"},
-    {"from": "p1_check", "to": "p1_acted"},
+    {"from": "p1_check", "to": "p2_turn"},
 
     {"from": "p1_turn", "to": "p1_call"},
     {"from": "p1_active", "to": "p1_call"},
     {"from": "p1_call", "to": "p1_active"},
-    {"from": "p1_call", "to": "p1_acted"},
+    {"from": "p1_call", "to": "p2_turn"},
 
     {"from": "p1_turn", "to": "p1_raise"},
     {"from": "p1_active", "to": "p1_raise"},
     {"from": "p1_raise", "to": "p1_active"},
-    {"from": "p1_raise", "to": "p1_acted"},
+    {"from": "p1_raise", "to": "p2_turn"},
 
     {"from": "p2_turn", "to": "p2_fold"},
     {"from": "p2_active", "to": "p2_fold"},
-    {"from": "p2_fold", "to": "p2_folded"},
-    {"from": "p2_fold", "to": "p2_acted"},
+    {"from": "p2_fold", "to": "p3_turn"},
 
     {"from": "p2_turn", "to": "p2_check"},
     {"from": "p2_active", "to": "p2_check"},
     {"from": "p2_check", "to": "p2_active"},
-    {"from": "p2_check", "to": "p2_acted"},
+    {"from": "p2_check", "to": "p3_turn"},
 
     {"from": "p2_turn", "to": "p2_call"},
     {"from": "p2_active", "to": "p2_call"},
     {"from": "p2_call", "to": "p2_active"},
-    {"from": "p2_call", "to": "p2_acted"},
+    {"from": "p2_call", "to": "p3_turn"},
 
     {"from": "p2_turn", "to": "p2_raise"},
     {"from": "p2_active", "to": "p2_raise"},
     {"from": "p2_raise", "to": "p2_active"},
-    {"from": "p2_raise", "to": "p2_acted"},
+    {"from": "p2_raise", "to": "p3_turn"},
 
     {"from": "p3_turn", "to": "p3_fold"},
     {"from": "p3_active", "to": "p3_fold"},
-    {"from": "p3_fold", "to": "p3_folded"},
-    {"from": "p3_fold", "to": "p3_acted"},
+    {"from": "p3_fold", "to": "p4_turn"},
 
     {"from": "p3_turn", "to": "p3_check"},
     {"from": "p3_active", "to": "p3_check"},
     {"from": "p3_check", "to": "p3_active"},
-    {"from": "p3_check", "to": "p3_acted"},
+    {"from": "p3_check", "to": "p4_turn"},
 
     {"from": "p3_turn", "to": "p3_call"},
     {"from": "p3_active", "to": "p3_call"},
     {"from": "p3_call", "to": "p3_active"},
-    {"from": "p3_call", "to": "p3_acted"},
+    {"from": "p3_call", "to": "p4_turn"},
 
     {"from": "p3_turn", "to": "p3_raise"},
     {"from": "p3_active", "to": "p3_raise"},
     {"from": "p3_raise", "to": "p3_active"},
-    {"from": "p3_raise", "to": "p3_acted"},
+    {"from": "p3_raise", "to": "p4_turn"},
 
     {"from": "p4_turn", "to": "p4_fold"},
     {"from": "p4_active", "to": "p4_fold"},
-    {"from": "p4_fold", "to": "p4_folded"},
-    {"from": "p4_fold", "to": "p4_acted"},
+    {"from": "p4_fold", "to": "betting_done"},
 
     {"from": "p4_turn", "to": "p4_check"},
     {"from": "p4_active", "to": "p4_check"},
     {"from": "p4_check", "to": "p4_active"},
-    {"from": "p4_check", "to": "p4_acted"},
+    {"from": "p4_check", "to": "betting_done"},
 
     {"from": "p4_turn", "to": "p4_call"},
     {"from": "p4_active", "to": "p4_call"},
     {"from": "p4_call", "to": "p4_active"},
-    {"from": "p4_call", "to": "p4_acted"},
+    {"from": "p4_call", "to": "betting_done"},
 
     {"from": "p4_turn", "to": "p4_raise"},
     {"from": "p4_active", "to": "p4_raise"},
     {"from": "p4_raise", "to": "p4_active"},
-    {"from": "p4_raise", "to": "p4_acted"},
+    {"from": "p4_raise", "to": "betting_done"},
 
-    {"from": "p0_acted", "to": "advance_to_p1"},
-    {"from": "p1_active", "to": "advance_to_p1"},
-    {"from": "advance_to_p1", "to": "p1_turn"},
-    {"from": "advance_to_p1", "to": "p1_active"},
+    {"from": "p0_turn", "to": "p0_skip"},
+    {"from": "p0_skip", "to": "p1_turn"},
 
-    {"from": "p1_acted", "to": "advance_to_p2"},
-    {"from": "p2_active", "to": "advance_to_p2"},
-    {"from": "advance_to_p2", "to": "p2_turn"},
-    {"from": "advance_to_p2", "to": "p2_active"},
+    {"from": "p1_turn", "to": "p1_skip"},
+    {"from": "p1_skip", "to": "p2_turn"},
 
-    {"from": "p2_acted", "to": "advance_to_p3"},
-    {"from": "p3_active", "to": "advance_to_p3"},
-    {"from": "advance_to_p3", "to": "p3_turn"},
-    {"from": "advance_to_p3", "to": "p3_active"},
+    {"from": "p2_turn", "to": "p2_skip"},
+    {"from": "p2_skip", "to": "p3_turn"},
 
-    {"from": "p3_acted", "to": "advance_to_p4"},
-    {"from": "p4_active", "to": "advance_to_p4"},
-    {"from": "advance_to_p4", "to": "p4_turn"},
-    {"from": "advance_to_p4", "to": "p4_active"},
+    {"from": "p3_turn", "to": "p3_skip"},
+    {"from": "p3_skip", "to": "p4_turn"},
 
-    {"from": "p4_acted", "to": "advance_to_p0"},
-    {"from": "p0_active", "to": "advance_to_p0"},
-    {"from": "advance_to_p0", "to": "p0_turn"},
-    {"from": "advance_to_p0", "to": "p0_active"},
-
-    {"from": "round_open", "to": "end_betting_round"},
-    {"from": "p0_acted", "to": "end_betting_round"},
-    {"from": "p1_acted", "to": "end_betting_round"},
-    {"from": "p2_acted", "to": "end_betting_round"},
-    {"from": "p3_acted", "to": "end_betting_round"},
-    {"from": "p4_acted", "to": "end_betting_round"},
-    {"from": "end_betting_round", "to": "dealer_action"},
+    {"from": "p4_turn", "to": "p4_skip"},
+    {"from": "p4_skip", "to": "betting_done"},
 
     {"from": "preflop", "to": "deal_flop"},
-    {"from": "dealer_action", "to": "deal_flop"},
+    {"from": "betting_done", "to": "deal_flop"},
     {"from": "deal_flop", "to": "flop"},
     {"from": "deal_flop", "to": "p0_turn"},
-    {"from": "deal_flop", "to": "round_open"},
 
     {"from": "flop", "to": "deal_turn"},
-    {"from": "dealer_action", "to": "deal_turn"},
+    {"from": "betting_done", "to": "deal_turn"},
     {"from": "deal_turn", "to": "turn_round"},
     {"from": "deal_turn", "to": "p0_turn"},
-    {"from": "deal_turn", "to": "round_open"},
 
     {"from": "turn_round", "to": "deal_river"},
-    {"from": "dealer_action", "to": "deal_river"},
+    {"from": "betting_done", "to": "deal_river"},
     {"from": "deal_river", "to": "river"},
     {"from": "deal_river", "to": "p0_turn"},
-    {"from": "deal_river", "to": "round_open"},
 
     {"from": "river", "to": "go_showdown"},
-    {"from": "dealer_action", "to": "go_showdown"},
+    {"from": "betting_done", "to": "go_showdown"},
     {"from": "go_showdown", "to": "showdown"},
 
     {"from": "showdown", "to": "determine_winner"},
     {"from": "determine_winner", "to": "complete"},
 
     {"from": "complete", "to": "end_hand"},
-    {"from": "end_hand", "to": "waiting"}
+    {"from": "end_hand", "to": "waiting"},
+    {"from": "end_hand", "to": "p0_active"},
+    {"from": "end_hand", "to": "p1_active"},
+    {"from": "end_hand", "to": "p2_active"},
+    {"from": "end_hand", "to": "p3_active"},
+    {"from": "end_hand", "to": "p4_active"}
   ],
   "events": [
     {
@@ -256,138 +215,85 @@
       "description": "A new hand has started",
       "fields": [
         {"name": "hand_number", "type": "int64"},
-        {"name": "dealer_position", "type": "int64"},
-        {"name": "small_blind", "type": "int64"},
-        {"name": "big_blind", "type": "int64"}
-      ]
-    },
-    {
-      "id": "preflop_dealt",
-      "description": "Hole cards dealt to players",
-      "fields": [
-        {"name": "hands", "type": "string", "description": "JSON encoded hole cards per player"}
+        {"name": "dealer_position", "type": "int64"}
       ]
     },
     {
       "id": "flop_dealt",
-      "description": "Flop cards dealt",
+      "description": "Flop dealt",
       "fields": [
-        {"name": "cards", "type": "string", "description": "JSON array of 3 cards"}
+        {"name": "cards", "type": "string"}
       ]
     },
     {
       "id": "turn_dealt",
-      "description": "Turn card dealt",
+      "description": "Turn dealt",
       "fields": [
         {"name": "card", "type": "string"}
       ]
     },
     {
       "id": "river_dealt",
-      "description": "River card dealt",
+      "description": "River dealt",
       "fields": [
         {"name": "card", "type": "string"}
       ]
     },
-    {
-      "id": "player_folded",
-      "description": "A player folded",
-      "fields": [
-        {"name": "player", "type": "int64"},
-        {"name": "seat", "type": "string"}
-      ]
-    },
-    {
-      "id": "player_checked",
-      "description": "A player checked",
-      "fields": [
-        {"name": "player", "type": "int64"},
-        {"name": "seat", "type": "string"}
-      ]
-    },
-    {
-      "id": "player_called",
-      "description": "A player called",
-      "fields": [
-        {"name": "player", "type": "int64"},
-        {"name": "seat", "type": "string"},
-        {"name": "amount", "type": "int64"}
-      ]
-    },
-    {
-      "id": "player_raised",
-      "description": "A player raised",
-      "fields": [
-        {"name": "player", "type": "int64"},
-        {"name": "seat", "type": "string"},
-        {"name": "amount", "type": "int64"},
-        {"name": "total_bet", "type": "int64"}
-      ]
-    },
+    {"id": "p0_folded", "description": "Player 0 folded", "fields": []},
+    {"id": "p0_checked", "description": "Player 0 checked", "fields": []},
+    {"id": "p0_called", "description": "Player 0 called", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p0_raised", "description": "Player 0 raised", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p1_folded", "description": "Player 1 folded", "fields": []},
+    {"id": "p1_checked", "description": "Player 1 checked", "fields": []},
+    {"id": "p1_called", "description": "Player 1 called", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p1_raised", "description": "Player 1 raised", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p2_folded", "description": "Player 2 folded", "fields": []},
+    {"id": "p2_checked", "description": "Player 2 checked", "fields": []},
+    {"id": "p2_called", "description": "Player 2 called", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p2_raised", "description": "Player 2 raised", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p3_folded", "description": "Player 3 folded", "fields": []},
+    {"id": "p3_checked", "description": "Player 3 checked", "fields": []},
+    {"id": "p3_called", "description": "Player 3 called", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p3_raised", "description": "Player 3 raised", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p4_folded", "description": "Player 4 folded", "fields": []},
+    {"id": "p4_checked", "description": "Player 4 checked", "fields": []},
+    {"id": "p4_called", "description": "Player 4 called", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p4_raised", "description": "Player 4 raised", "fields": [{"name": "amount", "type": "int64"}]},
+    {"id": "p0_skipped", "description": "Player 0 skipped (all-in)", "fields": []},
+    {"id": "p1_skipped", "description": "Player 1 skipped (all-in)", "fields": []},
+    {"id": "p2_skipped", "description": "Player 2 skipped (all-in)", "fields": []},
+    {"id": "p3_skipped", "description": "Player 3 skipped (all-in)", "fields": []},
+    {"id": "p4_skipped", "description": "Player 4 skipped (all-in)", "fields": []},
     {
       "id": "showdown_reached",
-      "description": "All betting complete, proceeding to showdown",
+      "description": "Showdown reached",
       "fields": []
     },
     {
       "id": "winner_determined",
-      "description": "Winner has been determined",
+      "description": "Winner determined",
       "fields": [
         {"name": "winner", "type": "int64"},
-        {"name": "winning_hand", "type": "string"},
         {"name": "pot_amount", "type": "int64"}
       ]
     },
     {
       "id": "hand_ended",
-      "description": "Hand is complete",
-      "fields": [
-        {"name": "hand_number", "type": "int64"}
-      ]
+      "description": "Hand ended",
+      "fields": []
     }
   ],
   "roles": [
-    {"id": "player_0", "name": "Seat 1"},
-    {"id": "player_1", "name": "Seat 2"},
-    {"id": "player_2", "name": "Seat 3"},
-    {"id": "player_3", "name": "Seat 4"},
-    {"id": "player_4", "name": "Seat 5"},
     {"id": "dealer", "name": "Dealer"},
     {"id": "admin", "name": "Admin", "inherits": ["dealer"]}
   ],
   "access": [
     {"transition": "start_hand", "roles": ["dealer", "admin"]},
-    {"transition": "deal_preflop", "roles": ["dealer"]},
     {"transition": "deal_flop", "roles": ["dealer"]},
     {"transition": "deal_turn", "roles": ["dealer"]},
     {"transition": "deal_river", "roles": ["dealer"]},
     {"transition": "go_showdown", "roles": ["dealer"]},
     {"transition": "determine_winner", "roles": ["dealer"]},
-    {"transition": "end_hand", "roles": ["dealer"]},
-
-    {"transition": "p0_fold", "roles": ["player_0"]},
-    {"transition": "p0_check", "roles": ["player_0"]},
-    {"transition": "p0_call", "roles": ["player_0"]},
-    {"transition": "p0_raise", "roles": ["player_0"]},
-
-    {"transition": "p1_fold", "roles": ["player_1"]},
-    {"transition": "p1_check", "roles": ["player_1"]},
-    {"transition": "p1_call", "roles": ["player_1"]},
-    {"transition": "p1_raise", "roles": ["player_1"]},
-
-    {"transition": "p2_fold", "roles": ["player_2"]},
-    {"transition": "p2_check", "roles": ["player_2"]},
-    {"transition": "p2_call", "roles": ["player_2"]},
-    {"transition": "p2_raise", "roles": ["player_2"]},
-
-    {"transition": "p3_fold", "roles": ["player_3"]},
-    {"transition": "p3_check", "roles": ["player_3"]},
-    {"transition": "p3_call", "roles": ["player_3"]},
-    {"transition": "p3_raise", "roles": ["player_3"]},
-
-    {"transition": "p4_fold", "roles": ["player_4"]},
-    {"transition": "p4_check", "roles": ["player_4"]},
-    {"transition": "p4_call", "roles": ["player_4"]},
-    {"transition": "p4_raise", "roles": ["player_4"]}
+    {"transition": "end_hand", "roles": ["dealer"]}
   ]
 }

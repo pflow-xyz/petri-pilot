@@ -40,16 +40,6 @@ func NewMiddleware(sessions SessionStore, rules []*AccessControl) *Middleware {
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	roleHierarchy["admin"] = []string{ "dealer" }
 	
 	
