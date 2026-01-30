@@ -94,16 +94,66 @@ body {
 }
 
 .poker-table {
-  background: linear-gradient(135deg, #0a5f0a 0%, #085808 100%);
-  border: 12px solid #654321;
+  /* Felt texture with noise effect */
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    ),
+    radial-gradient(ellipse at center, #1a8f1a 0%, #0d6b0d 50%, #085808 100%);
   border-radius: 50%;
   position: relative;
   width: 100%;
   max-width: 800px;
   height: 450px;
   margin: 0 auto;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
   overflow: visible;
+  /* Wood rail with grain effect */
+  border: 18px solid transparent;
+  border-image: linear-gradient(
+    135deg,
+    #8B5A2B 0%,
+    #D2691E 15%,
+    #8B4513 25%,
+    #A0522D 35%,
+    #CD853F 45%,
+    #8B5A2B 55%,
+    #D2691E 65%,
+    #8B4513 75%,
+    #A0522D 85%,
+    #8B5A2B 100%
+  ) 1;
+  /* Multiple shadows for depth */
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(0, 0, 0, 0.3),
+    0 0 0 4px #5D3A1A,
+    0 0 0 8px #3D2512,
+    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Inner felt edge highlight */
+.poker-table::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
 }
 
 /* Community Cards Area */
