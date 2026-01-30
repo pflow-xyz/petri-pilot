@@ -190,8 +190,9 @@
 
   <!-- API Base URL Configuration -->
   <script>
-    // Set API base URL dynamically - empty string means use relative URLs (same origin)
-    window.API_BASE = '';
+    // Set API base URL for multi-service deployment
+    // When served at /texas-holdem/, API is at /texas-holdem/api/...
+    window.API_BASE = '/texas-holdem';
   </script>
 </body>
 </html>
