@@ -2099,7 +2099,7 @@ function delay(ms) {
 // Export for console testing
 window.gameState = gameState
 window.runODESimulation = runODESimulation
-window.buildPokerODEPetriNet = buildPokerODEPetriNet
-window.solveODE = solveODE
+window.buildHandStrengthPetriNet = buildHandStrengthPetriNet
+window.computeODEHandStrength = computeODEHandStrength
 window.startAutoPlay = startAutoPlay
 window.stopAutoPlay = stopAutoPlay
