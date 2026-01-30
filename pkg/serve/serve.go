@@ -1003,6 +1003,21 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	transitions := []map[string]interface{}{}
 	arcs := []map[string]interface{}{}
 
+	// === DECK PLACE (source for dealing cards) ===
+	// Starts with tokens representing cards available to draw
+	// 7 tokens = 2 hole cards + 5 community cards in Texas Hold'em
+	cardsInHand := len(inHand)
+	cardsToDrawInitial := 7 - cardsInHand // Remaining cards to deal
+	if cardsToDrawInitial < 0 {
+		cardsToDrawInitial = 0
+	}
+	places = append(places, map[string]interface{}{
+		"id":      "deck",
+		"initial": cardsToDrawInitial,
+		"x":       -150,
+		"y":       650,
+	})
+
 	// === CARD PLACES (organized by rank for pattern detection) ===
 	// Each card has token=1 if in hand, 0 if not
 	// Layout: 4 columns (suits) x 13 rows (ranks) - with generous spacing
@@ -1023,6 +1038,27 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 				"x":       x,
 				"y":       y,
 			})
+
+			// === DEAL TRANSITIONS (draw from deck to populate card places) ===
+			// Only create deal transition if card is NOT already in hand
+			if !inHand[cardID] {
+				dealTransID := fmt.Sprintf("deal_%s%s", rank, suitSymbols[suit])
+				transitions = append(transitions, map[string]interface{}{
+					"id": dealTransID,
+					"x":  x - 60,
+					"y":  y,
+				})
+				// Input arc from deck (consume one draw)
+				arcs = append(arcs, map[string]interface{}{
+					"from": "deck",
+					"to":   dealTransID,
+				})
+				// Output arc to card place
+				arcs = append(arcs, map[string]interface{}{
+					"from": dealTransID,
+					"to":   fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
+				})
+			}
 		}
 	}
 
