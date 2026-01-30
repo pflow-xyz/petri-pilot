@@ -1126,6 +1126,13 @@ function renderPokerTable() {
       betEl.style.display = 'none'
     }
   })
+
+  // Update View Petri Net Model button visibility
+  const viewPetriBtn = document.getElementById('view-petri-btn')
+  if (viewPetriBtn) {
+    const hasCards = gameState.players[0].cards && gameState.players[0].cards.length >= 2
+    viewPetriBtn.style.display = hasCards ? 'block' : 'none'
+  }
 }
 
 /**
