@@ -742,42 +742,172 @@ func buildHandStrengthModel(holeStr, communityStr string) map[string]interface{}
 		preflopWeight = 0.2
 	}
 
-	// Calculate draws (simplified)
+	// Count suits and ranks for all cards
+	allCards := append(holeCards, communityCards...)
+	suits := make(map[byte]int)
+	ranks := make(map[byte]int)
+	rankOrder := "23456789TJQKA"
+	for _, c := range allCards {
+		c = strings.TrimSpace(c)
+		if len(c) >= 2 {
+			suits[c[len(c)-1]]++
+			ranks[c[0]]++
+		}
+	}
+
+	// === EVALUATE CURRENT MADE HAND ===
+	currentHandValue := 0   // 0=high card, 1=pair, 2=two pair, 3=trips, 4=straight, 5=flush, 6=full house, 7=quads, 8=straight flush
+	currentHandName := "High Card"
+	kickerValue := 0
+
+	// Check for pairs, trips, quads
+	pairCount := 0
+	hasTrips := false
+	hasQuads := false
+	highPairRank := 0
+	for r, count := range ranks {
+		rankVal := strings.Index(rankOrder, string(r))
+		if count == 2 {
+			pairCount++
+			if rankVal > highPairRank {
+				highPairRank = rankVal
+			}
+		} else if count == 3 {
+			hasTrips = true
+			if rankVal > highPairRank {
+				highPairRank = rankVal
+			}
+		} else if count == 4 {
+			hasQuads = true
+		}
+	}
+
+	// Check for flush (5+ of same suit)
+	hasFlush := false
+	flushSuit := byte(0)
+	for s, count := range suits {
+		if count >= 5 {
+			hasFlush = true
+			flushSuit = s
+		}
+	}
+
+	// Check for straight
+	hasStraight := false
+	straightPatterns := []string{"AKQJT", "KQJT9", "QJT98", "JT987", "T9876", "98765", "87654", "76543", "65432", "5432A"}
+	for _, pattern := range straightPatterns {
+		hasAll := true
+		for _, r := range pattern {
+			if ranks[byte(r)] == 0 {
+				hasAll = false
+				break
+			}
+		}
+		if hasAll {
+			hasStraight = true
+			break
+		}
+	}
+
+	// Determine best hand
+	if hasQuads {
+		currentHandValue = 7
+		currentHandName = "Four of a Kind"
+	} else if hasStraight && hasFlush {
+		// Check if straight flush (all 5 straight cards in same suit)
+		// Simplified: assume if both straight and flush exist with 5+ cards, it could be SF
+		currentHandValue = 8
+		currentHandName = "Straight Flush"
+	} else if hasTrips && pairCount >= 1 {
+		currentHandValue = 6
+		currentHandName = "Full House"
+	} else if hasFlush {
+		currentHandValue = 5
+		currentHandName = "Flush"
+	} else if hasStraight {
+		currentHandValue = 4
+		currentHandName = "Straight"
+	} else if hasTrips {
+		currentHandValue = 3
+		currentHandName = "Three of a Kind"
+	} else if pairCount >= 2 {
+		currentHandValue = 2
+		currentHandName = "Two Pair"
+	} else if pairCount == 1 {
+		currentHandValue = 1
+		currentHandName = "Pair"
+	}
+
+	// Calculate kicker (highest non-paired card)
+	for r := range ranks {
+		rankVal := strings.Index(rankOrder, string(r))
+		if ranks[r] == 1 && rankVal > kickerValue {
+			kickerValue = rankVal
+		}
+	}
+
+	// === CALCULATE DRAW EQUITY ===
 	flushDraw := 0.0
 	straightDraw := 0.0
-	if numCommunity >= 3 {
-		// Check for flush draw (simplified - count suits)
-		suits := make(map[byte]int)
-		for _, c := range append(holeCards, communityCards...) {
-			c = strings.TrimSpace(c)
-			if len(c) > 1 {
-				suits[c[len(c)-1]]++
-			}
-		}
+	flushOuts := 0
+	straightOuts := 0
+
+	if numCommunity >= 3 && !hasFlush {
+		// Flush draw: count cards to flush
 		for _, count := range suits {
-			if count >= 4 {
-				flushDraw = 0.36 // 9 outs * 4%
-			} else if count == 3 {
-				flushDraw = 0.18 // Backdoor flush draw
+			if count == 4 {
+				flushDraw = 0.36 // 9 outs × 4% (turn) or 9 outs × 2% × 2 (turn+river)
+				flushOuts = 9
+			} else if count == 3 && numCommunity == 3 {
+				flushDraw = 0.04 // Backdoor flush ~4%
+				flushOuts = 10
 			}
 		}
-		// Simplified straight draw detection
-		straightDraw = 0.16 // Assume OESD (8 outs * 2%)
 	}
+
+	if numCommunity >= 3 && !hasStraight {
+		// Open-ended straight draw or gutshot
+		// Simplified detection
+		straightDraw = 0.16 // OESD: 8 outs × 2%
+		straightOuts = 8
+	}
+
+	// Pair draw (6 outs to hit set with pocket pair, 3 outs to pair a card)
+	pairDraw := 0.0
+	if pairCount == 0 && currentHandValue == 0 {
+		pairDraw = 0.12 // ~6 outs to pair one of your hole cards
+	}
+
+	// Calculate improvement potential (outs × street multiplier)
+	streetsRemaining := 2 - (numCommunity - 3)
+	if streetsRemaining < 0 {
+		streetsRemaining = 0
+	}
+	improvementPotential := (flushDraw + straightDraw + pairDraw) * float64(streetsRemaining) / 2
+
+	// Build description
+	description := fmt.Sprintf("Hand: %s", currentHandName)
+	if flushOuts > 0 {
+		description += fmt.Sprintf(" + Flush Draw (%d outs)", flushOuts)
+	}
+	if straightOuts > 0 && !hasStraight {
+		description += fmt.Sprintf(" + Straight Draw (%d outs)", straightOuts)
+	}
+	_ = flushSuit // Used for potential flush suit display
 
 	// Build the Petri net model
 	return map[string]interface{}{
 		"name":        "hand-strength",
-		"description": fmt.Sprintf("Hand Strength ODE Model - Hole: %s, Community: %s", holeStr, communityStr),
+		"description": fmt.Sprintf("ODE Model - %s | Hole: %s, Board: %s", description, holeStr, communityStr),
 		"places": []map[string]interface{}{
 			{"id": "preflop_quality", "initial": int(preflopQuality * preflopWeight * 100), "x": 100, "y": 50},
-			{"id": "current_hand", "initial": 0, "x": 100, "y": 150},
-			{"id": "kicker_value", "initial": 0, "x": 100, "y": 250},
+			{"id": "current_hand", "initial": currentHandValue * 10, "x": 100, "y": 150},
+			{"id": "kicker_value", "initial": kickerValue, "x": 100, "y": 250},
 			{"id": "flush_draw", "initial": int(flushDraw * 100), "x": 300, "y": 50},
 			{"id": "straight_draw", "initial": int(straightDraw * 100), "x": 300, "y": 150},
-			{"id": "pair_draw", "initial": 0, "x": 300, "y": 250},
-			{"id": "improvement_potential", "initial": 0, "x": 200, "y": 350},
-			{"id": "hand_strength", "initial": 0, "x": 500, "y": 150},
+			{"id": "pair_draw", "initial": int(pairDraw * 100), "x": 300, "y": 250},
+			{"id": "improvement_potential", "initial": int(improvementPotential * 100), "x": 200, "y": 350},
+			{"id": "hand_strength", "initial": currentHandValue*10 + kickerValue, "x": 500, "y": 150},
 		},
 		"transitions": []map[string]interface{}{
 			{"id": "compute_strength", "x": 350, "y": 150},
