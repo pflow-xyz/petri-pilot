@@ -203,7 +203,7 @@ func RunMultiple(names []string, opts Options) error {
 
 		// Add virtual models (analysis tools) to the model list
 		allModels := append([]string{}, names...)
-		allModels = append(allModels, "hand-strength")
+		allModels = append(allModels, "hand-strength", "deck-tracker")
 
 		mux.HandleFunc("/models", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -215,6 +215,12 @@ func RunMultiple(names []string, opts Options) error {
 		mux.HandleFunc("/hand-strength/api/schema", HandStrengthModelHandler())
 		mux.HandleFunc("/hand-strength/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/pflow?model=hand-strength", http.StatusTemporaryRedirect)
+		})
+
+		// Deck tracker Petri net model endpoint
+		mux.HandleFunc("/deck-tracker/api/schema", DeckTrackerModelHandler())
+		mux.HandleFunc("/deck-tracker/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/pflow?model=deck-tracker", http.StatusTemporaryRedirect)
 		})
 
 		mux.HandleFunc("/pflow", PflowHandler())
@@ -787,4 +793,148 @@ func buildHandStrengthModel(holeStr, communityStr string) map[string]interface{}
 			{"from": "add_pair_value", "to": "hand_strength"},
 		},
 	}
+}
+
+// DeckTrackerModelHandler returns a handler that serves the deck tracker Petri net model.
+// Query params: hole (e.g., "Ah,Kd"), community (e.g., "Qs,Jh,Tc"), folded (e.g., "2c,3d")
+func DeckTrackerModelHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Parse query parameters
+		holeStr := r.URL.Query().Get("hole")
+		communityStr := r.URL.Query().Get("community")
+
+		// Build the deck tracker model
+		model := buildDeckTrackerModel(holeStr, communityStr)
+		json.NewEncoder(w).Encode(model)
+	}
+}
+
+// buildDeckTrackerModel creates a Petri net showing all 52 cards and their states.
+func buildDeckTrackerModel(holeStr, communityStr string) map[string]interface{} {
+	ranks := []string{"A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"}
+	suits := []string{"h", "d", "c", "s"} // hearts, diamonds, clubs, spades
+	suitNames := map[string]string{"h": "hearts", "d": "diamonds", "c": "clubs", "s": "spades"}
+	suitSymbols := map[string]string{"h": "♥", "d": "♦", "c": "♣", "s": "♠"}
+
+	// Parse dealt cards
+	dealtCards := make(map[string]string) // card -> location (hole, community)
+	if holeStr != "" {
+		for _, c := range strings.Split(holeStr, ",") {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				dealtCards[normalizeCard(c)] = "hole"
+			}
+		}
+	}
+	if communityStr != "" {
+		for _, c := range strings.Split(communityStr, ",") {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				dealtCards[normalizeCard(c)] = "community"
+			}
+		}
+	}
+
+	// Build places for each card, organized by suit
+	places := []map[string]interface{}{}
+
+	// Summary places at the top
+	deckCount := 52 - len(dealtCards)
+	holeCount := 0
+	communityCount := 0
+	for _, loc := range dealtCards {
+		if loc == "hole" {
+			holeCount++
+		} else {
+			communityCount++
+		}
+	}
+
+	places = append(places,
+		map[string]interface{}{"id": "deck_remaining", "initial": deckCount, "x": 100, "y": 30},
+		map[string]interface{}{"id": "hole_cards", "initial": holeCount, "x": 250, "y": 30},
+		map[string]interface{}{"id": "community_cards", "initial": communityCount, "x": 400, "y": 30},
+	)
+
+	// Card places organized in a grid by suit and rank
+	for suitIdx, suit := range suits {
+		for rankIdx, rank := range ranks {
+			cardID := rank + suit
+			x := 50 + rankIdx*45
+			y := 100 + suitIdx*80
+
+			// Check if card is dealt
+			initial := 1
+			location, dealt := dealtCards[cardID]
+			if dealt {
+				initial = 0
+				_ = location // Could use this for coloring
+			}
+
+			places = append(places, map[string]interface{}{
+				"id":      fmt.Sprintf("%s%s", rank, suitSymbols[suit]),
+				"initial": initial,
+				"x":       x,
+				"y":       y,
+			})
+		}
+	}
+
+	// Add suit labels as annotation places
+	for suitIdx, suit := range suits {
+		places = append(places, map[string]interface{}{
+			"id":      suitNames[suit],
+			"initial": 0,
+			"x":       620,
+			"y":       100 + suitIdx*80,
+		})
+	}
+
+	// Transitions for dealing
+	transitions := []map[string]interface{}{
+		{"id": "deal_hole", "x": 175, "y": 30},
+		{"id": "deal_community", "x": 325, "y": 30},
+	}
+
+	// Arcs from deck to dealing transitions
+	arcs := []map[string]interface{}{
+		{"from": "deck_remaining", "to": "deal_hole"},
+		{"from": "deal_hole", "to": "hole_cards"},
+		{"from": "deck_remaining", "to": "deal_community"},
+		{"from": "deal_community", "to": "community_cards"},
+	}
+
+	description := "Deck Tracker - 52 cards"
+	if holeStr != "" || communityStr != "" {
+		description = fmt.Sprintf("Deck Tracker - Hole: %s, Community: %s (%d remaining)",
+			holeStr, communityStr, deckCount)
+	}
+
+	return map[string]interface{}{
+		"name":        "deck-tracker",
+		"description": description,
+		"places":      places,
+		"transitions": transitions,
+		"arcs":        arcs,
+	}
+}
+
+// normalizeCard normalizes card notation (e.g., "10h" -> "Th", "ah" -> "Ah")
+func normalizeCard(card string) string {
+	card = strings.TrimSpace(card)
+	if len(card) < 2 {
+		return card
+	}
+	// Handle "10" as "T"
+	if strings.HasPrefix(card, "10") {
+		card = "T" + card[2:]
+	}
+	// Uppercase rank
+	if len(card) >= 1 {
+		card = strings.ToUpper(card[:1]) + strings.ToLower(card[1:])
+	}
+	return card
 }
