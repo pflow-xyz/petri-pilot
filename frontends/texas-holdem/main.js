@@ -1281,8 +1281,23 @@ async function startNextHand() {
       updateGameState(stateData)
     }
 
+    // Check if end_hand needs to be fired first (after determine_winner)
+    let enabledSet = new Set(gameState.enabled || [])
+    if (enabledSet.has('end_hand') && !enabledSet.has('start_hand')) {
+      console.log('Firing end_hand to prepare for next hand')
+      await executeTransition('end_hand', {})
+
+      // Refresh state after end_hand
+      await delay(300)
+      const refreshResponse = await fetch(`${getApiBase()}/api/texasholdem/${gameState.id}`)
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json()
+        updateGameState(refreshData)
+      }
+      enabledSet = new Set(gameState.enabled || [])
+    }
+
     // Check if start_hand is enabled
-    const enabledSet = new Set(gameState.enabled || [])
     if (!enabledSet.has('start_hand')) {
       console.log('start_hand not enabled, enabled:', gameState.enabled)
       // Wait a bit and try again - the state might need to settle
