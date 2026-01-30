@@ -955,6 +955,14 @@ func PokerHandModelHandler() http.HandlerFunc {
 		holeStr := r.URL.Query().Get("hole")
 		communityStr := r.URL.Query().Get("community")
 
+		// Default example: Full house (Aces full of Kings)
+		if holeStr == "" {
+			holeStr = "Ah,Ad"
+		}
+		if communityStr == "" {
+			communityStr = "As,Kd,Kc"
+		}
+
 		model := buildPokerHandModel(holeStr, communityStr)
 		json.NewEncoder(w).Encode(model)
 	}
