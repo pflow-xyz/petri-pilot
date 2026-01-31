@@ -64,11 +64,19 @@
 
       <div class="right-panel">
         <div class="chart-section">
-          <h3>ODE Simulation <span class="hint">(token flow over time)</span></h3>
+          <h3>Weight Flow <span class="hint">(capacity consumption over time)</span></h3>
           <div class="chart-container">
-            <canvas id="ode-chart"></canvas>
+            <canvas id="weight-chart"></canvas>
           </div>
-          <div class="chart-legend" id="chart-legend"></div>
+          <div class="chart-legend" id="weight-legend"></div>
+        </div>
+
+        <div class="chart-section">
+          <h3>Value Flow <span class="hint">(value accumulation over time)</span></h3>
+          <div class="chart-container">
+            <canvas id="value-chart"></canvas>
+          </div>
+          <div class="chart-legend" id="value-legend"></div>
         </div>
 
         <div class="analysis-section">

@@ -626,6 +626,11 @@ async function makeMove(row, col) {
   if (gameState.gameOver) return
   if (gameState.board[row][col] !== '') return
 
+  // Auto-start a new game if none exists
+  if (!gameState.id) {
+    await newGame()
+  }
+
   // Determine which player's transition to use based on enabled transitions
   const xTransition = `x_play_${row}${col}`
   const oTransition = `o_play_${row}${col}`
