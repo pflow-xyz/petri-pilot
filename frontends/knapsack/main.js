@@ -128,6 +128,21 @@ function extractTimeSeries(solution, placeNames) {
   return series
 }
 
+// Compute expected total weight from ODE (weighted sum of item weights by their taken probability)
+function computeExpectedWeight(solution) {
+  if (!solution || !solution.t || !solution.u) return null
+
+  return solution.t.map((t, i) => {
+    const state = solution.u[i]
+    let weight = 0
+    ITEMS.forEach(item => {
+      const takenVal = state[`item${item.id}_taken`] || 0
+      weight += takenVal * item.weight
+    })
+    return weight
+  })
+}
+
 // Initialize chart
 function initChart() {
   const ctx = document.getElementById('ode-chart').getContext('2d')
@@ -193,11 +208,13 @@ function computeBaseline() {
       'capacity'
     ]
     baselineSeries = extractTimeSeries(solution, placeNames)
+    // Add expected weight to baseline
+    baselineSeries.expected_weight = computeExpectedWeight(solution)
   }
 }
 
 // Update chart with ODE solution
-function updateChart(series) {
+function updateChart(series, currentSolution) {
   if (!odeChart || !series) return
 
   const datasets = []
@@ -220,6 +237,21 @@ function updateChart(series) {
         })
       }
     })
+
+    // Add baseline expected weight (dotted line, always shows ~35.X)
+    if (baselineSeries.expected_weight) {
+      datasets.push({
+        label: 'Expected Weight (all items)',
+        data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_weight[i] })),
+        borderColor: '#2ecc71',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [6, 3],
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+      })
+    }
   }
 
   // Add current selection's item_taken traces (solid lines)
@@ -238,6 +270,23 @@ function updateChart(series) {
       })
     }
   })
+
+  // Add current expected weight (solid line)
+  if (currentSolution) {
+    const currentWeight = computeExpectedWeight(currentSolution)
+    if (currentWeight) {
+      datasets.push({
+        label: 'Expected Weight (selected)',
+        data: currentSolution.t.map((t, i) => ({ x: t, y: currentWeight[i] })),
+        borderColor: '#27ae60',
+        backgroundColor: '#27ae6033',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+      })
+    }
+  }
 
   // Add capacity trace
   if (series.capacity) {
@@ -280,6 +329,22 @@ function updateLegend() {
     <div class="legend-item">
       <div class="legend-color" style="background: transparent; border: 2px dashed #666;"></div>
       <span>Baseline</span>
+    </div>
+  `
+
+  // Expected Weight (current selection - solid green)
+  html += `
+    <div class="legend-item">
+      <div class="legend-color" style="background: #27ae60;"></div>
+      <span>Exp. Weight</span>
+    </div>
+  `
+
+  // Expected Weight (all items baseline - dashed green)
+  html += `
+    <div class="legend-item">
+      <div class="legend-color" style="background: transparent; border: 2px dashed #2ecc71;"></div>
+      <span>Baseline Wt.</span>
     </div>
   `
 
@@ -470,7 +535,7 @@ window.runSimulation = function() {
       'total_weight'
     ]
     const series = extractTimeSeries(odeSolution, placeNames)
-    updateChart(series)
+    updateChart(series, odeSolution)
     updateAnalysis(series)
   }
 }
@@ -505,44 +570,67 @@ function updateAnalysis(series) {
 
   const finalState = odeSolution.u[odeSolution.u.length - 1]
 
-  // Determine which items the ODE predicts will be taken
-  const predictedItems = ITEMS.filter(item => {
-    if (selectedItems.has(item.id)) return false
-    const takenVal = finalState[`item${item.id}_taken`] || 0
-    return takenVal > 0.5
+  // Calculate expected weight and value from ODE (continuous/fractional)
+  let expectedWeight = getCurrentWeight()
+  let expectedValue = getCurrentValue()
+
+  ITEMS.forEach(item => {
+    if (!selectedItems.has(item.id)) {
+      const takenVal = finalState[`item${item.id}_taken`] || 0
+      expectedWeight += takenVal * item.weight
+      expectedValue += takenVal * item.value
+    }
   })
 
-  // Calculate predicted value
-  let predictedValue = getCurrentValue()
-  let predictedWeight = getCurrentWeight()
-  predictedItems.forEach(item => {
-    predictedValue += item.value
-    predictedWeight += item.weight
-  })
+  // Get baseline expected values (all items competing)
+  let baselineWeight = 0
+  let baselineValue = 0
+  if (baselineSeries && baselineSeries.expected_weight) {
+    const finalIdx = baselineSeries.expected_weight.length - 1
+    baselineWeight = baselineSeries.expected_weight[finalIdx]
+    // Compute baseline value too
+    const baselineFinalState = baselineSeries
+    ITEMS.forEach(item => {
+      const takenVal = baselineFinalState[`item${item.id}_taken`]
+      if (takenVal) {
+        baselineValue += takenVal[finalIdx] * item.value
+      }
+    })
+  }
 
   const optimalValue = 38
-  const efficiency = ((predictedValue / optimalValue) * 100).toFixed(1)
+  const efficiency = ((expectedValue / optimalValue) * 100).toFixed(1)
 
   let html = ''
 
-  // Predicted items
-  html += `
-    <div class="analysis-item">
-      <div class="analysis-icon">🔮</div>
-      <div class="analysis-text">
-        ODE predicts taking: <strong>${predictedItems.map(i => i.name).join(', ') || 'none'}</strong>
-      </div>
-    </div>
-  `
-
-  // Predicted totals
+  // Expected totals from ODE (continuous approximation)
   html += `
     <div class="analysis-item">
       <div class="analysis-icon">📊</div>
       <div class="analysis-text">
-        Predicted total: <strong>Value ${predictedValue}</strong>, Weight ${predictedWeight}
+        Expected (ODE): <strong>Value ${expectedValue.toFixed(1)}</strong>, Weight ${expectedWeight.toFixed(1)}
       </div>
-      <div class="analysis-value ${predictedValue >= optimalValue ? 'positive' : ''}">${efficiency}%</div>
+      <div class="analysis-value ${expectedValue >= optimalValue ? 'positive' : ''}">${efficiency}%</div>
+    </div>
+  `
+
+  // Baseline comparison
+  html += `
+    <div class="analysis-item">
+      <div class="analysis-icon">📈</div>
+      <div class="analysis-text">
+        Baseline (all items): Value ${baselineValue.toFixed(1)}, Weight <strong>${baselineWeight.toFixed(1)}</strong>
+      </div>
+    </div>
+  `
+
+  // Optimal reference
+  html += `
+    <div class="analysis-item">
+      <div class="analysis-icon">🎯</div>
+      <div class="analysis-text">
+        Optimal: A+B+D = Value <strong>38</strong>, Weight 15
+      </div>
     </div>
   `
 
