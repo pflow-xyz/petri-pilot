@@ -360,35 +360,33 @@ function updateChart(series, currentSolution) {
     const selectedSolution = runODE(selectedModel, 3.0, 0.05)
 
     if (selectedSolution) {
+      // Read total_weight and total_value directly from ODE solution
+      const weightData = selectedSolution.u.map(state => state['total_weight'] || 0)
+      const valueData = selectedSolution.u.map(state => state['total_value'] || 0)
+
       // Weight (selected) - solid green, or RED when over capacity
-      const selectedWeight = computeExpectedWeight(selectedSolution, false)  // include all (only selected have rate>0)
-      if (selectedWeight) {
-        datasets.push({
-          label: 'Weight (selected)',
-          data: selectedSolution.t.map((t, i) => ({ x: t, y: selectedWeight[i] })),
-          borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
-          backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
-          borderWidth: 3,
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        })
-      }
+      datasets.push({
+        label: 'Weight (selected)',
+        data: selectedSolution.t.map((t, i) => ({ x: t, y: weightData[i] })),
+        borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
+        backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+      })
 
       // Value (selected) - solid blue
-      const selectedValue = computeExpectedValue(selectedSolution, false)  // include all (only selected have rate>0)
-      if (selectedValue) {
-        datasets.push({
-          label: 'Value (selected)',
-          data: selectedSolution.t.map((t, i) => ({ x: t, y: selectedValue[i] })),
-          borderColor: '#2980b9',
-          backgroundColor: '#2980b933',
-          borderWidth: 3,
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        })
-      }
+      datasets.push({
+        label: 'Value (selected)',
+        data: selectedSolution.t.map((t, i) => ({ x: t, y: valueData[i] })),
+        borderColor: '#2980b9',
+        backgroundColor: '#2980b933',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+      })
     }
   }
 
