@@ -44,10 +44,14 @@ function buildKnapsackPetriNet(excludeItems = []) {
     }
   })
 
-  // Capacity place
+  // Capacity place - reduced by weight of already-selected items
+  const usedCapacity = excludeItems.reduce((sum, id) => {
+    const item = ITEMS.find(i => i.id === id)
+    return sum + (item ? item.weight : 0)
+  }, 0)
   places['capacity'] = {
     '@type': 'Place',
-    'initial': [MAX_CAPACITY],
+    'initial': [MAX_CAPACITY - usedCapacity],
     'x': 300,
     'y': 200
   }
