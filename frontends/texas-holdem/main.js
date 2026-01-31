@@ -3,6 +3,15 @@
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
 import { renderCard, renderCards, renderCommunityCards, parseCard } from './cards.js'
+import {
+  HandRank,
+  HandRankNames,
+  evaluateHand,
+  evaluatePokerHand,
+  compareHands,
+  getPreflopStrength,
+  calculateDraws
+} from './hand-evaluator.js'
 
 // Read API_BASE dynamically
 function getApiBase() {
@@ -2160,33 +2169,77 @@ function awardPotToWinner() {
   }
 
   let winner
+  let winningHand = null
+
   if (activePlayers.length === 1) {
     // Only one player left - they win by default
     winner = activePlayers[0]
+    console.log(`${winner.name} wins by default (all others folded)`)
   } else {
-    // Multiple players - evaluate hands at showdown
-    let bestStrength = -1
-    for (const player of activePlayers) {
-      const strength = evaluateHandStrength(player.cards, gameState.communityCards)
-      console.log(`Player ${player.index} showdown strength: ${strength.toFixed(3)}`)
-      if (strength > bestStrength) {
-        bestStrength = strength
-        winner = player
+    // Multiple players - evaluate hands at showdown using proper comparison
+    const community = [
+      ...(gameState.communityCards.flop || []),
+      ...(gameState.communityCards.turn || []),
+      ...(gameState.communityCards.river || [])
+    ]
+
+    // Evaluate each player's hand
+    const evaluations = activePlayers.map(player => {
+      const allCards = [...player.cards, ...community]
+      const evaluation = evaluateHand(allCards)
+      console.log(`Player ${player.index} showdown: ${player.cards.join(',')} → ${evaluation.description}`)
+      return { player, evaluation, cards: allCards }
+    })
+
+    // Sort by hand strength (best first)
+    evaluations.sort((a, b) => {
+      const cmp = compareHands(a.cards, b.cards)
+      return -cmp // Descending order
+    })
+
+    winner = evaluations[0].player
+    winningHand = evaluations[0].evaluation
+
+    // Check for ties
+    const tiedPlayers = evaluations.filter(e =>
+      compareHands(e.cards, evaluations[0].cards) === 0
+    )
+
+    if (tiedPlayers.length > 1) {
+      // Split pot
+      const splitAmount = Math.floor(gameState.pot / tiedPlayers.length)
+      for (const tied of tiedPlayers) {
+        gameState.players[tied.player.index].chips += splitAmount
+        console.log(`${tied.player.name} splits pot: +$${splitAmount}`)
       }
+
+      showStatus(`Split pot! ${tiedPlayers.map(t => t.player.name).join(' and ')} split $${gameState.pot} with ${winningHand.description}`, 'success')
+
+      gameState.events.push({
+        type: `Split pot: ${tiedPlayers.map(t => t.player.name).join(', ')} with ${winningHand.description}`,
+        timestamp: new Date().toISOString()
+      })
+
+      gameState.pot = 0
+      renderPokerTable()
+      renderEventHistory()
+      return
     }
   }
 
   if (winner) {
     const potAmount = gameState.pot
     gameState.players[winner.index].chips += potAmount
-    showStatus(`${winner.name} wins $${potAmount}!`, 'success')
+
+    const handDesc = winningHand ? ` with ${winningHand.description}` : ''
+    showStatus(`${winner.name} wins $${potAmount}${handDesc}!`, 'success')
 
     gameState.events.push({
-      type: `${winner.name} wins $${potAmount}`,
+      type: `${winner.name} wins $${potAmount}${handDesc}`,
       timestamp: new Date().toISOString()
     })
 
-    console.log(`${winner.name} wins pot of $${potAmount}, now has $${gameState.players[winner.index].chips}`)
+    console.log(`${winner.name} wins pot of $${potAmount}${handDesc}, now has $${gameState.players[winner.index].chips}`)
     gameState.pot = 0
 
     renderPokerTable()
@@ -2195,107 +2248,48 @@ function awardPotToWinner() {
 }
 
 /**
- * Evaluate hand strength using ODE-based computation
+ * Evaluate hand strength using the proper poker hand evaluator
  * Returns a value between 0 and 1
  */
 function evaluateHandStrength(holeCards, communityCards) {
   if (!holeCards || holeCards.length < 2) return 0.5
 
-  try {
-    // Use ODE computation for hand strength
-    const result = computeODEHandStrength(holeCards, communityCards)
+  // Use the proper hand evaluator
+  const evaluation = evaluatePokerHand(holeCards, communityCards)
 
-    // Add small randomness to prevent predictability
-    const noise = (Math.random() - 0.5) * 0.06
-    const strength = Math.max(0, Math.min(1, result.strength + noise))
+  // Calculate draws for additional equity on flop/turn
+  const draws = calculateDraws(holeCards, communityCards)
 
-    // Log draw information for debugging
-    if (result.draws) {
-      const draws = result.draws
-      if (draws.flushDraw > 0 || draws.straightDraw > 0) {
-        console.log(`  Draws: flush=${draws.flushDraw} outs, straight=${draws.straightDraw} outs, overcards=${draws.overcardDraw}`)
-      }
-    }
+  // Base strength from hand rank
+  let strength = evaluation.strength
 
-    return strength
-  } catch (err) {
-    console.error('ODE evaluation failed, using fallback:', err)
-    return evaluateHandStrengthFallback(holeCards, communityCards)
+  // Add draw equity (weighted by street)
+  const communityCount = (communityCards.flop?.length || 0) +
+                         (communityCards.turn?.length || 0) +
+                         (communityCards.river?.length || 0)
+
+  if (communityCount < 5 && draws.outs > 0) {
+    // Add partial equity for draws (not full value since draws can miss)
+    strength += draws.equity * 0.5
+
+    console.log(`  Hand: ${evaluation.description}, Draws: flush=${draws.flushDraw}, straight=${draws.straightDraw}, equity bonus=${(draws.equity * 0.5).toFixed(2)}`)
+  } else {
+    console.log(`  Hand: ${evaluation.description}`)
   }
+
+  // Add small randomness to prevent predictability
+  const noise = (Math.random() - 0.5) * 0.04
+  return Math.max(0, Math.min(1, strength + noise))
 }
 
 /**
- * Fallback hand strength evaluation (heuristic-based)
- * Used when ODE computation fails
+ * Get detailed hand evaluation for display
+ * @param {array} holeCards - Player's hole cards
+ * @param {object} communityCards - Community cards
+ * @returns {object} - Full evaluation with description
  */
-function evaluateHandStrengthFallback(holeCards, communityCards) {
-  if (!holeCards || holeCards.length < 2) return 0.5
-
-  const holeCardsParsed = holeCards.map(parseCard)
-  const allCommunity = [
-    ...(communityCards.flop || []),
-    ...(communityCards.turn || []),
-    ...(communityCards.river || [])
-  ].map(parseCard)
-
-  const allCards = [...holeCardsParsed, ...allCommunity]
-  const holeRanks = holeCardsParsed.map(c => c.rank)
-  const holeSuits = holeCardsParsed.map(c => c.suit)
-  const holeValues = holeRanks.map(r => '23456789TJQKA'.indexOf(r))
-
-  let strength = 0.2
-
-  // High cards bonus
-  strength += holeValues.reduce((sum, v) => sum + (v / 13) * 0.08, 0)
-
-  // Pocket pair bonus
-  if (holeRanks[0] === holeRanks[1]) {
-    strength += 0.25 + (holeValues[0] / 13) * 0.15
-  }
-
-  // Suited bonus
-  if (holeSuits[0] === holeSuits[1]) {
-    strength += 0.08
-  }
-
-  // Connected bonus
-  if (Math.abs(holeValues[0] - holeValues[1]) === 1) {
-    strength += 0.05
-  }
-
-  // Community card analysis
-  if (allCommunity.length > 0) {
-    const allRanks = allCards.map(c => c.rank)
-    const allSuits = allCards.map(c => c.suit)
-
-    // Check for pairs
-    for (const holeRank of holeRanks) {
-      const matches = allCommunity.filter(c => c.rank === holeRank).length
-      if (matches > 0) strength += 0.15 * matches
-    }
-
-    // Flush check
-    const suitCounts = {}
-    for (const suit of allSuits) {
-      suitCounts[suit] = (suitCounts[suit] || 0) + 1
-    }
-    const maxSuit = Math.max(...Object.values(suitCounts))
-    if (maxSuit >= 5) strength += 0.35
-    else if (maxSuit === 4 && holeSuits[0] === holeSuits[1]) strength += 0.12
-
-    // Hand rank check
-    const rankCounts = {}
-    for (const rank of allRanks) {
-      rankCounts[rank] = (rankCounts[rank] || 0) + 1
-    }
-    const counts = Object.values(rankCounts).sort((a, b) => b - a)
-    if (counts[0] >= 4) strength += 0.45
-    else if (counts[0] >= 3 && counts[1] >= 2) strength += 0.4
-    else if (counts[0] >= 3) strength += 0.25
-    else if (counts[0] >= 2 && counts[1] >= 2) strength += 0.18
-  }
-
-  return Math.max(0, Math.min(1, strength + (Math.random() - 0.5) * 0.08))
+function getHandEvaluation(holeCards, communityCards) {
+  return evaluatePokerHand(holeCards, communityCards)
 }
 
 /**
@@ -2312,3 +2306,12 @@ window.buildHandStrengthPetriNet = buildHandStrengthPetriNet
 window.computeODEHandStrength = computeODEHandStrength
 window.startAutoPlay = startAutoPlay
 window.stopAutoPlay = stopAutoPlay
+
+// Export hand evaluator functions for testing
+window.evaluateHand = evaluateHand
+window.evaluatePokerHand = evaluatePokerHand
+window.compareHands = compareHands
+window.getPreflopStrength = getPreflopStrength
+window.calculateDraws = calculateDraws
+window.HandRank = HandRank
+window.HandRankNames = HandRankNames
