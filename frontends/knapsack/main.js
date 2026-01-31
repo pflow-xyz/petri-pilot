@@ -307,6 +307,21 @@ function updateChart(series, currentSolution) {
     }
   }
 
+  // Capacity limit line at y=15 - dotted black
+  if (currentSolution) {
+    datasets.push({
+      label: 'Capacity (15)',
+      data: currentSolution.t.map(t => ({ x: t, y: MAX_CAPACITY })),
+      borderColor: '#000000',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4, 4],
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+    })
+  }
+
   odeChart.data.datasets = datasets
   odeChart.update()
 
@@ -347,6 +362,14 @@ function updateLegend() {
     <div class="legend-item">
       <div class="legend-color" style="background: transparent; border: 2px dashed #3498db;"></div>
       <span>Value (all)</span>
+    </div>
+  `
+
+  // Capacity limit - dotted black
+  html += `
+    <div class="legend-item">
+      <div class="legend-color" style="background: transparent; border: 2px dotted #000;"></div>
+      <span>Capacity (15)</span>
     </div>
   `
 
