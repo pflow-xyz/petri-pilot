@@ -78,14 +78,7 @@ Examples:
 		opts.Port = *port
 	}
 
-	var err error
-	if len(serviceNames) == 1 {
-		err = serve.Run(serviceNames[0], opts)
-	} else {
-		err = serve.RunMultiple(serviceNames, opts)
-	}
-
-	if err != nil {
+	if err := serve.RunMultiple(serviceNames, opts); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

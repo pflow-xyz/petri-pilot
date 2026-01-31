@@ -147,7 +147,73 @@ func (z *ZKIntegration) Handler() http.Handler {
 	// Replay verification - verify entire game history
 	mux.HandleFunc("POST /replay", z.handleReplay)
 
+	// Fire arbitrary transition (for win detection, etc)
+	mux.HandleFunc("POST /game/{id}/fire", z.handleFireTransition)
+
 	return mux
+}
+
+// FireTransitionRequest is the request body for firing a transition.
+type FireTransitionRequest struct {
+	Transition int `json:"transition"`
+}
+
+func (z *ZKIntegration) handleFireTransition(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	z.mu.Lock()
+	game, ok := z.games[id]
+	if !ok {
+		z.mu.Unlock()
+		http.Error(w, "game not found", http.StatusNotFound)
+		return
+	}
+
+	var req FireTransitionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		z.mu.Unlock()
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Fire the transition
+	witness, err := game.FireTransition(req.Transition)
+	z.mu.Unlock()
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(MoveResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	// Generate proof
+	assignment := witness.ToPetriTransitionAssignment()
+	proofResult, err := z.prover.Prove("transition", assignment)
+
+	var proof *Proof
+	if err == nil {
+		verifyErr := z.prover.Verify("transition", assignment)
+		proof = proofResultToProof("transition", proofResult, verifyErr == nil)
+	}
+
+	// Get current state
+	board := extractBoard(game.Marking)
+	winner := getWinner(game.Marking)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(MoveResponse{
+		Success:       true,
+		PreStateRoot:  witness.PreStateRoot.String(),
+		PostStateRoot: witness.PostStateRoot.String(),
+		Board:         board,
+		TurnCount:     turnCount(game.Marking),
+		IsOver:        isGameOver(game.Marking),
+		Winner:        winner,
+		Proof:         proof,
+	})
 }
 
 func (z *ZKIntegration) handleHealth(w http.ResponseWriter, r *http.Request) {

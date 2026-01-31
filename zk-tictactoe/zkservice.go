@@ -70,12 +70,21 @@ func (s *ZKService) Close() error {
 	return s.base.Close()
 }
 
-// GraphQLSchema returns the GraphQL schema for this service.
+// GraphQLSchema returns the combined GraphQL schema for this service.
 func (s *ZKService) GraphQLSchema() string {
-	return s.base.GraphQLSchema()
+	// Combine base schema with ZK schema
+	return s.base.GraphQLSchema() + "\n" + ZKGraphQLSchema
 }
 
-// GraphQLResolvers returns the GraphQL resolvers for this service.
+// GraphQLResolvers returns the combined GraphQL resolvers for this service.
 func (s *ZKService) GraphQLResolvers() map[string]serve.GraphQLResolver {
-	return s.base.GraphQLResolvers()
+	// Start with base resolvers
+	resolvers := s.base.GraphQLResolvers()
+
+	// Add ZK resolvers
+	for name, resolver := range s.zk.ZKGraphQLResolvers() {
+		resolvers[name] = resolver
+	}
+
+	return resolvers
 }
