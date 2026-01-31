@@ -133,13 +133,15 @@ function extractTimeSeries(solution, placeNames) {
 }
 
 // Compute expected total weight from ODE (weighted sum of item weights by their taken probability)
-function computeExpectedWeight(solution) {
+// excludeSelected: if true, only count items NOT in selectedItems (for chart display)
+function computeExpectedWeight(solution, excludeSelected = false) {
   if (!solution || !solution.t || !solution.u) return null
 
   return solution.t.map((t, i) => {
     const state = solution.u[i]
     let weight = 0
     ITEMS.forEach(item => {
+      if (excludeSelected && selectedItems.has(item.id)) return
       const takenVal = state[`item${item.id}_taken`] || 0
       weight += takenVal * item.weight
     })
@@ -148,13 +150,15 @@ function computeExpectedWeight(solution) {
 }
 
 // Compute expected total value from ODE
-function computeExpectedValue(solution) {
+// excludeSelected: if true, only count items NOT in selectedItems (for chart display)
+function computeExpectedValue(solution, excludeSelected = false) {
   if (!solution || !solution.t || !solution.u) return null
 
   return solution.t.map((t, i) => {
     const state = solution.u[i]
     let value = 0
     ITEMS.forEach(item => {
+      if (excludeSelected && selectedItems.has(item.id)) return
       const takenVal = state[`item${item.id}_taken`] || 0
       value += takenVal * item.value
     })
@@ -240,6 +244,8 @@ function updateChart(series, currentSolution) {
   if (!odeChart || !series) return
 
   const datasets = []
+  const currentSelectedWeight = getCurrentWeight()
+  const isOverCapacity = currentSelectedWeight > MAX_CAPACITY
 
   // Baseline Weight (all items) - dashed green
   if (baselineSeries && baselineSeries.expected_weight) {
@@ -271,16 +277,17 @@ function updateChart(series, currentSolution) {
     })
   }
 
-  // Current Weight (selected) - solid green
-  // Note: selected items already have item_taken=1 in the model, so ODE includes them
+  // Current Weight (ODE only, excludes already-selected) - solid green, or RED when over capacity
+  // Shows ODE simulation starting from 0, not including manually selected items
   if (currentSolution) {
-    const currentWeight = computeExpectedWeight(currentSolution)
-    if (currentWeight) {
+    const odeWeight = computeExpectedWeight(currentSolution, true)  // exclude selected
+    const manualWeight = getCurrentWeight()  // weight of manually selected items
+    if (odeWeight) {
       datasets.push({
         label: 'Weight (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: currentWeight[i] })),
-        borderColor: '#27ae60',
-        backgroundColor: '#27ae6033',
+        data: currentSolution.t.map((t, i) => ({ x: t, y: manualWeight + odeWeight[i] })),
+        borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
+        backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
         borderWidth: 3,
         fill: false,
         tension: 0.3,
@@ -289,14 +296,15 @@ function updateChart(series, currentSolution) {
     }
   }
 
-  // Current Value (selected) - solid blue
-  // Note: selected items already have item_taken=1 in the model, so ODE includes them
+  // Current Value (ODE only, excludes already-selected) - solid blue
+  // Shows ODE simulation starting from 0, not including manually selected items
   if (currentSolution) {
-    const currentValue = computeExpectedValue(currentSolution)
-    if (currentValue) {
+    const odeValue = computeExpectedValue(currentSolution, true)  // exclude selected
+    const manualValue = getCurrentValue()  // value of manually selected items
+    if (odeValue) {
       datasets.push({
         label: 'Value (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: currentValue[i] })),
+        data: currentSolution.t.map((t, i) => ({ x: t, y: manualValue + odeValue[i] })),
         borderColor: '#2980b9',
         backgroundColor: '#2980b933',
         borderWidth: 3,
@@ -307,14 +315,14 @@ function updateChart(series, currentSolution) {
     }
   }
 
-  // Capacity limit line at y=15 - dotted black
+  // Capacity limit line at y=15 - dotted black (RED when over capacity)
   if (currentSolution) {
     datasets.push({
       label: 'Capacity (15)',
       data: currentSolution.t.map(t => ({ x: t, y: MAX_CAPACITY })),
-      borderColor: '#000000',
+      borderColor: isOverCapacity ? '#dc3545' : '#000000',
       backgroundColor: 'transparent',
-      borderWidth: 1.5,
+      borderWidth: isOverCapacity ? 2.5 : 1.5,
       borderDash: [4, 4],
       fill: false,
       tension: 0,
