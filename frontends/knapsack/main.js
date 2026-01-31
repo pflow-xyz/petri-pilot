@@ -454,7 +454,6 @@ function renderItems() {
 
     let cardClass = 'item-card'
     if (isSelected) cardClass += ' selected'
-    if (!isSelected && !canFit) cardClass += ' disabled'
     if (isRecommended) cardClass += ' recommended'
 
     const odeVal = odeValues[item.id] || 0
@@ -524,7 +523,7 @@ window.toggleItem = function(itemId) {
 
   if (selectedItems.has(itemId)) {
     selectedItems.delete(itemId)
-  } else if (canFitItem(item)) {
+  } else {
     selectedItems.add(itemId)
   }
 
@@ -564,16 +563,28 @@ function updateUI() {
   const currentWeight = getCurrentWeight()
   const currentValue = getCurrentValue()
   const usedPercent = (currentWeight / MAX_CAPACITY) * 100
+  const isOverCapacity = currentWeight > MAX_CAPACITY
 
   document.getElementById('capacity-display').textContent = `${currentWeight} / ${MAX_CAPACITY}`
   document.getElementById('total-value').textContent = currentValue
   document.getElementById('total-weight').textContent = currentWeight
 
   const fillEl = document.getElementById('capacity-fill')
-  fillEl.style.width = `${usedPercent}%`
+  fillEl.style.width = `${Math.min(usedPercent, 100)}%`
   fillEl.className = 'capacity-fill'
-  if (usedPercent >= 100) fillEl.classList.add('full')
+  if (isOverCapacity) fillEl.classList.add('over')
+  else if (usedPercent >= 100) fillEl.classList.add('full')
   else if (usedPercent >= 80) fillEl.classList.add('warning')
+
+  // Show/hide over-capacity warning
+  const warningEl = document.getElementById('over-capacity-warning')
+  if (warningEl) {
+    warningEl.style.display = isOverCapacity ? 'block' : 'none'
+    if (isOverCapacity) {
+      const overBy = currentWeight - MAX_CAPACITY
+      warningEl.textContent = `⚠️ Over capacity by ${overBy} weight units! Remove items to fit.`
+    }
+  }
 }
 
 // Update analysis panel
