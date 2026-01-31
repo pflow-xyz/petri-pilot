@@ -272,14 +272,13 @@ function updateChart(series, currentSolution) {
   }
 
   // Current Weight (selected) - solid green
+  // Note: selected items already have item_taken=1 in the model, so ODE includes them
   if (currentSolution) {
     const currentWeight = computeExpectedWeight(currentSolution)
     if (currentWeight) {
-      // Add weight from already-selected items
-      const selectedWeight = getCurrentWeight()
       datasets.push({
         label: 'Weight (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: selectedWeight + currentWeight[i] })),
+        data: currentSolution.t.map((t, i) => ({ x: t, y: currentWeight[i] })),
         borderColor: '#27ae60',
         backgroundColor: '#27ae6033',
         borderWidth: 3,
@@ -291,14 +290,13 @@ function updateChart(series, currentSolution) {
   }
 
   // Current Value (selected) - solid blue
+  // Note: selected items already have item_taken=1 in the model, so ODE includes them
   if (currentSolution) {
     const currentValue = computeExpectedValue(currentSolution)
     if (currentValue) {
-      // Add value from already-selected items
-      const selectedValue = getCurrentValue()
       datasets.push({
         label: 'Value (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: selectedValue + currentValue[i] })),
+        data: currentSolution.t.map((t, i) => ({ x: t, y: currentValue[i] })),
         borderColor: '#2980b9',
         backgroundColor: '#2980b933',
         borderWidth: 3,
