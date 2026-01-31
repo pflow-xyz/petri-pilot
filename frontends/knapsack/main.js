@@ -16,96 +16,15 @@ const MAX_EFFICIENCY = Math.max(...ITEMS.map(i => i.efficiency))
 
 // State
 let selectedItems = new Set()
-let odeChart = null
+let weightChart = null
+let valueChart = null
 let odeSolution = null
 let odeValues = {} // Final ODE values for each item
-let baselineSeries = null // Baseline ODE with all items competing
+let baselineSolution = null // Full baseline ODE solution
 
-// Build Petri net model for knapsack
-// excludeItems: items to exclude (treated as already taken)
-function buildKnapsackPetriNet(excludeItems = []) {
-  const places = {}
-  const transitions = {}
-  const arcs = []
-
-  // Item availability places
-  ITEMS.forEach(item => {
-    const isExcluded = excludeItems.includes(item.id)
-    places[`item${item.id}`] = {
-      '@type': 'Place',
-      'initial': [isExcluded ? 0 : 1],
-      'x': 100 + item.id * 150,
-      'y': 100
-    }
-    places[`item${item.id}_taken`] = {
-      '@type': 'Place',
-      'initial': [isExcluded ? 1 : 0],
-      'x': 100 + item.id * 150,
-      'y': 300
-    }
-  })
-
-  // Capacity place - reduced by weight of already-selected items
-  const usedCapacity = excludeItems.reduce((sum, id) => {
-    const item = ITEMS.find(i => i.id === id)
-    return sum + (item ? item.weight : 0)
-  }, 0)
-  places['capacity'] = {
-    '@type': 'Place',
-    'initial': [MAX_CAPACITY - usedCapacity],
-    'x': 300,
-    'y': 200
-  }
-
-  // Total value and weight places
-  places['total_value'] = {
-    '@type': 'Place',
-    'initial': [0],
-    'x': 500,
-    'y': 400
-  }
-  places['total_weight'] = {
-    '@type': 'Place',
-    'initial': [0],
-    'x': 600,
-    'y': 400
-  }
-
-  // Take item transitions
-  ITEMS.forEach(item => {
-    const isExcluded = excludeItems.includes(item.id)
-    if (!isExcluded) {
-      const tid = `take_item${item.id}`
-      transitions[tid] = {
-        '@type': 'Transition',
-        'rate': item.efficiency, // Rate based on efficiency
-        'x': 100 + item.id * 150,
-        'y': 200
-      }
-
-      // Input arcs
-      arcs.push({ '@type': 'Arrow', 'source': `item${item.id}`, 'target': tid, 'weight': [1] })
-      arcs.push({ '@type': 'Arrow', 'source': 'capacity', 'target': tid, 'weight': [item.weight] })
-
-      // Output arcs
-      arcs.push({ '@type': 'Arrow', 'source': tid, 'target': `item${item.id}_taken`, 'weight': [1] })
-      arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_value', 'weight': [item.value] })
-      arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_weight', 'weight': [item.weight] })
-    }
-  })
-
-  return {
-    '@context': 'https://pflow.xyz/schema',
-    '@type': 'PetriNet',
-    'places': places,
-    'transitions': transitions,
-    'arcs': arcs
-  }
-}
-
-// Build Petri net with only selected items active (rate=0 for non-selected)
-// This shows how selected items alone would behave
-function buildSelectedOnlyPetriNet(selectedItemIds = []) {
+// Build Petri net with uniform rates (rate=1 for all items)
+// Used for baseline comparison showing equal competition
+function buildUniformRatePetriNet() {
   const places = {}
   const transitions = {}
   const arcs = []
@@ -148,13 +67,12 @@ function buildSelectedOnlyPetriNet(selectedItemIds = []) {
     'y': 400
   }
 
-  // Create transitions for ALL items, but only selected items have non-zero rates
+  // Create transitions for ALL items with rate=1
   ITEMS.forEach(item => {
-    const isSelected = selectedItemIds.includes(item.id)
     const tid = `take_item${item.id}`
     transitions[tid] = {
       '@type': 'Transition',
-      'rate': isSelected ? item.efficiency : 0, // Only selected items have rate > 0
+      'rate': 1, // Uniform rate for baseline
       'x': 100 + item.id * 150,
       'y': 200
     }
@@ -178,13 +96,53 @@ function buildSelectedOnlyPetriNet(selectedItemIds = []) {
   }
 }
 
+// Compute rates based on mode:
+// - 'baseline': all rates = 1.0 (all items competing equally)
+// - 'selected': rate = 1.0 for selected items, 0 for non-selected
+// - 'efficiency': rate = item.efficiency for non-selected items (for recommendations)
+function getRates(net, mode = 'baseline') {
+    const rates = {}
+    if (net.transitions instanceof Map) {
+        net.transitions.forEach((t, tid) => {
+            // Extract item ID from transition ID (e.g., "take_item0" -> 0)
+            const match = tid.match(/take_item(\d+)/)
+            if (!match) {
+                rates[tid] = 1.0
+                return
+            }
+            const itemId = parseInt(match[1], 10)
+            const item = ITEMS.find(i => i.id === itemId)
+
+            if (mode === 'baseline') {
+                // All items compete equally
+                rates[tid] = 1.0
+            } else if (mode === 'selected') {
+                // Only selected items have non-zero rates
+                if (selectedItems.size === 0) {
+                    rates[tid] = 1.0 // Fall back to baseline if nothing selected
+                } else {
+                    rates[tid] = selectedItems.has(itemId) ? 1.0 : 0
+                }
+            } else if (mode === 'efficiency') {
+                // Use efficiency-based rates for non-selected items (for recommendations)
+                if (selectedItems.has(itemId)) {
+                    rates[tid] = 0 // Already selected, exclude from competition
+                } else {
+                    rates[tid] = item ? item.efficiency : 1.0
+                }
+            }
+        })
+    }
+    return rates
+}
+
 // Run ODE simulation
-function runODE(model, tspan = 2.0, dt = 0.05) {
+// mode: 'baseline', 'selected', or 'efficiency'
+function runODE(model, tspan = 2.0, dt = 0.05, mode = 'baseline') {
   try {
     const net = Solver.fromJSON(model)
     const initialState = Solver.setState(net)
-    const rates = Solver.setRates(net)
-
+    const rates = getRates(net, mode)
     const prob = new Solver.ODEProblem(net, initialState, [0, tspan], rates)
     const solution = Solver.solve(prob, Solver.Tsit5(), { dt: dt, adaptive: false })
 
@@ -195,249 +153,282 @@ function runODE(model, tspan = 2.0, dt = 0.05) {
   }
 }
 
-// Extract time series for places
-function extractTimeSeries(solution, placeNames) {
-  if (!solution || !solution.t || !solution.u) return null
-
-  const series = {}
-  placeNames.forEach(name => {
-    series[name] = solution.u.map(state => state[name] || 0)
-  })
-  series.t = solution.t
-
-  return series
-}
-
-// Compute expected total weight from ODE (weighted sum of item weights by their taken probability)
-// excludeSelected: if true, only count items NOT in selectedItems (for chart display)
-function computeExpectedWeight(solution, excludeSelected = false) {
+// Compute weight time series from solution - read directly from total_weight place
+function computeWeightSeries(solution) {
   if (!solution || !solution.t || !solution.u) return null
 
   return solution.t.map((t, i) => {
     const state = solution.u[i]
-    let weight = 0
-    ITEMS.forEach(item => {
-      if (excludeSelected && selectedItems.has(item.id)) return
-      const takenVal = state[`item${item.id}_taken`] || 0
-      weight += takenVal * item.weight
-    })
-    return weight
+    return state['total_weight'] || 0
   })
 }
 
-// Compute expected total value from ODE
-// excludeSelected: if true, only count items NOT in selectedItems (for chart display)
-function computeExpectedValue(solution, excludeSelected = false) {
+// Compute value time series from solution - read directly from total_value place
+function computeValueSeries(solution) {
   if (!solution || !solution.t || !solution.u) return null
 
   return solution.t.map((t, i) => {
     const state = solution.u[i]
-    let value = 0
-    ITEMS.forEach(item => {
-      if (excludeSelected && selectedItems.has(item.id)) return
-      const takenVal = state[`item${item.id}_taken`] || 0
-      value += takenVal * item.value
-    })
-    return value
+    return state['total_value'] || 0
   })
 }
 
-// Initialize chart
-function initChart() {
-  const ctx = document.getElementById('ode-chart').getContext('2d')
+// Vertical line plugin for hover crosshair
+const verticalLinePlugin = {
+  id: 'verticalLine',
+  afterDraw: (chart) => {
+    if (chart.tooltip._active && chart.tooltip._active.length) {
+      const ctx = chart.ctx
+      const activePoint = chart.tooltip._active[0]
+      const x = activePoint.element.x
+      const topY = chart.scales.y.top
+      const bottomY = chart.scales.y.bottom
 
-  odeChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: []
+      ctx.save()
+      ctx.beginPath()
+      ctx.moveTo(x, topY)
+      ctx.lineTo(x, bottomY)
+      ctx.lineWidth = 1
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'
+      ctx.setLineDash([4, 4])
+      ctx.stroke()
+      ctx.restore()
+    }
+  }
+}
+
+// Create chart options
+function createChartOptions(yAxisLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 0
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 0
-      },
-      interaction: {
-        mode: 'index',
-        intersect: false,
-      },
-      scales: {
-        x: {
-          type: 'linear',
-          title: {
-            display: true,
-            text: 'Time'
-          },
-          ticks: {
-            callback: (value) => value.toFixed(1)
-          }
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: 'Time'
         },
-        y: {
-          title: {
-            display: true,
-            text: 'Tokens'
-          },
-          min: 0,
-          beginAtZero: true,
-          suggestedMin: 0
+        ticks: {
+          callback: (value) => value.toFixed(1)
         }
       },
-      plugins: {
-        legend: {
-          display: false
+      y: {
+        title: {
+          display: true,
+          text: yAxisLabel
         },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`
-            }
+        min: 0,
+        beginAtZero: true,
+        suggestedMin: 0
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`
           }
         }
       }
     }
+  }
+}
+
+// Initialize charts
+function initCharts() {
+  const weightCtx = document.getElementById('weight-chart').getContext('2d')
+  const valueCtx = document.getElementById('value-chart').getContext('2d')
+
+  weightChart = new Chart(weightCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: createChartOptions('Weight'),
+    plugins: [verticalLinePlugin]
+  })
+
+  valueChart = new Chart(valueCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: createChartOptions('Value'),
+    plugins: [verticalLinePlugin]
   })
 }
 
-// Compute baseline ODE (all items competing, no exclusions)
+// Compute baseline ODE (all items with rate=1)
 function computeBaseline() {
-  const model = buildKnapsackPetriNet([]) // No exclusions
-  const solution = runODE(model, 3.0, 0.05)
-  if (solution) {
-    const placeNames = [
-      ...ITEMS.map(i => `item${i.id}_taken`),
-      'capacity'
-    ]
-    baselineSeries = extractTimeSeries(solution, placeNames)
-    // Add expected weight and value to baseline
-    baselineSeries.expected_weight = computeExpectedWeight(solution)
-    baselineSeries.expected_value = computeExpectedValue(solution)
-  }
+  const model = buildUniformRatePetriNet()
+  baselineSolution = runODE(model, 10.0, 0.05, 'baseline')
 }
 
-// Update chart with ODE solution
-function updateChart(series, currentSolution) {
-  if (!odeChart || !series) return
+// Update charts with ODE solution
+function updateCharts() {
+  if (!weightChart || !valueChart || !baselineSolution) return
 
-  const datasets = []
   const currentSelectedWeight = getCurrentWeight()
   const isOverCapacity = currentSelectedWeight > MAX_CAPACITY
+  const selectedIds = Array.from(selectedItems)
+  const hasSelection = selectedIds.length > 0
 
-  // Baseline Weight (all items) - dashed green
-  if (baselineSeries && baselineSeries.expected_weight) {
-    datasets.push({
-      label: 'Weight (all)',
-      data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_weight[i] })),
-      borderColor: '#2ecc71',
-      backgroundColor: 'transparent',
-      borderWidth: 2,
-      borderDash: [6, 3],
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,
-    })
-  }
+  // Compute baseline series (all items competing)
+  const allWeight = computeWeightSeries(baselineSolution)
+  const allValue = computeValueSeries(baselineSolution)
+  const timeData = baselineSolution.t
 
-  // Baseline Value (all items) - dashed blue
-  if (baselineSeries && baselineSeries.expected_value) {
-    datasets.push({
-      label: 'Value (all)',
-      data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_value[i] })),
-      borderColor: '#3498db',
-      backgroundColor: 'transparent',
-      borderWidth: 2,
-      borderDash: [6, 3],
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,
-    })
-  }
-
-  // Selected items only - run separate ODE with only selected items active
-  // Shows what happens when ONLY the selected items can be taken (rate=0 for others)
-  if (selectedItems.size > 0) {
-    const selectedModel = buildSelectedOnlyPetriNet(Array.from(selectedItems))
-    const selectedSolution = runODE(selectedModel, 3.0, 0.05)
-
+  // Run separate ODE for selected items only (rate=0 for non-selected)
+  let selectedWeight = null
+  let selectedValue = null
+  let selectedTimeData = null
+  if (hasSelection) {
+    const selectedModel = buildUniformRatePetriNet()
+    const selectedSolution = runODE(selectedModel, 10.0, 0.05, 'selected')
     if (selectedSolution) {
-      // Read total_weight and total_value directly from ODE solution
-      const weightData = selectedSolution.u.map(state => state['total_weight'] || 0)
-      const valueData = selectedSolution.u.map(state => state['total_value'] || 0)
-
-      // Weight (selected) - solid green, or RED when over capacity
-      datasets.push({
-        label: 'Weight (selected)',
-        data: selectedSolution.t.map((t, i) => ({ x: t, y: weightData[i] })),
-        borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
-        backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
-
-      // Value (selected) - solid blue
-      datasets.push({
-        label: 'Value (selected)',
-        data: selectedSolution.t.map((t, i) => ({ x: t, y: valueData[i] })),
-        borderColor: '#2980b9',
-        backgroundColor: '#2980b933',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
+      selectedWeight = computeWeightSeries(selectedSolution)
+      selectedValue = computeValueSeries(selectedSolution)
+      selectedTimeData = selectedSolution.t
     }
   }
 
-  // Capacity limit line at y=15 - dotted black (RED when over capacity)
-  if (currentSolution) {
-    datasets.push({
-      label: 'Capacity (15)',
-      data: currentSolution.t.map(t => ({ x: t, y: MAX_CAPACITY })),
-      borderColor: isOverCapacity ? '#dc3545' : '#000000',
-      backgroundColor: 'transparent',
-      borderWidth: isOverCapacity ? 2.5 : 1.5,
-      borderDash: [4, 4],
+  // Weight chart datasets
+  const weightDatasets = []
+
+  // All items weight - dashed green
+  weightDatasets.push({
+    label: 'Weight (all)',
+    data: timeData.map((t, i) => ({ x: t, y: allWeight[i] })),
+    borderColor: '#2ecc71',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderDash: [6, 3],
+    fill: false,
+    tension: 0.3,
+    pointRadius: 0,
+  })
+
+  // Selected items weight - solid green (from separate ODE with rate=0 for non-selected)
+  if (hasSelection && selectedWeight && selectedTimeData) {
+    weightDatasets.push({
+      label: 'Weight (selected)',
+      data: selectedTimeData.map((t, i) => ({ x: t, y: selectedWeight[i] })),
+      borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
+      backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
+      borderWidth: 3,
       fill: false,
-      tension: 0,
+      tension: 0.3,
       pointRadius: 0,
     })
   }
 
-  odeChart.data.datasets = datasets
-  odeChart.update()
+  // Capacity limit line
+  weightDatasets.push({
+    label: 'MAX',
+    data: timeData.map(t => ({ x: t, y: MAX_CAPACITY })),
+    borderColor: isOverCapacity ? '#dc3545' : '#000000',
+    backgroundColor: 'transparent',
+    borderWidth: isOverCapacity ? 2.5 : 1.5,
+    borderDash: [4, 4],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+  })
 
-  // Update legend
-  updateLegend()
+  weightChart.data.datasets = weightDatasets
+  weightChart.update()
+
+  // Value chart datasets
+  const valueDatasets = []
+
+  // All items value - dashed blue
+  valueDatasets.push({
+    label: 'Value (all)',
+    data: timeData.map((t, i) => ({ x: t, y: allValue[i] })),
+    borderColor: '#3498db',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderDash: [6, 3],
+    fill: false,
+    tension: 0.3,
+    pointRadius: 0,
+  })
+
+  // Selected items value - solid blue (from separate ODE with rate=0 for non-selected)
+  if (hasSelection && selectedValue && selectedTimeData) {
+    valueDatasets.push({
+      label: 'Value (selected)',
+      data: selectedTimeData.map((t, i) => ({ x: t, y: selectedValue[i] })),
+      borderColor: '#2980b9',
+      backgroundColor: '#2980b933',
+      borderWidth: 3,
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0,
+    })
+  }
+
+  // Max value limit line
+  valueDatasets.push({
+    label: 'MAX',
+    data: timeData.map(t => ({ x: t, y: 50 })),
+    borderColor: '#000000',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderDash: [4, 4],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+  })
+
+  valueChart.data.datasets = valueDatasets
+  valueChart.update()
+
+  // Update legends
+  updateLegends(hasSelection, isOverCapacity)
 }
 
-function updateLegend() {
-  const legendEl = document.getElementById('chart-legend')
-  const hasSelection = selectedItems.size > 0
-  let html = ''
+function updateLegends(hasSelection, isOverCapacity) {
+  // Weight legend
+  const weightLegendEl = document.getElementById('weight-legend')
+  let weightHtml = ''
 
-  // Weight (selected) - solid green (only show when items are selected)
   if (hasSelection) {
-    html += `
+    const color = isOverCapacity ? '#dc3545' : '#27ae60'
+    weightHtml += `
       <div class="legend-item">
-        <div class="legend-color" style="background: #27ae60;"></div>
+        <div class="legend-color" style="background: ${color};"></div>
         <span>Weight (selected)</span>
       </div>
     `
   }
 
-  // Weight (all) - dashed green
-  html += `
+  weightHtml += `
     <div class="legend-item">
       <div class="legend-line" style="border-top: 2px dashed #2ecc71;"></div>
       <span>Weight (all)</span>
     </div>
+    <div class="legend-item">
+      <div class="legend-line" style="border-top: 2px dotted ${isOverCapacity ? '#dc3545' : '#000'};"></div>
+      <span>MAX</span>
+    </div>
   `
 
-  // Value (selected) - solid blue (only show when items are selected)
+  weightLegendEl.innerHTML = weightHtml
+
+  // Value legend
+  const valueLegendEl = document.getElementById('value-legend')
+  let valueHtml = ''
+
   if (hasSelection) {
-    html += `
+    valueHtml += `
       <div class="legend-item">
         <div class="legend-color" style="background: #2980b9;"></div>
         <span>Value (selected)</span>
@@ -445,29 +436,24 @@ function updateLegend() {
     `
   }
 
-  // Value (all) - dashed blue
-  html += `
+  valueHtml += `
     <div class="legend-item">
       <div class="legend-line" style="border-top: 2px dashed #3498db;"></div>
       <span>Value (all)</span>
     </div>
-  `
-
-  // Capacity limit - dotted black line
-  html += `
     <div class="legend-item">
       <div class="legend-line" style="border-top: 2px dotted #000;"></div>
-      <span>Capacity (15)</span>
+      <span>MAX</span>
     </div>
   `
 
-  legendEl.innerHTML = html
+  valueLegendEl.innerHTML = valueHtml
 }
 
 // Compute ODE values for recommendation
 function computeODEValues() {
-  const model = buildKnapsackPetriNet(Array.from(selectedItems))
-  const solution = runODE(model, 3.0, 0.1)
+  const model = buildUniformRatePetriNet()
+  const solution = runODE(model, 10.0, 0.05, 'efficiency')
 
   if (!solution || !solution.u) return {}
 
@@ -510,22 +496,17 @@ function renderItems() {
   const maxODE = odeValuesArray.length > 0 ? Math.max(...odeValuesArray) : 1
 
   // Find recommended item using efficiency-based scoring
-  // When capacity is tight, prefer items that maximize value AND fit well
   const remainingCapacity = MAX_CAPACITY - getCurrentWeight()
   let recommendedId = null
   let maxScore = -1
   ITEMS.forEach(item => {
     if (!selectedItems.has(item.id) && canFitItem(item)) {
-      // Base score is efficiency (matches ODE rate)
       let score = item.efficiency
-      // When capacity is tight (<= 10), prioritize filling capacity with best value
       if (remainingCapacity <= 10) {
         const utilizationRatio = item.weight / remainingCapacity
-        // Strong bonus for items that fill remaining capacity well
-        // This can override efficiency for the final pick
-        score = item.value / item.weight  // Base: value efficiency
-        score += utilizationRatio * 2  // Big bonus for capacity fit (up to 2.0)
-        score += item.value / 50  // Bonus for absolute value
+        score = item.value / item.weight
+        score += utilizationRatio * 2
+        score += item.value / 50
       }
       if (score > maxScore) {
         maxScore = score
@@ -616,32 +597,22 @@ window.toggleItem = function(itemId) {
   }
 
   updateUI()
-  runSimulation()
+  updateCharts()
+  updateAnalysis()
 }
 
 // Reset selection
 window.resetSelection = function() {
   selectedItems.clear()
   updateUI()
-  runSimulation()
+  updateCharts()
+  updateAnalysis()
 }
 
-// Run simulation
+// Run simulation (kept for button compatibility)
 window.runSimulation = function() {
-  const model = buildKnapsackPetriNet(Array.from(selectedItems))
-  odeSolution = runODE(model, 3.0, 0.05)
-
-  if (odeSolution) {
-    const placeNames = [
-      ...ITEMS.filter(i => !selectedItems.has(i.id)).map(i => `item${i.id}_taken`),
-      'capacity',
-      'total_value',
-      'total_weight'
-    ]
-    const series = extractTimeSeries(odeSolution, placeNames)
-    updateChart(series, odeSolution)
-    updateAnalysis(series)
-  }
+  updateCharts()
+  updateAnalysis()
 }
 
 // Update UI
@@ -676,59 +647,58 @@ function updateUI() {
 }
 
 // Update analysis panel
-function updateAnalysis(series) {
+function updateAnalysis() {
   const analysisEl = document.getElementById('analysis-content')
 
-  if (!series || !odeSolution) {
+  if (!baselineSolution) {
     analysisEl.innerHTML = '<p class="placeholder">Run ODE simulation to see analysis</p>'
     return
   }
 
-  const finalState = odeSolution.u[odeSolution.u.length - 1]
-
-  // Calculate expected weight and value from ODE (continuous/fractional)
-  let expectedWeight = getCurrentWeight()
-  let expectedValue = getCurrentValue()
-
-  ITEMS.forEach(item => {
-    if (!selectedItems.has(item.id)) {
-      const takenVal = finalState[`item${item.id}_taken`] || 0
-      expectedWeight += takenVal * item.weight
-      expectedValue += takenVal * item.value
-    }
-  })
+  const finalState = baselineSolution.u[baselineSolution.u.length - 1]
 
   // Get baseline expected values (all items competing)
   let baselineWeight = 0
   let baselineValue = 0
-  if (baselineSeries && baselineSeries.expected_weight) {
-    const finalIdx = baselineSeries.expected_weight.length - 1
-    baselineWeight = baselineSeries.expected_weight[finalIdx]
-    // Compute baseline value too
-    const baselineFinalState = baselineSeries
-    ITEMS.forEach(item => {
-      const takenVal = baselineFinalState[`item${item.id}_taken`]
-      if (takenVal) {
-        baselineValue += takenVal[finalIdx] * item.value
-      }
-    })
+  ITEMS.forEach(item => {
+    const takenVal = finalState[`item${item.id}_taken`] || 0
+    baselineWeight += takenVal * item.weight
+    baselineValue += takenVal * item.value
+  })
+
+  // Run separate ODE for selected items only (rate=0 for non-selected)
+  let selectedWeight = 0
+  let selectedValue = 0
+  if (selectedItems.size > 0) {
+    const selectedModel = buildUniformRatePetriNet()
+    const selectedSolution = runODE(selectedModel, 10.0, 0.05, 'selected')
+    if (selectedSolution) {
+      const selectedFinalState = selectedSolution.u[selectedSolution.u.length - 1]
+      ITEMS.forEach(item => {
+        const takenVal = selectedFinalState[`item${item.id}_taken`] || 0
+        selectedWeight += takenVal * item.weight
+        selectedValue += takenVal * item.value
+      })
+    }
   }
 
   const optimalValue = 38
-  const efficiency = ((expectedValue / optimalValue) * 100).toFixed(1)
+  const efficiency = ((selectedValue / optimalValue) * 100).toFixed(1)
 
   let html = ''
 
-  // Expected totals from ODE (continuous approximation)
-  html += `
-    <div class="analysis-item">
-      <div class="analysis-icon">📊</div>
-      <div class="analysis-text">
-        Expected (ODE): <strong>Value ${expectedValue.toFixed(1)}</strong>, Weight ${expectedWeight.toFixed(1)}
+  // Selected items contribution from ODE
+  if (selectedItems.size > 0) {
+    html += `
+      <div class="analysis-item">
+        <div class="analysis-icon">📊</div>
+        <div class="analysis-text">
+          Selected (ODE): <strong>Value ${selectedValue.toFixed(1)}</strong>, Weight ${selectedWeight.toFixed(1)}
+        </div>
+        <div class="analysis-value ${selectedValue >= optimalValue ? 'positive' : ''}">${efficiency}%</div>
       </div>
-      <div class="analysis-value ${expectedValue >= optimalValue ? 'positive' : ''}">${efficiency}%</div>
-    </div>
-  `
+    `
+  }
 
   // Baseline comparison
   html += `
@@ -779,14 +749,12 @@ function updateAnalysis(series) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  initChart()
+  initCharts()
 
   // Compute baseline (all items competing) for comparison
   computeBaseline()
 
   updateUI()
-  updateLegend()
-
-  // Run initial simulation
-  runSimulation()
+  updateCharts()
+  updateAnalysis()
 })
