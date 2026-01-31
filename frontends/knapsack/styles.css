@@ -386,6 +386,11 @@ h3 .hint {
   border-radius: 4px;
 }
 
+.legend-line {
+  width: 20px;
+  height: 0;
+}
+
 /* Analysis Section */
 .analysis-content {
   font-size: 0.9rem;

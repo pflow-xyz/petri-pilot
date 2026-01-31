@@ -22,6 +22,7 @@ let odeValues = {} // Final ODE values for each item
 let baselineSeries = null // Baseline ODE with all items competing
 
 // Build Petri net model for knapsack
+// excludeItems: items to exclude (treated as already taken)
 function buildKnapsackPetriNet(excludeItems = []) {
   const places = {}
   const transitions = {}
@@ -91,6 +92,81 @@ function buildKnapsackPetriNet(excludeItems = []) {
       arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_value', 'weight': [item.value] })
       arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_weight', 'weight': [item.weight] })
     }
+  })
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    'places': places,
+    'transitions': transitions,
+    'arcs': arcs
+  }
+}
+
+// Build Petri net with only selected items active (rate=0 for non-selected)
+// This shows how selected items alone would behave
+function buildSelectedOnlyPetriNet(selectedItemIds = []) {
+  const places = {}
+  const transitions = {}
+  const arcs = []
+
+  // All items start as available
+  ITEMS.forEach(item => {
+    places[`item${item.id}`] = {
+      '@type': 'Place',
+      'initial': [1],
+      'x': 100 + item.id * 150,
+      'y': 100
+    }
+    places[`item${item.id}_taken`] = {
+      '@type': 'Place',
+      'initial': [0],
+      'x': 100 + item.id * 150,
+      'y': 300
+    }
+  })
+
+  // Full capacity
+  places['capacity'] = {
+    '@type': 'Place',
+    'initial': [MAX_CAPACITY],
+    'x': 300,
+    'y': 200
+  }
+
+  // Total value and weight places
+  places['total_value'] = {
+    '@type': 'Place',
+    'initial': [0],
+    'x': 500,
+    'y': 400
+  }
+  places['total_weight'] = {
+    '@type': 'Place',
+    'initial': [0],
+    'x': 600,
+    'y': 400
+  }
+
+  // Create transitions for ALL items, but only selected items have non-zero rates
+  ITEMS.forEach(item => {
+    const isSelected = selectedItemIds.includes(item.id)
+    const tid = `take_item${item.id}`
+    transitions[tid] = {
+      '@type': 'Transition',
+      'rate': isSelected ? item.efficiency : 0, // Only selected items have rate > 0
+      'x': 100 + item.id * 150,
+      'y': 200
+    }
+
+    // Input arcs
+    arcs.push({ '@type': 'Arrow', 'source': `item${item.id}`, 'target': tid, 'weight': [1] })
+    arcs.push({ '@type': 'Arrow', 'source': 'capacity', 'target': tid, 'weight': [item.weight] })
+
+    // Output arcs
+    arcs.push({ '@type': 'Arrow', 'source': tid, 'target': `item${item.id}_taken`, 'weight': [1] })
+    arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_value', 'weight': [item.value] })
+    arcs.push({ '@type': 'Arrow', 'source': tid, 'target': 'total_weight', 'weight': [item.weight] })
   })
 
   return {
@@ -277,41 +353,42 @@ function updateChart(series, currentSolution) {
     })
   }
 
-  // Current Weight (ODE only, excludes already-selected) - solid green, or RED when over capacity
-  // Shows ODE simulation starting from 0, not including manually selected items
-  if (currentSolution) {
-    const odeWeight = computeExpectedWeight(currentSolution, true)  // exclude selected
-    const manualWeight = getCurrentWeight()  // weight of manually selected items
-    if (odeWeight) {
-      datasets.push({
-        label: 'Weight (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: manualWeight + odeWeight[i] })),
-        borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
-        backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
-    }
-  }
+  // Selected items only - run separate ODE with only selected items active
+  // Shows what happens when ONLY the selected items can be taken (rate=0 for others)
+  if (selectedItems.size > 0) {
+    const selectedModel = buildSelectedOnlyPetriNet(Array.from(selectedItems))
+    const selectedSolution = runODE(selectedModel, 3.0, 0.05)
 
-  // Current Value (ODE only, excludes already-selected) - solid blue
-  // Shows ODE simulation starting from 0, not including manually selected items
-  if (currentSolution) {
-    const odeValue = computeExpectedValue(currentSolution, true)  // exclude selected
-    const manualValue = getCurrentValue()  // value of manually selected items
-    if (odeValue) {
-      datasets.push({
-        label: 'Value (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: manualValue + odeValue[i] })),
-        borderColor: '#2980b9',
-        backgroundColor: '#2980b933',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
+    if (selectedSolution) {
+      // Weight (selected) - solid green, or RED when over capacity
+      const selectedWeight = computeExpectedWeight(selectedSolution, false)  // include all (only selected have rate>0)
+      if (selectedWeight) {
+        datasets.push({
+          label: 'Weight (selected)',
+          data: selectedSolution.t.map((t, i) => ({ x: t, y: selectedWeight[i] })),
+          borderColor: isOverCapacity ? '#dc3545' : '#27ae60',
+          backgroundColor: isOverCapacity ? '#dc354533' : '#27ae6033',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 0,
+        })
+      }
+
+      // Value (selected) - solid blue
+      const selectedValue = computeExpectedValue(selectedSolution, false)  // include all (only selected have rate>0)
+      if (selectedValue) {
+        datasets.push({
+          label: 'Value (selected)',
+          data: selectedSolution.t.map((t, i) => ({ x: t, y: selectedValue[i] })),
+          borderColor: '#2980b9',
+          backgroundColor: '#2980b933',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 0,
+        })
+      }
     }
   }
 
@@ -339,44 +416,49 @@ function updateChart(series, currentSolution) {
 
 function updateLegend() {
   const legendEl = document.getElementById('chart-legend')
+  const hasSelection = selectedItems.size > 0
   let html = ''
 
-  // Weight (selected) - solid green
-  html += `
-    <div class="legend-item">
-      <div class="legend-color" style="background: #27ae60;"></div>
-      <span>Weight (selected)</span>
-    </div>
-  `
+  // Weight (selected) - solid green (only show when items are selected)
+  if (hasSelection) {
+    html += `
+      <div class="legend-item">
+        <div class="legend-color" style="background: #27ae60;"></div>
+        <span>Weight (selected)</span>
+      </div>
+    `
+  }
 
   // Weight (all) - dashed green
   html += `
     <div class="legend-item">
-      <div class="legend-color" style="background: transparent; border: 2px dashed #2ecc71;"></div>
+      <div class="legend-line" style="border-top: 2px dashed #2ecc71;"></div>
       <span>Weight (all)</span>
     </div>
   `
 
-  // Value (selected) - solid blue
-  html += `
-    <div class="legend-item">
-      <div class="legend-color" style="background: #2980b9;"></div>
-      <span>Value (selected)</span>
-    </div>
-  `
+  // Value (selected) - solid blue (only show when items are selected)
+  if (hasSelection) {
+    html += `
+      <div class="legend-item">
+        <div class="legend-color" style="background: #2980b9;"></div>
+        <span>Value (selected)</span>
+      </div>
+    `
+  }
 
   // Value (all) - dashed blue
   html += `
     <div class="legend-item">
-      <div class="legend-color" style="background: transparent; border: 2px dashed #3498db;"></div>
+      <div class="legend-line" style="border-top: 2px dashed #3498db;"></div>
       <span>Value (all)</span>
     </div>
   `
 
-  // Capacity limit - dotted black
+  // Capacity limit - dotted black line
   html += `
     <div class="legend-item">
-      <div class="legend-color" style="background: transparent; border: 2px dotted #000;"></div>
+      <div class="legend-line" style="border-top: 2px dotted #000;"></div>
       <span>Capacity (15)</span>
     </div>
   `
