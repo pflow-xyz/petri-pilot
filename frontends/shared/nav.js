@@ -66,7 +66,10 @@ class SiteHeader extends HTMLElement {
   }
 
   render() {
-    const current = this.getAttribute('current') || ''
+    // Auto-detect current page from URL path instead of relying on attribute
+    // This handles symlinked pages like zk-tic-tac-toe -> tic-tac-toe
+    const pathMatch = window.location.pathname.match(/^\/([^\/]+)/)
+    const current = pathMatch ? pathMatch[1] : (this.getAttribute('current') || '')
 
     const demos = [
       { id: 'tic-tac-toe', name: 'Tic-Tac-Toe', icon: '⭕' },
