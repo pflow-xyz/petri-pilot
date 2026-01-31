@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: #fafafa;
+      min-height: 100vh;
+      color: #333;
+      line-height: 1.7;
+    }
+
+    .top-nav {
+      background: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: #333;
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .top-nav a {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #666;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .top-nav a:hover {
+      color: #333;
+    }
+
+    .btn-new-post {
+      background: #0066cc;
+      color: white !important;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .btn-new-post:hover {
+      background: #0052a3;
+    }
+
+    .app-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    .header {
+      margin-bottom: 3rem;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 400;
+      color: #333;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      color: #888;
+      font-style: italic;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 1rem 1.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.9rem;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: #333;
+    }
+
+    .tab-btn.active {
+      color: #0066cc;
+      border-bottom-color: #0066cc;
+    }
+
+    .post-card {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+
+    .post-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .post-status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1rem;
+    }
+
+    .post-status.draft { background: #f0f0f0; color: #666; }
+    .post-status.in_review { background: #fff3cd; color: #856404; }
+    .post-status.published { background: #d4edda; color: #155724; }
+    .post-status.archived { background: #f8d7da; color: #721c24; }
+
+    .post-title {
+      font-size: 1.75rem;
+      font-weight: 400;
+      color: #333;
+      margin-bottom: 0.75rem;
+    }
+
+    .post-excerpt {
+      color: #666;
+      margin-bottom: 1rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .post-meta {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.85rem;
+      color: #999;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .post-tags {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .tag {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      background: #f0f0f0;
+      color: #666;
+      border-radius: 4px;
+    }
+
+    /* Editor view */
+    .editor-container {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .editor-title {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input[type="text"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1.5rem;
+      font-family: 'Georgia', serif;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-family: 'Georgia', serif;
+      line-height: 1.8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      resize: vertical;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #0066cc;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0052a3;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Detail view */
+    .post-detail {
+      background: white;
+      border-radius: 8px;
+      padding: 3rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .post-detail .post-status {
+      margin-bottom: 1.5rem;
+    }
+
+    .post-detail .post-title {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .post-detail .post-meta {
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .post-detail .post-content {
+      font-size: 1.2rem;
+      line-height: 1.9;
+      white-space: pre-wrap;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #eee;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 1.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.9rem;
+      color: #0066cc;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #999;
+    }
+
+    .empty-state h3 {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: #666;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="#" class="nav-brand" id="home-link">Blog</a>
+    <div class="nav-links">
+      <a href="#" id="new-post-link" class="btn-new-post">New Post</a>
+      <a id="dash-link" href="/app/blog-post/" style="display: none;">Admin</a>
+      <a id="login-link" href="/auth/login" style="display: none;">Login</a>
+      <span id="user-info" style="display: none;">
+        <span id="user-name"></span>
+        <a href="#" id="logout-link">Logout</a>
+      </span>
+    </div>
+  </nav>
+
+  <script>
+    // Auth handling
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^\/([^\/]+)\//);
+      const dashLink = document.getElementById('dash-link');
+      const loginLink = document.getElementById('login-link');
+      const userInfo = document.getElementById('user-info');
+      const userName = document.getElementById('user-name');
+      const logoutLink = document.getElementById('logout-link');
+
+      if (match) {
+        dashLink.href = '/app/' + match[1] + '/';
+      }
+
+      function checkAuth() {
+        const auth = localStorage.getItem('auth');
+        if (auth) {
+          try {
+            const data = JSON.parse(auth);
+            if (data.user && data.expires_at && new Date(data.expires_at) > new Date()) {
+              dashLink.style.display = '';
+              loginLink.style.display = 'none';
+              userInfo.style.display = '';
+              userName.textContent = data.user.name || data.user.login;
+              return;
+            }
+          } catch (e) {}
+        }
+        dashLink.style.display = 'none';
+        userInfo.style.display = 'none';
+        fetch('/auth/status').then(r => r.json()).then(status => {
+          if (status.github_enabled) {
+            loginLink.style.display = '';
+          }
+        }).catch(() => {});
+      }
+
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        localStorage.removeItem('auth');
+        checkAuth();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        const expiresAt = params.get('expires_at');
+        fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => r.json())
+          .then(user => {
+            localStorage.setItem('auth', JSON.stringify({ token, expires_at: expiresAt, user }));
+            window.history.replaceState({}, '', window.location.pathname);
+            checkAuth();
+          });
+      } else {
+        checkAuth();
+      }
+    })();
+  </script>
+
+  <div class="app-container">
+    <div id="list-view">
+      <div class="header">
+        <h1>Blog</h1>
+        <p>Thoughts, ideas, and stories</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-filter="all">All Posts</button>
+        <button class="tab-btn" data-filter="published">Published</button>
+        <button class="tab-btn" data-filter="draft">Drafts</button>
+        <button class="tab-btn" data-filter="in_review">In Review</button>
+      </div>
+
+      <div id="posts-list">
+        <div class="empty-state">
+          <h3>No posts yet</h3>
+          <p>Create your first post to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="editor-view" class="hidden">
+      <a href="#" class="back-link" id="editor-back">&larr; Back to posts</a>
+      <div class="editor-container">
+        <div class="editor-header">
+          <span class="editor-title" id="editor-title">New Post</span>
+        </div>
+        <form id="post-form">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="post-title-input" placeholder="Enter title..." required>
+          </div>
+          <div class="form-group">
+            <label>Content</label>
+            <textarea id="post-content-input" placeholder="Write your post..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Tags (comma-separated)</label>
+            <input type="text" id="post-tags-input" placeholder="technology, design, thoughts">
+          </div>
+          <div class="btn-group">
+            <button type="submit" class="btn btn-primary" id="save-btn">Save Draft</button>
+            <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="detail-view" class="hidden">
+      <a href="#" class="back-link" id="detail-back">&larr; Back to posts</a>
+      <div class="post-detail">
+        <span class="post-status" id="detail-status">Draft</span>
+        <h1 class="post-title" id="detail-title">Post Title</h1>
+        <div class="post-meta">
+          <span id="detail-author">By Author</span>
+          <span id="detail-date">Jan 1, 2024</span>
+        </div>
+        <div class="post-content" id="detail-content">
+          Post content goes here...
+        </div>
+        <div class="post-tags" id="detail-tags"></div>
+        <div class="post-actions" id="detail-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/[^\/]+)\//);
+      window.API_BASE = match ? match[1] : '';
+    })();
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

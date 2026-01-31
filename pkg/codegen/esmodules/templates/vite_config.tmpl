@@ -1,0 +1,45 @@
+import { defineConfig } from 'vite'
+import { resolve } from 'path'
+
+export default defineConfig({
+  // Serve custom/ directory as public assets
+  publicDir: 'custom',
+  resolve: {
+    alias: {
+      '/custom': resolve(__dirname, 'custom'),
+    },
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/admin': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/events': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+        ws: true,
+      },
+      '/health': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+      '/ready': {
+        target: '{{.APIBaseURL}}',
+        changeOrigin: true,
+      },
+    },
+  },
+})

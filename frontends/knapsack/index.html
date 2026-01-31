@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knapsack Optimizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js"></script>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8E%92%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="knapsack"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Knapsack Optimizer</h1>
+      <p>Continuous ODE simulation reveals optimal item selection through mass-action kinetics</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="items-section">
+          <h3>Items <span class="hint">(click to toggle selection)</span></h3>
+          <div id="items-grid" class="items-grid"></div>
+        </div>
+
+        <div class="knapsack-section">
+          <h3>Knapsack State</h3>
+          <div class="capacity-bar-container">
+            <div class="capacity-label">
+              <span>Capacity</span>
+              <span id="capacity-display">0 / 15</span>
+            </div>
+            <div class="capacity-bar">
+              <div id="capacity-fill" class="capacity-fill"></div>
+            </div>
+          </div>
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-value" id="total-value">0</div>
+              <div class="stat-label">Total Value</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="total-weight">0</div>
+              <div class="stat-label">Total Weight</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" id="reset-btn" onclick="resetSelection()">Reset</button>
+            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
+          </div>
+        </div>
+
+        <div class="optimal-section">
+          <h3>Optimal Solution</h3>
+          <div class="optimal-info">
+            <div>Items: <strong>A + B + D</strong></div>
+            <div>Weight: <strong>15</strong> | Value: <strong>38</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="chart-section">
+          <h3>ODE Simulation <span class="hint">(token flow over time)</span></h3>
+          <div class="chart-container">
+            <canvas id="ode-chart"></canvas>
+          </div>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+
+        <div class="analysis-section">
+          <h3>Strategic Analysis</h3>
+          <div id="analysis-content" class="analysis-content">
+            <p class="placeholder">Run ODE simulation to see analysis</p>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>The <strong>0/1 Knapsack Problem</strong> is modeled as a Petri net where:</p>
+            <ul>
+              <li><strong>Places</strong> represent item availability and knapsack capacity</li>
+              <li><strong>Transitions</strong> represent taking each item</li>
+              <li><strong>Arc weights</strong> encode item weights as capacity consumption</li>
+            </ul>
+            <p>The ODE simulation uses <strong>mass-action kinetics</strong>:</p>
+            <code>flux = rate × [item] × [capacity]^weight</code>
+            <p>Items with higher <em>efficiency</em> (value/weight) have higher rates, causing them to flow faster into the knapsack. The continuous approximation reveals which items compete most effectively for limited capacity.</p>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="knapsack" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js"></script>
+  <site-footer></site-footer>
+</body>
+</html>

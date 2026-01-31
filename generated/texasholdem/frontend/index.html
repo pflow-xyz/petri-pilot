@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Texas Hold'em Poker - ODE Strategic Analysis</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js"></script>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <a href="/" class="nav-brand">
+      <span>🎲 Petri Pilot</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/frontends/tic-tac-toe/">Tic-Tac-Toe</a>
+      <a href="/frontends/texas-holdem/">Texas Hold'em</a>
+    </div>
+  </nav>
+
+  <!-- Main Application Container -->
+  <div class="app-container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🃏 Texas Hold'em Poker</h1>
+      <p>Strategic Analysis with ODE-Based Value Computation</p>
+    </div>
+
+    <!-- Status Message (fixed height to prevent layout shift) -->
+    <div id="status-message" class="status-message"></div>
+
+    <!-- Poker Table Container -->
+    <div class="poker-table-container">
+      <div class="poker-table">
+        <!-- Community Cards Area (Center) -->
+        <div class="community-cards-area">
+          <div class="pot-display" id="pot-display">
+            Pot: $0
+          </div>
+          <div class="community-cards" id="community-cards">
+            <div class="card card-placeholder"></div>
+            <div class="card card-placeholder"></div>
+            <div class="card card-placeholder"></div>
+            <div class="card card-placeholder"></div>
+            <div class="card card-placeholder"></div>
+          </div>
+          <div class="round-indicator" id="round-indicator">
+            Waiting
+          </div>
+        </div>
+
+        <!-- Player Seats -->
+        <div class="player-seats" id="player-seats">
+          <!-- Seat 0 (Bottom - User) -->
+          <div class="player-seat seat-0" id="seat-0">
+            <div class="player-name">
+              <span>Player 0 (You)</span>
+              <span class="dealer-button" style="display: none;">D</span>
+            </div>
+            <div class="player-chips">$1000</div>
+            <div class="player-cards"></div>
+            <div class="player-bet" style="display: none;"></div>
+          </div>
+
+          <!-- Seat 1 (Bottom Left) -->
+          <div class="player-seat seat-1" id="seat-1">
+            <div class="player-name">
+              <span>Player 1</span>
+              <span class="dealer-button" style="display: none;">D</span>
+            </div>
+            <div class="player-chips">$1000</div>
+            <div class="player-cards"></div>
+            <div class="player-bet" style="display: none;"></div>
+          </div>
+
+          <!-- Seat 2 (Top Left) -->
+          <div class="player-seat seat-2" id="seat-2">
+            <div class="player-name">
+              <span>Player 2</span>
+              <span class="dealer-button" style="display: none;">D</span>
+            </div>
+            <div class="player-chips">$1000</div>
+            <div class="player-cards"></div>
+            <div class="player-bet" style="display: none;"></div>
+          </div>
+
+          <!-- Seat 3 (Top Center) -->
+          <div class="player-seat seat-3" id="seat-3">
+            <div class="player-name">
+              <span>Player 3</span>
+              <span class="dealer-button" style="display: none;">D</span>
+            </div>
+            <div class="player-chips">$1000</div>
+            <div class="player-cards"></div>
+            <div class="player-bet" style="display: none;"></div>
+          </div>
+
+          <!-- Seat 4 (Top Right) -->
+          <div class="player-seat seat-4" id="seat-4">
+            <div class="player-name">
+              <span>Player 4</span>
+              <span class="dealer-button" style="display: none;">D</span>
+            </div>
+            <div class="player-chips">$1000</div>
+            <div class="player-cards"></div>
+            <div class="player-bet" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons" id="action-buttons" style="display: none;">
+        <h3>Your Actions</h3>
+        <div class="action-grid" id="action-grid">
+          <!-- Dynamically populated based on available actions -->
+        </div>
+      </div>
+
+      <!-- Main Controls -->
+      <div class="controls">
+        <button class="btn btn-success" id="play-tournament-btn">🎰 Play Tournament</button>
+        <button class="btn btn-danger" id="stop-play-btn" style="display: none;">⏹ Stop</button>
+        <div class="speed-control" id="speed-control" style="display: none;">
+          <label for="speed-slider">Speed:</label>
+          <input type="range" id="speed-slider" min="0" max="100" value="50">
+          <span id="speed-label">1.0x</span>
+        </div>
+        <button class="btn btn-secondary" id="toggle-heatmap-btn">Toggle Heatmap</button>
+        <button class="btn btn-secondary" id="toggle-ode-btn">
+          ODE: <span id="ode-mode">Local</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Info -->
+    <div class="game-info">
+      <!-- Game State Card -->
+      <div class="info-card">
+        <h3>Game State</h3>
+        <div class="info-card-content" id="game-state-info">
+          <p>No game in progress</p>
+        </div>
+      </div>
+
+      <!-- Event History Card -->
+      <div class="info-card">
+        <h3>Event History</h3>
+        <div class="event-list" id="event-list">
+          <p style="color: rgba(255,255,255,0.6); font-style: italic;">No events yet</p>
+        </div>
+      </div>
+
+      <!-- ODE Analysis Card -->
+      <div class="info-card">
+        <h3>Strategic Analysis</h3>
+        <div class="info-card-content" id="ode-analysis">
+          <p style="color: rgba(255,255,255,0.6); font-style: italic;">ODE analysis will appear here</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap Overlay (Hidden by default) -->
+  <div class="heatmap-overlay" id="heatmap-overlay" style="display: none;">
+    <div class="heatmap-content">
+      <h3>Strategic Value Heatmap</h3>
+      <div class="heatmap-grid" id="heatmap-grid">
+        <!-- Dynamically populated with action values -->
+      </div>
+      <div style="margin-top: 1rem; text-align: center;">
+        <button class="btn btn-secondary" onclick="document.getElementById('heatmap-overlay').style.display='none'">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div class="loading" id="loading-indicator" style="display: none;">
+    <div class="spinner"></div>
+    <p>Computing ODE strategic values...</p>
+  </div>
+
+  <!-- Main Application Script -->
+  <script type="module" src="main.js"></script>
+
+  <!-- API Base URL Configuration -->
+  <script>
+    // Set API base URL dynamically - empty string means use relative URLs (same origin)
+    window.API_BASE = '';
+  </script>
+</body>
+</html>

@@ -1,0 +1,953 @@
+// Command petri-pilot provides LLM-augmented Petri net model design and validation.
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/petri-pilot/services"
+	"github.com/pflow-xyz/petri-pilot/internal/llm"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
+	"github.com/pflow-xyz/petri-pilot/pkg/feedback"
+	"github.com/pflow-xyz/petri-pilot/pkg/generator"
+	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
+	"github.com/pflow-xyz/petri-pilot/pkg/validator"
+	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
+
+	// Register external services
+	_ "github.com/pflow-xyz/petri-pilot/pkg/services/pflowxyz"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	cmd := os.Args[1]
+	switch cmd {
+	case "generate":
+		cmdGenerate(os.Args[2:])
+	case "validate":
+		cmdValidate(os.Args[2:])
+	case "refine":
+		cmdRefine(os.Args[2:])
+	case "codegen":
+		cmdCodegen(os.Args[2:])
+	case "frontend":
+		cmdFrontend(os.Args[2:])
+	case "delegate":
+		cmdDelegate(os.Args[2:])
+	case "serve":
+		cmdServe(os.Args[2:])
+	case "service":
+		cmdService(os.Args[2:])
+	case "mcp":
+		cmdMcp()
+	case "schema":
+		cmdSchema()
+	case "services":
+		cmdServices(os.Args[2:])
+	case "help", "-h", "--help":
+		printUsage()
+	case "version", "-v", "--version":
+		fmt.Println("petri-pilot v0.1.0")
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", cmd)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Println(`petri-pilot - From requirements to running applications
+
+Usage:
+  petri-pilot <command> [arguments]
+
+Commands:
+  generate    Generate a Petri net model from natural language requirements
+  validate    Validate an existing Petri net model
+  refine      Refine a model based on validation feedback
+  codegen     Generate backend application code from a validated model
+  frontend    Generate vanilla JavaScript ES modules frontend from a validated model
+  serve       Run a registered service by name
+  service     Manage running services (list, stop, logs, stats, health)
+  delegate    Delegate tasks to GitHub Copilot coding agent
+  mcp         Run as MCP server (for Claude Desktop, Cursor, etc.)
+  schema      Print the JSON Schema for Petri net models
+  services    List or show embedded service models
+
+Options:
+  -h, --help      Show this help message
+  -v, --version   Show version information
+
+Environment:
+  ANTHROPIC_API_KEY   API key for Claude (required for generate/refine)
+
+Examples:
+  # Generate a model from requirements
+  petri-pilot generate "A simple order processing workflow"
+
+  # Generate with auto-validation loop
+  petri-pilot generate -auto -o model.json "User registration flow"
+
+  # Validate a model file
+  petri-pilot validate model.json
+
+  # Generate backend application code
+  petri-pilot codegen model.json -o ./myworkflow/
+
+  # Generate vanilla JS frontend
+  petri-pilot frontend model.json -o ./myworkflow-frontend/
+
+  # Generate OpenAPI spec only
+  petri-pilot codegen -api-only model.json -o api.yaml
+
+  # Run as MCP server
+  petri-pilot mcp
+
+  # List available services
+  petri-pilot serve
+
+  # Run a specific service
+  petri-pilot serve blog-post -port 8080
+
+  # List running services
+  petri-pilot service list
+
+  # Stop a service
+  petri-pilot service stop svc-1
+
+For more information, see: https://github.com/pflow-xyz/petri-pilot`)
+}
+
+func cmdGenerate(args []string) {
+	fs := flag.NewFlagSet("generate", flag.ExitOnError)
+	output := fs.String("o", "", "Output file for generated model (default: stdout)")
+	autoValidate := fs.Bool("auto", false, "Auto-validate and refine until valid")
+	maxIter := fs.Int("max-iter", 3, "Maximum refinement iterations for -auto")
+	verbose := fs.Bool("v", false, "Verbose output")
+	model := fs.String("model", "claude-sonnet-4-20250514", "Claude model to use")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot generate - Generate a Petri net model from natural language
+
+Usage:
+  petri-pilot generate [options] <requirements>
+
+Arguments:
+  requirements    Natural language description of the workflow
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Environment:
+  ANTHROPIC_API_KEY    API key for Claude (required)
+
+Examples:
+  petri-pilot generate "A simple order processing workflow"
+  petri-pilot generate -auto -o model.json "User registration flow"
+  petri-pilot generate -auto -max-iter 5 "Complex approval workflow"`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Error: requirements required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot generate [options] <requirements>")
+		os.Exit(1)
+	}
+
+	requirements := fs.Arg(0)
+
+	// Check for API key
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		fmt.Fprintln(os.Stderr, "Error: ANTHROPIC_API_KEY environment variable not set")
+		os.Exit(1)
+	}
+
+	// Create Claude client
+	client := llm.NewClaudeClient(llm.ClaudeOptions{
+		Model: *model,
+	})
+
+	gen := generator.New(client, generator.Options{
+		MaxIterations: *maxIter,
+		Temperature:   0.7,
+		Verbose:       *verbose,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	if *verbose {
+		fmt.Fprintf(os.Stderr, "Generating model from: %s\n", requirements)
+	}
+
+	generatedModel, err := gen.Generate(ctx, requirements)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating model: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *verbose {
+		fmt.Fprintf(os.Stderr, "Generated model: %s (%d places, %d transitions)\n",
+			generatedModel.Name, len(generatedModel.Places), len(generatedModel.Transitions))
+	}
+
+	// Auto-validate and refine loop
+	if *autoValidate {
+		v := validator.New(validator.Options{
+			MaxStates:         10000,
+			EnableSensitivity: false, // Skip sensitivity for speed during iteration
+			Parallel:          true,
+		})
+
+		for i := 0; i < *maxIter; i++ {
+			result, err := v.Validate(generatedModel)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+				break
+			}
+
+			if result.Valid && len(result.Warnings) == 0 {
+				if *verbose {
+					fmt.Fprintf(os.Stderr, "Model validated successfully after %d iteration(s)\n", i+1)
+				}
+				break
+			}
+
+			if *verbose {
+				fmt.Fprintf(os.Stderr, "Iteration %d: %d errors, %d warnings\n",
+					i+1, len(result.Errors), len(result.Warnings))
+			}
+
+			// Build feedback and refine
+			fb := feedback.New(requirements, generatedModel, result).Build()
+
+			generatedModel, err = gen.Refine(ctx, fb)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Refinement error: %v\n", err)
+				break
+			}
+		}
+	}
+
+	// Output the model
+	jsonOutput, err := json.MarshalIndent(generatedModel, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding model: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *output != "" {
+		if err := os.WriteFile(*output, jsonOutput, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Model saved to: %s\n", *output)
+	} else {
+		fmt.Println(string(jsonOutput))
+	}
+}
+
+func cmdValidate(args []string) {
+	fs := flag.NewFlagSet("validate", flag.ExitOnError)
+	full := fs.Bool("full", false, "Run full analysis including sensitivity")
+	jsonOutput := fs.Bool("json", false, "Output results as JSON")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot validate - Validate a Petri net model
+
+Usage:
+  petri-pilot validate [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot validate model.json            Basic validation
+  petri-pilot validate -full model.json      Full analysis with sensitivity
+  petri-pilot validate -json model.json      Output results as JSON`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Error: model file required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot validate [options] <model.json>")
+		os.Exit(1)
+	}
+
+	modelPath := fs.Arg(0)
+
+	// Read model file
+	data, err := os.ReadFile(modelPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var model metamodel.Model
+	if err := json.Unmarshal(data, &model); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Validate
+	v := validator.New(validator.Options{
+		MaxStates:         10000,
+		EnableSensitivity: *full,
+		Parallel:          true,
+	})
+
+	result, err := v.Validate(&model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *jsonOutput {
+		output, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(output))
+	} else {
+		printValidationResult(result)
+	}
+
+	if !result.Valid {
+		os.Exit(1)
+	}
+}
+
+func printValidationResult(result *metamodel.ValidationResult) {
+	if result.Valid {
+		fmt.Println("Validation: PASSED")
+	} else {
+		fmt.Println("Validation: FAILED")
+	}
+
+	if len(result.Errors) > 0 {
+		fmt.Println("\nErrors:")
+		for _, err := range result.Errors {
+			fmt.Printf("  [%s] %s\n", err.Code, err.Message)
+			if err.Fix != "" {
+				fmt.Printf("    Fix: %s\n", err.Fix)
+			}
+		}
+	}
+
+	if len(result.Warnings) > 0 {
+		fmt.Println("\nWarnings:")
+		for _, warn := range result.Warnings {
+			fmt.Printf("  [%s] %s\n", warn.Code, warn.Message)
+			if warn.Fix != "" {
+				fmt.Printf("    Fix: %s\n", warn.Fix)
+			}
+		}
+	}
+
+	if result.Analysis != nil {
+		fmt.Println("\nAnalysis:")
+		fmt.Printf("  Bounded: %v\n", result.Analysis.Bounded)
+		fmt.Printf("  Live: %v\n", result.Analysis.Live)
+		fmt.Printf("  State count: %d\n", result.Analysis.StateCount)
+
+		if result.Analysis.HasDeadlocks {
+			fmt.Printf("  Deadlocks: %d\n", len(result.Analysis.Deadlocks))
+		}
+
+		if len(result.Analysis.Isolated) > 0 {
+			fmt.Printf("  Isolated elements: %v\n", result.Analysis.Isolated)
+		}
+
+		if len(result.Analysis.SymmetryGroups) > 0 {
+			fmt.Println("  Symmetry groups:")
+			for _, g := range result.Analysis.SymmetryGroups {
+				fmt.Printf("    %v (impact: %.3f)\n", g.Elements, g.Impact)
+			}
+		}
+	}
+}
+
+func cmdRefine(args []string) {
+	fs := flag.NewFlagSet("refine", flag.ExitOnError)
+	output := fs.String("o", "", "Output file for refined model (default: overwrite input)")
+	verbose := fs.Bool("v", false, "Verbose output")
+	model := fs.String("model", "claude-sonnet-4-20250514", "Claude model to use")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot refine - Refine a model based on instructions
+
+Usage:
+  petri-pilot refine [options] <model.json> <instructions>
+
+Arguments:
+  model.json      Path to the Petri net model file
+  instructions    Natural language instructions for refinement
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Environment:
+  ANTHROPIC_API_KEY    API key for Claude (required)
+
+Examples:
+  petri-pilot refine model.json "Add a cancellation state"
+  petri-pilot refine -o refined.json model.json "Add approval workflow"`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 2 {
+		fmt.Fprintln(os.Stderr, "Error: model file and instructions required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot refine [options] <model.json> <instructions>")
+		os.Exit(1)
+	}
+
+	modelPath := fs.Arg(0)
+	instructions := fs.Arg(1)
+
+	// Check for API key
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		fmt.Fprintln(os.Stderr, "Error: ANTHROPIC_API_KEY environment variable not set")
+		os.Exit(1)
+	}
+
+	// Read model file
+	data, err := os.ReadFile(modelPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var currentModel metamodel.Model
+	if err := json.Unmarshal(data, &currentModel); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// First validate to get current state
+	v := validator.New(validator.DefaultOptions())
+	validationResult, _ := v.Validate(&currentModel)
+
+	// Create Claude client
+	client := llm.NewClaudeClient(llm.ClaudeOptions{
+		Model: *model,
+	})
+
+	gen := generator.New(client, generator.Options{
+		Temperature: 0.5,
+		Verbose:     *verbose,
+	})
+
+	// Build feedback
+	fb := &metamodel.FeedbackPrompt{
+		OriginalRequirements: instructions,
+		CurrentModel:         &currentModel,
+		ValidationResult:     validationResult,
+		Instructions:         instructions,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	if *verbose {
+		fmt.Fprintf(os.Stderr, "Refining model with: %s\n", instructions)
+	}
+
+	refinedModel, err := gen.Refine(ctx, fb)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error refining model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Output the model
+	jsonOutput, err := json.MarshalIndent(refinedModel, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding model: %v\n", err)
+		os.Exit(1)
+	}
+
+	outputPath := *output
+	if outputPath == "" {
+		outputPath = modelPath
+	}
+
+	if err := os.WriteFile(outputPath, jsonOutput, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "Refined model saved to: %s\n", outputPath)
+}
+
+func cmdCodegen(args []string) {
+	fs := flag.NewFlagSet("codegen", flag.ExitOnError)
+	output := fs.String("o", "./generated", "Output directory (or file path for -api-only)")
+	lang := fs.String("lang", "go", "Target language (go)")
+	pkg := fs.String("pkg", "", "Package name (default: model name)")
+	includeTests := fs.Bool("tests", true, "Include test files")
+	includeInfra := fs.Bool("infra", true, "Include infrastructure files (migrations)")
+	includeAuth := fs.Bool("auth", false, "Include GitHub OAuth authentication")
+	includeObs := fs.Bool("observability", false, "Include logging and Prometheus metrics")
+	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")
+	includeRealtime := fs.Bool("realtime", false, "Include SSE and WebSocket handlers")
+	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
+	includeFrontend := fs.Bool("frontend", false, "Generate ES modules frontend in frontend/ subdirectory")
+	asSubmodule := fs.Bool("submodule", false, "Skip go.mod generation (treat output as part of parent module)")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot codegen - Generate backend application code from a model
+
+Usage:
+  petri-pilot codegen [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot codegen model.json -o ./myapp
+  petri-pilot codegen -frontend model.json -o ./myapp
+  petri-pilot codegen -api-only model.json -o openapi.yaml
+  petri-pilot codegen -submodule -o generated/myapp model.json`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Error: model file required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot codegen [options] <model.json>")
+		os.Exit(1)
+	}
+
+	modelPath := fs.Arg(0)
+
+	// Read model file
+	data, err := os.ReadFile(modelPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse model and extensions (admin, navigation, roles, access, views)
+	model, app, err := parseModelWithExtensions(data)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+	hasExtensions := app.HasAdmin() || app.HasNavigation() || app.HasRoles() || app.HasViews() ||
+		app.HasGraphQL() || app.HasDebug()
+
+	// Package name is determined by generator if not specified
+	pkgName := *pkg
+
+	// API-only mode: just generate OpenAPI spec
+	if *apiOnly {
+		gen, err := golang.New(golang.Options{
+			PackageName: pkgName,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+			os.Exit(1)
+		}
+
+		content, err := gen.Preview(model, golang.TemplateOpenAPI)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating OpenAPI spec: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Determine output path
+		outPath := *output
+		if outPath == "./generated" {
+			outPath = "openapi.yaml"
+		}
+
+		if err := os.WriteFile(outPath, content, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Generated OpenAPI spec: %s\n", outPath)
+		return
+	}
+
+	// Full codegen mode
+	// Only Go is supported for now
+	if *lang != "go" && *lang != "golang" {
+		fmt.Fprintf(os.Stderr, "Error: unsupported language '%s' (only 'go' is currently supported)\n", *lang)
+		os.Exit(1)
+	}
+
+	// Validate first
+	v := validator.New(validator.Options{
+		MaxStates:         10000,
+		EnableSensitivity: false,
+	})
+
+	result, err := v.Validate(model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !result.Valid {
+		fmt.Fprintln(os.Stderr, "Error: model validation failed")
+		for _, e := range result.Errors {
+			fmt.Fprintf(os.Stderr, "  [%s] %s\n", e.Code, e.Message)
+		}
+		os.Exit(1)
+	}
+
+	// Determine module path for submodule mode
+	var modulePath string
+	if *asSubmodule {
+		parentModule := detectParentModule()
+		if parentModule != "" {
+			// Clean up output path to get relative path
+			relPath := *output
+			// Remove leading ./ if present
+			for len(relPath) > 0 && (relPath[0] == '.' || relPath[0] == '/') {
+				if len(relPath) > 1 && relPath[0] == '.' && relPath[1] == '/' {
+					relPath = relPath[2:]
+				} else if relPath[0] == '/' {
+					relPath = relPath[1:]
+				} else {
+					break
+				}
+			}
+			modulePath = parentModule + "/" + relPath
+		}
+	}
+
+	// Create generator
+	gen, err := golang.New(golang.Options{
+		OutputDir:            *output,
+		ModulePath:           modulePath,
+		PackageName:          pkgName,
+		IncludeTests:         *includeTests,
+		IncludeInfra:         *includeInfra,
+		IncludeAuth:          *includeAuth,
+		IncludeObservability: *includeObs,
+		IncludeDeploy:        *includeDeploy,
+		IncludeRealtime:      *includeRealtime,
+		AsSubmodule:          *asSubmodule,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Generate files - use GenerateFromApp if we have extensions
+	var paths []string
+	if hasExtensions {
+		paths, err = gen.GenerateFromApp(app)
+	} else {
+		paths, err = gen.Generate(model)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating code: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated %d files:\n", len(paths))
+	for _, path := range paths {
+		fmt.Printf("  %s\n", path)
+	}
+
+	// Generate frontend if requested
+	if *includeFrontend {
+		frontendDir := filepath.Join(*output, "frontend")
+
+		frontendGen, err := esmodules.New(esmodules.Options{
+			OutputDir:   frontendDir,
+			ProjectName: pkgName,
+			APIBaseURL:  "http://localhost:8080",
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating frontend generator: %v\n", err)
+			os.Exit(1)
+		}
+
+		var frontendPaths []string
+		if hasExtensions {
+			frontendPaths, err = frontendGen.GenerateFromApp(app)
+		} else {
+			frontendPaths, err = frontendGen.Generate(model)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("\nGenerated %d frontend files:\n", len(frontendPaths))
+		for _, path := range frontendPaths {
+			fmt.Printf("  %s\n", path)
+		}
+	}
+}
+
+func cmdFrontend(args []string) {
+	fs := flag.NewFlagSet("frontend", flag.ExitOnError)
+	output := fs.String("o", "./frontend", "Output directory for frontend files")
+	project := fs.String("project", "", "Project name for package.json (default: model name)")
+	apiURL := fs.String("api", "http://localhost:8080", "Backend API base URL")
+
+	fs.Usage = func() {
+		w := fs.Output()
+		fmt.Fprintln(w, `petri-pilot frontend - Generate vanilla JavaScript ES modules frontend
+
+Usage:
+  petri-pilot frontend [options] <model.json>
+
+Arguments:
+  model.json    Path to the Petri net model file
+
+Options:`)
+		fs.PrintDefaults()
+		fmt.Fprintln(w, `
+Examples:
+  petri-pilot frontend model.json
+  petri-pilot frontend -o ./ui model.json
+  petri-pilot frontend -api http://api.example.com model.json`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Error: model file required")
+		fmt.Fprintln(os.Stderr, "Usage: petri-pilot frontend [options] <model.json>")
+		os.Exit(1)
+	}
+
+	modelPath := fs.Arg(0)
+
+	// Read model file
+	data, err := os.ReadFile(modelPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var model metamodel.Model
+	if err := json.Unmarshal(data, &model); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Validate first
+	v := validator.New(validator.Options{
+		MaxStates:         10000,
+		EnableSensitivity: false,
+	})
+
+	result, err := v.Validate(&model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !result.Valid {
+		fmt.Fprintln(os.Stderr, "Error: model validation failed")
+		for _, e := range result.Errors {
+			fmt.Fprintf(os.Stderr, "  [%s] %s\n", e.Code, e.Message)
+		}
+		os.Exit(1)
+	}
+
+	// Create frontend generator
+	gen, err := esmodules.New(esmodules.Options{
+		OutputDir:   *output,
+		ProjectName: *project,
+		APIBaseURL:  *apiURL,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Generate files
+	paths, err := gen.Generate(&model)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated %d frontend files:\n", len(paths))
+	for _, path := range paths {
+		fmt.Printf("  %s\n", path)
+	}
+	fmt.Printf("\nTo run the frontend:\n")
+	fmt.Printf("  cd %s\n", *output)
+	fmt.Printf("  npm install\n")
+	fmt.Printf("  npm run dev\n")
+}
+
+// detectParentModule reads the go.mod file in the current directory and returns the module path.
+func detectParentModule() string {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return ""
+	}
+
+	// Parse module line: "module github.com/example/project"
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
+		}
+	}
+	return ""
+}
+
+func cmdMcp() {
+	if err := mcp.Serve(); err != nil {
+		fmt.Fprintf(os.Stderr, "MCP server error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdSchema() {
+	fmt.Println(string(jsonschema.SchemaJSON))
+}
+
+func cmdServices(args []string) {
+	if len(args) == 0 {
+		// List all services
+		fmt.Println("Available services:")
+		for _, name := range services.List() {
+			fmt.Printf("  %s\n", name)
+		}
+		fmt.Println("\nUsage: petri-pilot services <name>")
+		return
+	}
+
+	// Show specific service
+	name := args[0]
+	content, err := services.Get(name)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Service not found: %s\n", name)
+		fmt.Fprintf(os.Stderr, "Run 'petri-pilot services' to see available services\n")
+		os.Exit(1)
+	}
+
+	fmt.Println(string(content))
+}
+
+// modelWithExtensions is a struct for parsing v1 model JSON that includes extension fields
+// like admin, navigation, roles, access, views, debug, and graphql at the top level.
+type modelWithExtensions struct {
+	metamodel.Model
+
+	// Extension fields that may appear at the top level of v1 model JSON
+	Admin      *extensions.Admin           `json:"admin,omitempty"`
+	Navigation *extensions.Navigation      `json:"navigation,omitempty"`
+	Roles      []extensions.Role           `json:"roles,omitempty"`
+	Access     []accessRule                `json:"access,omitempty"`
+	Views      []extensions.View           `json:"views,omitempty"`
+	Debug      *metamodel.Debug            `json:"debug,omitempty"`
+	GraphQL    *metamodel.GraphQLConfig    `json:"graphql,omitempty"`
+}
+
+// accessRule is a simplified struct for parsing access rules from v1 model JSON.
+type accessRule struct {
+	Transition string   `json:"transition"`
+	Roles      []string `json:"roles"`
+	Guard      string   `json:"guard,omitempty"`
+}
+
+// parseModelWithExtensions parses a model JSON file and extracts both the core model
+// and any extension fields (admin, navigation, roles, access, views).
+// Returns the core model and an ApplicationSpec with extensions populated.
+func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.ApplicationSpec, error) {
+	// First parse into the extended struct
+	var ext modelWithExtensions
+	if err := json.Unmarshal(data, &ext); err != nil {
+		return nil, nil, err
+	}
+
+	// Create the core model from embedded Model
+	model := &ext.Model
+
+	// Note: Access rules are now stored in extensions, not in the model.
+	// They will be converted to AccessRuleContexts when using NewContextFromApp.
+
+	// Create ApplicationSpec with extensions
+	app := extensions.NewApplicationSpec(model)
+
+	// Add roles if present
+	if len(ext.Roles) > 0 {
+		rolesExt := extensions.NewRoleExtension()
+		for _, r := range ext.Roles {
+			rolesExt.AddRole(r)
+		}
+		app.WithRoles(rolesExt)
+	}
+
+	// Add views and admin if present
+	if len(ext.Views) > 0 || ext.Admin != nil {
+		viewsExt := extensions.NewViewExtension()
+		for _, v := range ext.Views {
+			viewsExt.AddView(v)
+		}
+		if ext.Admin != nil {
+			viewsExt.SetAdmin(*ext.Admin)
+		}
+		app.WithViews(viewsExt)
+	}
+
+	// Add navigation if present
+	if ext.Navigation != nil {
+		pagesExt := extensions.NewPageExtension()
+		pagesExt.SetNavigation(*ext.Navigation)
+		app.WithPages(pagesExt)
+	}
+
+	// Set debug config if present
+	if ext.Debug != nil {
+		app.SetDebug(ext.Debug)
+	}
+
+	// Set GraphQL config if present
+	if ext.GraphQL != nil {
+		app.SetGraphQL(ext.GraphQL)
+	}
+
+	return model, app, nil
+}

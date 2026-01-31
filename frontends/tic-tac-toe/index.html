@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-container { flex: 1; }
+
+    .top-nav {
+      background: rgba(0,0,0,0.2);
+      padding: 0.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .top-nav .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .top-nav .nav-brand:hover {
+      opacity: 0.9;
+    }
+
+    .top-nav .nav-brand img {
+      height: 28px;
+      width: auto;
+    }
+
+    .top-nav .nav-links {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .top-nav a {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .top-nav a:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .top-nav #user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .top-nav #user-name {
+      color: rgba(255,255,255,0.9);
+      font-size: 0.9rem;
+    }
+
+    .top-nav #dash-link {
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
+    }
+
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      color: white;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 1.1rem;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 50px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: #667eea;
+    }
+
+    .content {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    /* Game Board */
+    .game-container {
+      display: flex;
+      gap: 3rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .board-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background: #333;
+      padding: 8px;
+      border-radius: 12px;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #f0f0f0;
+      border: none;
+      border-radius: 8px;
+      font-size: 3rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cell:hover:not(.occupied):not(.disabled) {
+      background: #e0e0e0;
+      transform: scale(1.02);
+    }
+
+    .cell.occupied {
+      cursor: default;
+    }
+
+    .cell.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .cell .piece {
+      font-size: 3.5rem;
+      line-height: 1;
+    }
+
+    .cell .piece.x {
+      color: #e74c3c;
+    }
+
+    .cell .piece.o {
+      color: #3498db;
+    }
+
+    .cell.winning {
+      background: #90EE90 !important;
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    /* Heat map overlay */
+    .cell .heat-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .show-heatmap .cell:not(.occupied) .heat-overlay {
+      opacity: 1;
+    }
+
+    .heat-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .heat-label {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.9);
+      text-transform: uppercase;
+    }
+
+    /* Game Info */
+    .info-section {
+      min-width: 280px;
+    }
+
+    .status-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .status-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-card .turn {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+
+    .status-card .turn.x { color: #ffcccb; }
+    .status-card .turn.o { color: #add8e6; }
+
+    .winner-banner {
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      color: white;
+      margin-bottom: 1.5rem;
+    }
+
+    .winner-banner.draw {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .winner-banner h2 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-secondary.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Simulation Page */
+    .simulation-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .simulation-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sim-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .sim-card h3 {
+      color: #667eea;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    /* Light theme overrides for explainer components */
+    .sim-card explainer-panel {
+      --explainer-bg: rgba(102, 126, 234, 0.08);
+      --explainer-accent: #667eea;
+      --explainer-title: #667eea;
+      --explainer-text: #555;
+    }
+
+    .sim-card pflow-concepts {
+      --explainer-bg: rgba(30, 30, 40, 0.05);
+      --explainer-text: #555;
+    }
+
+    .sim-card explainer-panel code {
+      background: rgba(102, 126, 234, 0.1);
+      color: #5a4fba;
+    }
+
+    .sim-card explainer-panel strong {
+      color: #333;
+    }
+
+    .sim-card explainer-panel em {
+      color: #e67e22;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    .position-cell {
+      aspect-ratio: 1;
+      background: #667eea;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .position-cell .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .position-cell .type {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .position-cell.center {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+
+    .position-cell.corner {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .position-cell.edge {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    }
+
+    .chart-container {
+      height: 300px;
+      position: relative;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .patterns-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .pattern-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .pattern-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      width: 45px;
+    }
+
+    .pattern-preview span {
+      width: 13px;
+      height: 13px;
+      background: #ddd;
+      border-radius: 2px;
+    }
+
+    .pattern-preview span.active {
+      background: #667eea;
+    }
+
+    .pattern-name {
+      font-weight: 500;
+    }
+
+    /* Event History */
+    .events-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .event-item:last-child {
+      border-bottom: none;
+    }
+
+    .event-num {
+      background: #667eea;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .event-info {
+      flex: 1;
+    }
+
+    .event-type {
+      font-weight: 600;
+    }
+
+    .event-time {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .event-item:hover {
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    .event-item.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      color: white;
+    }
+
+    .event-item.active .event-num {
+      background: white;
+      color: #667eea;
+    }
+
+    .event-item.active .event-type {
+      color: white;
+    }
+
+    .event-item.past {
+      opacity: 0.7;
+    }
+
+    .event-item.future {
+      opacity: 0.4;
+    }
+
+    .event-item.future .event-num {
+      background: #aaa;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ZK Mode Styles */
+    .zk-toggle {
+      background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+      transition: all 0.3s;
+    }
+
+    .zk-toggle:not(.active) {
+      background: #95a5a6;
+    }
+
+    .zk-toggle.active {
+      box-shadow: 0 0 12px rgba(46, 204, 113, 0.5);
+    }
+
+    #zk-panel {
+      margin-top: 1.5rem;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 12px;
+      padding: 1rem;
+      color: #fff;
+    }
+
+    #zk-panel h3 {
+      color: #2ecc71;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #zk-panel h3::before {
+      content: '🔐';
+    }
+
+    .zk-game-info {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .zk-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0;
+      font-size: 0.85rem;
+    }
+
+    .zk-label {
+      color: #aaa;
+    }
+
+    .zk-value {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.8rem;
+      color: #2ecc71;
+    }
+
+    .zk-root {
+      background: rgba(46, 204, 113, 0.1);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .zk-root:hover {
+      background: rgba(46, 204, 113, 0.2);
+    }
+
+    .zk-proof-info {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+
+    .zk-proof-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .zk-proof-header:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .zk-proof-circuit {
+      background: #667eea;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .zk-proof-status {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .zk-proof-status.verified {
+      color: #2ecc71;
+    }
+
+    .zk-proof-status.unverified {
+      color: #e74c3c;
+    }
+
+    .zk-proof-details {
+      padding: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.8rem;
+    }
+
+    .zk-proof-row {
+      margin-bottom: 0.5rem;
+    }
+
+    .zk-proof-row .zk-label {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .zk-input {
+      background: rgba(0,0,0,0.2);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      word-break: break-all;
+    }
+
+    .btn-small {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    .zk-roots {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .zk-roots-header {
+      padding: 0.5rem 0.75rem;
+      background: rgba(0,0,0,0.2);
+      font-size: 0.8rem;
+      color: #aaa;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .zk-roots-list {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .zk-root-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.8rem;
+    }
+
+    .zk-root-item:last-child {
+      border-bottom: none;
+    }
+
+    .zk-root-item.current {
+      background: rgba(46, 204, 113, 0.1);
+    }
+
+    .zk-root-num {
+      background: #667eea;
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .zk-root-item.current .zk-root-num {
+      background: #2ecc71;
+    }
+
+    .zk-root-hash {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    .zk-root-item.current .zk-root-hash {
+      color: #2ecc71;
+    }
+
+    .zk-disabled, .zk-no-game {
+      color: #666;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .zk-verify-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-verify {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-verify:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .zk-verify-hint {
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    /* Replay Modal */
+    .zk-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .zk-modal-content {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 12px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .zk-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .zk-modal-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .zk-modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .zk-modal-close:hover {
+      color: #fff;
+    }
+
+    .zk-modal-body {
+      padding: 1.5rem;
+    }
+
+    .zk-replay-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .zk-replay-stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .zk-replay-stat .label {
+      display: block;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-replay-stat .value {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .zk-replay-stat.valid .value {
+      color: #2ecc71;
+    }
+
+    .zk-replay-stat.invalid .value {
+      color: #e74c3c;
+    }
+
+    .zk-replay-moves h4 {
+      margin: 0 0 1rem 0;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .zk-move-chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .zk-chain-node {
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .zk-chain-node .label {
+      display: block;
+      font-size: 0.7rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-chain-node code {
+      font-size: 0.75rem;
+      color: #667eea;
+    }
+
+    .zk-chain-node.initial {
+      border-left: 3px solid #667eea;
+    }
+
+    .zk-chain-node.final {
+      border-left: 3px solid #2ecc71;
+    }
+
+    .zk-chain-node.final code {
+      color: #2ecc71;
+    }
+
+    .zk-chain-node .error {
+      display: block;
+      font-size: 0.7rem;
+      color: #e74c3c;
+      margin-top: 0.25rem;
+    }
+
+    .zk-chain-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0;
+      color: #667eea;
+      font-size: 0.8rem;
+    }
+
+    .zk-chain-arrow::before {
+      content: '↓';
+    }
+
+    .zk-chain-arrow.broken {
+      color: #e74c3c;
+    }
+
+    .zk-chain-arrow.broken::before {
+      content: '⚠️';
+    }
+
+    .zk-chain-arrow .move-label {
+      background: rgba(102, 126, 234, 0.2);
+      padding: 0.125rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .zk-chain-arrow .proof-status {
+      font-size: 0.8rem;
+    }
+
+    .zk-chain-arrow .proof-status.verified {
+      color: #2ecc71;
+    }
+
+    .zk-chain-arrow .proof-status.unverified {
+      color: #e74c3c;
+    }
+
+    /* Interactive step inspection */
+    .zk-hint {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      margin: 0.5rem 0 1rem 0;
+      padding: 0.5rem;
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 6px;
+    }
+
+    .zk-replay-container {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 700px) {
+      .zk-replay-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .zk-chain-node.clickable,
+    .zk-chain-arrow.clickable {
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .zk-chain-node.clickable:hover {
+      background: rgba(102, 126, 234, 0.15);
+      transform: translateX(4px);
+    }
+
+    .zk-chain-arrow.clickable:hover {
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 4px;
+    }
+
+    .click-hint {
+      display: block;
+      font-size: 0.65rem;
+      color: #667eea;
+      margin-top: 0.25rem;
+      opacity: 0.7;
+    }
+
+    .zk-step-detail {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 300px;
+      max-height: 450px;
+      overflow-y: auto;
+    }
+
+    .zk-detail-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: #666;
+    }
+
+    .zk-detail-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .zk-detail-hint {
+      font-size: 0.8rem;
+      color: #667eea;
+      margin-top: 0.5rem;
+    }
+
+    .zk-detail-content h4 {
+      margin: 0 0 1rem 0;
+      color: #fff;
+      font-size: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 0.5rem;
+    }
+
+    .zk-detail-section {
+      margin-bottom: 1rem;
+    }
+
+    .zk-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .zk-detail-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .zk-detail-label.clickable {
+      cursor: pointer;
+    }
+
+    .zk-detail-label.clickable:hover {
+      color: #667eea;
+    }
+
+    .zk-detail-value {
+      display: block;
+      font-size: 0.8rem;
+      color: #2ecc71;
+      word-break: break-all;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .zk-detail-value.small {
+      font-size: 0.7rem;
+    }
+
+    .zk-detail-value.proof-hex {
+      font-size: 0.65rem;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .zk-detail-value.hidden {
+      display: none;
+    }
+
+    .zk-circuit-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+
+    .zk-verify-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .zk-verify-badge.verified {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+    }
+
+    .zk-verify-badge.unverified {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+
+    .zk-public-inputs {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .zk-input-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0,0,0,0.2);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .zk-input-item .input-label {
+      font-size: 0.7rem;
+      color: #888;
+      min-width: 100px;
+    }
+
+    .zk-input-item code {
+      font-size: 0.7rem;
+      color: #667eea;
+    }
+
+    .zk-detail-explainer {
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-left: 3px solid #667eea;
+    }
+
+    .zk-detail-explainer h5 {
+      margin: 0 0 0.5rem 0;
+      color: #667eea;
+      font-size: 0.85rem;
+    }
+
+    .zk-detail-explainer p {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.8rem;
+      color: #ccc;
+      line-height: 1.5;
+    }
+
+    .zk-detail-explainer p:last-child {
+      margin-bottom: 0;
+    }
+
+    .zk-detail-explainer ol {
+      margin: 0.5rem 0;
+      padding-left: 1.25rem;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+
+    .zk-detail-explainer li {
+      margin-bottom: 0.25rem;
+    }
+
+    .zk-detail-explainer strong {
+      color: #fff;
+    }
+
+    .zk-detail-explainer em {
+      color: #f1c40f;
+      font-style: normal;
+    }
+
+    .zk-detail-explainer .valid {
+      color: #2ecc71;
+    }
+
+    .zk-detail-explainer .invalid {
+      color: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <site-header current="tic-tac-toe"></site-header>
+  <div class="app-container">
+    <div class="header">
+      <h1 id="page-title">Tic-Tac-Toe Simulator</h1>
+      <p id="page-subtitle">Petri net-based game with strategic analysis and heat maps</p>
+    </div>
+    <script>
+      // Update title for ZK mode page
+      if (window.IS_ZK_MODE_PAGE) {
+        document.getElementById('page-title').textContent = 'ZK Tic-Tac-Toe';
+        document.getElementById('page-subtitle').textContent = 'Zero-knowledge proof verified game moves';
+        document.title = 'ZK Tic-Tac-Toe';
+      }
+    </script>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('play')">Play Game</button>
+      <button class="tab-btn" onclick="showTab('simulation')">Simulation</button>
+    </div>
+
+    <div class="content">
+      <div id="play-tab">
+        <div class="game-container">
+          <div class="board-section">
+            <div id="game-board" class="board"></div>
+          </div>
+          <div class="info-section">
+            <div id="status-display"></div>
+            <div class="controls">
+              <button id="zk-toggle" class="btn zk-toggle" onclick="toggleZkMode()">
+                ZK Mode: OFF
+              </button>
+              <button id="heatmap-btn" class="btn btn-secondary" onclick="toggleHeatmap()">
+                Show Heat Map
+              </button>
+              <button id="new-game-btn" class="btn btn-primary" onclick="newGame()">
+                New Game
+              </button>
+              <button id="reset-btn" class="btn btn-secondary hidden" onclick="resetGame()">
+                Play Again
+              </button>
+              <button id="snapshot-btn" class="btn btn-secondary" onclick="downloadSnapshot()" title="Download SVG snapshot">
+                📷 Snapshot
+              </button>
+              <button id="copy-url-btn" class="btn btn-secondary" onclick="copyBoardURL()" title="Copy shareable URL">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div id="events-section" class="sim-card" style="margin-top: 1.5rem;">
+              <h3>Move History</h3>
+              <div id="events-list" class="events-list"></div>
+            </div>
+            <div id="zk-panel" class="hidden">
+              <h3>ZK Proof State</h3>
+              <div id="zk-state-content">
+                <p class="zk-no-game">Start a new game to see ZK state</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="simulation-tab" class="hidden">
+        <div class="simulation-container">
+          <div class="sim-card">
+            <h3>Strategic Position Values</h3>
+            <div class="sim-mode-toggle" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <button id="sim-empty-btn" class="btn btn-secondary active" onclick="setSimMode('empty')" style="flex: 1; padding: 0.5rem;">
+                Empty Board
+              </button>
+              <button id="sim-current-btn" class="btn btn-secondary" onclick="setSimMode('current')" style="flex: 1; padding: 0.5rem;">
+                Current Game
+              </button>
+            </div>
+            <p id="sim-description" style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
+              Values derived from Petri net ODE simulation. Higher values indicate more strategic positions.
+            </p>
+            <div id="position-grid" class="position-grid">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="legend">
+              <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;"></div>
+                <span>Center (4 patterns)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12;"></div>
+                <span>Corner (3 patterns)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;"></div>
+                <span>Edge (2 patterns)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-card">
+            <h3>Win Patterns</h3>
+            <div class="patterns-list">
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span class="active"></span><span class="active"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <span class="pattern-name">Top Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span></span><span class="active"></span><span class="active"></span><span class="active"></span><span></span><span></span><span></span></div>
+                <span class="pattern-name">Middle Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span></span><span></span><span></span><span></span><span class="active"></span><span class="active"></span><span class="active"></span></div>
+                <span class="pattern-name">Bottom Row</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span></div>
+                <span class="pattern-name">Left Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span></div>
+                <span class="pattern-name">Center Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span><span></span><span></span><span class="active"></span></div>
+                <span class="pattern-name">Right Column</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span class="active"></span><span></span><span></span><span></span><span class="active"></span><span></span><span></span><span></span><span class="active"></span></div>
+                <span class="pattern-name">Main Diagonal</span>
+              </div>
+              <div class="pattern-item">
+                <div class="pattern-preview"><span></span><span></span><span class="active"></span><span></span><span class="active"></span><span></span><span class="active"></span><span></span><span></span></div>
+                <span class="pattern-name">Anti-Diagonal</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-card" style="grid-column: 1 / -1;">
+            <h3>Position Value Distribution</h3>
+            <div class="chart-container">
+              <canvas id="value-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="sim-card" style="grid-column: 1 / -1;">
+            <h3>How It Works: go-pflow Concepts</h3>
+            <p style="line-height: 1.8; color: #555; margin-bottom: 1rem;">
+              This simulator demonstrates key concepts from the <strong>go-pflow</strong> library for
+              modeling state machines and strategic analysis using Petri nets.
+            </p>
+
+            <pflow-concepts service="tic-tac-toe"></pflow-concepts>
+
+            <explainer-panel title="Places: Board State Representation" icon="📍" expanded>
+              <p>Each cell on the 3x3 board is modeled as <strong>three places</strong>:</p>
+              <ul>
+                <li><code>empty0</code> - Cell 0 is empty (starts with 1 token)</li>
+                <li><code>x0</code> - Cell 0 contains X (starts with 0 tokens)</li>
+                <li><code>o0</code> - Cell 0 contains O (starts with 0 tokens)</li>
+              </ul>
+              <p>The game starts with tokens in all <code>empty</code> places. As moves are made,
+              tokens flow from <code>empty</code> places to <code>x</code> or <code>o</code> places.</p>
+              <h5>Why Places?</h5>
+              <p>Places represent <em>states</em> in the system. A token in a place means that state
+              is active. This declarative model lets us reason about the game mathematically.</p>
+            </explainer-panel>
+
+            <explainer-panel title="Transitions: Game Moves" icon="⚡">
+              <p>Each possible move is a <strong>transition</strong> that:</p>
+              <ol>
+                <li><strong>Consumes</strong> a token from the <code>empty</code> place</li>
+                <li><strong>Produces</strong> a token in the player's place (<code>x</code> or <code>o</code>)</li>
+              </ol>
+              <p>For example, <code>x_move_4</code> (X plays center):</p>
+              <ul>
+                <li>Input: <code>empty4</code> (must have token to fire)</li>
+                <li>Output: <code>x4</code> (receives token when fired)</li>
+              </ul>
+              <h5>Win Transitions</h5>
+              <p>Special transitions like <code>win_x_row0</code> fire when X has tokens in positions 0, 1, and 2.
+              These don't consume tokens&mdash;they only check if the winning pattern exists.</p>
+            </explainer-panel>
+
+            <explainer-panel title="ODE Simulation: Strategic Values" icon="📈">
+              <p>The go-pflow library computes strategic values using <strong>Ordinary Differential Equations</strong>:</p>
+              <code style="background: rgba(0,0,0,0.1); padding: 0.75rem; border-radius: 4px; display: block; margin: 0.5rem 0;">
+                Strategic Value = Σ(win_paths_for_me) - Σ(win_paths_for_opponent)
+              </code>
+              <h5>How it works</h5>
+              <ol>
+                <li>Each transition has a <strong>rate</strong> (how often it can fire)</li>
+                <li>Token flow is simulated as continuous differential equations</li>
+                <li>Steady-state values indicate strategic importance</li>
+              </ol>
+              <h5>Results Explained</h5>
+              <ul>
+                <li><strong>Center (0.430)</strong>: Participates in 4 winning patterns (2 diagonals + row + column)</li>
+                <li><strong>Corners (0.316)</strong>: Participate in 3 winning patterns</li>
+                <li><strong>Edges (0.218)</strong>: Participate in only 2 winning patterns</li>
+              </ul>
+              <p><em>These values emerge from topology alone&mdash;no hand-coded heuristics!</em></p>
+            </explainer-panel>
+
+            <explainer-panel title="Event Sourcing: Move History" icon="📝">
+              <p>Every transition firing creates an <strong>event</strong> that is stored permanently:</p>
+              <ul>
+                <li>Events are immutable records of what happened</li>
+                <li>Game state can be reconstructed by replaying events</li>
+                <li>Enables undo, replay, and audit trails</li>
+              </ul>
+              <h5>Example Events</h5>
+              <code style="background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 4px; display: block; margin: 0.5rem 0; font-size: 0.85rem;">
+{type: "XMoved", position: 4, timestamp: "..."}
+{type: "OMoved", position: 0, timestamp: "..."}
+{type: "XWon", pattern: "diagonal", timestamp: "..."}
+              </code>
+              <p>The "Move History" panel shows these events in real-time as you play.</p>
+            </explainer-panel>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="tic-tac-toe" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detect base path for API calls when mounted at a prefix -->
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/[^\/]+)\//);
+      window.API_BASE = match ? match[1] : '';
+
+      // Detect if we're on ZK mode page
+      window.IS_ZK_MODE_PAGE = path.includes('zk-tic-tac-toe');
+
+      // Hide ZK elements on non-ZK page
+      if (!window.IS_ZK_MODE_PAGE) {
+        document.addEventListener('DOMContentLoaded', function() {
+          const zkToggle = document.getElementById('zk-toggle');
+          const zkPanel = document.getElementById('zk-panel');
+          if (zkToggle) zkToggle.style.display = 'none';
+          if (zkPanel) zkPanel.style.display = 'none';
+        });
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="/shared/nav.js"></script>
+  <script type="module" src="./main.js?v=2"></script>
+  <site-footer></site-footer>
+</body>
+</html>

@@ -1,0 +1,70 @@
+name: Generate New App
+description: Request a new application to be generated
+title: "[App] "
+labels: ["app-request", "copilot"]
+assignees:
+  - Copilot
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe your application and Copilot will generate it using petri-pilot.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Application Description
+      description: Describe what your app should do in plain English
+      placeholder: |
+        A content publishing workflow where:
+
+        **States:** draft → pending_review → approved/rejected → published
+
+        **Roles:**
+        - author: can create drafts, submit for review
+        - editor: can approve or reject submissions
+        - admin: can publish approved content, unpublish
+
+        **Data fields:**
+        - title (string, required)
+        - body (text, required)
+        - category (dropdown: news, blog, announcement)
+
+        **Rules:**
+        - Rejected content returns to draft with feedback
+        - Only approved content can be published
+        - Authors can only edit their own drafts
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: App Name
+      description: Short name for the app (lowercase, hyphens ok)
+      placeholder: content-publisher
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: features
+    attributes:
+      label: Features
+      options:
+        - label: Authentication (GitHub OAuth)
+        - label: Role-based access control
+        - label: Admin dashboard
+        - label: Event history viewer
+        - label: E2E tests (Playwright)
+        - label: API tests
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      options:
+        - Simple (3-5 states)
+        - Medium (5-10 states)
+        - Complex (10+ states)
+    validations:
+      required: true

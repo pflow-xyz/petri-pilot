@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petri-Pilot | pflow.xyz</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      min-height: 100vh;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* Starfield - only in hero */
+    .starfield {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .stars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 200%;
+      background-image:
+        radial-gradient(2px 2px at 20px 30px, white, transparent),
+        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 90px 40px, white, transparent),
+        radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 230px 80px, white, transparent),
+        radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 370px 50px, white, transparent),
+        radial-gradient(2px 2px at 450px 180px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 520px 90px, white, transparent),
+        radial-gradient(2px 2px at 600px 200px, white, transparent);
+      background-size: 650px 250px;
+      animation: twinkle 8s ease-in-out infinite, drift 60s linear infinite;
+    }
+
+    .stars:nth-child(2) {
+      background-image:
+        radial-gradient(1px 1px at 50px 100px, white, transparent),
+        radial-gradient(2px 2px at 120px 20px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 180px 160px, white, transparent),
+        radial-gradient(2px 2px at 250px 60px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 320px 200px, white, transparent),
+        radial-gradient(2px 2px at 400px 30px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 470px 140px, white, transparent),
+        radial-gradient(2px 2px at 550px 80px, white, transparent);
+      background-size: 600px 220px;
+      animation: twinkle 12s ease-in-out infinite reverse, drift 45s linear infinite;
+      opacity: 0.7;
+    }
+
+    .stars:nth-child(3) {
+      background-image:
+        radial-gradient(1px 1px at 80px 50px, white, transparent),
+        radial-gradient(1px 1px at 150px 180px, rgba(255,255,255,0.6), transparent),
+        radial-gradient(2px 2px at 220px 10px, white, transparent),
+        radial-gradient(1px 1px at 290px 130px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 360px 70px, white, transparent),
+        radial-gradient(2px 2px at 430px 190px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 500px 40px, white, transparent);
+      background-size: 550px 200px;
+      animation: twinkle 15s ease-in-out infinite, drift 90s linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes drift {
+      from { transform: translateY(-50%); }
+      to { transform: translateY(0%); }
+    }
+
+
+    .hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+      overflow: hidden;
+      background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+    }
+
+    .logo {
+      position: relative;
+      z-index: 1;
+      width: 180px;
+      height: auto;
+      margin-bottom: 1.5rem;
+      filter: drop-shadow(0 0 20px rgba(255, 204, 0, 0.3));
+    }
+
+    .title, .tagline, .subtitle {
+      position: relative;
+      z-index: 1;
+    }
+
+    .title {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.5);
+      max-width: 500px;
+    }
+
+    .demos-section {
+      padding: 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .demos-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .demos-header h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .demos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .demo-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .demo-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 204, 0, 0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .demo-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .demo-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .demo-desc {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.6);
+      line-height: 1.5;
+      flex-grow: 1;
+    }
+
+    .demo-meta {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .demo-tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .demo-desc strong {
+      color: rgba(255, 204, 0, 0.9);
+      font-weight: 600;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      color: #ffcc00;
+    }
+
+    /* Intro section */
+    .intro-section {
+      padding: 2rem 2rem 1rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .intro-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .intro-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
+    }
+
+    .intro-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .intro-card p {
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+
+    .intro-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .intro-card code {
+      background: rgba(139, 92, 246, 0.2);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.9em;
+      color: #c4b5fd;
+    }
+
+    .intro-card a {
+      color: #a78bfa;
+      text-decoration: none;
+    }
+
+    .intro-card a:hover {
+      color: #c4b5fd;
+      text-decoration: underline;
+    }
+
+    .intro-card strong {
+      color: #fff;
+    }
+
+    /* Concept pills */
+    .concept-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .concept-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: #c4b5fd;
+    }
+
+    .concept-pill span {
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    /* Learning path */
+    .learning-path {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+    }
+
+    .learning-path-label {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-right: 0.5rem;
+    }
+
+    .learning-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.35rem 0.7rem;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #c4b5fd;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .learning-step:hover {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.5);
+      color: #e9d5ff;
+    }
+
+    .learning-arrow {
+      color: rgba(139, 92, 246, 0.5);
+      font-size: 0.8rem;
+    }
+
+    /* Auth styles */
+    .auth-section {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.9rem;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-login, .btn-logout {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-login {
+      background: #24292e;
+      color: white;
+    }
+
+    .btn-login:hover {
+      background: #1a1e22;
+    }
+
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .btn-logout:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-login svg {
+      width: 18px;
+      height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="auth-section" id="auth-section">
+      <!-- Populated by JavaScript -->
+    </div>
+    <div class="starfield">
+      <div class="stars"></div>
+      <div class="stars"></div>
+      <div class="stars"></div>
+    </div>
+    <img src="/logo-light.svg" alt="Petri-Pilot" class="logo">
+    <h1 class="title">Petri-Pilot</h1>
+    <p class="tagline">Explore Petri Nets Through Interactive Examples</p>
+    <p class="subtitle">Interactive tutorials for modeling workflows with Petri nets</p>
+  </section>
+
+  <section class="intro-section">
+    <div class="intro-card">
+      <h2>What is go-pflow?</h2>
+      <p>
+        <a href="https://github.com/pflow-xyz/go-pflow">go-pflow</a> is a Go library for building
+        applications with <strong>Petri nets</strong> - a mathematical model for describing concurrent systems.
+        Instead of writing state machines by hand, you define <code>places</code> (states),
+        <code>transitions</code> (actions), and <code>arcs</code> (connections). The library handles
+        state management, concurrent execution, and even predictive analysis via ODE simulation.
+      </p>
+      <p>
+        Each demo below teaches specific go-pflow concepts. Start with Tic-Tac-Toe to learn the basics,
+        then explore Coffee Shop for resource modeling, and Texas Hold'em for complex multi-player state.
+      </p>
+      <div class="concept-list">
+        <span class="concept-pill"><span>O</span> Places</span>
+        <span class="concept-pill"><span>|</span> Transitions</span>
+        <span class="concept-pill"><span>-></span> Arcs</span>
+        <span class="concept-pill"><span>#</span> Tokens</span>
+        <span class="concept-pill"><span>f(x)</span> ODE</span>
+        <span class="concept-pill"><span>E</span> Events</span>
+      </div>
+      <div class="learning-path">
+        <span class="learning-path-label">Recommended path:</span>
+        <a href="/tic-tac-toe/" class="learning-step">1. Tic-Tac-Toe</a>
+        <span class="learning-arrow">-></span>
+        <a href="/coffeeshop/" class="learning-step">2. Coffee Shop</a>
+        <span class="learning-arrow">-></span>
+        <a href="/texas-holdem/" class="learning-step">3. Texas Hold'em</a>
+        <span class="learning-arrow">-></span>
+        <a href="/pflow" class="learning-step">4. Build Your Own</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="demos-section">
+    <div class="demos-header">
+      <h2>Explore & Build</h2>
+    </div>
+
+    <div class="demos-grid">
+      <a href="/pflow" class="demo-card">
+        <span class="demo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 110" style="width:2.5rem;height:2.5rem;fill:rgba(255,255,255,0.8);vertical-align:middle;"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21z"/></svg>
+        </span>
+        <h3 class="demo-name">Petri Net Editor</h3>
+        <p class="demo-desc"><strong>Build your own models.</strong> Visual editor for creating Petri nets. See all tutorial models, modify them, or design from scratch. Export JSON for use with go-pflow.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">editor</span>
+          <span class="demo-tag">visualization</span>
+          <span class="demo-tag">export</span>
+        </div>
+      </a>
+
+      <a href="/graphql/i" class="demo-card">
+        <span class="demo-icon">&gt;_</span>
+        <h3 class="demo-name">GraphQL API</h3>
+        <p class="demo-desc"><strong>See the generated API.</strong> Every Petri net becomes a fully-typed GraphQL API. Query state, fire transitions, and explore the schema that go-pflow generates.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">api</span>
+          <span class="demo-tag">codegen</span>
+          <span class="demo-tag">graphql</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="demos-section">
+    <div class="demos-header">
+      <h2>Interactive Tutorials</h2>
+    </div>
+
+    <div class="demos-grid">
+      <a href="/tic-tac-toe/" class="demo-card">
+        <span class="demo-icon">⭕</span>
+        <h3 class="demo-name">1. Tic-Tac-Toe</h3>
+        <p class="demo-desc"><strong>Start here.</strong> Learn the fundamentals: <strong>places</strong> hold tokens, <strong>transitions</strong> fire when enabled, <strong>arcs</strong> connect them. See how ODE simulation computes strategic value from net topology.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">beginner</span>
+          <span class="demo-tag">places</span>
+          <span class="demo-tag">transitions</span>
+          <span class="demo-tag">ODE</span>
+        </div>
+      </a>
+
+      <a href="/zk-tic-tac-toe/" class="demo-card">
+        <span class="demo-icon">🔐</span>
+        <h3 class="demo-name">1b. ZK Tic-Tac-Toe</h3>
+        <p class="demo-desc"><strong>Zero-knowledge proofs.</strong> Same game, but moves are verified cryptographically using gnark circuits. Proves valid play without revealing strategy.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">advanced</span>
+          <span class="demo-tag">zk-proofs</span>
+          <span class="demo-tag">gnark</span>
+        </div>
+      </a>
+
+      <a href="/coffeeshop/" class="demo-card">
+        <span class="demo-icon">☕</span>
+        <h3 class="demo-name">2. Coffee Shop</h3>
+        <p class="demo-desc"><strong>Resource modeling.</strong> Add <strong>capacity</strong> limits to places, <strong>weighted arcs</strong> that consume multiple tokens, and <strong>rates</strong> for continuous flow. The ODE predicts when you'll run out of coffee beans.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">intermediate</span>
+          <span class="demo-tag">capacity</span>
+          <span class="demo-tag">weighted-arcs</span>
+          <span class="demo-tag">rates</span>
+        </div>
+      </a>
+
+      <a href="/texas-holdem/" class="demo-card">
+        <span class="demo-icon">🃏</span>
+        <h3 class="demo-name">3. Texas Hold'em</h3>
+        <p class="demo-desc"><strong>Complex state machines.</strong> Model multi-player games with <strong>role-based access</strong>, <strong>guard conditions</strong>, and full <strong>event sourcing</strong>. Turn tokens control whose action fires next.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">advanced</span>
+          <span class="demo-tag">roles</span>
+          <span class="demo-tag">guards</span>
+          <span class="demo-tag">events</span>
+        </div>
+      </a>
+
+      <a href="/knapsack/" class="demo-card">
+        <span class="demo-icon">🎒</span>
+        <h3 class="demo-name">4. Knapsack</h3>
+        <p class="demo-desc"><strong>Optimization problems.</strong> Classic 0/1 knapsack as a Petri net. Items compete for limited <strong>capacity</strong> using <strong>mass-action kinetics</strong>. ODE reveals which items provide best value per weight.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">optimization</span>
+          <span class="demo-tag">ODE</span>
+          <span class="demo-tag">weighted-arcs</span>
+          <span class="demo-tag">rates</span>
+        </div>
+      </a>
+
+      <!-- Template for adding more demos:
+      <a href="/app-name/" class="demo-card">
+        <span class="demo-icon">🎯</span>
+        <h3 class="demo-name">App Name</h3>
+        <p class="demo-desc">Brief description of what this demo shows.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">tag1</span>
+          <span class="demo-tag">tag2</span>
+        </div>
+      </a>
+      -->
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>
+      <a href="https://github.com/pflow-xyz/go-pflow">go-pflow</a>
+      &nbsp;·&nbsp;
+      <a href="https://pflow.xyz">pflow.xyz</a>
+      &nbsp;·&nbsp;
+      <a href="https://blog.stackdump.com">blog</a>
+    </p>
+  </footer>
+
+  <script>
+    // Auth state management
+    const AUTH_KEY = 'auth';
+
+    function getAuth() {
+      try {
+        return JSON.parse(localStorage.getItem(AUTH_KEY));
+      } catch {
+        return null;
+      }
+    }
+
+    function saveAuth(data) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+    }
+
+    function clearAuth() {
+      localStorage.removeItem(AUTH_KEY);
+    }
+
+    // Handle OAuth callback - check for token in URL
+    async function handleOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      const expiresAt = params.get('expires_at');
+
+      if (token) {
+        try {
+          const response = await fetch('/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const user = await response.json();
+            saveAuth({ token, expires_at: expiresAt, user });
+          }
+        } catch (err) {
+          console.error('OAuth callback failed:', err);
+        }
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
+    // Render auth section
+    async function renderAuth() {
+      const authSection = document.getElementById('auth-section');
+      const auth = getAuth();
+
+      // Check if token is still valid
+      if (auth && auth.expires_at) {
+        const expiresAt = new Date(auth.expires_at);
+        if (new Date() > expiresAt) {
+          clearAuth();
+          renderAuth();
+          return;
+        }
+      }
+
+      if (auth && auth.user) {
+        const user = auth.user;
+        authSection.innerHTML = `
+          <div class="user-info">
+            ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.login}" class="user-avatar">` : ''}
+            <span>${user.name || user.login}</span>
+          </div>
+          <button class="btn-logout" onclick="logout()">Logout</button>
+        `;
+      } else {
+        // Check if GitHub OAuth is enabled
+        try {
+          const response = await fetch('/auth/status');
+          const status = await response.json();
+
+          if (status.github_enabled) {
+            authSection.innerHTML = `
+              <a href="/auth/login" class="btn-login">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                Login with GitHub
+              </a>
+            `;
+          }
+        } catch (err) {
+          // Auth status check failed, hide login button
+          console.log('Auth status check failed:', err);
+        }
+      }
+    }
+
+    async function logout() {
+      const auth = getAuth();
+      if (auth && auth.token) {
+        try {
+          await fetch('/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${auth.token}` }
+          });
+        } catch (err) {
+          console.error('Logout failed:', err);
+        }
+      }
+      clearAuth();
+      renderAuth();
+    }
+
+    // Initialize
+    async function init() {
+      await handleOAuthCallback();
+      await renderAuth();
+    }
+
+    init();
+  </script>
+</body>
+</html>

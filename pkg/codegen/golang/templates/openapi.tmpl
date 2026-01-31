@@ -1,0 +1,194 @@
+openapi: "3.0.3"
+info:
+  title: "{{.ModelName}} API"
+  version: "{{if .Model.Version}}{{.Model.Version}}{{else}}1.0.0{{end}}"
+  description: "Generated API for {{.ModelName}} workflow"
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/{{.PackageName}}:
+    post:
+      summary: Create new {{.ModelName}}
+      operationId: create{{pascal .ModelName}}
+      tags:
+        - {{.PackageName}}
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/{{.PackageName}}/{id}:
+    get:
+      summary: Get {{.ModelName}} state
+      operationId: get{{pascal .ModelName}}
+      tags:
+        - {{.PackageName}}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Aggregate ID
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+{{range .Routes}}
+
+  {{.Path}}:
+    post:
+      summary: "{{if .Description}}{{.Description}}{{else}}Fire {{.TransitionID}} transition{{end}}"
+      operationId: {{camel .TransitionID}}
+      tags:
+        - transitions
+      x-transition-id: {{.TransitionID}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+{{end}}
+
+components:
+  schemas:
+    TransitionRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    TransitionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
+    StateResponse:
+      type: object
+      properties:
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          $ref: "#/components/schemas/{{pascal .ModelName}}State"
+        places:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Current Petri net marking
+        enabled_transitions:
+          type: array
+          items:
+            type: string
+          description: Transitions that can currently fire
+
+    {{pascal .ModelName}}State:
+      type: object
+      description: Aggregate state for {{.ModelName}}
+      properties:
+{{- range .StateFields}}
+        {{.JSONName}}:
+          type: {{if eq .Type "int"}}integer{{else if eq .Type "bool"}}boolean{{else if eq .Type "float64"}}number{{else}}string{{end}}
+{{- end}}
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: system
+    description: System endpoints
+  - name: {{.PackageName}}
+    description: {{.ModelName}} aggregate operations
+  - name: transitions
+    description: Petri net transition endpoints

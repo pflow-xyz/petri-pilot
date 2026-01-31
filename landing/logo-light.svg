@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 100 170" width="100" height="170">
+  <defs>
+    <!-- Gradient for the flame/exhaust -->
+    <linearGradient id="flame" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35"/>
+      <stop offset="100%" style="stop-color:#ffcc00"/>
+    </linearGradient>
+
+    <!-- Arrowhead marker (flame colored) -->
+    <marker id="arrow-flame" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L6,3 z" fill="#ffcc00"/>
+    </marker>
+
+    <!-- Arrowhead marker (white for tip) -->
+    <marker id="arrow-white" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L6,3 z" fill="#ffffff"/>
+    </marker>
+  </defs>
+
+  <!-- Arrow shooting up from nose -->
+  <line x1="50" y1="8" x2="50" y2="-6"
+        stroke="#ffffff" stroke-width="2" stroke-linecap="round"
+        marker-end="url(#arrow-white)"/>
+
+  <!-- Rocket body made of Petri net elements -->
+
+  <!-- Nose cone - place (circle) with token -->
+  <circle cx="50" cy="20" r="12" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="50" cy="20" r="5" fill="#00d4ff"/>
+
+  <!-- Arc from nose to upper transition -->
+  <line x1="50" y1="32" x2="50" y2="42" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Upper transition (rectangle) -->
+  <rect x="38" y="42" width="24" height="10" fill="#ffffff" rx="2"/>
+
+  <!-- Arcs to wing places -->
+  <line x1="38" y1="52" x2="28" y2="62" stroke="#ffffff" stroke-width="2"/>
+  <line x1="62" y1="52" x2="72" y2="62" stroke="#ffffff" stroke-width="2"/>
+  <!-- Arc down to body place -->
+  <line x1="50" y1="52" x2="50" y2="60" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Left wing - place -->
+  <circle cx="20" cy="72" r="10" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="20" cy="72" r="4" fill="#a855f7"/>
+
+  <!-- Right wing - place -->
+  <circle cx="80" cy="72" r="10" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="80" cy="72" r="4" fill="#22c55e"/>
+
+  <!-- Body center - place -->
+  <circle cx="50" cy="70" r="10" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="50" cy="70" r="4" fill="#f472b6"/>
+
+  <!-- Arcs from wings and body to lower transition -->
+  <line x1="26" y1="80" x2="38" y2="90" stroke="#ffffff" stroke-width="2"/>
+  <line x1="74" y1="80" x2="62" y2="90" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="80" x2="50" y2="92" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Lower transition (engine) -->
+  <rect x="35" y="92" width="30" height="12" fill="#ffffff" rx="2"/>
+
+  <!-- Exhaust arcs to flame places -->
+  <line x1="42" y1="104" x2="38" y2="112" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="104" x2="50" y2="114" stroke="#ffffff" stroke-width="2"/>
+  <line x1="58" y1="104" x2="62" y2="112" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Exhaust flames - small places with "fire" tokens -->
+  <circle cx="35" cy="120" r="8" fill="none" stroke="url(#flame)" stroke-width="2">
+    <animate attributeName="r" values="8;9;7;8" dur="2.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="35" cy="120" r="3" fill="#ff6b35">
+    <animate attributeName="r" values="3;4;2;3" dur="1.7s" repeatCount="indefinite"/>
+  </circle>
+
+  <circle cx="50" cy="124" r="10" fill="none" stroke="url(#flame)" stroke-width="2">
+    <animate attributeName="r" values="10;11;9;10" dur="2.7s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="50" cy="124" r="4" fill="#ffcc00">
+    <animate attributeName="r" values="4;5;3;4" dur="1.9s" repeatCount="indefinite"/>
+  </circle>
+
+  <circle cx="65" cy="120" r="8" fill="none" stroke="url(#flame)" stroke-width="2">
+    <animate attributeName="r" values="8;7;9;8" dur="2.1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="65" cy="120" r="3" fill="#ff6b35">
+    <animate attributeName="r" values="3;2;4;3" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Curly exhaust arrows shooting out - animated -->
+
+  <!-- Left curl -->
+  <path d="M32,128 Q25,138 30,148 Q35,155 28,158"
+        fill="none" stroke="#ff6b35" stroke-width="2" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="60" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-60" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.6;1;0.8;1" dur="4.1s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- Center curl -->
+  <path d="M50,134 Q50,142 45,148 Q40,154 45,158"
+        fill="none" stroke="#ffcc00" stroke-width="2" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="50" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-50" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.7;0.9;1;0.8" dur="3.7s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- Right curl -->
+  <path d="M68,128 Q75,138 70,148 Q65,155 72,158"
+        fill="none" stroke="#ff6b35" stroke-width="2" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="60" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-60" dur="3.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.8;1;0.7;1;0.9" dur="4.5s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- Extra wisps - animated -->
+  <path d="M50,134 Q55,145 60,152"
+        fill="none" stroke="#ffcc00" stroke-width="1.5" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="30" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-30" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0.9;0.4;0.7;0.5" dur="3.3s" repeatCount="indefinite"/>
+  </path>
+
+  <path d="M38,126 Q30,135 25,145"
+        fill="none" stroke="#ff6b35" stroke-width="1.5" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="35" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-35" dur="2.2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.6;0.4;0.8;0.5;0.6" dur="2.9s" repeatCount="indefinite"/>
+  </path>
+
+  <path d="M62,126 Q70,135 75,145"
+        fill="none" stroke="#ff6b35" stroke-width="1.5" stroke-linecap="round"
+        marker-end="url(#arrow-flame)" stroke-dasharray="35" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" values="0;-35" dur="2.4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.7;0.5;0.6;0.9;0.7" dur="3.1s" repeatCount="indefinite"/>
+  </path>
+</svg>

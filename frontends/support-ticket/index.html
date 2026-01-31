@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Tickets</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      color: #1e293b;
+    }
+
+    .top-nav {
+      background: #1e293b;
+      padding: 0.75rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: white;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-brand::before {
+      content: '';
+      font-size: 1.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .top-nav a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .top-nav a:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .btn {
+      padding: 0.625rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stat-card.open { border-left: 4px solid #3b82f6; }
+    .stat-card.progress { border-left: 4px solid #f59e0b; }
+    .stat-card.escalated { border-left: 4px solid #ef4444; }
+    .stat-card.resolved { border-left: 4px solid #10b981; }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    .filters-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #e2e8f0;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+
+    .filter-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .tickets-table {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 100px 2fr 120px 120px 150px 100px;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+    }
+
+    .ticket-row {
+      display: grid;
+      grid-template-columns: 100px 2fr 120px 120px 150px 100px;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e2e8f0;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .ticket-row:last-child {
+      border-bottom: none;
+    }
+
+    .ticket-row:hover {
+      background: #f8fafc;
+    }
+
+    .ticket-id {
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 0.875rem;
+      color: #3b82f6;
+    }
+
+    .ticket-subject {
+      font-weight: 500;
+      color: #1e293b;
+    }
+
+    .ticket-subject small {
+      display: block;
+      font-weight: 400;
+      color: #64748b;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 0.25rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .priority-low { background: #f0fdf4; color: #166534; }
+    .priority-medium { background: #fef9c3; color: #854d0e; }
+    .priority-high { background: #fee2e2; color: #991b1b; }
+    .priority-urgent { background: #991b1b; color: white; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.625rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-new { background: #dbeafe; color: #1e40af; }
+    .status-assigned { background: #e0e7ff; color: #3730a3; }
+    .status-in_progress { background: #fef3c7; color: #92400e; }
+    .status-escalated { background: #fee2e2; color: #991b1b; }
+    .status-pending_customer { background: #f3e8ff; color: #6b21a8; }
+    .status-resolved { background: #d1fae5; color: #065f46; }
+    .status-closed { background: #f1f5f9; color: #475569; }
+
+    .ticket-date {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      width: 600px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .modal-subtitle {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #475569;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .detail-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-section h4 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 0.75rem;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .detail-item {
+      font-size: 0.875rem;
+    }
+
+    .detail-item label {
+      display: block;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-item value {
+      display: block;
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    .detail-description {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 1rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: #475569;
+      white-space: pre-wrap;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #64748b;
+    }
+
+    .empty-state h3 {
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1024px) {
+      .table-header,
+      .ticket-row {
+        grid-template-columns: 80px 1fr 100px 100px;
+      }
+      .table-header > *:nth-child(5),
+      .table-header > *:nth-child(6),
+      .ticket-row > *:nth-child(5),
+      .ticket-row > *:nth-child(6) {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="#" class="nav-brand">Support Tickets</a>
+    <div class="nav-links">
+      <a id="dash-link" href="/app/support-ticket/" style="display: none;">Admin</a>
+      <a id="login-link" href="/auth/login" style="display: none;">Login</a>
+      <span id="user-info" style="display: none;">
+        <span id="user-name" style="color: rgba(255,255,255,0.8);"></span>
+        <a href="#" id="logout-link">Logout</a>
+      </span>
+    </div>
+  </nav>
+
+  <script>
+    // Auth handling
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^\/([^\/]+)\//);
+      const dashLink = document.getElementById('dash-link');
+      const loginLink = document.getElementById('login-link');
+      const userInfo = document.getElementById('user-info');
+      const userName = document.getElementById('user-name');
+      const logoutLink = document.getElementById('logout-link');
+
+      if (match) {
+        dashLink.href = '/app/' + match[1] + '/';
+      }
+
+      function checkAuth() {
+        const auth = localStorage.getItem('auth');
+        if (auth) {
+          try {
+            const data = JSON.parse(auth);
+            if (data.user && data.expires_at && new Date(data.expires_at) > new Date()) {
+              dashLink.style.display = '';
+              loginLink.style.display = 'none';
+              userInfo.style.display = '';
+              userName.textContent = data.user.name || data.user.login;
+              return;
+            }
+          } catch (e) {}
+        }
+        dashLink.style.display = 'none';
+        userInfo.style.display = 'none';
+        fetch('/auth/status').then(r => r.json()).then(status => {
+          if (status.github_enabled) {
+            loginLink.style.display = '';
+          }
+        }).catch(() => {});
+      }
+
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        localStorage.removeItem('auth');
+        checkAuth();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        const expiresAt = params.get('expires_at');
+        fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => r.json())
+          .then(user => {
+            localStorage.setItem('auth', JSON.stringify({ token, expires_at: expiresAt, user }));
+            window.history.replaceState({}, '', window.location.pathname);
+            checkAuth();
+          });
+      } else {
+        checkAuth();
+      }
+    })();
+  </script>
+
+  <div class="app-container">
+    <div class="page-header">
+      <h1 class="page-title">Support Tickets</h1>
+      <button class="btn btn-primary" id="new-ticket-btn">+ New Ticket</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card open">
+        <div class="stat-value" id="stat-open">0</div>
+        <div class="stat-label">Open</div>
+      </div>
+      <div class="stat-card progress">
+        <div class="stat-value" id="stat-progress">0</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-card escalated">
+        <div class="stat-value" id="stat-escalated">0</div>
+        <div class="stat-label">Escalated</div>
+      </div>
+      <div class="stat-card resolved">
+        <div class="stat-value" id="stat-resolved">0</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <button class="filter-btn active" data-filter="all">All Tickets</button>
+      <button class="filter-btn" data-filter="new">New</button>
+      <button class="filter-btn" data-filter="assigned">Assigned</button>
+      <button class="filter-btn" data-filter="in_progress">In Progress</button>
+      <button class="filter-btn" data-filter="escalated">Escalated</button>
+      <button class="filter-btn" data-filter="resolved">Resolved</button>
+      <button class="filter-btn" data-filter="closed">Closed</button>
+    </div>
+
+    <div class="tickets-table">
+      <div class="table-header">
+        <span>Ticket #</span>
+        <span>Subject</span>
+        <span>Priority</span>
+        <span>Status</span>
+        <span>Created</span>
+        <span>Assignee</span>
+      </div>
+      <div id="tickets-list">
+        <div class="empty-state">
+          <h3>No tickets yet</h3>
+          <p>Create your first support ticket to get started</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Ticket Modal -->
+  <div class="modal-overlay hidden" id="new-ticket-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">New Support Ticket</h2>
+          <p class="modal-subtitle">Submit a new support request</p>
+        </div>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <form id="ticket-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Subject</label>
+            <input type="text" id="ticket-subject" placeholder="Brief description of the issue" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="ticket-description" placeholder="Provide detailed information about your issue..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Priority</label>
+              <select id="ticket-priority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="ticket-name" placeholder="Your name" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="ticket-email" placeholder="your@email.com" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ticket Detail Modal -->
+  <div class="modal-overlay hidden" id="ticket-detail-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="detail-subject">Ticket Subject</h2>
+          <p class="modal-subtitle" id="detail-id">TKT-000</p>
+        </div>
+        <button class="modal-close" id="detail-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-section">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Status</label>
+              <span class="status-badge" id="detail-status">New</span>
+            </div>
+            <div class="detail-item">
+              <label>Priority</label>
+              <span class="priority-badge" id="detail-priority">Medium</span>
+            </div>
+            <div class="detail-item">
+              <label>Customer</label>
+              <value id="detail-customer">John Doe</value>
+            </div>
+            <div class="detail-item">
+              <label>Email</label>
+              <value id="detail-email">john@example.com</value>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Description</h4>
+          <div class="detail-description" id="detail-description">
+            No description provided.
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Actions</h4>
+          <div class="action-buttons" id="detail-actions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/[^\/]+)\//);
+      window.API_BASE = match ? match[1] : '';
+    })();
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
