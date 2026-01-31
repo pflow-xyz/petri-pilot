@@ -147,6 +147,21 @@ function computeExpectedWeight(solution) {
   })
 }
 
+// Compute expected total value from ODE
+function computeExpectedValue(solution) {
+  if (!solution || !solution.t || !solution.u) return null
+
+  return solution.t.map((t, i) => {
+    const state = solution.u[i]
+    let value = 0
+    ITEMS.forEach(item => {
+      const takenVal = state[`item${item.id}_taken`] || 0
+      value += takenVal * item.value
+    })
+    return value
+  })
+}
+
 // Initialize chart
 function initChart() {
   const ctx = document.getElementById('ode-chart').getContext('2d')
@@ -212,8 +227,9 @@ function computeBaseline() {
       'capacity'
     ]
     baselineSeries = extractTimeSeries(solution, placeNames)
-    // Add expected weight to baseline
+    // Add expected weight and value to baseline
     baselineSeries.expected_weight = computeExpectedWeight(solution)
+    baselineSeries.expected_value = computeExpectedValue(solution)
   }
 }
 
@@ -223,65 +239,45 @@ function updateChart(series, currentSolution) {
 
   const datasets = []
 
-  // Add baseline traces first (dashed, lighter) - always show all items baseline
-  if (baselineSeries) {
-    ITEMS.forEach(item => {
-      const key = `item${item.id}_taken`
-      if (baselineSeries[key]) {
-        datasets.push({
-          label: `${item.name} (baseline)`,
-          data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries[key][i] })),
-          borderColor: item.color + '66', // Lighter color
-          backgroundColor: 'transparent',
-          borderWidth: 1.5,
-          borderDash: [4, 4],
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        })
-      }
+  // Baseline Weight (all items) - dashed green
+  if (baselineSeries && baselineSeries.expected_weight) {
+    datasets.push({
+      label: 'Weight (all)',
+      data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_weight[i] })),
+      borderColor: '#2ecc71',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [6, 3],
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0,
     })
-
-    // Add baseline expected weight (dotted line, always shows ~35.X)
-    if (baselineSeries.expected_weight) {
-      datasets.push({
-        label: 'Expected Weight (all items)',
-        data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_weight[i] })),
-        borderColor: '#2ecc71',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [6, 3],
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
-    }
   }
 
-  // Add current selection's item_taken traces (solid lines)
-  ITEMS.forEach(item => {
-    const key = `item${item.id}_taken`
-    if (series[key]) {
-      datasets.push({
-        label: `${item.name} taken`,
-        data: series.t.map((t, i) => ({ x: t, y: series[key][i] })),
-        borderColor: item.color,
-        backgroundColor: item.color + '33',
-        borderWidth: 2.5,
-        fill: false,
-        tension: 0.3,
-        pointRadius: 0,
-      })
-    }
-  })
+  // Baseline Value (all items) - dashed blue
+  if (baselineSeries && baselineSeries.expected_value) {
+    datasets.push({
+      label: 'Value (all)',
+      data: baselineSeries.t.map((t, i) => ({ x: t, y: baselineSeries.expected_value[i] })),
+      borderColor: '#3498db',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [6, 3],
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0,
+    })
+  }
 
-  // Add current expected weight (solid line)
+  // Current Weight (selected) - solid green
   if (currentSolution) {
     const currentWeight = computeExpectedWeight(currentSolution)
     if (currentWeight) {
+      // Add weight from already-selected items
+      const selectedWeight = getCurrentWeight()
       datasets.push({
-        label: 'Expected Weight (selected)',
-        data: currentSolution.t.map((t, i) => ({ x: t, y: currentWeight[i] })),
+        label: 'Weight (selected)',
+        data: currentSolution.t.map((t, i) => ({ x: t, y: selectedWeight + currentWeight[i] })),
         borderColor: '#27ae60',
         backgroundColor: '#27ae6033',
         borderWidth: 3,
@@ -292,19 +288,23 @@ function updateChart(series, currentSolution) {
     }
   }
 
-  // Add capacity trace
-  if (series.capacity) {
-    datasets.push({
-      label: 'Capacity',
-      data: series.t.map((t, i) => ({ x: t, y: series.capacity[i] })),
-      borderColor: '#95a5a6',
-      backgroundColor: '#95a5a633',
-      borderWidth: 2,
-      borderDash: [5, 5],
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,
-    })
+  // Current Value (selected) - solid blue
+  if (currentSolution) {
+    const currentValue = computeExpectedValue(currentSolution)
+    if (currentValue) {
+      // Add value from already-selected items
+      const selectedValue = getCurrentValue()
+      datasets.push({
+        label: 'Value (selected)',
+        data: currentSolution.t.map((t, i) => ({ x: t, y: selectedValue + currentValue[i] })),
+        borderColor: '#2980b9',
+        backgroundColor: '#2980b933',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+      })
+    }
   }
 
   odeChart.data.datasets = datasets
@@ -318,45 +318,35 @@ function updateLegend() {
   const legendEl = document.getElementById('chart-legend')
   let html = ''
 
-  // Current selection traces (solid)
-  ITEMS.forEach(item => {
-    html += `
-      <div class="legend-item">
-        <div class="legend-color" style="background: ${item.color};"></div>
-        <span>${item.name}</span>
-      </div>
-    `
-  })
-
-  // Baseline indicator
-  html += `
-    <div class="legend-item">
-      <div class="legend-color" style="background: transparent; border: 2px dashed #666;"></div>
-      <span>Baseline</span>
-    </div>
-  `
-
-  // Expected Weight (current selection - solid green)
+  // Weight (selected) - solid green
   html += `
     <div class="legend-item">
       <div class="legend-color" style="background: #27ae60;"></div>
-      <span>Exp. Weight</span>
+      <span>Weight (selected)</span>
     </div>
   `
 
-  // Expected Weight (all items baseline - dashed green)
+  // Weight (all) - dashed green
   html += `
     <div class="legend-item">
       <div class="legend-color" style="background: transparent; border: 2px dashed #2ecc71;"></div>
-      <span>Baseline Wt.</span>
+      <span>Weight (all)</span>
     </div>
   `
 
-  // Capacity
+  // Value (selected) - solid blue
   html += `
     <div class="legend-item">
-      <div class="legend-color" style="background: #95a5a6; border: 2px dashed #95a5a6;"></div>
-      <span>Capacity</span>
+      <div class="legend-color" style="background: #2980b9;"></div>
+      <span>Value (selected)</span>
+    </div>
+  `
+
+  // Value (all) - dashed blue
+  html += `
+    <div class="legend-item">
+      <div class="legend-color" style="background: transparent; border: 2px dashed #3498db;"></div>
+      <span>Value (all)</span>
     </div>
   `
 
