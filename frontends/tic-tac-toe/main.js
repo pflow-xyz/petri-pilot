@@ -1961,4 +1961,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderEvents()
   }
   renderSimulationGrid()
+
+  // Auto-enable ZK mode when on the ZK page
+  if (window.IS_ZK_MODE_PAGE) {
+    const zkModule = await loadZKModule()
+    if (zkModule) {
+      zkModule.setZkMode(true)
+      console.log('ZK mode auto-enabled for zk-tic-tac-toe page')
+    }
+  }
 })
