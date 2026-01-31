@@ -70,6 +70,7 @@ class SiteHeader extends HTMLElement {
 
     const demos = [
       { id: 'tic-tac-toe', name: 'Tic-Tac-Toe', icon: '⭕' },
+      { id: 'zk-tic-tac-toe', name: 'ZK TTT', icon: '🔐' },
       { id: 'texas-holdem', name: 'Poker', icon: '🃏' },
       { id: 'coffeeshop', name: 'Coffee Shop', icon: '☕' },
       { id: 'knapsack', name: 'Knapsack', icon: '🎒' },
