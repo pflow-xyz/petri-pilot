@@ -1,31 +1,41 @@
 # Petri Pilot
 
-An SDK for building applications from Petri net models.
+**An experimental workshop for Petri net tooling.**
 
-Define a model. Generate an app. The model is the source of truth.
+This is where ideas get built, tested, and refined. Patterns that prove useful graduate upstream to [go-pflow](https://github.com/pflow-xyz/go-pflow).
 
-## How It Works
+## What's Here
+
+Petri Pilot explores the question: *what if the model was the app?*
 
 ```
 JSON Model ──> Deterministic Codegen ──> Running Application
-                                              │
-                                    ┌─────────┼─────────┐
-                                    │         │         │
-                                 Go API   Frontend   GraphQL
 ```
 
-A Petri net model is a JSON file with **places** (states), **transitions** (actions), and **arcs** (connections). From that single file, codegen produces:
+A Petri net model defines **places** (states), **transitions** (actions), and **arcs** (connections). From that single file, codegen produces:
 
-- **Go backend** -- event-sourced aggregate, REST API, SQLite storage, auth, permissions
-- **ES modules frontend** -- admin dashboard, schema viewer, simulation, event history
-- **GraphQL API** -- unified query layer across all models with built-in playground
-- **pflow viewer** -- interactive Petri net visualization via [pflow.xyz](https://pflow.xyz)
+- **Go backend** — event-sourced aggregate, REST API, SQLite storage
+- **ES modules frontend** — admin dashboard, simulation, event history
+- **GraphQL API** — unified query layer with built-in playground
+- **pflow viewer** — interactive Petri net visualization
 
 No LLM-generated code. The LLM designs models. Templates produce apps.
 
-## MCP-Native
+**Live demos:** [pilot.pflow.xyz](https://pilot.pflow.xyz)
 
-Petri Pilot runs as an MCP server. An LLM can design, validate, simulate, generate, and iterate without leaving the conversation.
+## Experiments in Progress
+
+| Experiment | Status | Notes |
+|------------|--------|-------|
+| MCP-native model design | Active | LLM designs, validates, simulates models via MCP tools |
+| ODE simulation | Active | Continuous-time analysis, optimization (knapsack, resource allocation) |
+| Multi-model serving | Active | Multiple apps on one port, shared GraphQL layer |
+| ZK circuits from Petri nets | Early | Tic-tac-toe with gnark proofs |
+| Code generation patterns | Ongoing | Templates for auth, permissions, views, navigation |
+
+## MCP Server
+
+Petri Pilot runs as an MCP server. An LLM can design, validate, simulate, and generate without leaving the conversation.
 
 ```bash
 petri-pilot mcp
@@ -39,30 +49,21 @@ petri-pilot mcp
 | `petri_codegen` | Generate Go backend |
 | `petri_frontend` | Generate ES modules frontend |
 | `petri_application` | Full-stack from high-level spec |
-| `petri_extend` | Add places, transitions, arcs to existing model |
-| `petri_visualize` | SVG rendering |
-| `service_start` | Build and launch a generated app |
-| `service_logs` | Inspect runtime output |
+| `petri_extend` | Modify existing models |
+| `service_start/stop/logs` | Manage running services |
 
-## Multi-Model Server
-
-Run multiple models on a single port. Each gets its own API, frontend, and dashboard.
+## Quick Start
 
 ```bash
-petri-pilot serve tic-tac-toe coffeeshop erc20-token blog-post
+# Install
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+
+# Run the demo server
+petri-pilot serve tic-tac-toe coffeeshop knapsack
+
+# Or start the MCP server
+petri-pilot mcp
 ```
-
-| Route | What |
-|-------|------|
-| `/` | Landing page |
-| `/{model}/` | Custom frontend + REST API |
-| `/app/{model}/` | Generated dashboard |
-| `/graphql/i` | GraphQL playground |
-| `/pflow` | Petri net viewer |
-
-The GraphQL playground, schema viewer, and pflow viewer all read the same model data. Three lenses on one system.
-
-**Live instance:** [pilot.pflow.xyz](https://pilot.pflow.xyz)
 
 ## Model Format
 
@@ -83,44 +84,27 @@ The GraphQL playground, schema viewer, and pflow viewer all read the same model 
 }
 ```
 
-Models can also include roles, access rules, events with typed fields, views, navigation, and admin configuration. See `examples/` for full-featured models.
+Models can include roles, access rules, typed events, views, and navigation. See `services/` for examples.
 
-The format is specified in [`schema/petri-model.schema.json`](schema/petri-model.schema.json).
-
-## Install
-
-```bash
-go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
-```
-
-## CLI
-
-```bash
-petri-pilot generate "order processing workflow"   # LLM designs a model
-petri-pilot validate model.json                    # Check structure
-petri-pilot codegen model.json -o ./app/ --frontend # Generate full app
-petri-pilot serve order coffeeshop                 # Run models
-petri-pilot mcp                                    # MCP server mode
-```
-
-## Architecture
+## Project Structure
 
 ```
-pkg/schema/          Model types
-pkg/codegen/golang/  Go backend templates
-pkg/codegen/esmodules/ Frontend templates
-pkg/serve/           Multi-model HTTP server, GraphQL, pflow viewer
 pkg/mcp/             MCP server and tools
-pkg/runtime/         EventStore, Aggregate interfaces
+pkg/codegen/         Go and ES modules templates
+pkg/serve/           Multi-model HTTP server
+pkg/validator/       Model analysis
+services/            Example models (tic-tac-toe, coffeeshop, knapsack, texas-holdem)
+frontends/           Custom frontends for demos
+generated/           Output from codegen (derived, not source)
 ```
 
-Templates are the source of truth. `generated/` is derived output. Change a template, regenerate, every app picks it up.
+## Relationship to go-pflow
 
-For details see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+[go-pflow](https://github.com/pflow-xyz/go-pflow) is the stable Petri net library. Petri Pilot is the experimental counterpart where new ideas are prototyped.
 
-## Why Petri Nets
+When something works well here — a code generation pattern, an analysis technique, a runtime feature — it may be extracted and added to go-pflow as a stable API.
 
-Four concepts: places, transitions, arcs, tokens. Formal enough for verification. Simple enough for an LLM to design. Expressive enough for real applications.
+Think of this repo as a pilot project. Some experiments succeed and ship. Others teach us something and get archived. That's the point.
 
 ## License
 
