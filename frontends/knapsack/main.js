@@ -198,7 +198,9 @@ function initChart() {
             display: true,
             text: 'Tokens'
           },
-          min: 0
+          min: 0,
+          beginAtZero: true,
+          suggestedMin: 0
         }
       },
       plugins: {
