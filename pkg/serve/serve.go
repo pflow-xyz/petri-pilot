@@ -3,6 +3,7 @@
 package serve
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,34 @@ import (
 	"syscall"
 	"time"
 )
+
+// googleAnalyticsID is read from GOOGLE_ANALYTICS_ID env var at startup
+var googleAnalyticsID = os.Getenv("GOOGLE_ANALYTICS_ID")
+
+// getAnalyticsScript returns the Google Analytics script if configured
+func getAnalyticsScript() string {
+	if googleAnalyticsID == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=%s"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "%s");
+</script>
+`, googleAnalyticsID, googleAnalyticsID)
+}
+
+// injectAnalytics injects Google Analytics script into HTML
+func injectAnalytics(html []byte) []byte {
+	script := getAnalyticsScript()
+	if script == "" {
+		return html
+	}
+	return bytes.Replace(html, []byte("</head>"), []byte(script+"</head>"), 1)
+}
 
 // Service represents a generated Petri-pilot service that can be started.
 type Service interface {
@@ -67,7 +96,6 @@ var (
 	registryMu sync.RWMutex
 )
 
-// Register adds a service factory to the global registry.
 // This is typically called from an init() function in the generated service package.
 func Register(name string, factory ServiceFactory) {
 	registryMu.Lock()
@@ -177,6 +205,9 @@ func RunMultiple(names []string, opts Options) error {
 	authHandler := NewAuthHandler(baseURL)
 	if authHandler.Enabled() {
 		log.Printf("  GitHub OAuth enabled")
+	if googleAnalyticsID != "" {
+		log.Printf("  Google Analytics: %s", googleAnalyticsID)
+	}
 	}
 
 	// Build combined mux
@@ -514,6 +545,18 @@ func createGeneratedFrontendHandler(spaHandler, serviceHandler http.Handler) htt
 
 // createSPAHandler creates an HTTP handler for serving a single-page application.
 // It serves static files and falls back to index.html for SPA routing.
+// serveHTMLWithGA reads an HTML file, injects GA script, and serves it
+func serveHTMLWithGA(w http.ResponseWriter, filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	data = injectAnalytics(data)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(data)
+}
+
 func createSPAHandler(frontendPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the path
@@ -525,6 +568,11 @@ func createSPAHandler(frontendPath string) http.Handler {
 		// Try to serve the file
 		fullPath := filepath.Join(frontendPath, path)
 		if _, err := os.Stat(fullPath); err == nil {
+			// For HTML files, inject GA
+			if strings.HasSuffix(path, ".html") {
+				serveHTMLWithGA(w, fullPath)
+				return
+			}
 			http.ServeFile(w, r, fullPath)
 			return
 		}
@@ -533,7 +581,7 @@ func createSPAHandler(frontendPath string) http.Handler {
 		// (but not for paths that look like static assets)
 		ext := filepath.Ext(path)
 		if ext == "" || ext == ".html" {
-			http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
+			serveHTMLWithGA(w, filepath.Join(frontendPath, "index.html"))
 			return
 		}
 
