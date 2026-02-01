@@ -543,93 +543,45 @@ make dev-run                      # Test locally
 ./publish.sh "Add my-app service"
 ```
 
-## Deploying to pflow.dev
+## Deployment (pflow.dev)
 
-Use `publish.sh` to deploy changes to production.
-
-```bash
-# Full publish: commit, push, and deploy
-./publish.sh "Add new MCP tool"
-
-# Deploy only (pull latest, rebuild, restart)
-./publish.sh --deploy
-
-# Check service status and logs
-./publish.sh --status
-```
-
-**Production server:**
-- Host: `pflow.dev` (user: `ubuntu`)
-- Service runs on port 8083 in tmux session `servers:0`
-- Command: `./petri-pilot serve -port 8083 tic-tac-toe coffeeshop erc20-token blog-post task-manager support-ticket texas-holdem`
-
-### Tmux Session Structure
+All services run on pflow.dev behind nginx. Manage with the `~/services` command:
 
 ```bash
-ssh pflow.dev "tmux list-windows -t servers"
-# 0: pflow-pilot      - petri-pilot MCP server
-# 1: tens-city        - tens-city webserver
-# 2: pflow-xyz        - pflow.xyz frontend
-# 3: blog-stackdump-com - blog.stackdump.com
+~/services list      # Show all services and status
+~/services start     # Start all services
+~/services stop      # Stop all services  
+~/services restart   # Restart all services
 ```
 
-### Updating a Service
+### Service Ports
 
-```bash
-# 1. Kill the running process
-ssh pflow.dev "tmux send-keys -t servers:3 C-c"
-
-# 2. Pull updates and restart
-ssh pflow.dev "tmux send-keys -t servers:3 'git pull && ./webserver -addr :8082' Enter"
-
-# 3. Verify it started
-ssh pflow.dev "tmux capture-pane -t servers:3 -p | tail -10"
-```
-
-### Service Ports (nginx proxy)
-
-| Service | Internal Port | Public URL |
-|---------|---------------|------------|
+| Service | Port | URL |
+|---------|------|-----|
 | pflow-pilot | 8083 | pilot.pflow.xyz |
-| blog-stackdump-com | 8082 | blog.stackdump.com |
 | pflow-xyz | 8081 | pflow.xyz |
-| tens-city | 8080 | stackdump.com |
+| blog-stackdump | 8082 | blog.stackdump.com |
+| modeldao-org | 8084 | modeldao.org |
+| stackdump-com | 8085 | console.stackdump.com |
 
-### Start Script
-
-All services are started via `~/start_servers.sh` which creates the tmux session with proper env vars:
+### This Service
 
 ```bash
-ssh pflow.dev "~/start_servers.sh"
+# Check status
+ssh pflow.dev "~/services list"
+
+# View logs
+ssh pflow.dev "tmux capture-pane -t servers:pflow-pilot -p | tail -50"
+
+# Restart
+ssh pflow.dev "~/services restart"
+
+# Attach to tmux
+ssh pflow.dev "tmux attach -t servers"
 ```
 
 ### Environment Variables
 
-Each service requires specific environment variables (set in start_servers.sh):
-
-| Service | Required Env Vars |
-|---------|-------------------|
-| pflow-pilot | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
-| tens-city | `GOOGLE_ANALYTICS_ID`, `SUPABASE_JWT_SECRET` |
-| pflow-xyz | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SUPABASE_JWT_SECRET` |
-| blog-stackdump-com | `GOOGLE_ANALYTICS_ID` |
-
-When restarting a single service, ensure env vars are set:
-
-```bash
-# Restart blog with env var
-ssh pflow.dev "tmux send-keys -t servers:3 'export GOOGLE_ANALYTICS_ID=G-YDKYWYGHZ2 && ./webserver -addr :8082' Enter"
-```
-
-### Quick Reference
-
-```bash
-# Kill process on specific port if stuck
-ssh pflow.dev "fuser -k 8082/tcp"
-
-# Check nginx config for a site
-ssh pflow.dev "cat /etc/nginx/sites-enabled/blog.stackdump.com"
-
-# Test nginx config and reload
-ssh pflow.dev "sudo nginx -t && sudo systemctl reload nginx"
-```
+Environment variables are configured in `~/services`. This service uses:
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` - GitHub OAuth
+- `GOOGLE_ANALYTICS_ID` - Analytics (G-TFGGN262Z3)
