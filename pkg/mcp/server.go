@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pflow-xyz/petri-pilot/services"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo"
@@ -191,7 +192,7 @@ func validateTool() mcp.Tool {
 		mcp.WithDescription("Validate a Petri net model for structural correctness. Checks for empty models, unconnected elements, and invalid arc references."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 	)
 }
@@ -201,7 +202,7 @@ func analyzeTool() mcp.Tool {
 		mcp.WithDescription("Analyze a Petri net model for behavioral properties including reachability, deadlocks, liveness, boundedness, and element importance."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithBoolean("full",
 			mcp.Description("Include sensitivity analysis (element importance, symmetry groups)"),
@@ -272,7 +273,7 @@ func codegenTool() mcp.Tool {
 		mcp.WithDescription("Generate executable code from a validated Petri net model. Produces event-sourced application code with state machine, events, and API handlers."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithString("language",
 			mcp.Description("Target language: go, javascript, python (default: go)"),
@@ -291,7 +292,7 @@ func frontendTool() mcp.Tool {
 		mcp.WithDescription("Generate a vanilla JavaScript ES modules frontend application from a Petri net model. Produces a Vite + ES modules project with API client, state display, and transition forms using plain JavaScript."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithString("project",
 			mcp.Description("Project name for package.json (default: model name)"),
@@ -310,7 +311,7 @@ func visualizeTool() mcp.Tool {
 		mcp.WithDescription("Generate an SVG visualization of a Petri net model showing places, transitions, and arcs."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 	)
 }
@@ -320,7 +321,7 @@ func docsTool() mcp.Tool {
 		mcp.WithDescription("Generate markdown documentation from a Petri net model with mermaid diagrams for visualization. Useful for exploring and understanding models."),
 		mcp.WithString("model",
 			mcp.Required(),
-			mcp.Description("The Petri net model as a JSON string"),
+			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithBoolean("include_metadata",
 			mcp.Description("Include model metadata in documentation (default: true)"),
@@ -1649,10 +1650,26 @@ type ParseResult struct {
 }
 
 // parseModelV2 parses a model and returns both the model and any v2 extensions.
-func parseModelV2(jsonStr string) (*ParseResult, error) {
+// Supports JSON (v1/v2) and tokenmodel DSL (S-expression) formats.
+func parseModelV2(input string) (*ParseResult, error) {
+	trimmed := strings.TrimSpace(input)
+
+	// DSL format: starts with '('
+	if strings.HasPrefix(trimmed, "(") {
+		schema, err := tokenmodelds.ParseSchema(input)
+		if err != nil {
+			return nil, fmt.Errorf("DSL parse error: %w", err)
+		}
+		model := goflowmetamodel.FromTokenModel(schema)
+		return &ParseResult{
+			Model:   model,
+			Version: "dsl",
+		}, nil
+	}
+
 	// First check if this is v2 format (has "version" and "net" keys)
 	var v2 schemaV2
-	if err := json.Unmarshal([]byte(jsonStr), &v2); err == nil && v2.Version == "2.0" && v2.Net != nil {
+	if err := json.Unmarshal([]byte(input), &v2); err == nil && v2.Version == "2.0" && v2.Net != nil {
 		return &ParseResult{
 			Model:      v2.Net,
 			Extensions: v2.Extensions,
@@ -1661,7 +1678,7 @@ func parseModelV2(jsonStr string) (*ParseResult, error) {
 	}
 
 	// Fall back to v1 parsing
-	model, err := parseModel(jsonStr)
+	model, err := parseModel(input)
 	if err != nil {
 		return nil, err
 	}

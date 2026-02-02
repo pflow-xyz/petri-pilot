@@ -1,0 +1,23 @@
+(schema erc20-token
+  (version v1.0.0)
+
+  (states
+    (state balances :type map[string]int64 :exported)
+    (state allowances :type map[string]map[string]int64 :exported)
+    (state total_supply :type int64 :initial 0 :exported))
+
+  (actions
+    (action transfer :guard {balances[from] >= amount && amount > 0})
+    (action approve :guard {amount >= 0})
+    (action mint :guard {amount > 0})
+    (action burn :guard {balances[from] >= amount && amount > 0}))
+
+  (arcs
+    (arc balances -> transfer :keys (from) :value amount)
+    (arc transfer -> balances :keys (to) :value amount)
+    (arc allowances -> approve :keys (owner spender))
+    (arc approve -> allowances :keys (owner spender) :value amount)
+    (arc mint -> balances :keys (to) :value amount)
+    (arc mint -> total_supply :value amount)
+    (arc balances -> burn :keys (from) :value amount)
+    (arc total_supply -> burn :value amount)))

@@ -4,6 +4,39 @@
 
 Petri-pilot generates complete applications from Petri net models. An LLM designs the model via MCP tools, then deterministic code generation produces Go backends and ES modules frontends.
 
+## Model Formats
+
+Petri-pilot supports two model formats:
+
+### JSON Format
+The standard JSON format for Petri net models:
+```json
+{"name":"order","places":[{"id":"pending"},{"id":"shipped"}],"transitions":[{"id":"ship"}],"arcs":[{"from":"pending","to":"ship"},{"from":"ship","to":"shipped"}]}
+```
+
+### Tokenmodel DSL Format (.pflow)
+S-expression DSL for more readable model definitions:
+```lisp
+(schema erc20-token
+  (version v1.0.0)
+
+  (states
+    (state balances :type map[string]int64 :exported)
+    (state total_supply :type int64 :initial 0 :exported))
+
+  (actions
+    (action transfer :guard {balances[from] >= amount && amount > 0})
+    (action mint :guard {amount > 0}))
+
+  (arcs
+    (arc balances -> transfer :keys (from) :value amount)
+    (arc transfer -> balances :keys (to) :value amount)
+    (arc mint -> balances :keys (to) :value amount)
+    (arc mint -> total_supply :value amount)))
+```
+
+Both formats are supported by all MCP tools and CLI commands. The DSL format is detected by models starting with `(`.
+
 ## Generating New Applications
 
 The primary workflow is: **Design → Validate → Generate → Test → Iterate**
@@ -14,6 +47,11 @@ Start by designing a Petri net model. Use `petri_validate` to check structure:
 
 ```
 petri_validate(model='{"name":"order","places":[{"id":"pending"},{"id":"shipped"}],"transitions":[{"id":"ship"}],"arcs":[{"from":"pending","to":"ship"},{"from":"ship","to":"shipped"}]}')
+```
+
+Or with DSL format:
+```
+petri_validate(model='(schema order (states (state pending :kind token :initial 1) (state shipped :kind token)) (actions (action ship)) (arcs (arc pending -> ship) (arc ship -> shipped)))')
 ```
 
 Use `petri_simulate` to verify workflow behavior before generating code:

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/services"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
@@ -275,16 +276,17 @@ func cmdValidate(args []string) {
 		fmt.Fprintln(w, `petri-pilot validate - Validate a Petri net model
 
 Usage:
-  petri-pilot validate [options] <model.json>
+  petri-pilot validate [options] <model>
 
 Arguments:
-  model.json    Path to the Petri net model file
+  model    Path to the Petri net model file (.json or .pflow)
 
 Options:`)
 		fs.PrintDefaults()
 		fmt.Fprintln(w, `
 Examples:
-  petri-pilot validate model.json            Basic validation
+  petri-pilot validate model.json            Basic validation (JSON)
+  petri-pilot validate model.pflow           Validate DSL format
   petri-pilot validate -full model.json      Full analysis with sensitivity
   petri-pilot validate -json model.json      Output results as JSON`)
 	}
@@ -309,8 +311,8 @@ Examples:
 		os.Exit(1)
 	}
 
-	var model metamodel.Model
-	if err := json.Unmarshal(data, &model); err != nil {
+	model, err := parseModelFile(data)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
 	}
@@ -322,7 +324,7 @@ Examples:
 		Parallel:          true,
 	})
 
-	result, err := v.Validate(&model)
+	result, err := v.Validate(model)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
 		os.Exit(1)
@@ -526,16 +528,17 @@ func cmdCodegen(args []string) {
 		fmt.Fprintln(w, `petri-pilot codegen - Generate backend application code from a model
 
 Usage:
-  petri-pilot codegen [options] <model.json>
+  petri-pilot codegen [options] <model>
 
 Arguments:
-  model.json    Path to the Petri net model file
+  model    Path to the Petri net model file (.json or .pflow)
 
 Options:`)
 		fs.PrintDefaults()
 		fmt.Fprintln(w, `
 Examples:
   petri-pilot codegen model.json -o ./myapp
+  petri-pilot codegen model.pflow -o ./myapp        Generate from DSL file
   petri-pilot codegen -frontend model.json -o ./myapp
   petri-pilot codegen -api-only model.json -o openapi.yaml
   petri-pilot codegen -submodule -o generated/myapp model.json`)
@@ -764,8 +767,8 @@ Examples:
 		os.Exit(1)
 	}
 
-	var model metamodel.Model
-	if err := json.Unmarshal(data, &model); err != nil {
+	model, err := parseModelFile(data)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing model: %v\n", err)
 		os.Exit(1)
 	}
@@ -776,7 +779,7 @@ Examples:
 		EnableSensitivity: false,
 	})
 
-	result, err := v.Validate(&model)
+	result, err := v.Validate(model)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
 		os.Exit(1)
@@ -802,7 +805,7 @@ Examples:
 	}
 
 	// Generate files
-	paths, err := gen.Generate(&model)
+	paths, err := gen.Generate(model)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating frontend: %v\n", err)
 		os.Exit(1)
@@ -870,6 +873,28 @@ func cmdServices(args []string) {
 	fmt.Println(string(content))
 }
 
+// parseModelFile parses a model file (JSON or DSL format) and returns the model.
+// Supports JSON and tokenmodel DSL (S-expression) formats.
+func parseModelFile(data []byte) (*metamodel.Model, error) {
+	trimmed := strings.TrimSpace(string(data))
+
+	// DSL format: starts with '('
+	if strings.HasPrefix(trimmed, "(") {
+		schema, err := tokenmodelds.ParseSchema(string(data))
+		if err != nil {
+			return nil, fmt.Errorf("DSL parse error: %w", err)
+		}
+		return metamodel.FromTokenModel(schema), nil
+	}
+
+	// JSON format
+	var model metamodel.Model
+	if err := json.Unmarshal(data, &model); err != nil {
+		return nil, err
+	}
+	return &model, nil
+}
+
 // modelWithExtensions is a struct for parsing v1 model JSON that includes extension fields
 // like admin, navigation, roles, access, views, debug, and graphql at the top level.
 type modelWithExtensions struct {
@@ -892,10 +917,24 @@ type accessRule struct {
 	Guard      string   `json:"guard,omitempty"`
 }
 
-// parseModelWithExtensions parses a model JSON file and extracts both the core model
+// parseModelWithExtensions parses a model file (JSON or DSL) and extracts both the core model
 // and any extension fields (admin, navigation, roles, access, views).
 // Returns the core model and an ApplicationSpec with extensions populated.
+// Supports JSON (v1/v2) and tokenmodel DSL (S-expression) formats.
 func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.ApplicationSpec, error) {
+	trimmed := strings.TrimSpace(string(data))
+
+	// DSL format: starts with '('
+	if strings.HasPrefix(trimmed, "(") {
+		schema, err := tokenmodelds.ParseSchema(string(data))
+		if err != nil {
+			return nil, nil, fmt.Errorf("DSL parse error: %w", err)
+		}
+		model := metamodel.FromTokenModel(schema)
+		app := extensions.NewApplicationSpec(model)
+		return model, app, nil
+	}
+
 	// First parse into the extended struct
 	var ext modelWithExtensions
 	if err := json.Unmarshal(data, &ext); err != nil {
