@@ -236,7 +236,16 @@ func (h *AuthHandler) HandleDebugLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserFromRequest extracts the user from the request.
+// In dev mode (DEV_MODE=true), it also checks for X-Dev-User header.
+// Format: "username" or "username:role1,role2"
 func (h *AuthHandler) UserFromRequest(r *http.Request) *User {
+	// Check for dev mode header first
+	if os.Getenv("DEV_MODE") == "true" {
+		if devUser := r.Header.Get("X-Dev-User"); devUser != "" {
+			return parseDevUser(devUser)
+		}
+	}
+
 	token := extractToken(r)
 	if token == "" {
 		return nil
@@ -250,6 +259,23 @@ func (h *AuthHandler) UserFromRequest(r *http.Request) *User {
 		return nil
 	}
 	return session.User
+}
+
+// parseDevUser parses the X-Dev-User header value.
+// Format: "username" or "username:role1,role2"
+func parseDevUser(value string) *User {
+	parts := strings.SplitN(value, ":", 2)
+	login := parts[0]
+	var roles []string
+	if len(parts) > 1 && parts[1] != "" {
+		roles = strings.Split(parts[1], ",")
+	}
+	return &User{
+		ID:    1,
+		Login: login,
+		Name:  login,
+		Roles: roles,
+	}
 }
 
 // Middleware adds user to request context if authenticated.

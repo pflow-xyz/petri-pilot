@@ -529,12 +529,12 @@ func runProcessService(svc ProcessService, port int) error {
 }
 
 // createGeneratedFrontendHandler creates a handler that combines frontend and API routing.
-// API calls (paths starting with /api/ or /zk/) are routed to the service handler.
+// API calls (paths starting with /api/, /zk/, or /admin/) are routed to the service handler.
 // All other requests are served by the SPA handler.
 func createGeneratedFrontendHandler(spaHandler, serviceHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Route API and ZK calls to the service handler
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/zk/") {
+		// Route API, ZK, and admin calls to the service handler
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/zk/") || strings.HasPrefix(r.URL.Path, "/admin/") {
 			serviceHandler.ServeHTTP(w, r)
 			return
 		}
