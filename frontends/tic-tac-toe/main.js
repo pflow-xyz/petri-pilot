@@ -1,5 +1,6 @@
 // Tic-Tac-Toe Simulator - Main Application
 // Uses pflow ODE solver for strategic value computation
+// Model is fetched from /api/schema to ensure consistency with Go backend
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
 
@@ -18,6 +19,133 @@ loadZKModule()
 // Read API_BASE dynamically to avoid race condition with inline script
 function getApiBase() {
   return window.API_BASE || ''
+}
+
+// Cached schema model from /api/schema - single source of truth
+let cachedSchemaModel = null
+
+// Fetch the schema model from the API (same model as Go backend uses)
+async function fetchSchemaModel() {
+  if (cachedSchemaModel) return cachedSchemaModel
+
+  try {
+    const response = await fetch(`${getApiBase()}/api/schema`)
+    if (!response.ok) {
+      console.error('Failed to fetch schema:', response.status)
+      return null
+    }
+    cachedSchemaModel = await response.json()
+    console.log('Schema model loaded from /api/schema')
+    return cachedSchemaModel
+  } catch (err) {
+    console.error('Error fetching schema:', err)
+    return null
+  }
+}
+
+// Convert schema JSON format to pflow.xyz Petri net format for ODE solver
+// Applies current board state as initial token values
+function schemaToODEModel(schema, board, currentPlayer, hypRow, hypCol) {
+  const places = {}
+  const transitions = {}
+  const arcs = []
+
+  // Build place ID to index mapping for applying board state
+  const placeIds = schema.places.map(p => p.id)
+
+  // Convert places from schema format to pflow format
+  for (const place of schema.places) {
+    let initial = place.initial || 0
+
+    // Apply current board state to piece places
+    // p00-p22: 1 if empty, 0 if occupied
+    const pMatch = place.id.match(/^p(\d)(\d)$/)
+    if (pMatch) {
+      const r = parseInt(pMatch[1])
+      const c = parseInt(pMatch[2])
+      if (board && board[r][c] !== '') initial = 0
+      else initial = 1
+      // Apply hypothetical move
+      if (r === hypRow && c === hypCol) initial = 0
+    }
+
+    // x00-x22: 1 if X has played here
+    const xMatch = place.id.match(/^x(\d)(\d)$/)
+    if (xMatch) {
+      const r = parseInt(xMatch[1])
+      const c = parseInt(xMatch[2])
+      initial = (board && board[r][c] === 'X') ? 1 : 0
+      // Apply hypothetical move for X
+      if (currentPlayer === 'X' && r === hypRow && c === hypCol) initial = 1
+    }
+
+    // o00-o22: 1 if O has played here
+    const oMatch = place.id.match(/^o(\d)(\d)$/)
+    if (oMatch) {
+      const r = parseInt(oMatch[1])
+      const c = parseInt(oMatch[2])
+      initial = (board && board[r][c] === 'O') ? 1 : 0
+      // Apply hypothetical move for O
+      if (currentPlayer === 'O' && r === hypRow && c === hypCol) initial = 1
+    }
+
+    // Turn control: after hypothetical move, it's opponent's turn
+    if (place.id === 'x_turn') {
+      initial = currentPlayer === 'O' ? 1 : 0  // After O plays, X's turn
+    }
+    if (place.id === 'o_turn') {
+      initial = currentPlayer === 'X' ? 1 : 0  // After X plays, O's turn
+    }
+
+    // game_active: always 1 at start of ODE simulation
+    if (place.id === 'game_active') {
+      initial = 1
+    }
+
+    // win_x, win_o: always 0 at start
+    if (place.id === 'win_x' || place.id === 'win_o') {
+      initial = 0
+    }
+
+    // can_reset: not needed for ODE, set to 0
+    if (place.id === 'can_reset') {
+      initial = 0
+    }
+
+    places[place.id] = {
+      '@type': 'Place',
+      initial: [initial],
+      x: place.x || 0,
+      y: place.y || 0
+    }
+  }
+
+  // Convert transitions
+  for (const trans of schema.transitions) {
+    transitions[trans.id] = {
+      '@type': 'Transition',
+      x: trans.x || 0,
+      y: trans.y || 0
+    }
+  }
+
+  // Convert arcs (from/to format to source/target format)
+  for (const arc of schema.arcs) {
+    arcs.push({
+      '@type': 'Arrow',
+      source: arc.from,
+      target: arc.to,
+      weight: [arc.weight || 1]
+    })
+  }
+
+  return {
+    '@context': 'https://pflow.xyz/schema',
+    '@type': 'PetriNet',
+    places,
+    transitions,
+    arcs
+  }
 }
 
 // ODE simulation results cache
@@ -258,11 +386,53 @@ async function runODESimulation(board = null) {
 // Local JavaScript ODE computation using pflow.xyz solver
 // Mirrors the Go backend logic in ode.go
 // Note: Solver has shared state, so we run sequentially
-function runLocalODESimulation(board = null) {
+function cloneBoard(board) {
+  return board ? board.map(row => [...row]) : [['', '', ''], ['', '', ''], ['', '', '']]
+}
+
+function isWinningBoard(board, player) {
+  for (const pattern of WIN_PATTERNS) {
+    const [a, b, c] = pattern
+    const r1 = Math.floor(a / 3), c1 = a % 3
+    const r2 = Math.floor(b / 3), c2 = b % 3
+    const r3 = Math.floor(c / 3), c3 = c % 3
+    if (
+      board[r1][c1] === player &&
+      board[r2][c2] === player &&
+      board[r3][c3] === player
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+function getImmediateWinningMoves(board, player) {
+  const wins = []
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (board[r][c] !== '') continue
+      board[r][c] = player
+      if (isWinningBoard(board, player)) wins.push(`${r}${c}`)
+      board[r][c] = ''
+    }
+  }
+  return wins
+}
+
+// Local JavaScript ODE computation using pflow.xyz solver
+// Uses the schema model from /api/schema (same as Go backend)
+// Note: Solver has shared state, so we run sequentially
+async function runLocalODESimulation(board = null) {
   try {
     const values = {}
     const details = {}
+    const rawValues = {}
     const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
+
+    // Fetch schema model (cached after first fetch)
+    const schema = await fetchSchemaModel()
+    const useSchemaModel = schema !== null
 
     // Determine current player
     let xCount = 0, oCount = 0
@@ -275,8 +445,9 @@ function runLocalODESimulation(board = null) {
       }
     }
     const currentPlayer = xCount > oCount ? 'O' : 'X'
+    const opponent = currentPlayer === 'X' ? 'O' : 'X'
 
-    console.log(`Local ODE: currentPlayer=${currentPlayer}, board=`, board)
+    console.log(`Local ODE: currentPlayer=${currentPlayer}, useSchemaModel=${useSchemaModel}, board=`, board)
 
     // Run ODE simulations sequentially (Solver has shared state)
     for (const pos of positions) {
@@ -286,11 +457,15 @@ function runLocalODESimulation(board = null) {
       // Skip occupied positions
       if (board && board[row][col] !== '') {
         values[pos] = 0
+        rawValues[pos] = 0
         continue
       }
 
       // Build Petri net with hypothetical move
-      const model = buildODEPetriNet(board, currentPlayer, row, col)
+      // Use schema model if available, otherwise fall back to local builder
+      const model = useSchemaModel
+        ? schemaToODEModel(schema, board, currentPlayer, row, col)
+        : buildODEPetriNet(board, currentPlayer, row, col)
 
       // Run ODE simulation
       const result = solveODE(model)
@@ -299,11 +474,47 @@ function runLocalODESimulation(board = null) {
         const { winX, winO } = result
         // Score from current player's perspective
         const score = currentPlayer === 'X' ? (winX - winO) : (winO - winX)
-        values[pos] = score
+        rawValues[pos] = score
         details[pos] = { WinX: winX, WinO: winO, score }
       } else {
-        values[pos] = 0
+        rawValues[pos] = 0
       }
+    }
+
+    // Tactical adjustment: prefer immediate wins and blocks over slower advantages.
+    const rawVals = Object.values(rawValues)
+    const maxAbs = rawVals.length > 0 ? Math.max(...rawVals.map(v => Math.abs(v))) : 0
+    const winBonus = Math.max(1, maxAbs * 3)
+    const lossPenalty = Math.max(1, maxAbs * 3)
+
+    for (const pos of positions) {
+      if (board && board[parseInt(pos[0])][parseInt(pos[1])] !== '') {
+        values[pos] = 0
+        continue
+      }
+
+      let adjusted = rawValues[pos] || 0
+      const nextBoard = cloneBoard(board)
+      const r = parseInt(pos[0])
+      const c = parseInt(pos[1])
+      nextBoard[r][c] = currentPlayer
+
+      const isImmediateWin = isWinningBoard(nextBoard, currentPlayer)
+      if (isImmediateWin) {
+        adjusted += winBonus
+      } else {
+        const opponentWins = getImmediateWinningMoves(nextBoard, opponent)
+        if (opponentWins.length > 0) {
+          adjusted -= lossPenalty
+        }
+        if (!details[pos]) details[pos] = {}
+        details[pos].opponentImmediateWins = opponentWins
+      }
+
+      if (!details[pos]) details[pos] = {}
+      details[pos].adjustedScore = adjusted
+      details[pos].immediateWin = isImmediateWin
+      values[pos] = adjusted
     }
 
     console.log('Local ODE values:', values)
@@ -315,13 +526,22 @@ function runLocalODESimulation(board = null) {
 }
 
 // Ensure ODE values are computed (called before rendering if needed)
+// Note: This is now a sync fallback that just returns cached values.
+// Async callers should use runODESimulation() directly instead.
 function ensureODEValues(board = null) {
-  if (odeValues === null) {
-    const result = runLocalODESimulation(board)
-    if (result) {
-      odeValues = result.values
-    }
+  // If we have cached values, return them
+  if (odeValues !== null) {
+    return odeValues
   }
+
+  // If schema is already cached, we can compute synchronously
+  // by using the sync version with fallback
+  if (cachedSchemaModel !== null) {
+    // Can't call async function synchronously, just return null
+    // The async callers (toggleHeatmap, makeMove, etc.) will handle this
+    console.log('ODE values not computed yet - async caller should handle this')
+  }
+
   return odeValues
 }
 
@@ -368,34 +588,38 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
     }
   }
 
-  // Turn control: Next (0=X's turn, 1=O's turn)
+  // Turn control: Two explicit places for turn tracking (matches schema naming)
   // After hypothetical move, it's opponent's turn
-  const nextTurn = currentPlayer === 'X' ? 1 : 0
-  places['Next'] = { '@type': 'Place', initial: [nextTurn], x: 250, y: 250 }
+  // x_turn = X can move, o_turn = O can move
+  const isXTurn = currentPlayer === 'O' // After O's hypothetical move, it's X's turn
+  places['x_turn'] = { '@type': 'Place', initial: [isXTurn ? 1 : 0], x: 200, y: 250 }
+  places['o_turn'] = { '@type': 'Place', initial: [isXTurn ? 0 : 1], x: 300, y: 250 }
 
   // Win detection places
-  places['WinX'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
-  places['WinO'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
+  places['win_x'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
+  places['win_o'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
 
-  // X move transitions: P -> PlayX -> X + Next
+  // X move transitions: x_turn + P -> PlayX -> X + o_turn
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tid = `PlayX${r}${c}`
       transitions[tid] = { '@type': 'Transition', x: 120 + c * 60, y: 50 + r * 60 }
+      arcs.push({ '@type': 'Arrow', source: 'x_turn', target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: 'Next', weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: 'o_turn', weight: [1] })
     }
   }
 
-  // O move transitions: Next + P -> PlayO -> O
+  // O move transitions: o_turn + P -> PlayO -> O + x_turn
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tid = `PlayO${r}${c}`
       transitions[tid] = { '@type': 'Transition', x: 270 + c * 60, y: 50 + r * 60 }
-      arcs.push({ '@type': 'Arrow', source: 'Next', target: tid, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: 'o_turn', target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: 'x_turn', weight: [1] })
     }
   }
 
@@ -407,7 +631,8 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   ]
   const patternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
 
-  // X win transitions (use read arcs: consume and produce back to preserve pieces)
+  // X win transitions: consume o_turn (X wins when it would be O's turn, after X played)
+  // Matches schema: o_turn -> x_win_* consumes the turn token, ending the game
   winPatterns.forEach((pattern, idx) => {
     const tid = `X${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
@@ -419,10 +644,13 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
       // Produce back to X place (read arc pattern)
       arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
     })
-    arcs.push({ '@type': 'Arrow', source: tid, target: 'WinX', weight: [1] })
+    arcs.push({ '@type': 'Arrow', source: tid, target: 'win_x', weight: [1] })
+    // o_turn -> X win: X claims victory when it's O's turn (after X played)
+    arcs.push({ '@type': 'Arrow', source: 'o_turn', target: tid, weight: [1] })
   })
 
-  // O win transitions (use read arcs: consume and produce back to preserve pieces)
+  // O win transitions: consume x_turn (O wins when it would be X's turn, after O played)
+  // Matches schema: x_turn -> o_win_* consumes the turn token, ending the game
   winPatterns.forEach((pattern, idx) => {
     const tid = `O${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
@@ -434,7 +662,9 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
       // Produce back to O place (read arc pattern)
       arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
     })
-    arcs.push({ '@type': 'Arrow', source: tid, target: 'WinO', weight: [1] })
+    arcs.push({ '@type': 'Arrow', source: tid, target: 'win_o', weight: [1] })
+    // x_turn -> O win: O claims victory when it's X's turn (after O played)
+    arcs.push({ '@type': 'Arrow', source: 'x_turn', target: tid, weight: [1] })
   })
 
   return {
@@ -446,7 +676,7 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   }
 }
 
-// Run ODE solver and extract WinX/WinO values
+// Run ODE solver and extract win_x/win_o values
 function solveODE(model) {
   try {
     const net = Solver.fromJSON(model)
@@ -467,8 +697,8 @@ function solveODE(model) {
 
     // finalState is a dictionary with place names as keys
     return {
-      winX: finalState['WinX'] || 0,
-      winO: finalState['WinO'] || 0
+      winX: finalState['win_x'] || 0,
+      winO: finalState['win_o'] || 0
     }
   } catch (err) {
     console.error('ODE solve error:', err)
@@ -1958,6 +2188,14 @@ function generateSVGSnapshot() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  // Pre-fetch the schema model for ODE simulation (same as Go backend)
+  // This ensures we use the unified model for strategic value computation
+  fetchSchemaModel().then(schema => {
+    if (schema) {
+      console.log('Schema model pre-fetched for ODE simulation')
+    }
+  })
+
   // Check for URL parameters first
   const loadedFromURL = await loadFromURL()
 
