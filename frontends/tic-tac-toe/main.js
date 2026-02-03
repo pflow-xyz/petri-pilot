@@ -384,43 +384,6 @@ async function runODESimulation(board = null) {
 }
 
 // Local JavaScript ODE computation using pflow.xyz solver
-// Mirrors the Go backend logic in ode.go
-// Note: Solver has shared state, so we run sequentially
-function cloneBoard(board) {
-  return board ? board.map(row => [...row]) : [['', '', ''], ['', '', ''], ['', '', '']]
-}
-
-function isWinningBoard(board, player) {
-  for (const pattern of WIN_PATTERNS) {
-    const [a, b, c] = pattern
-    const r1 = Math.floor(a / 3), c1 = a % 3
-    const r2 = Math.floor(b / 3), c2 = b % 3
-    const r3 = Math.floor(c / 3), c3 = c % 3
-    if (
-      board[r1][c1] === player &&
-      board[r2][c2] === player &&
-      board[r3][c3] === player
-    ) {
-      return true
-    }
-  }
-  return false
-}
-
-function getImmediateWinningMoves(board, player) {
-  const wins = []
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      if (board[r][c] !== '') continue
-      board[r][c] = player
-      if (isWinningBoard(board, player)) wins.push(`${r}${c}`)
-      board[r][c] = ''
-    }
-  }
-  return wins
-}
-
-// Local JavaScript ODE computation using pflow.xyz solver
 // Uses the schema model from /api/schema (same as Go backend)
 // Note: Solver has shared state, so we run sequentially
 async function runLocalODESimulation(board = null) {
@@ -481,40 +444,13 @@ async function runLocalODESimulation(board = null) {
       }
     }
 
-    // Tactical adjustment: prefer immediate wins and blocks over slower advantages.
-    const rawVals = Object.values(rawValues)
-    const maxAbs = rawVals.length > 0 ? Math.max(...rawVals.map(v => Math.abs(v))) : 0
-    const winBonus = Math.max(1, maxAbs * 3)
-    const lossPenalty = Math.max(1, maxAbs * 3)
-
+    // Use raw ODE values directly - draw detection in the model handles blocking preference
     for (const pos of positions) {
       if (board && board[parseInt(pos[0])][parseInt(pos[1])] !== '') {
         values[pos] = 0
         continue
       }
-
-      let adjusted = rawValues[pos] || 0
-      const nextBoard = cloneBoard(board)
-      const r = parseInt(pos[0])
-      const c = parseInt(pos[1])
-      nextBoard[r][c] = currentPlayer
-
-      const isImmediateWin = isWinningBoard(nextBoard, currentPlayer)
-      if (isImmediateWin) {
-        adjusted += winBonus
-      } else {
-        const opponentWins = getImmediateWinningMoves(nextBoard, opponent)
-        if (opponentWins.length > 0) {
-          adjusted -= lossPenalty
-        }
-        if (!details[pos]) details[pos] = {}
-        details[pos].opponentImmediateWins = opponentWins
-      }
-
-      if (!details[pos]) details[pos] = {}
-      details[pos].adjustedScore = adjusted
-      details[pos].immediateWin = isImmediateWin
-      values[pos] = adjusted
+      values[pos] = rawValues[pos] || 0
     }
 
     console.log('Local ODE values:', values)
