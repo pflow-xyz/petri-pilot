@@ -450,8 +450,8 @@ async function runLocalODESimulation(board = null) {
 
       if (result) {
         const { winX, winO } = result
-        // Score from current player's perspective
-        const score = currentPlayer === 'X' ? (winX - winO) : (winO - winX)
+        // Use raw ODE value for current player
+        const score = currentPlayer === 'X' ? winX : winO
         rawValues[pos] = score
         details[pos] = { WinX: winX, WinO: winO, score }
       } else {
