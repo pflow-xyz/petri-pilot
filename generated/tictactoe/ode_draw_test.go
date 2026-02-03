@@ -32,6 +32,7 @@
 package tictactoe
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pflow-xyz/go-pflow/petri"
@@ -850,4 +851,231 @@ func boolToPreference(better bool) string {
 		return "PREFERRED"
 	}
 	return "NOT preferred"
+}
+
+// TestBlogExample4Scores tests the exact scenario from the blog post:
+// X at (1,0) and (1,1), O at (0,0), X threatening to win at (1,2)
+func TestBlogExample4Scores(t *testing.T) {
+	tspan := [2]float64{0, 2.0}
+
+	// Blog scenario: X has center row threat
+	// Board:
+	//   O |   |
+	//   X | X |    <- X threatens (1,2)
+	//     |   |
+
+	evaluateWithDraw := func(row, col int) float64 {
+		net := buildTicTacToeNetWithDraw()
+		state := map[string]float64{
+			"p00": 0.0, "p01": 1.0, "p02": 1.0,
+			"p10": 0.0, "p11": 0.0, "p12": 1.0,
+			"p20": 1.0, "p21": 1.0, "p22": 1.0,
+			"x10": 1.0, "x11": 1.0, // X at (1,0) and (1,1)
+			"o00": 1.0,             // O at (0,0)
+			"x_turn":      0.0,
+			"o_turn":      1.0,
+			"game_active": 1.0,
+			"move_tokens": 3.0, // 3 moves made
+		}
+
+		// Apply O's hypothetical move
+		state[fmt.Sprintf("o%d%d", row, col)] = 1.0
+		state[fmt.Sprintf("p%d%d", row, col)] = 0.0
+		state["move_tokens"] = 4.0
+		state["x_turn"] = 1.0
+		state["o_turn"] = 0.0
+
+		prob := solver.NewProblem(net, net.SetState(state), tspan, net.SetRates(nil))
+		sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
+		final := sol.GetFinalState()
+		return final["win_o"] - final["win_x"]
+	}
+
+	evaluateWithoutDraw := func(row, col int) float64 {
+		net := buildTicTacToeNet()
+		state := map[string]float64{
+			"p00": 0.0, "p01": 1.0, "p02": 1.0,
+			"p10": 0.0, "p11": 0.0, "p12": 1.0,
+			"p20": 1.0, "p21": 1.0, "p22": 1.0,
+			"x10": 1.0, "x11": 1.0,
+			"o00": 1.0,
+			"x_turn":      0.0,
+			"o_turn":      1.0,
+			"game_active": 1.0,
+		}
+
+		state[fmt.Sprintf("o%d%d", row, col)] = 1.0
+		state[fmt.Sprintf("p%d%d", row, col)] = 0.0
+		state["x_turn"] = 1.0
+		state["o_turn"] = 0.0
+
+		prob := solver.NewProblem(net, net.SetState(state), tspan, net.SetRates(nil))
+		sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
+		final := sol.GetFinalState()
+		return final["win_o"] - final["win_x"]
+	}
+
+	positions := []struct {
+		row, col int
+		name     string
+		isBlock  bool
+	}{
+		{0, 1, "(0,1) edge", false},
+		{0, 2, "(0,2) corner", false},
+		{1, 2, "(1,2) BLOCK", true},
+		{2, 0, "(2,0) corner", false},
+		{2, 1, "(2,1) edge", false},
+		{2, 2, "(2,2) corner", false},
+	}
+
+	t.Log("Blog Example 4: X at (1,0), (1,1), O at (0,0)")
+	t.Log("O's turn - X threatens to win at (1,2)")
+	t.Log("")
+	t.Log("WITH draw detection (new model):")
+
+	var blockScoreDraw, bestOtherDraw float64
+	var bestOtherNameDraw string
+
+	for _, pos := range positions {
+		score := evaluateWithDraw(pos.row, pos.col)
+		marker := ""
+		if pos.isBlock {
+			blockScoreDraw = score
+			marker = " <-- BLOCKING MOVE"
+		} else if score > bestOtherDraw {
+			bestOtherDraw = score
+			bestOtherNameDraw = pos.name
+		}
+		t.Logf("  O plays %s: score=%.2f%s", pos.name, score, marker)
+	}
+
+	t.Log("")
+	t.Log("WITHOUT draw detection (old model):")
+
+	var blockScoreOld, bestOtherOld float64
+	var bestOtherNameOld string
+
+	for _, pos := range positions {
+		score := evaluateWithoutDraw(pos.row, pos.col)
+		marker := ""
+		if pos.isBlock {
+			blockScoreOld = score
+			marker = " <-- BLOCKING MOVE"
+		} else if score > bestOtherOld {
+			bestOtherOld = score
+			bestOtherNameOld = pos.name
+		}
+		t.Logf("  O plays %s: score=%.2f%s", pos.name, score, marker)
+	}
+
+	t.Log("")
+	t.Log("=== SUMMARY FOR BLOG UPDATE ===")
+	t.Logf("With draw: block=%.2f, best other (%s)=%.2f, margin=%.2f",
+		blockScoreDraw, bestOtherNameDraw, bestOtherDraw, blockScoreDraw-bestOtherDraw)
+	t.Logf("Without:   block=%.2f, best other (%s)=%.2f, margin=%.2f",
+		blockScoreOld, bestOtherNameOld, bestOtherOld, blockScoreOld-bestOtherOld)
+
+	if blockScoreDraw > bestOtherDraw {
+		t.Log("SUCCESS: With draw detection, blocking is the best move!")
+	}
+}
+
+// TestBlogExamples123Scores tests examples 1-3 from the blog post
+func TestBlogExamples123Scores(t *testing.T) {
+	tspan := [2]float64{0, 2.0}
+
+	evaluateMove := func(board map[string]float64, row, col int, player string, moveCount float64) float64 {
+		net := buildTicTacToeNetWithDraw()
+		state := make(map[string]float64)
+		for k, v := range board {
+			state[k] = v
+		}
+		state["game_active"] = 1.0
+		state["move_tokens"] = moveCount
+
+		// Apply hypothetical move
+		state[fmt.Sprintf("%s%d%d", player, row, col)] = 1.0
+		state[fmt.Sprintf("p%d%d", row, col)] = 0.0
+		state["move_tokens"] = moveCount + 1.0
+		if player == "x" {
+			state["x_turn"] = 0.0
+			state["o_turn"] = 1.0
+		} else {
+			state["x_turn"] = 1.0
+			state["o_turn"] = 0.0
+		}
+
+		prob := solver.NewProblem(net, net.SetState(state), tspan, net.SetRates(nil))
+		sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
+		final := sol.GetFinalState()
+		if player == "x" {
+			return final["win_x"] - final["win_o"]
+		}
+		return final["win_o"] - final["win_x"]
+	}
+
+	// Example 1: Empty board, X's turn
+	t.Log("=== Example 1: Empty Board (X's turn) ===")
+	emptyBoard := map[string]float64{
+		"p00": 1.0, "p01": 1.0, "p02": 1.0,
+		"p10": 1.0, "p11": 1.0, "p12": 1.0,
+		"p20": 1.0, "p21": 1.0, "p22": 1.0,
+		"x_turn": 1.0, "o_turn": 0.0,
+	}
+	positions := [][2]int{{0,0}, {0,1}, {0,2}, {1,0}, {1,1}, {1,2}, {2,0}, {2,1}, {2,2}}
+	for _, pos := range positions {
+		score := evaluateMove(emptyBoard, pos[0], pos[1], "x", 0.0)
+		posType := "edge"
+		if pos[0] == 1 && pos[1] == 1 {
+			posType = "center"
+		} else if (pos[0] == 0 || pos[0] == 2) && (pos[1] == 0 || pos[1] == 2) {
+			posType = "corner"
+		}
+		t.Logf("  X plays (%d,%d) %s: score=%.2f", pos[0], pos[1], posType, score)
+	}
+
+	// Example 2: X at center, O's turn
+	t.Log("")
+	t.Log("=== Example 2: X at Center (O's turn) ===")
+	xCenterBoard := map[string]float64{
+		"p00": 1.0, "p01": 1.0, "p02": 1.0,
+		"p10": 1.0, "p11": 0.0, "p12": 1.0,
+		"p20": 1.0, "p21": 1.0, "p22": 1.0,
+		"x11": 1.0,
+		"x_turn": 0.0, "o_turn": 1.0,
+	}
+	for _, pos := range positions {
+		if pos[0] == 1 && pos[1] == 1 {
+			continue // skip center
+		}
+		score := evaluateMove(xCenterBoard, pos[0], pos[1], "o", 1.0)
+		posType := "edge"
+		if (pos[0] == 0 || pos[0] == 2) && (pos[1] == 0 || pos[1] == 2) {
+			posType = "corner"
+		}
+		t.Logf("  O plays (%d,%d) %s: score=%.2f", pos[0], pos[1], posType, score)
+	}
+
+	// Example 3: X at center, O at corner, X's turn
+	t.Log("")
+	t.Log("=== Example 3: X at center, O at (0,0), X's turn ===")
+	xCenterOCornerBoard := map[string]float64{
+		"p00": 0.0, "p01": 1.0, "p02": 1.0,
+		"p10": 1.0, "p11": 0.0, "p12": 1.0,
+		"p20": 1.0, "p21": 1.0, "p22": 1.0,
+		"x11": 1.0,
+		"o00": 1.0,
+		"x_turn": 1.0, "o_turn": 0.0,
+	}
+	for _, pos := range positions {
+		if (pos[0] == 1 && pos[1] == 1) || (pos[0] == 0 && pos[1] == 0) {
+			continue // skip occupied
+		}
+		score := evaluateMove(xCenterOCornerBoard, pos[0], pos[1], "x", 2.0)
+		posType := "edge"
+		if (pos[0] == 0 || pos[0] == 2) && (pos[1] == 0 || pos[1] == 2) {
+			posType = "corner"
+		}
+		t.Logf("  X plays (%d,%d) %s: score=%.2f", pos[0], pos[1], posType, score)
+	}
 }
