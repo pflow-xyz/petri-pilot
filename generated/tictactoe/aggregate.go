@@ -301,6 +301,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX01: 1,
 			PlaceX02: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -317,6 +318,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX11: 1,
 			PlaceX12: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -333,6 +335,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX21: 1,
 			PlaceX22: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -349,6 +352,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX10: 1,
 			PlaceX20: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -365,6 +369,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX11: 1,
 			PlaceX21: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -381,6 +386,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX12: 1,
 			PlaceX22: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -397,6 +403,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX11: 1,
 			PlaceX22: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -413,6 +420,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceX11: 1,
 			PlaceX20: 1,
 			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -429,6 +437,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO01: 1,
 			PlaceO02: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -445,6 +454,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO11: 1,
 			PlaceO12: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -461,6 +471,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO21: 1,
 			PlaceO22: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -477,6 +488,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO10: 1,
 			PlaceO20: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -493,6 +505,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO11: 1,
 			PlaceO21: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -509,6 +522,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO12: 1,
 			PlaceO22: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -525,6 +539,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO11: 1,
 			PlaceO22: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -541,6 +556,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO11: 1,
 			PlaceO20: 1,
 			PlaceGameActive: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
