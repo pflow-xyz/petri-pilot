@@ -21,6 +21,11 @@ function getApiBase() {
   return window.API_BASE || ''
 }
 
+// Normalize negative ODE values for display: show 1 + value if negative
+function displayOdeValue(value) {
+  return value < 0 ? 1 + value : value
+}
+
 // Cached schema model from /api/schema - single source of truth
 let cachedSchemaModel = null
 
@@ -1151,7 +1156,7 @@ function renderGame() {
                 ${piece || gameState.gameOver ? 'disabled' : ''}>
           ${piece ? `<span class="piece ${piece.toLowerCase()}">${piece}</span>` : ''}
           <div class="heat-overlay" style="background: ${heatColor};">
-            <span class="heat-value">${displayValue.toFixed(3)}</span>
+            <span class="heat-value">${displayOdeValue(displayValue).toFixed(3)}</span>
           </div>
         </button>
       `
@@ -1571,7 +1576,7 @@ function renderSimulationGrid() {
       const type = positionTypes[pos]
       return `
         <div class="position-cell ${type}">
-          <span class="value">${value.toFixed(3)}</span>
+          <span class="value">${displayOdeValue(value).toFixed(3)}</span>
           <span class="type">ODE</span>
         </div>
       `
@@ -1598,7 +1603,7 @@ function renderSimulationGrid() {
 
         return `
           <div class="position-cell ${type}" style="opacity: ${opacity};">
-            <span class="value">${value.toFixed(3)}</span>
+            <span class="value">${displayOdeValue(value).toFixed(3)}</span>
             <span class="type">ODE</span>
           </div>
         `
@@ -1832,7 +1837,7 @@ function downloadSnapshot() {
       } else if (showHeatmap && odeValues && odeValues[pos] !== undefined) {
         const heatColor = getHeatColorForSVG(odeValues[pos] || 0)
         boardContent += `<circle cx="${centerX}" cy="${centerY}" r="20" fill="${heatColor}" opacity="0.8"/>`
-        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${odeValues[pos].toFixed(2)}</text>`
+        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayOdeValue(odeValues[pos]).toFixed(2)}</text>`
 
         // Dotted box for recommended move
         if (recommendedPos && recommendedPos.row === row && recommendedPos.col === col) {
@@ -2122,7 +2127,7 @@ function generateSVGSnapshot() {
       } else if (showHeatmap && odeValues && odeValues[pos] !== undefined) {
         const heatColor = getHeatColorForSVG(odeValues[pos] || 0)
         boardContent += `<circle cx="${centerX}" cy="${centerY}" r="20" fill="${heatColor}" opacity="0.8"/>`
-        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${odeValues[pos].toFixed(2)}</text>`
+        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayOdeValue(odeValues[pos]).toFixed(2)}</text>`
 
         if (recommendedPos && recommendedPos.row === row && recommendedPos.col === col) {
           const boxX = boardX + col * cellSize + 4
