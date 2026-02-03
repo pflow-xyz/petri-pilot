@@ -46,6 +46,7 @@ type State struct {
 	WinO int `json:"win_o"`
 	CanReset int `json:"can_reset"`
 	GameActive int `json:"game_active"`
+	MoveTokens int `json:"move_tokens"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -77,6 +78,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX00: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -89,6 +91,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX01: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -101,6 +104,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX02: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -113,6 +117,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX10: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -125,6 +130,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX11: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -137,6 +143,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX12: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -149,6 +156,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX20: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -161,6 +169,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX21: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -173,6 +182,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX22: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -185,6 +195,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO00: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -197,6 +208,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO01: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -209,6 +221,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO02: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -221,6 +234,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO10: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -233,6 +247,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO11: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -245,6 +260,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO12: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -257,6 +273,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO20: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -269,6 +286,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO21: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -281,6 +299,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO22: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -565,6 +584,17 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO20: 1,
 		},
 	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionDraw,
+		EventType: EventTypeDraw,
+		Inputs: map[string]int{
+			PlaceMoveTokens: 9,
+			PlaceGameActive: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
+		},
+	})
 
 	// Register event handlers for state updates
 	sm.RegisterHandler(EventTypeXPlay00, func(state *State, event *eventsource.Event) error {
@@ -671,6 +701,9 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeOWinAnti, func(state *State, event *eventsource.Event) error {
 		return applyOWinAnti(state, event)
+	})
+	sm.RegisterHandler(EventTypeDraw, func(state *State, event *eventsource.Event) error {
+		return applyDraw(state, event)
 	})
 	return &Aggregate{sm: sm}
 }
@@ -961,6 +994,13 @@ func applyOWinDiag(state *State, event *eventsource.Event) error {
 }
 
 func applyOWinAnti(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyDraw(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

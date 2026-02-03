@@ -1265,6 +1265,40 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
+  /api/draw:
+    post:
+      summary: "Game ends in draw (all 9 moves played, no winner)"
+      operationId: draw
+      tags:
+        - transitions
+      x-transition-id: draw
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
 components:
   schemas:
     TransitionRequest:
@@ -1384,6 +1418,8 @@ components:
         can_reset:
           type: integer
         game_active:
+          type: integer
+        move_tokens:
           type: integer
 
     ErrorResponse:

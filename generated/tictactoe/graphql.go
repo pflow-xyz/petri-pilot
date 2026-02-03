@@ -851,6 +851,26 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
+	if isMutation && (containsString(query, "tictactoe_draw") || containsString(query, "draw")) {
+		input := graph.DrawInput{}
+		if vars, ok := variables["input"].(map[string]interface{}); ok {
+			if id, ok := vars["aggregateId"].(string); ok {
+				input.AggregateID = id
+			}
+		}
+		res, err := h.resolver.Draw(ctx, input)
+		if err != nil {
+			errors = append(errors, map[string]interface{}{"message": err.Error()})
+		} else {
+			// Return under whichever key the query used
+			if containsString(query, "tictactoe_draw") {
+				data["tictactoe_draw"] = res
+			} else {
+				data["draw"] = res
+			}
+		}
+	}
+
 
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "tictactoe(") {
@@ -1099,6 +1119,9 @@ type Mutation {
 
   # O wins anti-diagonal (0,2)-(1,1)-(2,0)
   oWinAnti(input: OWinAntiInput!): TransitionResult!
+
+  # Game ends in draw (all 9 moves played, no winner)
+  draw(input: DrawInput!): TransitionResult!
 }
 
 # Aggregate state representation
@@ -1145,6 +1168,7 @@ type State {
   winO: Int!
   canReset: Int!
   gameActive: Int!
+  moveTokens: Int!
 }
 
 # Token counts for each place
@@ -1182,6 +1206,7 @@ type Places {
   winO: Int!
   canReset: Int!
   gameActive: Int!
+  moveTokens: Int!
 }
 
 # Result of a transition execution
@@ -1398,6 +1423,11 @@ input OWinDiagInput {
 
 
 input OWinAntiInput {
+  aggregateId: ID!
+}
+
+
+input DrawInput {
   aggregateId: ID!
 }
 
@@ -1858,6 +1888,18 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.OWinAnti(ctx, input)
 	}
 	resolvers["oWinAnti"] = resolvers["tictactoe_o_win_anti"]
+
+
+	resolvers["tictactoe_draw"] = func(ctx context.Context, variables map[string]any) (any, error) {
+		input := graph.DrawInput{}
+		if vars, ok := variables["input"].(map[string]any); ok {
+			if id, ok := vars["aggregateId"].(string); ok {
+				input.AggregateID = id
+			}
+		}
+		return resolver.Draw(ctx, input)
+	}
+	resolvers["draw"] = resolvers["tictactoe_draw"]
 
 
 

@@ -599,7 +599,24 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   places['win_x'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
   places['win_o'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
 
-  // X move transitions: x_turn + P -> PlayX -> X + o_turn
+  // Move token counter for draw detection
+  // Count how many moves have been played (for hypothetical state)
+  let moveCount = 0
+  if (board) {
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (board[r][c] !== '') moveCount++
+      }
+    }
+  }
+  // Add 1 for the hypothetical move
+  if (hypRow !== null && hypCol !== null) moveCount++
+  places['move_tokens'] = { '@type': 'Place', initial: [moveCount], x: 400, y: 300 }
+
+  // Game active place (consumed on win or draw)
+  places['game_active'] = { '@type': 'Place', initial: [1], x: 400, y: 350 }
+
+  // X move transitions: x_turn + P -> PlayX -> X + o_turn + move_tokens
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tid = `PlayX${r}${c}`
@@ -608,10 +625,11 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
       arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: 'o_turn', weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: 'move_tokens', weight: [1] })
     }
   }
 
-  // O move transitions: o_turn + P -> PlayO -> O + x_turn
+  // O move transitions: o_turn + P -> PlayO -> O + x_turn + move_tokens
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tid = `PlayO${r}${c}`
@@ -620,6 +638,7 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
       arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
       arcs.push({ '@type': 'Arrow', source: tid, target: 'x_turn', weight: [1] })
+      arcs.push({ '@type': 'Arrow', source: tid, target: 'move_tokens', weight: [1] })
     }
   }
 
@@ -631,8 +650,8 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   ]
   const patternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
 
-  // X win transitions: consume o_turn (X wins when it would be O's turn, after X played)
-  // Matches schema: o_turn -> x_win_* consumes the turn token, ending the game
+  // X win transitions: consume o_turn + game_active (X wins when it would be O's turn, after X played)
+  // Matches schema: o_turn + game_active -> x_win_* consumes tokens, ending the game
   winPatterns.forEach((pattern, idx) => {
     const tid = `X${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
@@ -647,10 +666,12 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
     arcs.push({ '@type': 'Arrow', source: tid, target: 'win_x', weight: [1] })
     // o_turn -> X win: X claims victory when it's O's turn (after X played)
     arcs.push({ '@type': 'Arrow', source: 'o_turn', target: tid, weight: [1] })
+    // game_active -> X win: consume game_active to end game
+    arcs.push({ '@type': 'Arrow', source: 'game_active', target: tid, weight: [1] })
   })
 
-  // O win transitions: consume x_turn (O wins when it would be X's turn, after O played)
-  // Matches schema: x_turn -> o_win_* consumes the turn token, ending the game
+  // O win transitions: consume x_turn + game_active (O wins when it would be X's turn, after O played)
+  // Matches schema: x_turn + game_active -> o_win_* consumes tokens, ending the game
   winPatterns.forEach((pattern, idx) => {
     const tid = `O${patternNames[idx]}`
     transitions[tid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
@@ -665,7 +686,17 @@ function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
     arcs.push({ '@type': 'Arrow', source: tid, target: 'win_o', weight: [1] })
     // x_turn -> O win: O claims victory when it's X's turn (after O played)
     arcs.push({ '@type': 'Arrow', source: 'x_turn', target: tid, weight: [1] })
+    // game_active -> O win: consume game_active to end game
+    arcs.push({ '@type': 'Arrow', source: 'game_active', target: tid, weight: [1] })
   })
+
+  // Draw transition: fires when 9 moves played and game still active (no winner)
+  // Consumes: 9 move_tokens + 1 game_active
+  // Produces: 1 win_o (draws count as O outcome for balanced scoring)
+  transitions['Draw'] = { '@type': 'Transition', x: 400, y: 400 }
+  arcs.push({ '@type': 'Arrow', source: 'move_tokens', target: 'Draw', weight: [9] })
+  arcs.push({ '@type': 'Arrow', source: 'game_active', target: 'Draw', weight: [1] })
+  arcs.push({ '@type': 'Arrow', source: 'Draw', target: 'win_o', weight: [1] })
 
   return {
     '@context': 'https://pflow.xyz/schema',

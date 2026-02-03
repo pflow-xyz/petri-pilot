@@ -128,6 +128,9 @@ type Mutation {
 
   # O wins anti-diagonal (0,2)-(1,1)-(2,0)
   oWinAnti(input: OWinAntiInput!): TransitionResult!
+
+  # Game ends in draw (all 9 moves played, no winner)
+  draw(input: DrawInput!): TransitionResult!
 }
 
 # Aggregate state representation
@@ -174,6 +177,7 @@ type State {
   winO: Int!
   canReset: Int!
   gameActive: Int!
+  moveTokens: Int!
 }
 
 # Token counts for each place
@@ -211,6 +215,7 @@ type Places {
   winO: Int!
   canReset: Int!
   gameActive: Int!
+  moveTokens: Int!
 }
 
 # Result of a transition execution
@@ -427,6 +432,11 @@ input OWinDiagInput {
 
 
 input OWinAntiInput {
+  aggregateId: ID!
+}
+
+
+input DrawInput {
   aggregateId: ID!
 }
 

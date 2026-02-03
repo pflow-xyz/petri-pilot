@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS "tictactoe_state" (
     "win_o" INTEGER DEFAULT 0,
     "can_reset" INTEGER DEFAULT 0,
     "game_active" INTEGER DEFAULT 0,
+    "move_tokens" INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -102,6 +103,7 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- OWinCol2ed
 -- OWinDiaged
 -- OWinAntied
+-- GameDraw
 
 -- Place constants for reference:
 -- p00: Cell (0,0) empty
@@ -136,7 +138,8 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- win_x: X has won
 -- win_o: O has won
 -- can_reset: Token enabling reset action
--- game_active: Game is active (consumed on win to prevent repeated win detection)
+-- game_active: Game is active (consumed on win/draw to end game)
+-- move_tokens: Accumulates tokens as moves are played (for draw detection)
 
 -- Transition constants for reference:
 -- x_play_00: X plays at (0,0)
@@ -174,3 +177,4 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- o_win_col2: O wins right column (0,2)-(1,2)-(2,2)
 -- o_win_diag: O wins main diagonal (0,0)-(1,1)-(2,2)
 -- o_win_anti: O wins anti-diagonal (0,2)-(1,1)-(2,0)
+-- draw: Game ends in draw (all 9 moves played, no winner)

@@ -1177,6 +1177,34 @@ func (r *Resolver) OWinAnti(ctx context.Context, input OWinAntiInput) (*Transiti
 }
 
 
+// Draw executes the draw transition.
+func (r *Resolver) Draw(ctx context.Context, input DrawInput) (*TransitionResult, error) {
+	data := make(map[string]any)
+
+	agg, err := r.App.Execute(ctx, input.AggregateID, "draw", data)
+	if err != nil {
+		errMsg := err.Error()
+		return &TransitionResult{
+			Success: false,
+			Error:   &errMsg,
+		}, nil
+	}
+
+	places := agg.Places()
+	enabled := agg.EnabledTransitions()
+	id := agg.ID()
+	version := agg.Version()
+
+	return &TransitionResult{
+		Success:            true,
+		AggregateID:        &id,
+		Version:            &version,
+		State:              placesToModel(places),
+		EnabledTransitions: enabled,
+	}, nil
+}
+
+
 
 // Helper functions
 
@@ -1293,6 +1321,9 @@ func stateToModel(state any) *State {
 	}
 	if v, ok := m["game_active"]; ok {
 		s.GameActive = v
+	}
+	if v, ok := m["move_tokens"]; ok {
+		s.MoveTokens = v
 	}
 	return s
 }
@@ -1415,6 +1446,9 @@ func placesToModel(places map[string]int) *Places {
 	if v, ok := places["game_active"]; ok {
 		p.GameActive = v
 	}
+	if v, ok := places["move_tokens"]; ok {
+		p.MoveTokens = v
+	}
 	return p
 }
 
@@ -1462,6 +1496,7 @@ type State struct {
 	WinO any `json:"winO"`
 	CanReset any `json:"canReset"`
 	GameActive any `json:"gameActive"`
+	MoveTokens any `json:"moveTokens"`
 }
 
 type Places struct {
@@ -1498,6 +1533,7 @@ type Places struct {
 	WinO int `json:"winO"`
 	CanReset int `json:"canReset"`
 	GameActive int `json:"gameActive"`
+	MoveTokens int `json:"moveTokens"`
 }
 
 type TransitionResult struct {
@@ -1710,6 +1746,11 @@ type OWinDiagInput struct {
 
 
 type OWinAntiInput struct {
+	AggregateID string
+}
+
+
+type DrawInput struct {
 	AggregateID string
 }
 

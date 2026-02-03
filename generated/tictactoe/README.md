@@ -60,7 +60,8 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `win_x` | Token | 0 | X has won |
 | `win_o` | Token | 0 | O has won |
 | `can_reset` | Token | 1 | Token enabling reset action |
-| `game_active` | Token | 1 | Game is active (consumed on win to prevent repeated win detection) |
+| `game_active` | Token | 1 | Game is active (consumed on win/draw to end game) |
+| `move_tokens` | Token | 0 | Accumulates tokens as moves are played (for draw detection) |
 
 
 ### Transitions (Actions)
@@ -102,6 +103,7 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `o_win_col2` | `OWon2` | - | O wins right column (0,2)-(1,2)-(2,2) |
 | `o_win_diag` | `OWon` | - | O wins main diagonal (0,0)-(1,1)-(2,2) |
 | `o_win_anti` | `OWon` | - | O wins anti-diagonal (0,2)-(1,1)-(2,0) |
+| `draw` | `GameDraw` | - | Game ends in draw (all 9 moves played, no winner) |
 
 
 ### Petri Net Diagram
@@ -143,6 +145,7 @@ stateDiagram-v2
     state "win_o" as PlaceWinO
     state "can_reset (1)" as PlaceCanReset
     state "game_active (1)" as PlaceGameActive
+    state "move_tokens" as PlaceMoveTokens
 
 
     state "x_play_00" as t_TransitionXPlay00
@@ -180,97 +183,116 @@ stateDiagram-v2
     state "o_win_col2" as t_TransitionOWinCol2
     state "o_win_diag" as t_TransitionOWinDiag
     state "o_win_anti" as t_TransitionOWinAnti
+    state "draw" as t_TransitionDraw
 
 
     PlaceP00 --> t_TransitionXPlay00
     PlaceXTurn --> t_TransitionXPlay00
     t_TransitionXPlay00 --> PlaceX00
     t_TransitionXPlay00 --> PlaceOTurn
+    t_TransitionXPlay00 --> PlaceMoveTokens
 
     PlaceP01 --> t_TransitionXPlay01
     PlaceXTurn --> t_TransitionXPlay01
     t_TransitionXPlay01 --> PlaceX01
     t_TransitionXPlay01 --> PlaceOTurn
+    t_TransitionXPlay01 --> PlaceMoveTokens
 
     PlaceP02 --> t_TransitionXPlay02
     PlaceXTurn --> t_TransitionXPlay02
     t_TransitionXPlay02 --> PlaceX02
     t_TransitionXPlay02 --> PlaceOTurn
+    t_TransitionXPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionXPlay10
     PlaceXTurn --> t_TransitionXPlay10
     t_TransitionXPlay10 --> PlaceX10
     t_TransitionXPlay10 --> PlaceOTurn
+    t_TransitionXPlay10 --> PlaceMoveTokens
 
     PlaceP11 --> t_TransitionXPlay11
     PlaceXTurn --> t_TransitionXPlay11
     t_TransitionXPlay11 --> PlaceX11
     t_TransitionXPlay11 --> PlaceOTurn
+    t_TransitionXPlay11 --> PlaceMoveTokens
 
     PlaceP12 --> t_TransitionXPlay12
     PlaceXTurn --> t_TransitionXPlay12
     t_TransitionXPlay12 --> PlaceX12
     t_TransitionXPlay12 --> PlaceOTurn
+    t_TransitionXPlay12 --> PlaceMoveTokens
 
     PlaceP20 --> t_TransitionXPlay20
     PlaceXTurn --> t_TransitionXPlay20
     t_TransitionXPlay20 --> PlaceX20
     t_TransitionXPlay20 --> PlaceOTurn
+    t_TransitionXPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionXPlay21
     PlaceXTurn --> t_TransitionXPlay21
     t_TransitionXPlay21 --> PlaceX21
     t_TransitionXPlay21 --> PlaceOTurn
+    t_TransitionXPlay21 --> PlaceMoveTokens
 
     PlaceP22 --> t_TransitionXPlay22
     PlaceXTurn --> t_TransitionXPlay22
     t_TransitionXPlay22 --> PlaceX22
     t_TransitionXPlay22 --> PlaceOTurn
+    t_TransitionXPlay22 --> PlaceMoveTokens
 
     PlaceP00 --> t_TransitionOPlay00
     PlaceOTurn --> t_TransitionOPlay00
     t_TransitionOPlay00 --> PlaceO00
     t_TransitionOPlay00 --> PlaceXTurn
+    t_TransitionOPlay00 --> PlaceMoveTokens
 
     PlaceP01 --> t_TransitionOPlay01
     PlaceOTurn --> t_TransitionOPlay01
     t_TransitionOPlay01 --> PlaceO01
     t_TransitionOPlay01 --> PlaceXTurn
+    t_TransitionOPlay01 --> PlaceMoveTokens
 
     PlaceP02 --> t_TransitionOPlay02
     PlaceOTurn --> t_TransitionOPlay02
     t_TransitionOPlay02 --> PlaceO02
     t_TransitionOPlay02 --> PlaceXTurn
+    t_TransitionOPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionOPlay10
     PlaceOTurn --> t_TransitionOPlay10
     t_TransitionOPlay10 --> PlaceO10
     t_TransitionOPlay10 --> PlaceXTurn
+    t_TransitionOPlay10 --> PlaceMoveTokens
 
     PlaceP11 --> t_TransitionOPlay11
     PlaceOTurn --> t_TransitionOPlay11
     t_TransitionOPlay11 --> PlaceO11
     t_TransitionOPlay11 --> PlaceXTurn
+    t_TransitionOPlay11 --> PlaceMoveTokens
 
     PlaceP12 --> t_TransitionOPlay12
     PlaceOTurn --> t_TransitionOPlay12
     t_TransitionOPlay12 --> PlaceO12
     t_TransitionOPlay12 --> PlaceXTurn
+    t_TransitionOPlay12 --> PlaceMoveTokens
 
     PlaceP20 --> t_TransitionOPlay20
     PlaceOTurn --> t_TransitionOPlay20
     t_TransitionOPlay20 --> PlaceO20
     t_TransitionOPlay20 --> PlaceXTurn
+    t_TransitionOPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
     t_TransitionOPlay21 --> PlaceO21
     t_TransitionOPlay21 --> PlaceXTurn
+    t_TransitionOPlay21 --> PlaceMoveTokens
 
     PlaceP22 --> t_TransitionOPlay22
     PlaceOTurn --> t_TransitionOPlay22
     t_TransitionOPlay22 --> PlaceO22
     t_TransitionOPlay22 --> PlaceXTurn
+    t_TransitionOPlay22 --> PlaceMoveTokens
 
     PlaceCanReset --> t_TransitionReset
     t_TransitionReset --> PlaceCanReset
@@ -434,6 +456,10 @@ stateDiagram-v2
     t_TransitionOWinAnti --> PlaceO02
     t_TransitionOWinAnti --> PlaceO11
     t_TransitionOWinAnti --> PlaceO20
+
+    PlaceMoveTokens --> t_TransitionDraw: 9
+    PlaceGameActive --> t_TransitionDraw
+    t_TransitionDraw --> PlaceWinO
 
 ```
 
@@ -475,6 +501,7 @@ flowchart TD
         PlaceWinO[("win_o")]
         PlaceCanReset[("can_reset<br/>initial: 1")]
         PlaceGameActive[("game_active<br/>initial: 1")]
+        PlaceMoveTokens[("move_tokens")]
     end
 
     subgraph Transitions
@@ -513,6 +540,7 @@ flowchart TD
         t_TransitionOWinCol2["o_win_col2"]
         t_TransitionOWinDiag["o_win_diag"]
         t_TransitionOWinAnti["o_win_anti"]
+        t_TransitionDraw["draw"]
     end
 
 
@@ -520,91 +548,109 @@ flowchart TD
     PlaceXTurn --> t_TransitionXPlay00
     t_TransitionXPlay00 --> PlaceX00
     t_TransitionXPlay00 --> PlaceOTurn
+    t_TransitionXPlay00 --> PlaceMoveTokens
 
     PlaceP01 --> t_TransitionXPlay01
     PlaceXTurn --> t_TransitionXPlay01
     t_TransitionXPlay01 --> PlaceX01
     t_TransitionXPlay01 --> PlaceOTurn
+    t_TransitionXPlay01 --> PlaceMoveTokens
 
     PlaceP02 --> t_TransitionXPlay02
     PlaceXTurn --> t_TransitionXPlay02
     t_TransitionXPlay02 --> PlaceX02
     t_TransitionXPlay02 --> PlaceOTurn
+    t_TransitionXPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionXPlay10
     PlaceXTurn --> t_TransitionXPlay10
     t_TransitionXPlay10 --> PlaceX10
     t_TransitionXPlay10 --> PlaceOTurn
+    t_TransitionXPlay10 --> PlaceMoveTokens
 
     PlaceP11 --> t_TransitionXPlay11
     PlaceXTurn --> t_TransitionXPlay11
     t_TransitionXPlay11 --> PlaceX11
     t_TransitionXPlay11 --> PlaceOTurn
+    t_TransitionXPlay11 --> PlaceMoveTokens
 
     PlaceP12 --> t_TransitionXPlay12
     PlaceXTurn --> t_TransitionXPlay12
     t_TransitionXPlay12 --> PlaceX12
     t_TransitionXPlay12 --> PlaceOTurn
+    t_TransitionXPlay12 --> PlaceMoveTokens
 
     PlaceP20 --> t_TransitionXPlay20
     PlaceXTurn --> t_TransitionXPlay20
     t_TransitionXPlay20 --> PlaceX20
     t_TransitionXPlay20 --> PlaceOTurn
+    t_TransitionXPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionXPlay21
     PlaceXTurn --> t_TransitionXPlay21
     t_TransitionXPlay21 --> PlaceX21
     t_TransitionXPlay21 --> PlaceOTurn
+    t_TransitionXPlay21 --> PlaceMoveTokens
 
     PlaceP22 --> t_TransitionXPlay22
     PlaceXTurn --> t_TransitionXPlay22
     t_TransitionXPlay22 --> PlaceX22
     t_TransitionXPlay22 --> PlaceOTurn
+    t_TransitionXPlay22 --> PlaceMoveTokens
 
     PlaceP00 --> t_TransitionOPlay00
     PlaceOTurn --> t_TransitionOPlay00
     t_TransitionOPlay00 --> PlaceO00
     t_TransitionOPlay00 --> PlaceXTurn
+    t_TransitionOPlay00 --> PlaceMoveTokens
 
     PlaceP01 --> t_TransitionOPlay01
     PlaceOTurn --> t_TransitionOPlay01
     t_TransitionOPlay01 --> PlaceO01
     t_TransitionOPlay01 --> PlaceXTurn
+    t_TransitionOPlay01 --> PlaceMoveTokens
 
     PlaceP02 --> t_TransitionOPlay02
     PlaceOTurn --> t_TransitionOPlay02
     t_TransitionOPlay02 --> PlaceO02
     t_TransitionOPlay02 --> PlaceXTurn
+    t_TransitionOPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionOPlay10
     PlaceOTurn --> t_TransitionOPlay10
     t_TransitionOPlay10 --> PlaceO10
     t_TransitionOPlay10 --> PlaceXTurn
+    t_TransitionOPlay10 --> PlaceMoveTokens
 
     PlaceP11 --> t_TransitionOPlay11
     PlaceOTurn --> t_TransitionOPlay11
     t_TransitionOPlay11 --> PlaceO11
     t_TransitionOPlay11 --> PlaceXTurn
+    t_TransitionOPlay11 --> PlaceMoveTokens
 
     PlaceP12 --> t_TransitionOPlay12
     PlaceOTurn --> t_TransitionOPlay12
     t_TransitionOPlay12 --> PlaceO12
     t_TransitionOPlay12 --> PlaceXTurn
+    t_TransitionOPlay12 --> PlaceMoveTokens
 
     PlaceP20 --> t_TransitionOPlay20
     PlaceOTurn --> t_TransitionOPlay20
     t_TransitionOPlay20 --> PlaceO20
     t_TransitionOPlay20 --> PlaceXTurn
+    t_TransitionOPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
     t_TransitionOPlay21 --> PlaceO21
     t_TransitionOPlay21 --> PlaceXTurn
+    t_TransitionOPlay21 --> PlaceMoveTokens
 
     PlaceP22 --> t_TransitionOPlay22
     PlaceOTurn --> t_TransitionOPlay22
     t_TransitionOPlay22 --> PlaceO22
     t_TransitionOPlay22 --> PlaceXTurn
+    t_TransitionOPlay22 --> PlaceMoveTokens
 
     PlaceCanReset --> t_TransitionReset
     t_TransitionReset --> PlaceCanReset
@@ -769,6 +815,10 @@ flowchart TD
     t_TransitionOWinAnti --> PlaceO11
     t_TransitionOWinAnti --> PlaceO20
 
+    PlaceMoveTokens -->|9| t_TransitionDraw
+    PlaceGameActive --> t_TransitionDraw
+    t_TransitionDraw --> PlaceWinO
+
 
     style Places fill:#e1f5fe
     style Transitions fill:#fff3e0
@@ -800,6 +850,7 @@ Events are immutable records of state transitions. Each event captures the trans
 | `OWinCol2ed` | `o_win_col2` | `aggregate_id`, `timestamp` |
 | `OWinDiaged` | `o_win_diag` | `aggregate_id`, `timestamp` |
 | `OWinAntied` | `o_win_anti` | `aggregate_id`, `timestamp` |
+| `GameDraw` | `draw` | `aggregate_id`, `timestamp` |
 
 
 ```mermaid
@@ -932,6 +983,12 @@ classDiagram
     }
     Event <|-- OWinAntiedEvent
 
+    class GameDrawEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- GameDrawEvent
+
 ```
 
 
@@ -991,6 +1048,7 @@ classDiagram
 | POST | `/api/o_win_col2` | `o_win_col2` | O wins right column (0,2)-(1,2)-(2,2) |
 | POST | `/api/o_win_diag` | `o_win_diag` | O wins main diagonal (0,0)-(1,1)-(2,2) |
 | POST | `/api/o_win_anti` | `o_win_anti` | O wins anti-diagonal (0,2)-(1,1)-(2,0) |
+| POST | `/api/draw` | `draw` | Game ends in draw (all 9 moves played, no winner) |
 
 
 ### Request/Response Format

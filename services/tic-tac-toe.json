@@ -57,7 +57,8 @@
     {"id": "win_x", "initial": 0, "description": "X has won", "x": 1110, "y": 1200},
     {"id": "win_o", "initial": 0, "description": "O has won", "x": 610, "y": 1180},
     {"id": "can_reset", "initial": 1, "description": "Token enabling reset action", "x": 400, "y": 40},
-    {"id": "game_active", "initial": 1, "description": "Game is active (consumed on win to prevent repeated win detection)", "x": 850, "y": 800}
+    {"id": "game_active", "initial": 1, "description": "Game is active (consumed on win/draw to end game)", "x": 850, "y": 800},
+    {"id": "move_tokens", "initial": 0, "description": "Accumulates tokens as moves are played (for draw detection)", "x": 850, "y": 900}
   ],
   "transitions": [
     {"id": "x_play_00", "role": "x", "description": "X plays at (0,0)", "event": "XPlayed", "x": 1030, "y": 250},
@@ -94,98 +95,117 @@
     {"id": "o_win_col1", "role": "o", "description": "O wins center column (0,1)-(1,1)-(2,1)", "event": "OWon", "x": 600, "y": 970},
     {"id": "o_win_col2", "role": "o", "description": "O wins right column (0,2)-(1,2)-(2,2)", "event": "OWon", "x": 600, "y": 1050},
     {"id": "o_win_diag", "role": "o", "description": "O wins main diagonal (0,0)-(1,1)-(2,2)", "event": "OWon", "x": 520, "y": 890},
-    {"id": "o_win_anti", "role": "o", "description": "O wins anti-diagonal (0,2)-(1,1)-(2,0)", "event": "OWon", "x": 520, "y": 1050}
+    {"id": "o_win_anti", "role": "o", "description": "O wins anti-diagonal (0,2)-(1,1)-(2,0)", "event": "OWon", "x": 520, "y": 1050},
+    {"id": "draw", "description": "Game ends in draw (all 9 moves played, no winner)", "event": "GameDraw", "x": 850, "y": 1000}
   ],
   "arcs": [
     {"from": "p00", "to": "x_play_00"},
     {"from": "x_turn", "to": "x_play_00"},
     {"from": "x_play_00", "to": "x00"},
     {"from": "x_play_00", "to": "o_turn"},
+    {"from": "x_play_00", "to": "move_tokens"},
 
     {"from": "p01", "to": "x_play_01"},
     {"from": "x_turn", "to": "x_play_01"},
     {"from": "x_play_01", "to": "x01"},
     {"from": "x_play_01", "to": "o_turn"},
+    {"from": "x_play_01", "to": "move_tokens"},
 
     {"from": "p02", "to": "x_play_02"},
     {"from": "x_turn", "to": "x_play_02"},
     {"from": "x_play_02", "to": "x02"},
     {"from": "x_play_02", "to": "o_turn"},
+    {"from": "x_play_02", "to": "move_tokens"},
 
     {"from": "p10", "to": "x_play_10"},
     {"from": "x_turn", "to": "x_play_10"},
     {"from": "x_play_10", "to": "x10"},
     {"from": "x_play_10", "to": "o_turn"},
+    {"from": "x_play_10", "to": "move_tokens"},
 
     {"from": "p11", "to": "x_play_11"},
     {"from": "x_turn", "to": "x_play_11"},
     {"from": "x_play_11", "to": "x11"},
     {"from": "x_play_11", "to": "o_turn"},
+    {"from": "x_play_11", "to": "move_tokens"},
 
     {"from": "p12", "to": "x_play_12"},
     {"from": "x_turn", "to": "x_play_12"},
     {"from": "x_play_12", "to": "x12"},
     {"from": "x_play_12", "to": "o_turn"},
+    {"from": "x_play_12", "to": "move_tokens"},
 
     {"from": "p20", "to": "x_play_20"},
     {"from": "x_turn", "to": "x_play_20"},
     {"from": "x_play_20", "to": "x20"},
     {"from": "x_play_20", "to": "o_turn"},
+    {"from": "x_play_20", "to": "move_tokens"},
 
     {"from": "p21", "to": "x_play_21"},
     {"from": "x_turn", "to": "x_play_21"},
     {"from": "x_play_21", "to": "x21"},
     {"from": "x_play_21", "to": "o_turn"},
+    {"from": "x_play_21", "to": "move_tokens"},
 
     {"from": "p22", "to": "x_play_22"},
     {"from": "x_turn", "to": "x_play_22"},
     {"from": "x_play_22", "to": "x22"},
     {"from": "x_play_22", "to": "o_turn"},
+    {"from": "x_play_22", "to": "move_tokens"},
 
     {"from": "p00", "to": "o_play_00"},
     {"from": "o_turn", "to": "o_play_00"},
     {"from": "o_play_00", "to": "o00"},
     {"from": "o_play_00", "to": "x_turn"},
+    {"from": "o_play_00", "to": "move_tokens"},
 
     {"from": "p01", "to": "o_play_01"},
     {"from": "o_turn", "to": "o_play_01"},
     {"from": "o_play_01", "to": "o01"},
     {"from": "o_play_01", "to": "x_turn"},
+    {"from": "o_play_01", "to": "move_tokens"},
 
     {"from": "p02", "to": "o_play_02"},
     {"from": "o_turn", "to": "o_play_02"},
     {"from": "o_play_02", "to": "o02"},
     {"from": "o_play_02", "to": "x_turn"},
+    {"from": "o_play_02", "to": "move_tokens"},
 
     {"from": "p10", "to": "o_play_10"},
     {"from": "o_turn", "to": "o_play_10"},
     {"from": "o_play_10", "to": "o10"},
     {"from": "o_play_10", "to": "x_turn"},
+    {"from": "o_play_10", "to": "move_tokens"},
 
     {"from": "p11", "to": "o_play_11"},
     {"from": "o_turn", "to": "o_play_11"},
     {"from": "o_play_11", "to": "o11"},
     {"from": "o_play_11", "to": "x_turn"},
+    {"from": "o_play_11", "to": "move_tokens"},
 
     {"from": "p12", "to": "o_play_12"},
     {"from": "o_turn", "to": "o_play_12"},
     {"from": "o_play_12", "to": "o12"},
     {"from": "o_play_12", "to": "x_turn"},
+    {"from": "o_play_12", "to": "move_tokens"},
 
     {"from": "p20", "to": "o_play_20"},
     {"from": "o_turn", "to": "o_play_20"},
     {"from": "o_play_20", "to": "o20"},
     {"from": "o_play_20", "to": "x_turn"},
+    {"from": "o_play_20", "to": "move_tokens"},
 
     {"from": "p21", "to": "o_play_21"},
     {"from": "o_turn", "to": "o_play_21"},
     {"from": "o_play_21", "to": "o21"},
     {"from": "o_play_21", "to": "x_turn"},
+    {"from": "o_play_21", "to": "move_tokens"},
 
     {"from": "p22", "to": "o_play_22"},
     {"from": "o_turn", "to": "o_play_22"},
     {"from": "o_play_22", "to": "o22"},
     {"from": "o_play_22", "to": "x_turn"},
+    {"from": "o_play_22", "to": "move_tokens"},
 
     {"from": "x00", "to": "x_win_row0"},
     {"from": "x01", "to": "x_win_row0"},
@@ -347,6 +367,10 @@
     {"from": "o_win_anti", "to": "o11"},
     {"from": "o_win_anti", "to": "o20"},
 
+    {"from": "move_tokens", "to": "draw", "weight": 9},
+    {"from": "game_active", "to": "draw"},
+    {"from": "draw", "to": "win_o"},
+
     {"from": "can_reset", "to": "reset"},
     {"from": "reset", "to": "can_reset"}
   ],
@@ -373,6 +397,11 @@
       "id": "GameReset",
       "name": "GameReset",
       "description": "Game was reset to initial state"
+    },
+    {
+      "id": "GameDraw",
+      "name": "GameDraw",
+      "description": "Game ended in a draw (all 9 moves played, no winner)"
     }
   ],
   "simulation": {

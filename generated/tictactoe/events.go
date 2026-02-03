@@ -239,3 +239,15 @@ func (e OWinAntiedEvent) EventType() string {
 }
 
 
+// GameDrawEvent is emitted when the draw transition fires.
+type GameDrawEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e GameDrawEvent) EventType() string {
+	return "GameDraw"
+}
+
+
