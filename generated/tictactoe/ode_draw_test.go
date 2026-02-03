@@ -697,127 +697,151 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 	t.Logf("  win_x: %.6f, win_o: %.6f, move_tokens: %.6f",
 		finalDraw["win_x"], finalDraw["win_o"], finalDraw["move_tokens"])
 
-	// Now compare hypothetical moves: O blocks vs O plays corner
+	// Now compare hypothetical moves: O blocks vs O plays each corner
 	t.Log("")
-	t.Log("=== COMPARING OUTCOMES: O blocks vs O plays corner ===")
+	t.Log("=== COMPARING OUTCOMES: O blocks vs ALL corners ===")
 
-	// Scenario A: O blocks at (0,1) - with draw detection
-	netBlockDraw := buildTicTacToeNetWithDraw()
-	stateBlock := netBlockDraw.SetState(map[string]float64{
-		"p00": 1.0, "p01": 0.0, "p02": 1.0,
-		"p10": 0.0, "p11": 0.0, "p12": 1.0,
-		"p20": 1.0, "p21": 0.0, "p22": 1.0,
-		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0, "o01": 1.0, // O blocked!
-		"x_turn": 1.0, "o_turn": 0.0,
-		"game_active": 1.0,
-		"move_tokens": 4.0, // 4 moves now
-	})
-	ratesBlock := netBlockDraw.SetRates(nil)
-	probBlock := solver.NewProblem(netBlockDraw, stateBlock, tspan, ratesBlock)
-	solBlock := solver.Solve(probBlock, solver.Tsit5(), solver.JSParityOptions())
-	finalBlock := solBlock.GetFinalState()
+	// Helper to evaluate a move
+	evaluateMoveDraw := func(oPlace string) float64 {
+		net := buildTicTacToeNetWithDraw()
+		state := map[string]float64{
+			"p00": 1.0, "p01": 1.0, "p02": 1.0,
+			"p10": 0.0, "p11": 0.0, "p12": 1.0,
+			"p20": 1.0, "p21": 0.0, "p22": 1.0,
+			"x11": 1.0, "x21": 1.0,
+			"o10": 1.0,
+			"x_turn": 1.0, "o_turn": 0.0,
+			"game_active": 1.0,
+			"move_tokens": 4.0,
+		}
+		// Apply O's move
+		state[oPlace] = 1.0
+		// Mark the cell as taken
+		cellPlace := "p" + oPlace[1:]
+		state[cellPlace] = 0.0
 
-	// Scenario B: O plays corner (0,0) instead - with draw detection
-	netCornerDraw := buildTicTacToeNetWithDraw()
-	stateCorner := netCornerDraw.SetState(map[string]float64{
-		"p00": 0.0, "p01": 1.0, "p02": 1.0, // (0,1) still open!
-		"p10": 0.0, "p11": 0.0, "p12": 1.0,
-		"p20": 1.0, "p21": 0.0, "p22": 1.0,
-		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0, "o00": 1.0, // O played corner
-		"x_turn": 1.0, "o_turn": 0.0,
-		"game_active": 1.0,
-		"move_tokens": 4.0,
-	})
-	ratesCorner := netCornerDraw.SetRates(nil)
-	probCorner := solver.NewProblem(netCornerDraw, stateCorner, tspan, ratesCorner)
-	solCorner := solver.Solve(probCorner, solver.Tsit5(), solver.JSParityOptions())
-	finalCorner := solCorner.GetFinalState()
+		prob := solver.NewProblem(net, net.SetState(state), tspan, net.SetRates(nil))
+		sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
+		final := sol.GetFinalState()
+		return final["win_o"] - final["win_x"]
+	}
 
-	// O's score = win_o - win_x (higher is better for O)
-	scoreBlock := finalBlock["win_o"] - finalBlock["win_x"]
-	scoreCorner := finalCorner["win_o"] - finalCorner["win_x"]
+	evaluateMoveOrig := func(oPlace string) float64 {
+		net := buildTicTacToeNet()
+		state := map[string]float64{
+			"p00": 1.0, "p01": 1.0, "p02": 1.0,
+			"p10": 0.0, "p11": 0.0, "p12": 1.0,
+			"p20": 1.0, "p21": 0.0, "p22": 1.0,
+			"x11": 1.0, "x21": 1.0,
+			"o10": 1.0,
+			"x_turn": 1.0, "o_turn": 0.0,
+			"game_active": 1.0,
+		}
+		// Apply O's move
+		state[oPlace] = 1.0
+		// Mark the cell as taken
+		cellPlace := "p" + oPlace[1:]
+		state[cellPlace] = 0.0
+
+		prob := solver.NewProblem(net, net.SetState(state), tspan, net.SetRates(nil))
+		sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
+		final := sol.GetFinalState()
+		return final["win_o"] - final["win_x"]
+	}
+
+	// All available moves for O
+	moves := []struct {
+		place string
+		name  string
+		isBlock bool
+	}{
+		{"o01", "(0,1) BLOCK", true},
+		{"o00", "(0,0) corner", false},
+		{"o02", "(0,2) corner", false},
+		{"o20", "(2,0) corner", false},
+		{"o22", "(2,2) corner", false},
+		{"o12", "(1,2) edge", false},
+	}
 
 	t.Log("With DRAW detection:")
-	t.Logf("  O blocks (0,1):  win_o=%.4f, win_x=%.4f, score=%.4f",
-		finalBlock["win_o"], finalBlock["win_x"], scoreBlock)
-	t.Logf("  O corner (0,0):  win_o=%.4f, win_x=%.4f, score=%.4f",
-		finalCorner["win_o"], finalCorner["win_x"], scoreCorner)
+	var blockScoreDraw float64
+	var bestCornerScoreDraw float64
+	var bestCornerNameDraw string
+	scoresDraw := make(map[string]float64)
 
-	// Same comparison WITHOUT draw detection
-	netBlockOrig := buildTicTacToeNet()
-	stateBlockOrig := netBlockOrig.SetState(map[string]float64{
-		"p00": 1.0, "p01": 0.0, "p02": 1.0,
-		"p10": 0.0, "p11": 0.0, "p12": 1.0,
-		"p20": 1.0, "p21": 0.0, "p22": 1.0,
-		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0, "o01": 1.0,
-		"x_turn": 1.0, "o_turn": 0.0,
-		"game_active": 1.0,
-	})
-	probBlockOrig := solver.NewProblem(netBlockOrig, stateBlockOrig, tspan, netBlockOrig.SetRates(nil))
-	solBlockOrig := solver.Solve(probBlockOrig, solver.Tsit5(), solver.JSParityOptions())
-	finalBlockOrig := solBlockOrig.GetFinalState()
-
-	netCornerOrig := buildTicTacToeNet()
-	stateCornerOrig := netCornerOrig.SetState(map[string]float64{
-		"p00": 0.0, "p01": 1.0, "p02": 1.0,
-		"p10": 0.0, "p11": 0.0, "p12": 1.0,
-		"p20": 1.0, "p21": 0.0, "p22": 1.0,
-		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0, "o00": 1.0,
-		"x_turn": 1.0, "o_turn": 0.0,
-		"game_active": 1.0,
-	})
-	probCornerOrig := solver.NewProblem(netCornerOrig, stateCornerOrig, tspan, netCornerOrig.SetRates(nil))
-	solCornerOrig := solver.Solve(probCornerOrig, solver.Tsit5(), solver.JSParityOptions())
-	finalCornerOrig := solCornerOrig.GetFinalState()
-
-	scoreBlockOrig := finalBlockOrig["win_o"] - finalBlockOrig["win_x"]
-	scoreCornerOrig := finalCornerOrig["win_o"] - finalCornerOrig["win_x"]
+	for _, m := range moves {
+		score := evaluateMoveDraw(m.place)
+		scoresDraw[m.place] = score
+		marker := ""
+		if m.isBlock {
+			blockScoreDraw = score
+			marker = " <-- MUST BLOCK"
+		} else if m.place[1] == '0' || m.place[1] == '2' { // corners
+			if score > bestCornerScoreDraw {
+				bestCornerScoreDraw = score
+				bestCornerNameDraw = m.name
+			}
+		}
+		t.Logf("  O plays %s: score=%.4f%s", m.name, score, marker)
+	}
 
 	t.Log("")
 	t.Log("WITHOUT draw detection (original):")
-	t.Logf("  O blocks (0,1):  win_o=%.4f, win_x=%.4f, score=%.4f",
-		finalBlockOrig["win_o"], finalBlockOrig["win_x"], scoreBlockOrig)
-	t.Logf("  O corner (0,0):  win_o=%.4f, win_x=%.4f, score=%.4f",
-		finalCornerOrig["win_o"], finalCornerOrig["win_x"], scoreCornerOrig)
+	var blockScoreOrig float64
+	var bestCornerScoreOrig float64
+	var bestCornerNameOrig string
+
+	for _, m := range moves {
+		score := evaluateMoveOrig(m.place)
+		marker := ""
+		if m.isBlock {
+			blockScoreOrig = score
+			marker = " <-- MUST BLOCK"
+		} else if m.place[1] == '0' || m.place[1] == '2' { // corners
+			if score > bestCornerScoreOrig {
+				bestCornerScoreOrig = score
+				bestCornerNameOrig = m.name
+			}
+		}
+		t.Logf("  O plays %s: score=%.4f%s", m.name, score, marker)
+	}
 
 	// Analysis
 	t.Log("")
 	t.Log("=== ANALYSIS ===")
 
-	blockBetterDraw := scoreBlock > scoreCorner
-	blockBetterOrig := scoreBlockOrig > scoreCornerOrig
+	t.Logf("With draw detection:")
+	t.Logf("  Block score: %.4f", blockScoreDraw)
+	t.Logf("  Best corner: %s = %.4f", bestCornerNameDraw, bestCornerScoreDraw)
+	t.Logf("  Block vs best corner margin: %.4f", blockScoreDraw-bestCornerScoreDraw)
 
-	t.Logf("With draw detection:    blocking is %s (%.4f vs %.4f)",
-		boolToPreference(blockBetterDraw), scoreBlock, scoreCorner)
-	t.Logf("Without draw detection: blocking is %s (%.4f vs %.4f)",
-		boolToPreference(blockBetterOrig), scoreBlockOrig, scoreCornerOrig)
+	t.Log("")
+	t.Logf("Without draw detection:")
+	t.Logf("  Block score: %.4f", blockScoreOrig)
+	t.Logf("  Best corner: %s = %.4f", bestCornerNameOrig, bestCornerScoreOrig)
+	t.Logf("  Block vs best corner margin: %.4f", blockScoreOrig-bestCornerScoreOrig)
 
-	// Margin improvement
-	marginDraw := scoreBlock - scoreCorner
-	marginOrig := scoreBlockOrig - scoreCornerOrig
+	blockBetterDraw := blockScoreDraw > bestCornerScoreDraw
+	blockBetterOrig := blockScoreOrig > bestCornerScoreOrig
 
-	t.Logf("Blocking advantage margin: draw=%.4f, orig=%.4f", marginDraw, marginOrig)
+	t.Log("")
+	t.Logf("With draw detection:    blocking is %s", boolToPreference(blockBetterDraw))
+	t.Logf("Without draw detection: blocking is %s", boolToPreference(blockBetterOrig))
 
 	if blockBetterDraw && !blockBetterOrig {
 		t.Log("")
 		t.Log("SUCCESS: Draw detection FIXES the blocking bug!")
-		t.Log("Blocking move now has higher score than corner move.")
+		t.Log("Blocking move now has higher score than ALL corners.")
 	} else if blockBetterDraw && blockBetterOrig {
 		t.Log("")
-		t.Log("Both models prefer blocking (good)")
-		if marginDraw > marginOrig {
-			t.Log("Draw detection IMPROVES blocking preference margin")
-		}
+		t.Log("Both models prefer blocking over all corners (good)")
 	} else if !blockBetterDraw && blockBetterOrig {
 		t.Log("")
 		t.Log("WARNING: Draw detection WORSENED blocking preference!")
 	} else {
 		t.Log("")
-		t.Log("Neither model prefers blocking - tactical adjustment still needed")
+		t.Logf("Neither model prefers blocking over best corner (%s)", bestCornerNameDraw)
+		t.Log("Tactical adjustment may still be needed for edge cases")
 	}
 }
 

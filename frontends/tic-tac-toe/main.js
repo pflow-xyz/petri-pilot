@@ -112,6 +112,21 @@ function schemaToODEModel(schema, board, currentPlayer, hypRow, hypCol) {
       initial = 0
     }
 
+    // move_tokens: count current moves + 1 for hypothetical move
+    if (place.id === 'move_tokens') {
+      let moveCount = 0
+      if (board) {
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (board[r][c] !== '') moveCount++
+          }
+        }
+      }
+      // Add 1 for the hypothetical move being evaluated
+      if (hypRow !== null && hypCol !== null) moveCount++
+      initial = moveCount
+    }
+
     places[place.id] = {
       '@type': 'Place',
       initial: [initial],
