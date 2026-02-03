@@ -345,7 +345,7 @@
     {"from": "o_win_anti", "to": "win_o"},
     {"from": "o_win_anti", "to": "o02"},
     {"from": "o_win_anti", "to": "o11"},
-    {"from": "o_win_anti", "to": "o20"}
+    {"from": "o_win_anti", "to": "o20"},
 
     {"from": "can_reset", "to": "reset"},
     {"from": "reset", "to": "can_reset"}
