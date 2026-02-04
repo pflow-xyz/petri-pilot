@@ -129,12 +129,16 @@ func List() []string {
 	return names
 }
 
+// RouteRegistrar is a function that registers custom routes on a mux.
+type RouteRegistrar func(mux *http.ServeMux)
+
 // Options configures service startup.
 type Options struct {
-	Port         int
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
+	Port           int
+	ReadTimeout    time.Duration
+	WriteTimeout   time.Duration
+	IdleTimeout    time.Duration
+	CustomRoutes   RouteRegistrar // Optional function to register custom routes
 }
 
 // DefaultOptions returns sensible default options.
@@ -215,6 +219,11 @@ func RunMultiple(names []string, opts Options) error {
 
 	// Register auth routes
 	authHandler.RegisterRoutes(mux)
+
+	// Register custom routes if provided
+	if opts.CustomRoutes != nil {
+		opts.CustomRoutes(mux)
+	}
 
 	// Shared health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
