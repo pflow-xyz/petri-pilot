@@ -65,6 +65,21 @@ type Field struct {
 	Validation string `json:"validation,omitempty"`
 }
 
+// UnmarshalJSON handles Field where Gemini may use "name" instead of "id".
+func (f *Field) UnmarshalJSON(data []byte) error {
+	type Alias Field
+	var a Alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*f = Field(a)
+	// If id is empty but name is set, use name as id
+	if f.ID == "" && f.Name != "" {
+		f.ID = f.Name
+	}
+	return nil
+}
+
 // FieldType represents the type of a field.
 type FieldType string
 
@@ -87,6 +102,7 @@ type FieldReference struct {
 }
 
 // EntityState represents a lifecycle state.
+// Supports unmarshaling from either a string ("active") or an object ({"id": "active", ...}).
 type EntityState struct {
 	ID          string `json:"id"`
 	Name        string `json:"name,omitempty"`
@@ -95,7 +111,26 @@ type EntityState struct {
 	Terminal    bool   `json:"terminal,omitempty"`
 }
 
+// UnmarshalJSON handles both string and object formats for EntityState.
+func (s *EntityState) UnmarshalJSON(data []byte) error {
+	// Try string format first: "active"
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		s.ID = str
+		return nil
+	}
+	// Object format: {"id": "active", ...}
+	type Alias EntityState
+	var a Alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*s = EntityState(a)
+	return nil
+}
+
 // EntityAction represents an operation on an entity.
+// Supports unmarshaling from either a string ("create") or an object ({"id": "create", ...}).
 type EntityAction struct {
 	ID          string `json:"id"`
 	Name        string `json:"name,omitempty"`
@@ -122,6 +157,24 @@ type EntityAction struct {
 
 	// HTTP defines the API endpoint.
 	HTTP *HTTPEndpoint `json:"http,omitempty"`
+}
+
+// UnmarshalJSON handles both string and object formats for EntityAction.
+func (a *EntityAction) UnmarshalJSON(data []byte) error {
+	// Try string format first: "create_task"
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		a.ID = str
+		return nil
+	}
+	// Object format: {"id": "create_task", ...}
+	type Alias EntityAction
+	var alias Alias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*a = EntityAction(alias)
+	return nil
 }
 
 // ActionParam defines an input parameter for an action.
