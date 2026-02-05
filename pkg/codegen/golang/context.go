@@ -1291,8 +1291,10 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
 	// Note: Data state places are excluded from token counting - guards handle those
 	// Inhibitor arcs are included in inputs but marked with IsInhibitor=true
-	inputArcs := make(map[string][]ArcContext)
-	outputArcs := make(map[string][]ArcContext)
+	// Use nested maps keyed by transition ID → place ID to deduplicate arcs.
+	// Duplicate arcs accumulate weights (two weight-1 arcs = one weight-2 arc).
+	inputArcMap := make(map[string]map[string]ArcContext)  // transition → place → arc
+	outputArcMap := make(map[string]map[string]ArcContext) // transition → place → arc
 
 	for _, arc := range arcs {
 		weight := arc.Weight
@@ -1304,12 +1306,20 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 		// it's an input to a transition
 		// Skip data state places - they don't use token counting
 		if placeIDs[arc.From] && !placeIDs[arc.To] && !dataPlaceIDs[arc.From] {
-			inputArcs[arc.To] = append(inputArcs[arc.To], ArcContext{
-				PlaceID:     arc.From,
-				ConstName:   ToConstName("Place", arc.From),
-				Weight:      weight,
-				IsInhibitor: arc.IsInhibitor(),
-			})
+			if inputArcMap[arc.To] == nil {
+				inputArcMap[arc.To] = make(map[string]ArcContext)
+			}
+			if existing, ok := inputArcMap[arc.To][arc.From]; ok {
+				existing.Weight += weight
+				inputArcMap[arc.To][arc.From] = existing
+			} else {
+				inputArcMap[arc.To][arc.From] = ArcContext{
+					PlaceID:     arc.From,
+					ConstName:   ToConstName("Place", arc.From),
+					Weight:      weight,
+					IsInhibitor: arc.IsInhibitor(),
+				}
+			}
 		}
 
 		// If arc goes from something that's not a place to a place,
@@ -1317,12 +1327,34 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 		// Skip data state places - they don't use token counting
 		// Note: Inhibitor arcs don't have outputs (they're read-only)
 		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] && !arc.IsInhibitor() {
-			outputArcs[arc.From] = append(outputArcs[arc.From], ArcContext{
-				PlaceID:     arc.To,
-				ConstName:   ToConstName("Place", arc.To),
-				Weight:      weight,
-				IsInhibitor: false,
-			})
+			if outputArcMap[arc.From] == nil {
+				outputArcMap[arc.From] = make(map[string]ArcContext)
+			}
+			if existing, ok := outputArcMap[arc.From][arc.To]; ok {
+				existing.Weight += weight
+				outputArcMap[arc.From][arc.To] = existing
+			} else {
+				outputArcMap[arc.From][arc.To] = ArcContext{
+					PlaceID:     arc.To,
+					ConstName:   ToConstName("Place", arc.To),
+					Weight:      weight,
+					IsInhibitor: false,
+				}
+			}
+		}
+	}
+
+	// Flatten deduped maps into slices
+	inputArcs := make(map[string][]ArcContext)
+	for transID, placeMap := range inputArcMap {
+		for _, ac := range placeMap {
+			inputArcs[transID] = append(inputArcs[transID], ac)
+		}
+	}
+	outputArcs := make(map[string][]ArcContext)
+	for transID, placeMap := range outputArcMap {
+		for _, ac := range placeMap {
+			outputArcs[transID] = append(outputArcs[transID], ac)
 		}
 	}
 
