@@ -233,3 +233,63 @@ POST /zk/replay              - Verify entire game history (state chain)
 | `zk-tictactoe/integration.go` | HTTP endpoints |
 | `zk-tictactoe/zkservice.go` | Service wrapper for registration |
 | `frontends/tic-tac-toe/zk.js` | Frontend ZK client module |
+
+---
+
+## Entity-Based Code Generation ✅
+
+Completed in commit `add4864`.
+
+### Implementation
+
+#### 1. EntityFieldContext and EventDataContext (context.go)
+- Added `EntityFieldContext` struct for entity domain fields
+- Added `EventDataContext` and `EventDataFieldContext` structs for typed event data
+- Added `buildEntityFieldContexts()` function to extract fields from entities extension
+- Added `buildEventDataContexts()` function to create typed event data for transitions
+- Added `EventDataForTransition()` and `HasEventData()` helper methods
+- Added `EventData *EventDataContext` field to `TransitionContext`
+- Updated `NewContextFromApp()` to populate EventData on transitions
+
+#### 2. aggregate.tmpl Updates
+- State struct now includes EntityFields from entity definitions
+- Added EventData struct generation after NewState() function:
+  ```go
+  // SaveBookmarkData holds the input data for the save_bookmark transition.
+  type SaveBookmarkData struct {
+      Url   string `json:"url"`
+      Title string `json:"title,omitempty"`
+      Tags  string `json:"tags,omitempty"`
+  }
+  ```
+- Updated apply functions to use typed EventData when available:
+  ```go
+  func applySaveBookmark(state *State, event *eventsource.Event) error {
+      var data SaveBookmarkData
+      if err := json.Unmarshal(event.Data, &data); err != nil {
+          return fmt.Errorf("unmarshaling event data: %w", err)
+      }
+      state.Url = data.Url
+      state.Title = data.Title
+      state.Tags = data.Tags
+      return nil
+  }
+  ```
+
+#### 3. Verified Working ✅
+- All petri-pilot tests pass
+- All pflow-pilot tests pass
+- Generated bookmark-manager app compiles and includes:
+  - State struct with entity fields (Url, Title, Tags, Notes)
+  - Typed EventData structs (SaveBookmarkData, EditBookmarkData, DeleteBookmarkData)
+  - Apply functions that unmarshal into typed structs and copy to state
+
+### Future Improvements
+- API routes could be more RESTful (POST /bookmarks instead of POST /save_bookmark)
+- Could add validation logic in apply functions for required fields
+- Consider generating OpenAPI/Swagger documentation
+
+### Files Modified
+- `pkg/codegen/golang/context.go` - Added EntityFieldContext, EventDataContext, helper methods
+- `pkg/codegen/golang/templates/aggregate.tmpl` - Added EventData structs and typed apply functions
+- `pkg/codegen/zkgo/generator_test.go` - Updated test counts for tic-tac-toe model
