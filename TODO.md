@@ -284,10 +284,13 @@ Completed in commit `add4864`.
   - Typed EventData structs (SaveBookmarkData, EditBookmarkData, DeleteBookmarkData)
   - Apply functions that unmarshal into typed structs and copy to state
 
-### Future Improvements
-- API routes could be more RESTful (POST /bookmarks instead of POST /save_bookmark)
-- Could add validation logic in apply functions for required fields
-- Consider generating OpenAPI/Swagger documentation
+### API Enhancements ✅
+
+Completed in commit `218c474`.
+
+- **RESTful API aliases**: POST /api/bookmarks, PUT /api/bookmarks/{id}, DELETE /api/bookmarks/{id}
+- **Required field validation**: Apply functions validate required fields before copying to state
+- **Typed OpenAPI schemas**: EventData schemas with required markers, entity fields in State schema
 
 ### Files Modified
 - `pkg/codegen/golang/context.go` - Added EntityFieldContext, EventDataContext, helper methods
