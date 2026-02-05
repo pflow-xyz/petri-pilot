@@ -35,6 +35,7 @@ type Context struct {
 	// Entity domain fields (from petri-pilot/entities extension)
 	EntityFields []EntityFieldContext
 	EventData    []EventDataContext
+	EntityRoutes []EntityRouteContext
 
 	// ORM-specific data (for models with DataState places)
 	Collections []CollectionContext
@@ -633,6 +634,24 @@ type EventDataFieldContext struct {
 	Required  bool   // Whether this field is required
 }
 
+// EntityRouteContext provides RESTful route aliases for entities.
+// Maps CRUD operations to the appropriate transition handlers.
+type EntityRouteContext struct {
+	EntityID        string // Entity ID (e.g., "bookmark")
+	EntityName      string // Display name (e.g., "Bookmark")
+	PluralName      string // Plural name for routes (e.g., "bookmarks")
+	BasePath        string // RESTful base path (e.g., "/api/bookmarks")
+	CreateHandler   string // Handler name for POST (create)
+	CreateTransition string // Transition ID for create
+	UpdateHandler   string // Handler name for PUT (update)
+	UpdateTransition string // Transition ID for update
+	DeleteHandler   string // Handler name for DELETE
+	DeleteTransition string // Transition ID for delete
+	HasCreate       bool   // True if create transition exists
+	HasUpdate       bool   // True if update transition exists
+	HasDelete       bool   // True if delete transition exists
+}
+
 // CollectionContext provides template-friendly access to DataState collections.
 type CollectionContext struct {
 	PlaceID       string // Original place ID
@@ -830,6 +849,7 @@ func NewContextFromApp(app *extensions.ApplicationSpec, opts ContextOptions) (*C
 		ctx.AccessRules = buildAccessRuleContextsFromEntities(entitiesExt)
 		ctx.EntityFields = buildEntityFieldContexts(entitiesExt)
 		ctx.EventData = buildEventDataContexts(entitiesExt, ctx.Transitions)
+		ctx.EntityRoutes = buildEntityRouteContexts(entitiesExt, ctx.Transitions)
 		// Re-populate EventData on transitions after setting ctx.EventData
 		for i := range ctx.Transitions {
 			ctx.Transitions[i].EventData = ctx.EventDataForTransition(ctx.Transitions[i].ID)
@@ -975,6 +995,58 @@ func buildEventDataContexts(ext *extensions.EntityExtension, transitions []Trans
 			StructName:   trans.FuncName + "Data",
 			Fields:       eventFields,
 		})
+	}
+
+	return result
+}
+
+// buildEntityRouteContexts creates RESTful route aliases for entities.
+// Maps CRUD operations like POST /api/bookmarks to the appropriate transition handlers.
+func buildEntityRouteContexts(ext *extensions.EntityExtension, transitions []TransitionContext) []EntityRouteContext {
+	var result []EntityRouteContext
+
+	// Build a map of transition IDs to their handler names
+	transitionHandlers := make(map[string]string)
+	for _, t := range transitions {
+		transitionHandlers[t.ID] = t.HandlerName
+	}
+
+	for _, entity := range ext.Entities {
+		route := EntityRouteContext{
+			EntityID:   entity.ID,
+			EntityName: entity.Name,
+			PluralName: entity.ID + "s", // Simple pluralization
+			BasePath:   "/api/" + entity.ID + "s",
+		}
+
+		// Find CRUD transitions for this entity
+		for _, action := range entity.Actions {
+			handler := transitionHandlers[action.ID]
+			if handler == "" {
+				continue
+			}
+
+			// Match common CRUD patterns
+			actionLower := strings.ToLower(action.ID)
+			if strings.HasPrefix(actionLower, "save_") || strings.HasPrefix(actionLower, "create_") || strings.HasPrefix(actionLower, "add_") {
+				route.CreateHandler = handler
+				route.CreateTransition = action.ID
+				route.HasCreate = true
+			} else if strings.HasPrefix(actionLower, "edit_") || strings.HasPrefix(actionLower, "update_") || strings.HasPrefix(actionLower, "modify_") {
+				route.UpdateHandler = handler
+				route.UpdateTransition = action.ID
+				route.HasUpdate = true
+			} else if strings.HasPrefix(actionLower, "delete_") || strings.HasPrefix(actionLower, "remove_") {
+				route.DeleteHandler = handler
+				route.DeleteTransition = action.ID
+				route.HasDelete = true
+			}
+		}
+
+		// Only add if at least one CRUD operation was found
+		if route.HasCreate || route.HasUpdate || route.HasDelete {
+			result = append(result, route)
+		}
 	}
 
 	return result
@@ -1810,6 +1882,11 @@ func (c *Context) HasWebhooks() bool {
 // HasViews returns true if the context has any views defined.
 func (c *Context) HasViews() bool {
 	return len(c.Views) > 0
+}
+
+// HasEntityRoutes returns true if RESTful entity routes are available.
+func (c *Context) HasEntityRoutes() bool {
+	return len(c.EntityRoutes) > 0
 }
 
 // buildNavigationContext converts metamodel.Navigation to NavigationContext.

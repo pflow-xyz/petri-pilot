@@ -193,7 +193,20 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.Transition("{{.TransitionID}}", "{{.Path}}", "{{.Description}}", {{.HandlerName}}(app))
 	{{- end}}
 {{- end}}
-
+{{if .HasEntityRoutes}}
+	// RESTful entity routes (aliases for transitions)
+{{- range .EntityRoutes}}
+{{- if .HasCreate}}
+	r.POST("{{.BasePath}}", "Create {{.EntityName}}", {{.CreateHandler}}(app))
+{{- end}}
+{{- if .HasUpdate}}
+	r.Handle("PUT", "{{.BasePath}}/{id}", "Update {{.EntityName}}", {{.UpdateHandler}}(app))
+{{- end}}
+{{- if .HasDelete}}
+	r.Handle("DELETE", "{{.BasePath}}/{id}", "Delete {{.EntityName}}", {{.DeleteHandler}}(app))
+{{- end}}
+{{- end}}
+{{end}}
 	// Serve frontend static files
 	r.StaticFiles("/", StaticFileHandler())
 

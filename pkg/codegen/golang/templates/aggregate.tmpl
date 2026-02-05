@@ -313,6 +313,17 @@ func apply{{.FuncName}}(state *State, event *eventsource.Event) error {
 		return fmt.Errorf("unmarshaling event data: %w", err)
 	}
 
+	// Validate required fields
+{{- range .EventData.Fields}}
+{{- if .Required}}
+{{- if eq .Type "string"}}
+	if data.{{.FieldName}} == "" {
+		return fmt.Errorf("{{.JSONName}} is required")
+	}
+{{- end}}
+{{- end}}
+{{- end}}
+
 	// Copy fields to state
 {{- range .EventData.Fields}}
 	state.{{.FieldName}} = data.{{.FieldName}}

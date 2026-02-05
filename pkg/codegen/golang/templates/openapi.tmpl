@@ -87,7 +87,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/{{pascal .TransitionID}}Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -108,6 +108,107 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 {{end}}
+{{- /* RESTful entity routes */}}
+{{- range .EntityRoutes}}
+{{- if .HasCreate}}
+
+  {{.BasePath}}:
+    post:
+      summary: "Create {{.EntityName}}"
+      operationId: create{{pascal .EntityID}}
+      tags:
+        - {{.PluralName}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/{{pascal .CreateTransition}}Request"
+      responses:
+        "200":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+{{- end}}
+{{- if or .HasUpdate .HasDelete}}
+
+  {{.BasePath}}/{id}:
+{{- if .HasUpdate}}
+    put:
+      summary: "Update {{.EntityName}}"
+      operationId: update{{pascal .EntityID}}
+      tags:
+        - {{.PluralName}}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/{{pascal .UpdateTransition}}Request"
+      responses:
+        "200":
+          description: Updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+{{- end}}
+{{- if .HasDelete}}
+    delete:
+      summary: "Delete {{.EntityName}}"
+      operationId: delete{{pascal .EntityID}}
+      tags:
+        - {{.PluralName}}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/{{pascal .DeleteTransition}}Request"
+      responses:
+        "200":
+          description: Deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+{{- end}}
+{{- end}}
+{{- end}}
 
 components:
   schemas:
@@ -163,9 +264,60 @@ components:
       type: object
       description: Aggregate state for {{.ModelName}}
       properties:
+{{- range .EntityFields}}
+        {{.JSONName}}:
+          type: {{if eq .Type "int"}}integer{{else if eq .Type "int64"}}integer{{else if eq .Type "bool"}}boolean{{else if eq .Type "float64"}}number{{else if eq .Type "time.Time"}}string{{else}}string{{end}}{{if eq .Type "time.Time"}}
+          format: date-time{{end}}
+          description: "{{if .Description}}{{.Description}}{{else}}{{.FieldName}} field{{end}}"
+{{- end}}
 {{- range .StateFields}}
         {{.JSONName}}:
           type: {{if eq .Type "int"}}integer{{else if eq .Type "bool"}}boolean{{else if eq .Type "float64"}}number{{else}}string{{end}}
+{{- end}}
+{{- range .EventData}}
+
+    {{.StructName}}:
+      type: object
+      description: Input data for {{.TransitionID}} transition
+{{- $hasRequired := false}}
+{{- range .Fields}}{{if .Required}}{{$hasRequired = true}}{{end}}{{end}}
+{{- if $hasRequired}}
+      required:
+{{- range .Fields}}
+{{- if .Required}}
+        - {{.JSONName}}
+{{- end}}
+{{- end}}
+{{- end}}
+      properties:
+{{- range .Fields}}
+        {{.JSONName}}:
+          type: {{if eq .Type "int"}}integer{{else if eq .Type "int64"}}integer{{else if eq .Type "bool"}}boolean{{else if eq .Type "float64"}}number{{else if eq .Type "time.Time"}}string{{else}}string{{end}}{{if eq .Type "time.Time"}}
+          format: date-time{{end}}
+{{- end}}
+{{- end}}
+
+{{- /* Generate typed request schemas for each route */}}
+{{- range .Routes}}
+
+    {{pascal .TransitionID}}Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+{{- $eventData := $.EventDataForTransition .TransitionID}}
+{{- if $eventData}}
+        data:
+          $ref: "#/components/schemas/{{$eventData.StructName}}"
+{{- else}}
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+{{- end}}
 {{- end}}
 
     ErrorResponse:
