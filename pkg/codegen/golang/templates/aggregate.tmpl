@@ -24,6 +24,11 @@ type State struct {
 	StartedAt time.Time `json:"started_at"`
 	Priority  string    `json:"priority,omitempty"`
 {{- end}}
+{{- /* Domain fields from entity definitions */}}
+{{- range .EntityFields}}
+	{{.FieldName}} {{.Type}} `json:"{{.JSONName}},omitempty"`{{if .Description}} // {{.Description}}{{end}}
+{{- end}}
+{{- /* Token count fields from Petri net places */}}
 {{- range .StateFields}}
 {{- if .IsToken}}
 	{{.FieldName}} {{.Type}} `json:"{{.JSONName}}"`
@@ -44,6 +49,16 @@ func NewState() State {
 {{- end}}
 	}
 }
+{{- /* EventData structs for typed transition input data */}}
+{{- range .EventData}}
+
+// {{.StructName}} holds the input data for the {{.TransitionID}} transition.
+type {{.StructName}} struct {
+{{- range .Fields}}
+	{{.FieldName}} {{.Type}} `json:"{{.JSONName}}{{if not .Required}},omitempty{{end}}"`
+{{- end}}
+}
+{{- end}}
 
 {{- if .UsesMetamodelRuntime}}
 
@@ -290,6 +305,17 @@ func apply{{.FuncName}}(state *State, event *eventsource.Event) error {
 	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] = {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- end}}
 {{- end}}
+{{- end}}
+{{- else if .EventData}}
+	// Unmarshal event data into typed struct
+	var data {{.EventData.StructName}}
+	if err := json.Unmarshal(event.Data, &data); err != nil {
+		return fmt.Errorf("unmarshaling event data: %w", err)
+	}
+
+	// Copy fields to state
+{{- range .EventData.Fields}}
+	state.{{.FieldName}} = data.{{.FieldName}}
 {{- end}}
 {{- else}}
 	// No data transformations for this transition

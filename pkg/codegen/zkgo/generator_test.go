@@ -67,11 +67,11 @@ func TestGenerator_TicTacToe(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(stateContent, "NumPlaces = 33") {
-		t.Error("state.go should have 33 places")
+	if !strings.Contains(stateContent, "NumPlaces = 34") {
+		t.Error("state.go should have 34 places")
 	}
-	if !strings.Contains(stateContent, "NumTransitions = 35") {
-		t.Error("state.go should have 35 transitions")
+	if !strings.Contains(stateContent, "NumTransitions = 36") {
+		t.Error("state.go should have 36 transitions")
 	}
 }
 
@@ -94,11 +94,11 @@ func TestContext_BuildsCorrectly(t *testing.T) {
 	}
 
 	// Verify counts
-	if ctx.NumPlaces != 33 {
-		t.Errorf("expected 33 places, got %d", ctx.NumPlaces)
+	if ctx.NumPlaces != 34 {
+		t.Errorf("expected 34 places, got %d", ctx.NumPlaces)
 	}
-	if ctx.NumTransitions != 35 {
-		t.Errorf("expected 35 transitions, got %d", ctx.NumTransitions)
+	if ctx.NumTransitions != 36 {
+		t.Errorf("expected 36 transitions, got %d", ctx.NumTransitions)
 	}
 
 	// Verify some transitions have arcs

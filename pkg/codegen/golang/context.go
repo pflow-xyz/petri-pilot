@@ -32,6 +32,10 @@ type Context struct {
 	Routes      []RouteContext
 	StateFields []StateFieldContext
 
+	// Entity domain fields (from petri-pilot/entities extension)
+	EntityFields []EntityFieldContext
+	EventData    []EventDataContext
+
 	// ORM-specific data (for models with DataState places)
 	Collections []CollectionContext
 	DataArcs    []DataArcContext
@@ -523,6 +527,9 @@ type TransitionContext struct {
 	// Guard info (if present)
 	GuardInfo *GuardContext
 
+	// Typed event data (from entity fields)
+	EventData *EventDataContext
+
 	// SLA timing fields
 	Duration     string // Expected duration (e.g., "30s")
 	MinDuration  string // Minimum expected duration
@@ -596,6 +603,34 @@ type StateFieldContext struct {
 	IsToken   bool
 	Persisted bool
 	JSONName  string // JSON field name
+}
+
+// EntityFieldContext provides template-friendly access to entity domain fields.
+// These are fields from the petri-pilot/entities extension that should be
+// included in the State struct alongside token counts.
+type EntityFieldContext struct {
+	ID          string // Field ID from entity definition
+	FieldName   string // Go field name (e.g., "URL", "Title")
+	Type        string // Go type (string, int64, bool, time.Time, etc.)
+	JSONName    string // JSON field name
+	Required    bool   // Whether this field is required
+	Description string // Field description for comments
+}
+
+// EventDataContext provides template-friendly access to typed event data.
+// Each transition can have typed input data based on entity fields.
+type EventDataContext struct {
+	TransitionID string              // Transition this data applies to
+	StructName   string              // Go struct name (e.g., "SaveBookmarkData")
+	Fields       []EventDataFieldContext
+}
+
+// EventDataFieldContext provides template-friendly access to event data fields.
+type EventDataFieldContext struct {
+	FieldName string // Go field name
+	Type      string // Go type
+	JSONName  string // JSON field name
+	Required  bool   // Whether this field is required
 }
 
 // CollectionContext provides template-friendly access to DataState collections.
@@ -727,12 +762,13 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	ctx.DataArcs = buildDataArcContexts(ormSpec.Operations)
 	ctx.Guards = buildGuardContexts(enriched.Transitions, ormSpec.Collections)
 
-	// Populate data arcs and guard info on transitions
+	// Populate data arcs, guard info, and event data on transitions
 	for i := range ctx.Transitions {
 		tid := ctx.Transitions[i].ID
 		ctx.Transitions[i].InputDataArcs = ctx.InputDataArcs(tid)
 		ctx.Transitions[i].OutputDataArcs = ctx.OutputDataArcs(tid)
 		ctx.Transitions[i].GuardInfo = ctx.GuardForTransition(tid)
+		ctx.Transitions[i].EventData = ctx.EventDataForTransition(tid)
 	}
 
 	// Note: Application-level constructs (debug, admin, navigation, roles, access, views)
@@ -789,9 +825,15 @@ func NewContextFromApp(app *extensions.ApplicationSpec, opts ContextOptions) (*C
 		ctx.Navigation = buildNavigationContextFromExtension(pagesExt.Navigation)
 	}
 
-	// Access rules from entities extension
+	// Entity fields and access rules from entities extension
 	if entitiesExt := app.Entities(); entitiesExt != nil {
 		ctx.AccessRules = buildAccessRuleContextsFromEntities(entitiesExt)
+		ctx.EntityFields = buildEntityFieldContexts(entitiesExt)
+		ctx.EventData = buildEventDataContexts(entitiesExt, ctx.Transitions)
+		// Re-populate EventData on transitions after setting ctx.EventData
+		for i := range ctx.Transitions {
+			ctx.Transitions[i].EventData = ctx.EventDataForTransition(ctx.Transitions[i].ID)
+		}
 	}
 
 	// Debug config from app
@@ -842,6 +884,99 @@ func buildAccessRuleContextsFromEntities(ext *extensions.EntityExtension) []Acce
 			})
 		}
 	}
+	return result
+}
+
+// buildEntityFieldContexts extracts domain fields from entities for the State struct.
+// These fields store actual business data (URL, Title, Tags) alongside token counts.
+func buildEntityFieldContexts(ext *extensions.EntityExtension) []EntityFieldContext {
+	var result []EntityFieldContext
+	seen := make(map[string]bool) // Deduplicate fields across entities
+
+	for _, entity := range ext.Entities {
+		for _, field := range entity.Fields {
+			// Skip if we've already seen this field ID
+			if seen[field.ID] {
+				continue
+			}
+			seen[field.ID] = true
+
+			goType := fieldTypeToGoType(field.Type)
+			result = append(result, EntityFieldContext{
+				ID:          field.ID,
+				FieldName:   ToPascalCase(field.ID),
+				Type:        goType,
+				JSONName:    field.ID, // Keep original snake_case ID as JSON name
+				Required:    field.Required,
+				Description: field.Description,
+			})
+		}
+	}
+	return result
+}
+
+// fieldTypeToGoType converts petri-pilot field types to Go types.
+func fieldTypeToGoType(ft extensions.FieldType) string {
+	switch ft {
+	case extensions.FieldTypeString:
+		return "string"
+	case extensions.FieldTypeInt:
+		return "int"
+	case extensions.FieldTypeInt64:
+		return "int64"
+	case extensions.FieldTypeFloat64:
+		return "float64"
+	case extensions.FieldTypeBool:
+		return "bool"
+	case extensions.FieldTypeTime:
+		return "time.Time"
+	case extensions.FieldTypeJSON:
+		return "json.RawMessage"
+	case extensions.FieldTypeReference:
+		return "string" // Store as ID reference
+	default:
+		return "any"
+	}
+}
+
+// buildEventDataContexts creates typed event data structs for each transition.
+// This allows transitions to have strongly-typed input data based on entity fields.
+func buildEventDataContexts(ext *extensions.EntityExtension, transitions []TransitionContext) []EventDataContext {
+	var result []EventDataContext
+
+	// Build a map of action ID to entity fields for that action
+	actionFields := make(map[string][]extensions.Field)
+	for _, entity := range ext.Entities {
+		for _, action := range entity.Actions {
+			// Include all entity fields for this action
+			actionFields[action.ID] = entity.Fields
+		}
+	}
+
+	// Create EventDataContext for each transition that has associated entity fields
+	for _, trans := range transitions {
+		fields, hasFields := actionFields[trans.ID]
+		if !hasFields || len(fields) == 0 {
+			continue
+		}
+
+		var eventFields []EventDataFieldContext
+		for _, f := range fields {
+			eventFields = append(eventFields, EventDataFieldContext{
+				FieldName: ToPascalCase(f.ID),
+				Type:      fieldTypeToGoType(f.Type),
+				JSONName:  f.ID, // Keep original snake_case ID as JSON name
+				Required:  f.Required,
+			})
+		}
+
+		result = append(result, EventDataContext{
+			TransitionID: trans.ID,
+			StructName:   trans.FuncName + "Data",
+			Fields:       eventFields,
+		})
+	}
+
 	return result
 }
 
@@ -1589,6 +1724,21 @@ func (c *Context) GuardForTransition(transitionID string) *GuardContext {
 		}
 	}
 	return nil
+}
+
+// EventDataForTransition returns the EventDataContext for a transition, or nil.
+func (c *Context) EventDataForTransition(transitionID string) *EventDataContext {
+	for i := range c.EventData {
+		if c.EventData[i].TransitionID == transitionID {
+			return &c.EventData[i]
+		}
+	}
+	return nil
+}
+
+// HasEventData returns true if the context has any EventData defined.
+func (c *Context) HasEventData() bool {
+	return len(c.EventData) > 0
 }
 
 // UsesMetamodelRuntime returns true if the generated code should use
