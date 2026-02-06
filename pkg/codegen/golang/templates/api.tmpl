@@ -99,13 +99,13 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
-{{- if .HasAccessControl}}
-	// Test login endpoint (only available in debug mode)
+{{end}}
+{{if .HasAccessControl}}
+	// Test login endpoint for role-based testing
 	r.POST("/api/debug/login", "Create test session with roles", HandleTestLogin(sessions))
-{{- else}}
+{{else if .HasDebug}}
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-{{- end}}
 {{end}}
 {{if .HasBlobstore}}
 	// Blob storage endpoints
