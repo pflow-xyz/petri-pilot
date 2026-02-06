@@ -2070,6 +2070,16 @@ func (c *Context) HasBlobstore() bool {
 	return c.Blobstore != nil && c.Blobstore.Enabled
 }
 
+// HasTimeFields returns true if any entity field uses time.Time type.
+func (c *Context) HasTimeFields() bool {
+	for _, f := range c.EntityFields {
+		if f.Type == "time.Time" {
+			return true
+		}
+	}
+	return false
+}
+
 // HasTimers returns true if the model has timers configured.
 func (c *Context) HasTimers() bool {
 	return len(c.Timers) > 0
