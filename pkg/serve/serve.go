@@ -355,14 +355,20 @@ func RunMultiple(names []string, opts Options) error {
 			// Build service cards
 			var cards strings.Builder
 			for _, name := range names {
+				packageName := strings.ReplaceAll(name, "-", "")
+				generatedPath := filepath.Join("generated", packageName, "frontend")
+				dashLink := ""
+				if _, err := os.Stat(generatedPath); err == nil {
+					dashLink = fmt.Sprintf(`<a href="/app/%s/" class="btn btn-secondary">Dashboard</a>`, name)
+				}
 				cards.WriteString(fmt.Sprintf(`
 					<div class="service-card">
 						<h2>%s</h2>
 						<div class="links">
 							<a href="/%s/" class="btn btn-primary">Open App</a>
-							<a href="/app/%s/" class="btn btn-secondary">Dashboard</a>
+							%s
 						</div>
-					</div>`, name, name, name))
+					</div>`, name, name, dashLink))
 			}
 
 			html := fmt.Sprintf(`<!DOCTYPE html>
