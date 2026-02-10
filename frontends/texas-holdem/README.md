@@ -190,7 +190,7 @@ The action with highest EV is highlighted as "recommended".
 
 - **pflow.xyz Solver**: ODE solver for Petri nets
   ```html
-  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
   ```
 
 ## Comparison with Tic-Tac-Toe

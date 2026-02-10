@@ -1,7 +1,7 @@
 // Knapsack Optimizer - ODE Simulation Frontend
 // Uses pflow ODE solver for continuous optimization
 
-import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
+import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js'
 
 // Item definitions
 const ITEMS = [

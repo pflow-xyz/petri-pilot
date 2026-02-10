@@ -2,7 +2,7 @@
 // Uses pflow ODE solver for strategic value computation
 // Model is fetched from /api/schema to ensure consistency with Go backend
 
-import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
+import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js'
 
 // ZK module - loaded dynamically to ensure proper initialization
 let ZK = null

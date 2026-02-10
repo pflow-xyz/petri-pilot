@@ -1,7 +1,7 @@
 // Texas Hold'em Poker - Main Application
 // Uses pflow ODE solver for strategic value computation
 
-import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@1.11.0/public/petri-solver.js'
+import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js'
 import { renderCard, renderCards, renderCommunityCards, parseCard } from './cards.js'
 import {
   HandRank,
