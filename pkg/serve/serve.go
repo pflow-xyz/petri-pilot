@@ -331,6 +331,30 @@ func RunMultiple(names []string, opts Options) error {
 		}
 	}
 
+	// Mount standalone frontends (directories in frontends/ without a backend service)
+	mountedNames := make(map[string]bool)
+	for _, n := range names {
+		mountedNames[n] = true
+	}
+	mountedNames["shared"] = true // never mount shared as a standalone frontend
+	if entries, err := os.ReadDir("frontends"); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() || mountedNames[entry.Name()] {
+				continue
+			}
+			name := entry.Name()
+			frontendPath := filepath.Join("frontends", name)
+			indexPath := filepath.Join(frontendPath, "index.html")
+			if _, err := os.Stat(indexPath); err != nil {
+				continue // skip directories without index.html
+			}
+			prefix := "/" + name
+			spaHandler := createSPAHandler(frontendPath)
+			mux.Handle(prefix+"/", http.StripPrefix(prefix, spaHandler))
+			log.Printf("  Mounted %s standalone frontend at %s/", name, prefix)
+		}
+	}
+
 	// Explicitly return 404 for /frontends/ routes (legacy path)
 	mux.HandleFunc("/frontends/", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
