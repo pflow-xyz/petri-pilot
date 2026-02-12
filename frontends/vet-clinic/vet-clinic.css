@@ -1,0 +1,1270 @@
+/* Vet Clinic Scheduling Simulator — custom styles */
+
+:root {
+    --room-reception: #3498db;
+    --room-exam: #9b59b6;
+    --room-treatment: #f39c12;
+    --room-surgery: #e74c3c;
+    --room-dental: #e74c3c;
+    --room-diagnostics: #2ea44f;
+    --room-recovery: #1abc9c;
+    --room-lab: #2ea44f;
+    --staff-dvm: #e74c3c;
+    --staff-rvt: #3498db;
+    --staff-recep: #f39c12;
+}
+
+/* ============================================
+   3-Column Grid Layout
+   ============================================ */
+.clinic-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.clinic-header {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.clinic-header h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.clinic-header .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.clinic-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.clinic-left { display: flex; flex-direction: column; gap: 16px; }
+.clinic-center { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.clinic-right { display: flex; flex-direction: column; gap: 16px; }
+
+@media (max-width: 1200px) {
+    .clinic-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   Glassmorphism Card (shared)
+   ============================================ */
+.card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.card h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* ============================================
+   Schedule Panel
+   ============================================ */
+.schedule-panel label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+
+.schedule-panel label span:first-child {
+    color: var(--text-muted);
+}
+
+.schedule-panel input[type="range"] {
+    width: 100%;
+    margin: 4px 0 12px;
+    accent-color: var(--accent-purple);
+}
+
+/* Preset picker */
+.schedule-panel .preset-picker {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.schedule-panel .preset-btn {
+    flex: 1;
+    padding: 6px 2px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.schedule-panel .preset-btn .preset-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.schedule-panel .preset-btn .preset-desc {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.schedule-panel .preset-btn.active {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+}
+
+.schedule-panel .preset-btn.active .preset-desc {
+    color: rgba(255,255,255,0.7);
+}
+
+.schedule-panel .preset-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.1);
+}
+
+.schedule-panel .day-picker {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.schedule-panel .day-btn {
+    flex: 1;
+    padding: 6px 2px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-color);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.schedule-panel .day-btn.active {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+}
+
+.schedule-panel .day-btn.surgery {
+    box-shadow: 0 0 0 2px var(--room-surgery);
+}
+
+.schedule-panel .section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 12px 0 6px;
+}
+
+.schedule-panel .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.85rem;
+}
+
+.schedule-panel .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+}
+
+.schedule-panel .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.schedule-panel .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    transition: 0.3s;
+}
+
+.schedule-panel .toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.schedule-panel .toggle-switch input:checked + .toggle-slider {
+    background: var(--accent-green);
+}
+
+.schedule-panel .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(16px);
+}
+
+/* ============================================
+   Time Control
+   ============================================ */
+.time-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.time-control .clock-display {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+.time-control .time-slider {
+    width: 100%;
+    accent-color: var(--accent-blue);
+}
+
+.time-control .transport {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+}
+
+.time-control .transport button {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.time-control .transport button:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.time-control .transport button.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.time-control .speed-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-color);
+    font-size: 0.8rem;
+}
+
+.time-control .speed-select option {
+    background: #2c2c3e;
+    color: white;
+}
+
+/* ============================================
+   Floor Plan SVG
+   ============================================ */
+.floor-plan-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.floor-plan-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.floor-plan-container .room {
+    stroke: rgba(255,255,255,0.3);
+    stroke-width: 1.5;
+    rx: 6;
+    ry: 6;
+    transition: fill-opacity 0.3s;
+}
+
+.floor-plan-container .room-label {
+    fill: white;
+    font-family: var(--font-family);
+    font-size: 11px;
+    font-weight: 600;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.floor-plan-container .token-badge {
+    font-family: var(--font-family);
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+}
+
+.floor-plan-container .staff-dot {
+    stroke: rgba(0,0,0,0.3);
+    stroke-width: 1;
+    transition: fill 0.3s;
+}
+
+.floor-plan-container .queue-bar {
+    transition: width 0.3s ease;
+}
+
+/* ============================================
+   Clinic Stats
+   ============================================ */
+.clinic-stats .util-row {
+    margin-bottom: 10px;
+}
+
+.clinic-stats .util-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+}
+
+.clinic-stats .util-label span:first-child {
+    color: var(--text-muted);
+}
+
+.clinic-stats .util-bar-bg {
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.clinic-stats .util-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.clinic-stats .throughput {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 8px;
+}
+
+.clinic-stats .throughput-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent-green);
+}
+
+.clinic-stats .throughput-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.clinic-stats .bottleneck {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(231, 76, 60, 0.15);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    font-size: 0.8rem;
+    margin-top: 8px;
+}
+
+.clinic-stats .bottleneck.ok {
+    background: rgba(46, 164, 79, 0.15);
+    border-color: rgba(46, 164, 79, 0.3);
+}
+
+.clinic-stats .bottleneck strong {
+    color: var(--accent-red);
+}
+
+.clinic-stats .bottleneck.ok strong {
+    color: var(--accent-green);
+}
+
+/* ============================================
+   ODE Plot container
+   ============================================ */
+.ode-plot-container {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.ode-plot-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+}
+
+/* Plot filter buttons */
+.plot-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.plot-filters button {
+    padding: 3px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.plot-filters button.active {
+    background: rgba(255,255,255,0.15);
+    color: var(--text-color);
+    border-color: rgba(255,255,255,0.3);
+}
+
+/* ============================================
+   Mix weight sliders
+   ============================================ */
+.mix-weights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+}
+
+.mix-weights label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.mix-weights input[type="range"] {
+    width: 100%;
+    margin: 2px 0;
+    accent-color: var(--accent-orange);
+}
+
+.mix-weights .mix-value {
+    font-size: 0.7rem;
+    text-align: right;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Event Feed
+   ============================================ */
+.event-feed-list {
+    max-height: 340px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.event-feed-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 0.78rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    animation: ef-fadein 0.3s ease;
+}
+
+@keyframes ef-fadein {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ef-time {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    min-width: 62px;
+    flex-shrink: 0;
+}
+
+.ef-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ef-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================
+   View Toggle
+   ============================================ */
+.view-toggle {
+    display: flex;
+    gap: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 2px;
+}
+
+.view-toggle button {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-toggle button.active {
+    background: var(--accent-purple);
+    color: white;
+}
+
+.view-toggle button:hover:not(.active) {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-color);
+}
+
+/* ============================================
+   Schedule View (2-column layout)
+   ============================================ */
+.schedule-view {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.schedule-view.hidden { display: none; }
+.clinic-body.hidden { display: none; }
+
+@media (max-width: 1200px) {
+    .schedule-view {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   Employee Registry
+   ============================================ */
+.employee-registry h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.er-role-group {
+    margin-bottom: 12px;
+}
+
+.er-role-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.er-role-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.er-role-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.er-employee-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.er-employee-row:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.er-color-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.er-name {
+    font-size: 0.8rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.er-employment-badge {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.1);
+    color: var(--text-muted);
+}
+
+.er-employment-badge.ft {
+    background: rgba(46,164,79,0.2);
+    color: #2ea44f;
+}
+
+.er-employment-badge.pt {
+    background: rgba(243,156,18,0.2);
+    color: #f39c12;
+}
+
+.er-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.er-employee-row:hover .er-remove-btn {
+    opacity: 0.6;
+}
+
+.er-remove-btn:hover {
+    opacity: 1 !important;
+    color: var(--accent-red);
+}
+
+.er-add-btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+
+.er-add-btn:hover {
+    border-color: var(--accent-purple);
+    color: var(--text-color);
+    background: rgba(255,255,255,0.03);
+}
+
+.er-add-form {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.er-input, .er-select {
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-color);
+    font-size: 0.82rem;
+}
+
+.er-input:focus, .er-select:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+}
+
+.er-select option {
+    background: #2c2c3e;
+    color: white;
+}
+
+.er-form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.er-radio-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.er-form-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.er-btn {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.er-btn-confirm {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+    color: white;
+}
+
+.er-btn-cancel {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+}
+
+/* ============================================
+   Shift Scheduler
+   ============================================ */
+.shift-scheduler h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ss-day-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.ss-day-tab {
+    flex: 1;
+    padding: 6px 2px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-color);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.ss-day-tab.active {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+}
+
+.ss-grid-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.ss-grid {
+    min-width: calc(var(--slot-count) * var(--slot-width) + 160px);
+    position: relative;
+}
+
+.ss-row {
+    display: flex;
+    min-height: 36px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.ss-header-row {
+    min-height: 28px;
+    background: rgba(255,255,255,0.03);
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.ss-name-cell {
+    width: 160px;
+    min-width: 160px;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    position: sticky;
+    left: 0;
+    background: var(--card-bg);
+    z-index: 2;
+}
+
+.ss-corner {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ss-time-cells {
+    flex: 1;
+    position: relative;
+    min-width: calc(var(--slot-count) * var(--slot-width));
+    cursor: crosshair;
+}
+
+.ss-cell {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-right: 1px solid rgba(255,255,255,0.03);
+}
+
+.ss-cell.ss-hour-line {
+    border-right-color: rgba(255,255,255,0.08);
+}
+
+.ss-time-header {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    user-select: none;
+}
+
+.ss-role-divider {
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.ss-role-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ss-emp-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ss-emp-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ss-weekly-hrs {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.ss-weekly-hrs.overtime {
+    color: #f39c12;
+    font-weight: 600;
+}
+
+.ss-weekly-hrs.excessive {
+    color: #e74c3c;
+    font-weight: 700;
+}
+
+.ss-off-day {
+    opacity: 0.4;
+}
+
+.ss-off-day .ss-time-cells {
+    cursor: default;
+}
+
+/* Shift blocks */
+.ss-shift-block {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    border-radius: 4px;
+    opacity: 0.85;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    z-index: 1;
+    transition: opacity 0.15s;
+    cursor: grab;
+    overflow: hidden;
+}
+
+.ss-shift-block:hover {
+    opacity: 1;
+}
+
+.ss-shift-block.ss-violation {
+    box-shadow: 0 0 0 2px #e74c3c;
+}
+
+.ss-shift-time {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    pointer-events: none;
+}
+
+/* Drag handles */
+.ss-drag-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+    z-index: 2;
+}
+
+.ss-drag-left { left: 0; }
+.ss-drag-right { right: 0; }
+
+.ss-drag-handle:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Break overlays */
+.ss-break-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.ss-break-lunch {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(0,0,0,0.3),
+        rgba(0,0,0,0.3) 2px,
+        transparent 2px,
+        transparent 6px
+    );
+}
+
+.ss-break-rest {
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,0.3),
+        rgba(255,255,255,0.3) 1px,
+        transparent 1px,
+        transparent 4px
+    );
+}
+
+/* ============================================
+   Schedule Panel — schedule-driven mode
+   ============================================ */
+.schedule-panel .staff-schedule-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.schedule-panel input[type="range"]:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   Clinic Stats — Staff on Duty indicator
+   ============================================ */
+.clinic-stats .staff-on-duty {
+    display: flex;
+    gap: 12px;
+    padding: 6px 0;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.78rem;
+}
+
+.clinic-stats .staff-on-duty-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.clinic-stats .staff-duty-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.clinic-stats .staff-duty-count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Financial Dashboard
+   ============================================ */
+.financial-dashboard h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.fin-pl {
+    margin-bottom: 12px;
+}
+
+.fin-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.82rem;
+}
+
+.fin-label {
+    flex: 0 0 90px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.fin-value {
+    flex: 0 0 70px;
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.fin-bar-sm {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.fin-bar-sm-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.fin-bar-sm-fill.revenue-bar { background: var(--accent-green); }
+.fin-bar-sm-fill.supply-bar { background: #f39c12; }
+.fin-bar-sm-fill.cogs-bar { background: #e74c3c; }
+.fin-bar-sm-fill.staff-bar { background: #3498db; }
+
+.fin-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 6px 0;
+}
+
+.fin-profit-row .fin-value {
+    font-size: 0.9rem;
+}
+
+.fin-profit {
+    color: var(--accent-green);
+}
+
+.fin-margin {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.fin-margin.good {
+    background: rgba(46,164,79,0.2);
+    color: #2ea44f;
+}
+
+.fin-margin.ok {
+    background: rgba(243,156,18,0.2);
+    color: #f39c12;
+}
+
+.fin-margin.low {
+    background: rgba(231,76,60,0.2);
+    color: #e74c3c;
+}
+
+/* Alerts */
+.fin-alerts {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(243,156,18,0.1);
+    border: 1px solid rgba(243,156,18,0.25);
+    margin-bottom: 12px;
+}
+
+.fin-alert-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #f39c12;
+    margin-bottom: 4px;
+}
+
+.fin-alert-item {
+    font-size: 0.78rem;
+    padding: 2px 0;
+    color: var(--text-color);
+}
+
+.fin-alert-item.critical {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.fin-alert-item.warning {
+    color: #f39c12;
+}
+
+/* Inventory section */
+.fin-inventory-section {
+    margin-top: 4px;
+}
+
+.fin-inv-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.fin-inv-legend {
+    font-size: 0.68rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.fin-inv-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 0.76rem;
+}
+
+.fin-inv-label {
+    flex: 0 0 110px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.72rem;
+}
+
+.fin-bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fin-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.fin-bar-fill.green { background: #2ea44f; }
+.fin-bar-fill.yellow { background: #f39c12; }
+.fin-bar-fill.red { background: #e74c3c; }
+
+.fin-inv-nums {
+    flex: 0 0 52px;
+    text-align: right;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}

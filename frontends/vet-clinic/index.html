@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vet Clinic Scheduling Simulator</title>
+    <link rel="stylesheet" href="widgets.css">
+    <link rel="stylesheet" href="vet-clinic.css">
+</head>
+<body>
+<div class="clinic-app">
+    <header class="clinic-header">
+        <h1>Vet Clinic Simulator</h1>
+        <div class="view-toggle">
+            <button class="active" id="view-sim-btn">Simulation</button>
+            <button id="view-sched-btn">Schedule</button>
+        </div>
+        <span class="subtitle">ODE-based resource scheduling for a small animal hospital</span>
+    </header>
+
+    <!-- Simulation View (default) -->
+    <div class="clinic-body" id="sim-view">
+        <!-- Left Panel: Controls -->
+        <div class="clinic-left">
+            <schedule-panel id="schedule"></schedule-panel>
+            <div class="card">
+                <h3>Time</h3>
+                <time-control id="timer"></time-control>
+            </div>
+        </div>
+
+        <!-- Center Panel: Floor Plan + ODE Plot -->
+        <div class="clinic-center">
+            <floor-plan id="floorplan"></floor-plan>
+            <div class="ode-plot-container">
+                <div class="plot-filters" id="plot-filters"></div>
+                <div id="ode-plot"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Stats + Feed + Schema -->
+        <div class="clinic-right">
+            <clinic-stats id="stats"></clinic-stats>
+            <financial-dashboard id="financials"></financial-dashboard>
+            <event-feed id="feed"></event-feed>
+            <div class="card" id="schema-card" style="max-height:300px;overflow-y:auto;">
+                <h3>Petri Net Schema</h3>
+                <div id="schema-content" style="font-size:0.8rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule View (hidden by default) -->
+    <div class="schedule-view hidden" id="sched-view">
+        <div>
+            <employee-registry id="registry"></employee-registry>
+        </div>
+        <div>
+            <shift-scheduler id="scheduler"></shift-scheduler>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { PflowEngine, SVGPlotter, setState, setRates, ODEProblem, solve, Tsit5 } from './pflow-engine.js';
+import { FloorPlan } from './floor-plan.js';
+import { TimeControl } from './time-control.js';
+import { SchedulePanel, DEFAULT_CONFIG } from './schedule-panel.js';
+import { ClinicStats } from './clinic-stats.js';
+import { EventFeed } from './event-feed.js';
+import { EmployeeRegistry } from './employee-registry.js';
+import { ShiftScheduler } from './shift-scheduler.js';
+import { buildStaffTimeline } from './schedule-rules.js';
+import { precomputeFinancials, interpolateAt } from './clinic-financials.js';
+import { FinancialDashboard } from './financial-dashboard.js';
+
+// ── Load model ──
+const modelResp = await fetch('./model.json');
+const modelJson = await modelResp.json();
+const engine = new PflowEngine(modelJson);
+
+// ── Elements ──
+const scheduleEl = document.getElementById('schedule');
+const timerEl = document.getElementById('timer');
+const floorplanEl = document.getElementById('floorplan');
+const statsEl = document.getElementById('stats');
+const plotEl = document.getElementById('ode-plot');
+const filtersEl = document.getElementById('plot-filters');
+const feedEl = document.getElementById('feed');
+const financialsEl = document.getElementById('financials');
+const schemaContentEl = document.getElementById('schema-content');
+const registryEl = document.getElementById('registry');
+const schedulerEl = document.getElementById('scheduler');
+
+// ── View toggle ──
+const simView = document.getElementById('sim-view');
+const schedView = document.getElementById('sched-view');
+const viewSimBtn = document.getElementById('view-sim-btn');
+const viewSchedBtn = document.getElementById('view-sched-btn');
+
+viewSimBtn.addEventListener('click', () => {
+    simView.classList.remove('hidden');
+    schedView.classList.add('hidden');
+    viewSimBtn.classList.add('active');
+    viewSchedBtn.classList.remove('active');
+});
+
+viewSchedBtn.addEventListener('click', () => {
+    simView.classList.add('hidden');
+    schedView.classList.remove('hidden');
+    viewSimBtn.classList.remove('active');
+    viewSchedBtn.classList.add('active');
+    // Initialize scheduler with employees if not already done
+    if (registryEl.employees) {
+        schedulerEl.setEmployees(registryEl.employees);
+    }
+});
+
+// ── Schema display (simple) ──
+const schema = engine.getSchema();
+let schemaHTML = `<div style="margin-bottom:8px"><strong>${schema.name}</strong> &mdash; ${schema.places.length} places, ${schema.transitions.length} transitions</div>`;
+schemaHTML += '<details><summary style="cursor:pointer;color:var(--text-muted)">Places</summary><div style="margin-top:4px">';
+for (const p of schema.places) {
+    schemaHTML += `<div style="padding:2px 0;font-family:monospace;font-size:0.75rem">${p.id}${p.initial ? ' [' + p.initial + ']' : ''}</div>`;
+}
+schemaHTML += '</div></details>';
+schemaHTML += '<details><summary style="cursor:pointer;color:var(--text-muted)">Transitions</summary><div style="margin-top:4px">';
+for (const t of schema.transitions) {
+    schemaHTML += `<div style="padding:2px 0;font-family:monospace;font-size:0.75rem">${t.id}</div>`;
+}
+schemaHTML += '</div></details>';
+schemaContentEl.innerHTML = schemaHTML;
+
+// ── Rate computation from config ──
+// Service rates: rate = 1/duration_in_hours
+const SERVICE_RATES = {
+    // Triage routing (very fast, controlled by mix weights)
+    triage_to_exam: 10,
+    triage_to_tech: 10,
+    triage_to_surgery: 10,
+    triage_to_dental: 10,
+    triage_to_diag: 10,
+
+    // Exam services
+    start_wellness: 3.0,   finish_wellness: 3.0,   // 20 min
+    start_sick: 2.0,       finish_sick: 2.0,        // 30 min
+    start_vaccine: 4.0,    finish_vaccine: 4.0,     // 15 min
+
+    // Tech services
+    start_nail_trim: 4.0,  finish_nail_trim: 4.0,   // 15 min
+    start_weight: 6.0,     finish_weight: 6.0,       // 10 min
+    start_suture: 4.0,     finish_suture: 4.0,       // 15 min
+
+    // Surgery
+    start_spay: 1.0,       finish_spay: 1.0,         // 60 min
+    start_neuter: 1.33,    finish_neuter: 1.33,       // 45 min
+    start_dental: 0.67,    finish_dental: 0.67,       // 90 min
+
+    // Diagnostics
+    start_xray: 2.0,       finish_xray: 2.0,          // 30 min
+    start_bloodwork: 4.0,  finish_bloodwork: 4.0,     // 15 min draw
+    start_lab: 2.0,        finish_lab: 2.0,            // 30 min processing
+
+    // Checkout + recovery
+    process_checkout: 6.0,  // 10 min
+    finish_recovery: 1.0,   // 60 min average recovery
+};
+
+function buildRates(config) {
+    const rates = { ...SERVICE_RATES };
+
+    // Arrival rate (source transition, no inputs in mass-action sense)
+    rates.patient_arrives = config.arrivalRate;
+
+    // Triage routing: scale by mix weights
+    // The mass-action flux through each triage depends on arrival * mix_fraction
+    // Since all triage transitions compete for the same `arrival` pool,
+    // we set their rates proportionally so the ODE distributes flow by weight
+    const mixTotal = Object.values(config.mix).reduce((s, v) => s + v, 0) || 1;
+    rates.triage_to_exam = 10 * (config.mix.exam / mixTotal);
+    rates.triage_to_tech = 10 * (config.mix.tech / mixTotal);
+    rates.triage_to_surgery = 10 * (config.mix.surgery / mixTotal);
+    rates.triage_to_dental = 10 * (config.mix.dental / mixTotal);
+    rates.triage_to_diag = 10 * (config.mix.diag / mixTotal);
+
+    return rates;
+}
+
+function buildInitialState(config) {
+    // Start from model defaults, then override staffing
+    const state = {};
+    for (const [label, place] of engine.net.places) {
+        state[label] = place.getTokenCount();
+    }
+    state.dvm_avail = config.dvmCount;
+    state.rvt_avail = config.rvtCount;
+    state.receptionist_avail = config.receptionistCount;
+    state.surgery_day = config.surgeryDay ? 1 : 0;
+    return state;
+}
+
+// ── ODE solution cache ──
+let currentSolution = null;
+let currentConfig = { ...DEFAULT_CONFIG, mix: { ...DEFAULT_CONFIG.mix } };
+let currentTimeline = null;  // staff timeline from schedule
+let currentRates = null;     // rates used for current ODE solve
+let currentFinancials = null; // precomputed financial data
+
+// ── Piecewise ODE solver for time-varying staff ──
+function solvePiecewise(config, timeline) {
+    const rates = buildRates(config);
+    const allRates = setRates(engine.net, rates);
+
+    // Get segment boundaries from timeline
+    const boundaries = timeline.map(e => e.time).filter(t => t >= 0 && t <= 10);
+    // Ensure 0 and 10 are included; add 9.5 boundary for last-appointment cutoff
+    if (boundaries[0] !== 0) boundaries.unshift(0);
+    boundaries.push(9.5); // 5:30 PM — last appointment
+    if (boundaries[boundaries.length - 1] !== 10) boundaries.push(10);
+    // Deduplicate and sort
+    const times = [...new Set(boundaries)].sort((a, b) => a - b);
+
+    let state = buildInitialState(config);
+    // Set initial staff from first timeline entry
+    if (timeline.length > 0) {
+        state.dvm_avail = timeline[0].dvm_avail;
+        state.rvt_avail = timeline[0].rvt_avail;
+        state.receptionist_avail = timeline[0].receptionist_avail;
+    }
+
+    const allT = [];
+    const allU = [];
+    let stateLabels = null;
+
+    for (let i = 0; i < times.length - 1; i++) {
+        const tStart = times[i];
+        const tEnd = times[i + 1];
+        if (tEnd <= tStart) continue;
+
+        // Find staff levels at this segment start
+        let staffEntry = timeline[0];
+        for (const e of timeline) {
+            if (e.time <= tStart) staffEntry = e;
+            else break;
+        }
+
+        // Override staff levels for this segment
+        state.dvm_avail = staffEntry.dvm_avail;
+        state.rvt_avail = staffEntry.rvt_avail;
+        state.receptionist_avail = staffEntry.receptionist_avail;
+
+        // After 5:30 PM (t=9.5): stop new arrivals, let in-progress procedures finish
+        let segRates = allRates;
+        if (tStart >= 9.5) {
+            segRates = { ...allRates };
+            segRates.patient_arrives = 0;
+        }
+
+        // Solve this segment
+        const prob = new ODEProblem(engine.net, state, [tStart, tEnd], segRates);
+        const segSol = solve(prob, Tsit5(), { dt: 0.005, dtmax: 0.05 });
+
+        if (!stateLabels) stateLabels = segSol.stateLabels;
+
+        // Append solution points (skip first point of subsequent segments to avoid duplication)
+        const startIdx = (i === 0) ? 0 : 1;
+        for (let j = startIdx; j < segSol.t.length; j++) {
+            allT.push(segSol.t[j]);
+            allU.push({ ...segSol.u[j] });
+        }
+
+        // Carry forward final state to next segment
+        state = { ...segSol.u[segSol.u.length - 1] };
+    }
+
+    // Build a solution-like object compatible with the rendering pipeline
+    return {
+        t: allT,
+        u: allU,
+        stateLabels: stateLabels || [],
+        getVariable(name) {
+            return this.u.map(s => s[name] || 0);
+        }
+    };
+}
+
+function runODE(config) {
+    currentConfig = config;
+    currentRates = buildRates(config);
+
+    if (currentTimeline && currentTimeline.length > 1) {
+        // Piecewise solve with time-varying staff
+        currentSolution = solvePiecewise(config, currentTimeline);
+        // Find peak staff counts for stats
+        let peakDvm = 0, peakRvt = 0, peakRecep = 0;
+        for (const e of currentTimeline) {
+            peakDvm = Math.max(peakDvm, e.dvm_avail);
+            peakRvt = Math.max(peakRvt, e.rvt_avail);
+            peakRecep = Math.max(peakRecep, e.receptionist_avail);
+        }
+        statsEl.setStaffLevels(peakDvm, peakRvt, peakRecep);
+        statsEl.setStaffTimeline(currentTimeline);
+    } else {
+        // Single-solve path: two segments (arrivals until 5:30, wind-down until 6)
+        const initialState = buildInitialState(config);
+        const allRates = setRates(engine.net, currentRates);
+
+        // Segment 1: 8 AM - 5:30 PM (t=0 to t=9.5) with arrivals
+        const prob1 = new ODEProblem(engine.net, initialState, [0, 9.5], allRates);
+        const sol1 = solve(prob1, Tsit5(), { dt: 0.005, dtmax: 0.05 });
+
+        // Segment 2: 5:30 PM - 6 PM (t=9.5 to t=10) no new arrivals
+        const windDownRates = { ...allRates };
+        windDownRates.patient_arrives = 0;
+        const endState = { ...sol1.u[sol1.u.length - 1] };
+        const prob2 = new ODEProblem(engine.net, endState, [9.5, 10], windDownRates);
+        const sol2 = solve(prob2, Tsit5(), { dt: 0.005, dtmax: 0.05 });
+
+        // Stitch solutions
+        const allT = [...sol1.t];
+        const allU = [...sol1.u];
+        for (let j = 1; j < sol2.t.length; j++) {
+            allT.push(sol2.t[j]);
+            allU.push({ ...sol2.u[j] });
+        }
+        currentSolution = {
+            t: allT, u: allU, stateLabels: sol1.stateLabels || [],
+            getVariable(name) { return this.u.map(s => s[name] || 0); }
+        };
+        statsEl.setStaffLevels(config.dvmCount, config.rvtCount, config.receptionistCount);
+        statsEl.setStaffTimeline(null);
+    }
+
+    // Precompute financials from ODE solution
+    currentFinancials = precomputeFinancials(currentSolution, engine.net, currentRates, config, currentTimeline);
+    financialsEl.setFinancials(currentFinancials);
+
+    renderPlot();
+    updateAtTime(timerEl.time);
+}
+
+// ── Plot rendering ──
+const PLOT_GROUPS = {
+    'Queues': { places: ['wait_exam','wait_tech','wait_surgery','wait_dental','wait_diag'], colors: ['#9b59b6','#f39c12','#e74c3c','#e74c3c','#2ea44f'] },
+    'In Service': { places: ['in_wellness','in_sick','in_vaccine','in_nail_trim','in_weight','in_suture','in_spay','in_neuter','in_dental','in_xray','in_bloodwork','in_lab'], colors: null },
+    'Staff': { places: ['dvm_avail','rvt_avail','receptionist_avail'], colors: ['#e74c3c','#3498db','#f39c12'] },
+    'Rooms': { places: ['exam_room_free','surgery_free','dental_free','radiology_free','treatment_free'], colors: ['#9b59b6','#e74c3c','#e74c3c','#2ea44f','#f39c12'] },
+    'Flow': { places: ['arrival','checkout','in_recovery','discharged'], colors: ['#3498db','#f39c12','#1abc9c','#2ea44f'] },
+};
+
+let activeGroup = 'Queues';
+
+function renderFilterButtons() {
+    filtersEl.innerHTML = Object.keys(PLOT_GROUPS).map(g =>
+        `<button class="${g === activeGroup ? 'active' : ''}" data-group="${g}">${g}</button>`
+    ).join('');
+    filtersEl.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeGroup = btn.dataset.group;
+            filtersEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.group === activeGroup));
+            renderPlot();
+        });
+    });
+}
+
+function renderPlot() {
+    if (!currentSolution) return;
+
+    const group = PLOT_GROUPS[activeGroup];
+    const plotter = new SVGPlotter(600, 250);
+    plotter.setTitle(`${activeGroup} over day (8 AM - 6 PM)`).setXLabel('Hours').setYLabel('Count');
+
+    // Dark theme: override SVG background
+    const defaultColors = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf','#66c2a5','#fc8d62','#8da0cb','#e78ac3'];
+
+    for (let i = 0; i < group.places.length; i++) {
+        const p = group.places[i];
+        const color = (group.colors && group.colors[i]) || defaultColors[i % defaultColors.length];
+        const label = p.replace(/_/g, ' ');
+        plotter.addSeries(currentSolution.t, currentSolution.getVariable(p), label, color);
+    }
+
+    const { svg, plotData } = { svg: plotter.render(), plotData: plotter.lastPlotData };
+    // Dark theme post-process: systematic replacement for all SVG elements
+    plotEl.innerHTML = svg
+        .replace('style="background:white;"', 'style="background:#1a1a2e;border-radius:8px;"')
+        // All <text> elements: add light fill (must come before specific fill replacements)
+        .replace(/<text /g, '<text fill="rgba(255,255,255,0.85)" ')
+        // Axis strokes
+        .replace(/stroke="#333"/g, 'stroke="rgba(255,255,255,0.5)"')
+        // Grid lines
+        .replace(/stroke="#ddd"/g, 'stroke="rgba(255,255,255,0.1)"')
+        // Tooltip background
+        .replace(/fill="white"/g, 'fill="rgba(30,30,50,0.95)"')
+        // Crosshair / tooltip stroke
+        .replace(/stroke="#666"/g, 'stroke="rgba(255,255,255,0.4)"')
+        // Clean up any remaining dark fills from SVGPlotter
+        .replace(/fill="#333"/g, 'fill="rgba(255,255,255,0.8)"');
+    if (plotData) SVGPlotter.setupInteractivity(plotData);
+}
+
+renderFilterButtons();
+
+// ── Interpolate ODE solution at arbitrary time ──
+function getStateAtTime(time) {
+    if (!currentSolution) return null;
+    const sol = currentSolution;
+
+    // Binary search for the right interval
+    let lo = 0, hi = sol.t.length - 1;
+    while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (sol.t[mid] <= time) lo = mid; else hi = mid;
+    }
+
+    if (lo === hi || time <= sol.t[lo]) return sol.u[lo];
+    if (time >= sol.t[hi]) return sol.u[hi];
+
+    // Linear interpolation
+    const frac = (time - sol.t[lo]) / (sol.t[hi] - sol.t[lo]);
+    const state = {};
+    for (const key of sol.stateLabels) {
+        state[key] = sol.u[lo][key] + frac * (sol.u[hi][key] - sol.u[lo][key]);
+    }
+    return state;
+}
+
+function updateAtTime(time) {
+    const state = getStateAtTime(time);
+    if (!state) return;
+    floorplanEl.update(state);
+    statsEl.update(state, time);
+    feedEl.update(state, time, engine.net);
+    if (currentFinancials) {
+        financialsEl.update(interpolateAt(currentFinancials, time));
+    }
+}
+
+// ── Event wiring ──
+scheduleEl.addEventListener('schedule-change', (e) => {
+    feedEl.reset();
+    runODE(e.detail);
+});
+
+timerEl.addEventListener('time-change', (e) => {
+    updateAtTime(e.detail.time);
+});
+
+// ── Schedule view events ──
+registryEl.addEventListener('employees-change', (e) => {
+    schedulerEl.setEmployees(e.detail.employees);
+    rebuildTimeline();
+});
+
+schedulerEl.addEventListener('schedule-updated', (e) => {
+    rebuildTimeline();
+});
+
+function rebuildTimeline() {
+    const employees = registryEl.employees;
+    const day = schedulerEl.activeDay;
+    const dayShifts = schedulerEl.shifts[day] || [];
+    const timeline = buildStaffTimeline(dayShifts, employees);
+    currentTimeline = timeline;
+
+    // Find peak staff for schedule panel display
+    let peakDvm = 0, peakRvt = 0, peakRecep = 0;
+    for (const e of timeline) {
+        peakDvm = Math.max(peakDvm, e.dvm_avail);
+        peakRvt = Math.max(peakRvt, e.rvt_avail);
+        peakRecep = Math.max(peakRecep, e.receptionist_avail);
+    }
+
+    // Update schedule panel to reflect schedule-driven staffing
+    scheduleEl.setStaffFromSchedule({ dvm: peakDvm, rvt: peakRvt, receptionist: peakRecep });
+
+    // Sync day between views
+    const config = scheduleEl.config;
+    config.day = day;
+
+    feedEl.reset();
+    runODE(config);
+}
+
+// Sync schedule panel day picker → scheduler day tabs
+scheduleEl.addEventListener('schedule-change', (e) => {
+    if (schedulerEl._initialized) {
+        schedulerEl.activeDay = e.detail.day;
+        rebuildTimeline();
+    }
+});
+
+// ── Initial run ──
+runODE(currentConfig);
+</script>
+</body>
+</html>

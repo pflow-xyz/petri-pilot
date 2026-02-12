@@ -1,0 +1,544 @@
+/* pflow-pilot shared widget styles */
+/* Based on stackdump-com widget patterns */
+
+:root {
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --card-bg: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    --border-color: rgba(255,255,255,0.1);
+    --text-color: #fff;
+    --text-muted: rgba(255,255,255,0.6);
+    --accent-purple: #9b59b6;
+    --accent-green: #2ea44f;
+    --accent-blue: #3498db;
+    --accent-orange: #f39c12;
+    --accent-red: #e74c3c;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background: var(--bg-gradient);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: var(--text-color);
+}
+
+/* ============================================
+   Workflow State Widget
+   ============================================ */
+.workflow-state {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.workflow-state-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.workflow-state-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-purple), #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.workflow-state-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.workflow-state-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin: 0;
+}
+
+.workflow-state-content {
+    min-height: 100px;
+}
+
+.workflow-state-loading,
+.workflow-state-error {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.6;
+}
+
+/* Places Grid */
+.workflow-places {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.workflow-place {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.workflow-place.active {
+    border-color: var(--accent-green);
+    background: rgba(46, 164, 79, 0.2);
+}
+
+.place-tokens {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-green);
+}
+
+.workflow-place:not(.active) .place-tokens {
+    color: var(--text-muted);
+}
+
+.place-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: 5px;
+    text-transform: capitalize;
+}
+
+.place-description {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-top: 3px;
+}
+
+/* Transitions */
+.workflow-transitions h4 {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 10px;
+}
+
+.no-transitions {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.transition-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.transition-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-blue), #2980b9);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-transform: capitalize;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.transition-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.transition-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================================
+   Instance List Widget
+   ============================================ */
+.instance-list {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.instance-list-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.instance-list-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-blue), #2980b9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.instance-list-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+    flex: 1;
+}
+
+.instance-list-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin: 0;
+}
+
+.instance-list-create {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-green);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.instance-list-create:hover {
+    transform: scale(1.1);
+}
+
+.instance-list-content {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.instance-list-loading,
+.instance-list-error {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.6;
+}
+
+.instance-list-empty {
+    text-align: center;
+    padding: 30px;
+}
+
+.instance-list-empty p {
+    opacity: 0.6;
+    margin-bottom: 15px;
+}
+
+.create-first-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent-green);
+    color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.instances {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.instance-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 12px 15px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.instance-card:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.instance-card.selected {
+    border-color: var(--accent-purple);
+    background: rgba(155, 89, 182, 0.2);
+}
+
+.instance-card.terminal {
+    opacity: 0.6;
+}
+
+.instance-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.instance-id {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.instance-state {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    text-transform: capitalize;
+}
+
+/* State colors */
+.instance-state.new,
+.instance-state.todo,
+.instance-state.pending {
+    background: rgba(52, 152, 219, 0.3);
+}
+
+.instance-state.in_progress,
+.instance-state.doing,
+.instance-state.assigned {
+    background: rgba(243, 156, 18, 0.3);
+}
+
+.instance-state.done,
+.instance-state.completed,
+.instance-state.closed,
+.instance-state.resolved {
+    background: rgba(46, 164, 79, 0.3);
+}
+
+.instance-state.escalated {
+    background: rgba(231, 76, 60, 0.3);
+}
+
+.instance-card-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+/* ============================================
+   App Shell Layout
+   ============================================ */
+.pflow-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.pflow-header {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pflow-logo {
+    font-size: 1.5rem;
+}
+
+.pflow-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.pflow-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.pflow-nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    opacity: 0.8;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.pflow-nav a:hover,
+.pflow-nav a.active {
+    opacity: 1;
+    background: rgba(255,255,255,0.1);
+}
+
+.pflow-main {
+    flex: 1;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.pflow-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pflow-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .pflow-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   Schema Viewer Widget
+   ============================================ */
+.schema-viewer {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.schema-viewer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.schema-viewer-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-orange), #e67e22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.schema-places,
+.schema-transitions {
+    margin-bottom: 15px;
+}
+
+.schema-places h4,
+.schema-transitions h4 {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 8px;
+}
+
+.schema-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.schema-item-id {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.schema-item-desc {
+    opacity: 0.6;
+    font-size: 0.8rem;
+}
+
+/* ============================================
+   Stats Widget
+   ============================================ */
+.stats-widget {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-purple);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-top: 5px;
+    text-transform: capitalize;
+}
+
+/* ============================================
+   Scrollbar styling
+   ============================================ */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.3);
+}
