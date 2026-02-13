@@ -274,9 +274,6 @@ func RunMultiple(names []string, opts Options) error {
 
 		// Poker hand evaluator Petri net model endpoint
 		mux.HandleFunc("/poker-hand/api/schema", PokerHandModelHandler())
-		mux.HandleFunc("/poker-hand/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/pflow?model=poker-hand", http.StatusTemporaryRedirect)
-		})
 
 		// Hand strength ODE model endpoint
 		mux.HandleFunc("/hand-strength/api/schema", HandStrengthModelHandler())
