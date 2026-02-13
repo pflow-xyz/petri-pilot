@@ -220,6 +220,9 @@ func RunMultiple(names []string, opts Options) error {
 	// Register auth routes
 	authHandler.RegisterRoutes(mux)
 
+	// Register deploy webhook/admin routes
+	RegisterDeployRoutes(mux)
+
 	// Register custom routes if provided
 	if opts.CustomRoutes != nil {
 		opts.CustomRoutes(mux)
