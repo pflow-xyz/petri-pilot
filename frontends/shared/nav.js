@@ -77,6 +77,7 @@ class SiteHeader extends HTMLElement {
       { id: 'texas-holdem', name: 'Poker', icon: '🃏' },
       { id: 'coffeeshop', name: 'Coffee Shop', icon: '☕' },
       { id: 'knapsack', name: 'Knapsack', icon: '🎒' },
+      { id: 'poker-hand', name: 'Hand Compare', icon: '🃑' },
     ]
 
     this.shadowRoot.innerHTML = `

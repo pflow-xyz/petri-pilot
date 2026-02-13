@@ -330,6 +330,7 @@ class PflowConcepts extends HTMLElement {
       'coffeeshop': ['places', 'capacity', 'weighted-arcs', 'rates', 'ode'],
       'texas-holdem': ['places', 'transitions', 'roles', 'events', 'guards'],
       'vet-clinic': ['places', 'transitions', 'capacity', 'rates', 'ode'],
+      'poker-hand': ['places', 'transitions', 'arcs', 'weighted-arcs'],
       'generic': ['places', 'transitions', 'arcs', 'events']
     }
 
@@ -452,6 +453,7 @@ class PflowConcepts extends HTMLElement {
           'coffeeshop': 'coffee_beans, milk, cups',
           'texas-holdem': 'preflop, flop, turn, river',
           'vet-clinic': 'dvm_avail, wait_exam, in_wellness, checkout',
+          'poker-hand': 'rank_group, suit_group, pair, flush',
           'generic': 'pending, processing, completed'
         }
       },
@@ -464,6 +466,7 @@ class PflowConcepts extends HTMLElement {
           'coffeeshop': 'make_espresso, make_latte',
           'texas-holdem': 'deal_flop, p0_raise, p1_fold',
           'vet-clinic': 'start_wellness, finish_spay, triage_to_exam',
+          'poker-hand': 'detect_pair, detect_flush, classify_hand',
           'generic': 'start, approve, complete'
         }
       },

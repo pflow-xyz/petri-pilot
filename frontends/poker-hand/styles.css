@@ -1,0 +1,410 @@
+/* Poker Hand Comparison — Dark Green Felt Theme */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0d1f15;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  flex: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+h1 {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+  color: #fff;
+}
+
+.subtitle {
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Hands Area ── */
+.hands-area {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .hands-area {
+    grid-template-columns: 1fr;
+  }
+  .vs-divider { display: none; }
+}
+
+.hand-panel {
+  background: rgba(26, 71, 42, 0.6);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  min-height: 200px;
+}
+
+.hand-panel.active {
+  border-color: rgba(255, 204, 0, 0.6);
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.15);
+}
+
+.hand-panel.winner {
+  border-color: #2ecc71;
+  box-shadow: 0 0 25px rgba(46, 204, 113, 0.3);
+}
+
+.hand-panel.loser {
+  border-color: rgba(231, 76, 60, 0.5);
+  opacity: 0.75;
+}
+
+.hand-panel.tied {
+  border-color: rgba(241, 196, 15, 0.6);
+  box-shadow: 0 0 20px rgba(241, 196, 15, 0.2);
+}
+
+.hand-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hand-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.hand-label:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.hand-label.active {
+  background: rgba(255, 204, 0, 0.2);
+  color: #ffcc00;
+}
+
+.hand-clear {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.5);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hand-clear:hover {
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #e74c3c;
+}
+
+.hand-cards {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  min-height: 72px;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hand-cards .card-slot {
+  width: 48px;
+  height: 68px;
+  border: 2px dashed rgba(255,255,255,0.15);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.2);
+  font-size: 1.2rem;
+}
+
+.hand-eval {
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.hand-rank-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+
+.hand-description {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 0.5rem;
+}
+
+.strength-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.3);
+  padding-top: 2rem;
+}
+
+/* ── Result Banner ── */
+.result-banner {
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s;
+}
+
+.result-banner.hidden { display: none; }
+
+.result-banner.hand1-wins {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  color: #2ecc71;
+}
+
+.result-banner.hand2-wins {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  color: #2ecc71;
+}
+
+.result-banner.tie {
+  background: rgba(241, 196, 15, 0.15);
+  border: 1px solid rgba(241, 196, 15, 0.4);
+  color: #f1c40f;
+}
+
+/* ── Card Picker ── */
+.card-picker {
+  background: rgba(26, 71, 42, 0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.picker-title {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.7);
+}
+
+.picker-editing {
+  font-size: 0.85rem;
+  color: #ffcc00;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: repeat(13, 1fr);
+    gap: 2px;
+  }
+}
+
+.picker-card {
+  aspect-ratio: 2.5/3.5;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(255,255,255,0.95);
+  transition: all 0.15s;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 2px;
+  min-width: 0;
+}
+
+.picker-card:hover:not(.used):not(.selected) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border-color: rgba(255, 204, 0, 0.5);
+}
+
+.picker-card .rank {
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.picker-card .suit {
+  font-size: 0.9em;
+}
+
+.picker-card.red { color: #c0392b; }
+.picker-card.black { color: #1a1a1a; }
+
+.picker-card.selected {
+  border-color: #ffcc00;
+  box-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+  transform: scale(0.92);
+}
+
+.picker-card.selected.hand1 {
+  border-color: #3498db;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+}
+
+.picker-card.selected.hand2 {
+  border-color: #e74c3c;
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+}
+
+.picker-card.used {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.suit-label {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  padding: 0.4rem 0 0.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.suit-label:first-child {
+  padding-top: 0;
+}
+
+/* ── Cards in Hand ── */
+.card {
+  width: 48px;
+  height: 68px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+.card-face {
+  background: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.card-face.card-red { color: #c0392b; }
+.card-face.card-black { color: #1a1a1a; }
+
+.card-rank {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.card-suit {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* ── Pre-canned Matchups ── */
+.matchups-section {
+  margin-bottom: 1.5rem;
+}
+
+.matchups-title {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 0.5rem;
+}
+
+.matchup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.matchup-chip {
+  background: linear-gradient(135deg, #8B4513 0%, #654321 100%);
+  border: 2px solid rgba(255, 204, 0, 0.4);
+  border-radius: 20px;
+  padding: 0.4rem 0.9rem;
+  color: #ffcc00;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.matchup-chip:hover {
+  background: linear-gradient(135deg, #a0522d 0%, #8B4513 100%);
+  border-color: #ffcc00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.4);
+}
+
+.matchup-chip:active {
+  transform: translateY(0);
+}
+
+/* ── Explainer Section ── */
+.explainer-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}

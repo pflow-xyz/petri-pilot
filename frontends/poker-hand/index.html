@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poker Hand Comparison | Petri-Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="poker-hand"></site-header>
+  <div id="app">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:rgba(255,255,255,0.4)">Loading...</div>
+  </div>
+
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="/shared/nav.js"></script>
+  <script type="module">
+    import { init } from './main.js'
+    init()
+  </script>
+  <site-footer></site-footer>
+</body>
+</html>
