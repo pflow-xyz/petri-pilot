@@ -329,6 +329,7 @@ class PflowConcepts extends HTMLElement {
       'tic-tac-toe': ['places', 'transitions', 'ode', 'events'],
       'coffeeshop': ['places', 'capacity', 'weighted-arcs', 'rates', 'ode'],
       'texas-holdem': ['places', 'transitions', 'roles', 'events', 'guards'],
+      'vet-clinic': ['places', 'transitions', 'capacity', 'rates', 'ode'],
       'generic': ['places', 'transitions', 'arcs', 'events']
     }
 
@@ -450,6 +451,7 @@ class PflowConcepts extends HTMLElement {
           'tic-tac-toe': 'x0, o0, empty0 (cell states)',
           'coffeeshop': 'coffee_beans, milk, cups',
           'texas-holdem': 'preflop, flop, turn, river',
+          'vet-clinic': 'dvm_avail, wait_exam, in_wellness, checkout',
           'generic': 'pending, processing, completed'
         }
       },
@@ -461,6 +463,7 @@ class PflowConcepts extends HTMLElement {
           'tic-tac-toe': 'x_move_0, o_move_0, win_x',
           'coffeeshop': 'make_espresso, make_latte',
           'texas-holdem': 'deal_flop, p0_raise, p1_fold',
+          'vet-clinic': 'start_wellness, finish_spay, triage_to_exam',
           'generic': 'start, approve, complete'
         }
       },
@@ -487,6 +490,7 @@ class PflowConcepts extends HTMLElement {
         desc: 'Maximum tokens a place can hold. Models inventory limits and resource constraints.',
         examples: {
           coffeeshop: 'coffee_beans (capacity: 2000g), cups (capacity: 500)',
+          'vet-clinic': 'exam_room_free (4 rooms), surgery_free (1 suite)',
           generic: 'buffer (capacity: 10)'
         }
       },
@@ -497,6 +501,7 @@ class PflowConcepts extends HTMLElement {
         examples: {
           'tic-tac-toe': 'Strategic value computation for each move',
           coffeeshop: 'Predict inventory levels and demand',
+          'vet-clinic': 'Piecewise solve with time-varying staff levels',
           generic: 'Rate-based flow analysis'
         }
       },
@@ -506,6 +511,7 @@ class PflowConcepts extends HTMLElement {
         desc: 'Speed at which transitions fire continuously. Used in ODE simulation for flow prediction.',
         examples: {
           coffeeshop: 'make_espresso: 0.5 (rate), customer_arrival: 0.3',
+          'vet-clinic': 'patient_arrives: 5/hr, start_wellness: 3.0, finish_spay: 1.0',
           generic: 'process: 1.0 (items per time unit)'
         }
       },

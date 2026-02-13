@@ -493,5 +493,83 @@ scheduleEl.addEventListener('schedule-change', (e) => {
 // ── Initial run ──
 runODE(currentConfig);
 </script>
+
+<!-- Tutorial / Explainer Section -->
+<div class="explainer-wrapper">
+  <div class="explainer-hero">
+    <h2>How It Works: Petri Net ODE Scheduling</h2>
+    <p>This simulator models a veterinary hospital as a <strong>Petri net</strong> with 32 places and 32 transitions.
+       Instead of discrete event simulation, it uses <strong>continuous ODE solving</strong> (mass-action kinetics)
+       to predict patient flow, staff utilization, and financial outcomes across a full clinic day.</p>
+  </div>
+
+  <pflow-concepts service="vet-clinic"></pflow-concepts>
+
+  <explainer-panel title="Places: Clinic Resources &amp; Patient States" icon="📍" expanded>
+    <p>The model has three categories of <strong>places</strong>:</p>
+    <ul>
+      <li><strong>Resources</strong>: <code>dvm_avail</code>, <code>rvt_avail</code>, <code>exam_room_free</code>, <code>surgery_free</code> &mdash; tokens represent available staff and rooms</li>
+      <li><strong>Queues</strong>: <code>wait_exam</code>, <code>wait_tech</code>, <code>wait_surgery</code> &mdash; tokens accumulate when patients wait for service</li>
+      <li><strong>In-service</strong>: <code>in_wellness</code>, <code>in_spay</code>, <code>in_xray</code> &mdash; tokens represent patients currently being treated</li>
+    </ul>
+    <p>A patient flows through the net: <code>arrival</code> &rarr; <code>wait_*</code> &rarr; <code>in_*</code> &rarr; <code>checkout</code> &rarr; <code>discharged</code>. Surgery patients detour through <code>in_recovery</code> first.</p>
+    <h5>Why This Matters</h5>
+    <p>Resource places create <em>bottlenecks</em> naturally. When all DVMs are busy (0 tokens in <code>dvm_avail</code>),
+       exam transitions cannot fire and the queue grows &mdash; exactly what happens in a real clinic.</p>
+  </explainer-panel>
+
+  <explainer-panel title="Transitions: Services &amp; Triage Routing" icon="⚡">
+    <p>Each clinical service has a <strong>start/finish transition pair</strong>:</p>
+    <ul>
+      <li><code>start_wellness</code> consumes tokens from <code>wait_exam</code> + <code>dvm_avail</code> + <code>exam_room_free</code>, produces a token in <code>in_wellness</code></li>
+      <li><code>finish_wellness</code> consumes from <code>in_wellness</code>, returns the DVM and exam room, sends patient to <code>checkout</code></li>
+    </ul>
+    <p>Triage transitions (<code>triage_to_exam</code>, <code>triage_to_tech</code>, etc.) route arriving patients to the correct queue based on the <strong>service mix</strong> sliders.</p>
+    <h5>The Source Transition</h5>
+    <p><code>patient_arrives</code> is a <em>source transition</em> with no input places. Its rate directly controls how many patients enter the system per hour. After 5:30 PM, this rate drops to zero &mdash; no new arrivals, but in-progress procedures finish.</p>
+  </explainer-panel>
+
+  <explainer-panel title="ODE Simulation: Piecewise Mass-Action Kinetics" icon="📈">
+    <p>Instead of stepping through individual events, the simulator solves a system of <strong>ordinary differential equations</strong>:</p>
+    <code style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; display: block; margin: 0.5rem 0;">
+      d[place]/dt = Σ(producing transitions) - Σ(consuming transitions)
+      flux(transition) = rate × Π([input_place]^weight)
+    </code>
+    <h5>Why Piecewise?</h5>
+    <p>Staff levels change throughout the day (lunch breaks, part-time shifts ending). The simulator splits the day into <strong>segments</strong> at each staff change, solving each segment independently and stitching the results together. This captures the 12:30 PM lunch dip and afternoon staffing changes accurately.</p>
+    <h5>What the ODE Reveals</h5>
+    <ul>
+      <li><strong>Queue buildup</strong>: When arrival rate exceeds service capacity, queues grow &mdash; visible as rising curves in the Queues plot</li>
+      <li><strong>Staff utilization</strong>: The fraction of time each resource is busy (tokens consumed vs. available)</li>
+      <li><strong>Steady state</strong>: Whether the clinic reaches equilibrium or queues grow unbounded</li>
+    </ul>
+  </explainer-panel>
+
+  <explainer-panel title="Financial Model: Revenue, COGS &amp; Inventory" icon="💰">
+    <p>The financial dashboard is derived directly from the ODE solution:</p>
+    <ul>
+      <li><strong>Revenue</strong>: Each service type has a price (wellness exam: $65, spay: $350, etc.). Revenue = cumulative patients × price.</li>
+      <li><strong>Supplies (COGS)</strong>: Each service consumes inventory items (vaccines, suture packs, x-ray film). Costs are tracked per-item.</li>
+      <li><strong>Staff cost</strong>: Hourly rates × hours worked, computed from the staff timeline including overtime.</li>
+    </ul>
+    <p>The <em>gross profit margin</em> emerges from the interplay of service mix, staffing levels, and patient volume &mdash; all encoded in the Petri net topology.</p>
+  </explainer-panel>
+
+  <explainer-panel title="Schedule View: Time-Varying Staff" icon="📅">
+    <p>The <strong>Schedule view</strong> introduces a human dimension to the Petri net model:</p>
+    <ul>
+      <li><strong>Employee registry</strong>: DVMs, RVTs, and receptionists with full-time/part-time classifications</li>
+      <li><strong>Shift scheduler</strong>: Gantt-style chart showing who works when, including auto-generated lunch and rest breaks</li>
+      <li><strong>Staff timeline</strong>: Converted to piecewise ODE segments &mdash; when a part-time RVT leaves at 1 PM, <code>rvt_avail</code> drops by 1 for the remaining segments</li>
+    </ul>
+    <p>This is where Petri nets shine: the <em>same model</em> works for both the simple slider-based staffing and the detailed per-employee schedule. The ODE solver doesn't care where the numbers come from.</p>
+  </explainer-panel>
+
+  <div style="margin-top: 1.5rem; text-align: center;">
+    <pflow-model-link model="vet-clinic" label="Explore the Petri Net Model"></pflow-model-link>
+  </div>
+</div>
+
+<script type="module" src="/shared/explainer.js"></script>
 </body>
 </html>
