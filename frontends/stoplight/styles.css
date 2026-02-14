@@ -1,0 +1,241 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+.app-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.header p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .main-content { grid-template-columns: 1fr; }
+}
+
+.left-panel, .right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+
+/* Traffic light */
+.light-section {
+  display: flex;
+  justify-content: center;
+}
+
+.traffic-light {
+  background: #222;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.light {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  transition: box-shadow 0.3s, opacity 0.3s;
+  opacity: 0.2;
+}
+
+.light.red { background: #d32f2f; }
+.light.yellow { background: #f9a825; }
+.light.green { background: #388e3c; }
+
+.light.active.red {
+  opacity: 1;
+  box-shadow: 0 0 30px #d32f2f, 0 0 60px rgba(211,47,47,0.4);
+}
+
+.light.active.yellow {
+  opacity: 1;
+  box-shadow: 0 0 30px #f9a825, 0 0 60px rgba(249,168,37,0.4);
+}
+
+.light.active.green {
+  opacity: 1;
+  box-shadow: 0 0 30px #388e3c, 0 0 60px rgba(56,142,60,0.4);
+}
+
+/* Controls */
+.controls-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.transitions-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.trans-btn {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+  min-width: 70px;
+  text-align: center;
+}
+
+.trans-btn:hover:not(:disabled) {
+  border-color: #1976d2;
+  background: #e3f2fd;
+}
+
+.trans-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.trans-btn.enabled {
+  border-color: #1976d2;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.btn-primary { background: #1976d2; color: white; }
+.btn-primary:hover { background: #1565c0; }
+.btn-secondary { background: #e0e0e0; color: #333; }
+.btn-secondary:hover { background: #d0d0d0; }
+
+.auto-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.auto-label input[type="range"] {
+  flex: 1;
+  max-width: 120px;
+}
+
+#speed-label {
+  min-width: 2.5em;
+  text-align: right;
+}
+
+/* Event log */
+.log-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.event-log {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-entry {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: #f9f9f9;
+}
+
+.log-entry.info { color: #888; }
+.log-entry.go { color: #388e3c; border-left: 3px solid #388e3c; }
+.log-entry.slow { color: #f9a825; border-left: 3px solid #f9a825; }
+.log-entry.stop { color: #d32f2f; border-left: 3px solid #d32f2f; }
+
+/* State diagram */
+.state-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.state-diagram {
+  display: flex;
+  justify-content: center;
+}
+
+#petri-svg {
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Explainer */
+.explainer-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.explainer-content {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #555;
+}
+
+.explainer-content p { margin-bottom: 0.75rem; }
+.explainer-content ul { margin: 0.5rem 0 0.75rem 1.5rem; }
+.explainer-content li { margin-bottom: 0.3rem; }
