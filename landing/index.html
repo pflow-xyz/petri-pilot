@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -327,6 +328,18 @@
       opacity: 0.7;
     }
 
+    a.type-pill {
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    a.type-pill:hover {
+      background: rgba(139, 92, 246, 0.3);
+      border-color: rgba(139, 92, 246, 0.6);
+      color: #e9d5ff;
+    }
+
     /* Category headers */
     .category-header {
       display: flex;
@@ -451,18 +464,18 @@
         and ODE simulation.
       </p>
       <div class="type-list">
-        <span class="type-pill"><span>&#9881;</span> WorkflowNet</span>
-        <span class="type-pill"><span>&#9883;</span> ComputationNet</span>
-        <span class="type-pill"><span>&#9741;</span> ResourceNet</span>
-        <span class="type-pill"><span>&#9823;</span> GameNet</span>
-        <span class="type-pill"><span>&#9733;</span> ClassificationNet</span>
-        <span class="type-pill"><span>&#9635;</span> CompositeNet</span>
+        <a href="#games" class="type-pill"><span>&#9823;</span> GameNet</a>
+        <a href="#resources" class="type-pill"><span>&#9741;</span> ResourceNet</a>
+        <a href="#workflows" class="type-pill"><span>&#9881;</span> WorkflowNet</a>
+        <a href="#computation" class="type-pill"><span>&#9883;</span> ComputationNet</a>
+        <a href="#classification" class="type-pill"><span>&#9733;</span> ClassificationNet</a>
+        <span class="type-pill" title="Combines multiple net types (no demos yet)"><span>&#9635;</span> CompositeNet</span>
       </div>
     </div>
   </section>
 
   <!-- Tools -->
-  <section class="demos-section">
+  <section class="demos-section" id="tools">
     <div class="category-header">
       <h2>Tools</h2>
     </div>
@@ -495,7 +508,7 @@
   </section>
 
   <!-- GameNet -->
-  <section class="demos-section">
+  <section class="demos-section" id="games">
     <div class="category-header">
       <h2>Games</h2>
       <span class="category-type">GameNet</span>
@@ -550,7 +563,7 @@
   </section>
 
   <!-- ResourceNet -->
-  <section class="demos-section">
+  <section class="demos-section" id="resources">
     <div class="category-header">
       <h2>Resources</h2>
       <span class="category-type">ResourceNet</span>
@@ -627,7 +640,7 @@
   </section>
 
   <!-- WorkflowNet -->
-  <section class="demos-section">
+  <section class="demos-section" id="workflows">
     <div class="category-header">
       <h2>Workflows</h2>
       <span class="category-type">WorkflowNet</span>
@@ -660,7 +673,7 @@
   </section>
 
   <!-- ComputationNet -->
-  <section class="demos-section">
+  <section class="demos-section" id="computation">
     <div class="category-header">
       <h2>Computation</h2>
       <span class="category-type">ComputationNet</span>
@@ -694,7 +707,7 @@
   </section>
 
   <!-- ClassificationNet -->
-  <section class="demos-section">
+  <section class="demos-section" id="classification">
     <div class="category-header">
       <h2>Classification</h2>
       <span class="category-type">ClassificationNet</span>
