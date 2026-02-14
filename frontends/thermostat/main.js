@@ -4,7 +4,6 @@
 let tempChart = null
 let heaterChart = null
 let animFrame = null
-let simResult = null
 
 function getParams() {
   return {
@@ -17,6 +16,8 @@ function getParams() {
 }
 
 // Bang-bang controller simulation with Euler integration
+// dT/dt = heatRate * heaterOn - coolRate * T
+// Equilibrium (heater always on) = heatRate / coolRate
 function simulate(params) {
   const dt = 0.05
   const steps = Math.ceil(params.tspan / dt)
@@ -40,7 +41,7 @@ function simulate(params) {
       heaterOn = true
     }
 
-    // Euler step: dT/dt = heatRate * heaterOn - coolRate * T
+    // Euler step
     const dTemp = (heaterOn ? params.heatRate : 0) - params.coolRate * temp
     temp += dTemp * dt
     temp = Math.max(0, temp)
@@ -52,6 +53,12 @@ function simulate(params) {
 // Extract predictions from simulation results
 function computePredictions(result, params) {
   const { times, temps, heaterStates } = result
+
+  // Theoretical equilibrium (heater always on)
+  const theoreticalEquil = params.heatRate / params.coolRate
+
+  // Can the heater ever reach the target?
+  const canReach = theoreticalEquil > params.target
 
   // Time to first reach target
   let timeToTarget = null
@@ -75,13 +82,13 @@ function computePredictions(result, params) {
   const eqTemps = temps.slice(lastQuarter)
   const equilibrium = eqTemps.reduce((a, b) => a + b, 0) / eqTemps.length
 
-  // Max overshoot above target
+  // Max overshoot above target (only if heating toward target)
   let maxOvershoot = 0
   if (params.initial < params.target) {
     for (const t of temps) {
       maxOvershoot = Math.max(maxOvershoot, t - params.target)
     }
-  } else {
+  } else if (params.initial > params.target) {
     for (const t of temps) {
       maxOvershoot = Math.max(maxOvershoot, params.target - t)
     }
@@ -92,12 +99,19 @@ function computePredictions(result, params) {
   const steadyHeater = heaterStates.slice(lastHalf)
   const dutyCycle = (steadyHeater.reduce((a, b) => a + b, 0) / steadyHeater.length) * 100
 
-  return { timeToTarget, equilibrium, maxOvershoot, dutyCycle }
+  return { timeToTarget, equilibrium, maxOvershoot, dutyCycle, canReach, theoreticalEquil }
 }
 
 function updatePredictions(preds) {
-  document.getElementById('pred-time').textContent =
-    preds.timeToTarget !== null ? preds.timeToTarget.toFixed(1) + 's' : 'N/A'
+  const timeEl = document.getElementById('pred-time')
+  if (preds.timeToTarget !== null) {
+    timeEl.textContent = preds.timeToTarget.toFixed(1) + 's'
+  } else if (!preds.canReach) {
+    timeEl.textContent = 'never'
+    timeEl.title = 'Heater max equilibrium: ' + preds.theoreticalEquil.toFixed(0) + '°'
+  } else {
+    timeEl.textContent = '>' + document.getElementById('tspan').value + 's'
+  }
 
   document.getElementById('pred-equil').textContent =
     preds.equilibrium.toFixed(1) + '°'
@@ -109,43 +123,54 @@ function updatePredictions(preds) {
     preds.dutyCycle.toFixed(0) + '%'
 }
 
-// Animate thermocouple probe
+// Update thermocouple probe visualization
 function updateProbe(temp, target, heaterOn) {
-  // Fill height: 0° = 0px, 40° = 270px (full probe height)
   const maxTemp = 40
-  const fillH = Math.min(270, Math.max(0, (temp / maxTemp) * 270))
+  const clampedTemp = Math.max(0, Math.min(maxTemp, temp || 0))
+  const clampedTarget = Math.max(0, Math.min(maxTemp, target || 0))
+
+  // Fill height: 0° = 0px, 40° = 270px
+  const fillH = (clampedTemp / maxTemp) * 270
   const fillY = 285 - fillH
   const probeFill = document.getElementById('probe-fill')
-  probeFill.setAttribute('height', fillH)
-  probeFill.setAttribute('y', fillY)
+  if (probeFill) {
+    probeFill.setAttribute('height', String(fillH))
+    probeFill.setAttribute('y', String(fillY))
 
-  // Color based on temperature relative to target
-  if (temp >= target) {
-    probeFill.setAttribute('fill', '#e74c3c')
-  } else if (temp >= target - 2) {
-    probeFill.setAttribute('fill', '#f39c12')
-  } else {
-    probeFill.setAttribute('fill', '#3498db')
+    // Color based on temperature relative to target
+    if (clampedTemp >= clampedTarget) {
+      probeFill.setAttribute('fill', '#e74c3c')
+    } else if (clampedTemp >= clampedTarget - 2) {
+      probeFill.setAttribute('fill', '#f39c12')
+    } else {
+      probeFill.setAttribute('fill', '#3498db')
+    }
   }
 
   // Target marker position
-  const markerY = 285 - (target / maxTemp) * 270
+  const markerY = 285 - (clampedTarget / maxTemp) * 270
   const marker = document.getElementById('target-marker')
-  marker.querySelector('line').setAttribute('y1', markerY)
-  marker.querySelector('line').setAttribute('y2', markerY)
-  marker.querySelectorAll('line')[1].setAttribute('y1', markerY)
-  marker.querySelectorAll('line')[1].setAttribute('y2', markerY)
-  marker.querySelector('text').setAttribute('y', markerY + 4)
+  if (marker) {
+    const lines = marker.querySelectorAll('line')
+    lines[0].setAttribute('y1', String(markerY))
+    lines[0].setAttribute('y2', String(markerY))
+    lines[1].setAttribute('y1', String(markerY))
+    lines[1].setAttribute('y2', String(markerY))
+    marker.querySelector('text').setAttribute('y', String(markerY + 4))
+  }
 
   // Temperature readout
-  document.getElementById('probe-temp').textContent = temp.toFixed(1) + '°'
+  const readout = document.getElementById('probe-temp')
+  if (readout) readout.textContent = clampedTemp.toFixed(1) + '°'
 
   // Heater status
   const status = document.getElementById('heater-status')
-  if (heaterOn) {
-    status.innerHTML = '<span class="heater-indicator on"></span><span>Heater ON</span>'
-  } else {
-    status.innerHTML = '<span class="heater-indicator off"></span><span>Heater OFF</span>'
+  if (status) {
+    if (heaterOn) {
+      status.innerHTML = '<span class="heater-indicator on"></span><span>Heater ON</span>'
+    } else {
+      status.innerHTML = '<span class="heater-indicator off"></span><span>Heater OFF</span>'
+    }
   }
 }
 
@@ -268,18 +293,19 @@ function updateCharts(result, params, preds) {
 // Animate the thermocouple through simulation time
 function animateProbe(result, params) {
   if (animFrame) cancelAnimationFrame(animFrame)
+  if (!result || !result.temps || result.temps.length === 0) return
 
   const duration = 3000 // 3 second animation
   const startTime = performance.now()
-  const { times, temps, heaterStates } = result
 
   function step(now) {
     const elapsed = now - startTime
     const progress = Math.min(1, elapsed / duration)
-
-    // Map animation progress to simulation index
-    const idx = Math.floor(progress * (temps.length - 1))
-    updateProbe(temps[idx], params.target, heaterStates[idx] === 1)
+    const idx = Math.min(
+      result.temps.length - 1,
+      Math.floor(progress * (result.temps.length - 1))
+    )
+    updateProbe(result.temps[idx], params.target, result.heaterStates[idx] === 1)
 
     if (progress < 1) {
       animFrame = requestAnimationFrame(step)
@@ -291,12 +317,12 @@ function animateProbe(result, params) {
 
 function runSimulation() {
   const params = getParams()
-  simResult = simulate(params)
-  const preds = computePredictions(simResult, params)
+  const result = simulate(params)
+  const preds = computePredictions(result, params)
 
   updatePredictions(preds)
-  updateCharts(simResult, params, preds)
-  animateProbe(simResult, params)
+  updateCharts(result, params, preds)
+  animateProbe(result, params)
 }
 
 function setupSliders() {
@@ -318,8 +344,9 @@ function setupSliders() {
   })
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initCharts()
-  setupSliders()
-  runSimulation()
-})
+// Module scripts are deferred, DOM is ready by execution time
+initCharts()
+setupSliders()
+// Set initial probe state before animation
+updateProbe(15, 22, false)
+runSimulation()
