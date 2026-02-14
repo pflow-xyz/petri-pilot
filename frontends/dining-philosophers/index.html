@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dining Philosophers</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8D%BD%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="dining-philosophers"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Dining Philosophers</h1>
+      <p>Classic concurrency problem: 5 philosophers, 5 forks, and the deadlock that lurks</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="table-section">
+          <h3>The Table</h3>
+          <div class="table-container">
+            <svg id="table-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+              <!-- Table circle -->
+              <circle cx="250" cy="250" r="120" fill="#8B4513" opacity="0.3" stroke="#8B4513" stroke-width="2"/>
+              <circle cx="250" cy="250" r="118" fill="none" stroke="#A0522D" stroke-width="1" opacity="0.5"/>
+              <!-- Philosophers and forks rendered by JS -->
+            </svg>
+          </div>
+          <div id="deadlock-alert" class="deadlock-alert hidden">
+            DEADLOCK DETECTED - All philosophers holding left fork!
+          </div>
+        </div>
+
+        <div class="controls-section">
+          <h3>Controls</h3>
+          <div class="control-buttons">
+            <button class="btn btn-primary" id="auto-btn" onclick="toggleAuto()">Auto Run</button>
+            <button class="btn btn-danger" onclick="forceDeadlock()">Force Deadlock</button>
+            <button class="btn btn-secondary" onclick="resetState()">Reset</button>
+          </div>
+          <div class="speed-control">
+            <label>
+              <span>Speed</span>
+              <span id="speed-value">500ms</span>
+            </label>
+            <input type="range" id="speed" min="100" max="2000" step="100" value="500">
+          </div>
+        </div>
+
+        <div class="transitions-section">
+          <h3>Fire Transitions</h3>
+          <div id="transitions-grid" class="transitions-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="state-section">
+          <h3>Philosopher States</h3>
+          <div id="state-grid" class="state-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <div class="log-section">
+          <h3>Event Log <button class="btn-clear" onclick="clearLog()">Clear</button></h3>
+          <div id="event-log" class="event-log">
+            <div class="log-entry info">System initialized. All philosophers thinking.</div>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>The <strong>Dining Philosophers Problem</strong> is a classic concurrency scenario:</p>
+            <ul>
+              <li>5 philosophers sit around a circular table</li>
+              <li>Between each pair is a shared <strong>fork</strong></li>
+              <li>To eat, a philosopher needs <strong>both</strong> adjacent forks</li>
+              <li>Each philosopher picks up the <strong>left fork first</strong>, then the right</li>
+            </ul>
+            <p><strong>Deadlock</strong> occurs when all 5 simultaneously hold their left fork. Each waits for a right fork that will never be released. This demonstrates the four conditions for deadlock:</p>
+            <ul>
+              <li><strong>Mutual exclusion</strong> - forks can't be shared</li>
+              <li><strong>Hold and wait</strong> - holding left, waiting for right</li>
+              <li><strong>No preemption</strong> - can't force a philosopher to drop a fork</li>
+              <li><strong>Circular wait</strong> - each waits on the next in a circle</li>
+            </ul>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="dining-philosophers" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

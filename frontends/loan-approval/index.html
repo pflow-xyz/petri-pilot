@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Approval Pipeline</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8F%A6%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="loan-approval"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Loan Approval Pipeline</h1>
+      <p>Fork-join workflow with parallel reviews, role-based access, and synchronization barriers</p>
+    </div>
+
+    <div class="main-content">
+      <div class="top-section">
+        <div class="pipeline-section">
+          <h3>Pipeline</h3>
+          <div class="pipeline">
+            <div class="pipeline-stage" id="stage-submitted">
+              <div class="stage-dot"></div>
+              <div class="stage-label">Submitted</div>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-fork">
+              <div class="fork-line top"></div>
+              <div class="fork-line bottom"></div>
+              <div class="pipeline-branch top">
+                <div class="pipeline-stage" id="stage-credit_review">
+                  <div class="stage-dot"></div>
+                  <div class="stage-label">Credit Review</div>
+                </div>
+                <div class="pipeline-connector short"></div>
+                <div class="pipeline-stage small" id="stage-credit_passed">
+                  <div class="stage-dot"></div>
+                  <div class="stage-label">Passed</div>
+                </div>
+              </div>
+              <div class="pipeline-branch bottom">
+                <div class="pipeline-stage" id="stage-employment_review">
+                  <div class="stage-dot"></div>
+                  <div class="stage-label">Employment Review</div>
+                </div>
+                <div class="pipeline-connector short"></div>
+                <div class="pipeline-stage small" id="stage-employment_passed">
+                  <div class="stage-dot"></div>
+                  <div class="stage-label">Passed</div>
+                </div>
+              </div>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage" id="stage-ready_for_decision">
+              <div class="stage-dot"></div>
+              <div class="stage-label">Merged</div>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage" id="stage-under_review">
+              <div class="stage-dot"></div>
+              <div class="stage-label">Underwriting</div>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage" id="stage-approved">
+              <div class="stage-dot"></div>
+              <div class="stage-label">Decision</div>
+            </div>
+          </div>
+          <div class="rejection-indicators">
+            <div class="rejection-badge hidden" id="badge-credit_failed">Credit Rejected</div>
+            <div class="rejection-badge hidden" id="badge-employment_failed">Employment Rejected</div>
+            <div class="rejection-badge hidden" id="badge-rejected">Loan Rejected</div>
+            <div class="approval-badge hidden" id="badge-approved">Loan Approved</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-content">
+        <div class="left-panel">
+          <div class="role-section">
+            <h3>Role</h3>
+            <div class="role-selector">
+              <button class="role-btn active" data-role="processor" onclick="selectRole('processor')">Processor</button>
+              <button class="role-btn" data-role="credit_analyst" onclick="selectRole('credit_analyst')">Credit Analyst</button>
+              <button class="role-btn" data-role="hr_analyst" onclick="selectRole('hr_analyst')">HR Analyst</button>
+              <button class="role-btn" data-role="underwriter" onclick="selectRole('underwriter')">Underwriter</button>
+            </div>
+            <div class="role-desc" id="role-desc">Initiates the loan review process</div>
+          </div>
+
+          <div class="actions-section">
+            <h3>Available Actions</h3>
+            <div id="actions-container" class="actions-container">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="controls-section">
+            <button class="btn btn-secondary" onclick="resetState()">Reset Pipeline</button>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <div class="log-section">
+            <h3>Event Timeline <button class="btn-clear" onclick="clearLog()">Clear</button></h3>
+            <div id="event-log" class="event-log">
+              <div class="log-entry info">Loan application submitted. Waiting for processor to start reviews.</div>
+            </div>
+          </div>
+
+          <div class="explainer-section">
+            <h3>How It Works</h3>
+            <div class="explainer-content">
+              <p>This demo models a <strong>loan approval pipeline</strong> using a Petri net with a <strong>fork-join pattern</strong>:</p>
+              <ul>
+                <li><strong>Fork</strong>: The processor starts two parallel reviews (credit + employment)</li>
+                <li><strong>Parallel lanes</strong>: Each analyst works independently</li>
+                <li><strong>Join</strong>: Both reviews must pass before underwriting can begin</li>
+                <li><strong>Early termination</strong>: A credit failure can immediately reject</li>
+              </ul>
+              <p>The Petri net enforces the <strong>synchronization barrier</strong> at the merge point. The underwriter can only act when both tokens arrive at the join place. This is a core <strong>BPMN pattern</strong> that Petri nets model natively.</p>
+              <p>Switch between <strong>roles</strong> to see each participant's view. Only transitions matching your role are available.</p>
+              <div style="margin-top: 1.5rem; text-align: center;">
+                <pflow-model-link model="loan-approval" label="Explore the Petri Net Model"></pflow-model-link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

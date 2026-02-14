@@ -1,0 +1,81 @@
+{
+  "name": "loan-approval",
+  "description": "Loan approval pipeline with parallel reviews, role-based access, and fork-join synchronization",
+  "debug": {
+    "enabled": true
+  },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
+  "places": [
+    {"id": "submitted", "description": "Loan application submitted", "initial": 1, "x": 100, "y": 300},
+    {"id": "credit_review", "description": "Under credit review", "initial": 0, "x": 300, "y": 150},
+    {"id": "employment_review", "description": "Under employment review", "initial": 0, "x": 300, "y": 450},
+    {"id": "credit_passed", "description": "Credit check passed", "initial": 0, "x": 500, "y": 150},
+    {"id": "credit_failed", "description": "Credit check failed", "initial": 0, "x": 500, "y": 50},
+    {"id": "employment_passed", "description": "Employment verification passed", "initial": 0, "x": 500, "y": 450},
+    {"id": "employment_failed", "description": "Employment verification failed", "initial": 0, "x": 500, "y": 550},
+    {"id": "ready_for_decision", "description": "Both reviews passed, ready for underwriting", "initial": 0, "x": 700, "y": 300},
+    {"id": "under_review", "description": "Under final underwriter review", "initial": 0, "x": 850, "y": 300},
+    {"id": "approved", "description": "Loan approved", "initial": 0, "x": 1050, "y": 200},
+    {"id": "rejected", "description": "Loan rejected", "initial": 0, "x": 1050, "y": 400}
+  ],
+  "transitions": [
+    {"id": "start_reviews", "description": "Begin parallel credit and employment reviews", "role": "processor", "x": 200, "y": 300},
+    {"id": "approve_credit", "description": "Approve credit check", "role": "credit_analyst", "x": 400, "y": 150},
+    {"id": "reject_credit", "description": "Reject credit check", "role": "credit_analyst", "x": 400, "y": 50},
+    {"id": "approve_employment", "description": "Approve employment verification", "role": "hr_analyst", "x": 400, "y": 450},
+    {"id": "reject_employment", "description": "Reject employment verification", "role": "hr_analyst", "x": 400, "y": 550},
+    {"id": "merge_reviews", "description": "Synchronize: both reviews must pass", "x": 600, "y": 300},
+    {"id": "begin_underwriting", "description": "Begin final underwriter review", "role": "underwriter", "x": 770, "y": 300},
+    {"id": "approve_loan", "description": "Approve the loan application", "role": "underwriter", "x": 950, "y": 200},
+    {"id": "reject_loan", "description": "Reject the loan application", "role": "underwriter", "x": 950, "y": 400},
+    {"id": "reject_on_credit", "description": "Reject due to failed credit check", "x": 800, "y": 50},
+    {"id": "reject_on_employment", "description": "Reject due to failed employment verification", "x": 800, "y": 550}
+  ],
+  "arcs": [
+    {"from": "submitted", "to": "start_reviews"},
+    {"from": "start_reviews", "to": "credit_review"},
+    {"from": "start_reviews", "to": "employment_review"},
+
+    {"from": "credit_review", "to": "approve_credit"},
+    {"from": "approve_credit", "to": "credit_passed"},
+
+    {"from": "credit_review", "to": "reject_credit"},
+    {"from": "reject_credit", "to": "credit_failed"},
+
+    {"from": "employment_review", "to": "approve_employment"},
+    {"from": "approve_employment", "to": "employment_passed"},
+
+    {"from": "employment_review", "to": "reject_employment"},
+    {"from": "reject_employment", "to": "employment_failed"},
+
+    {"from": "credit_passed", "to": "merge_reviews"},
+    {"from": "employment_passed", "to": "merge_reviews"},
+    {"from": "merge_reviews", "to": "ready_for_decision"},
+
+    {"from": "ready_for_decision", "to": "begin_underwriting"},
+    {"from": "begin_underwriting", "to": "under_review"},
+
+    {"from": "under_review", "to": "approve_loan"},
+    {"from": "approve_loan", "to": "approved"},
+
+    {"from": "under_review", "to": "reject_loan"},
+    {"from": "reject_loan", "to": "rejected"},
+
+    {"from": "credit_failed", "to": "reject_on_credit"},
+    {"from": "reject_on_credit", "to": "rejected"},
+
+    {"from": "employment_failed", "to": "reject_on_employment"},
+    {"from": "reject_on_employment", "to": "rejected"}
+  ],
+  "metadata": {
+    "workflow": {
+      "description": "Loan approval with parallel reviews and fork-join synchronization",
+      "pattern": "fork-join with early termination",
+      "roles": ["processor", "credit_analyst", "hr_analyst", "underwriter"],
+      "concepts": ["fork-join", "synchronization barrier", "parallel processing", "BPMN patterns"]
+    }
+  }
+}
