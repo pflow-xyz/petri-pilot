@@ -55,6 +55,27 @@ const RANK_VALUES = {
 }
 
 /**
+ * Power-of-2 kicker weights for Petri net model parity.
+ * Any single higher-rank card outweighs all lower cards combined.
+ */
+const RANK_KICKER_WEIGHTS = {
+  'A': 4096, 'K': 2048, 'Q': 1024, 'J': 512, 'T': 256,
+  '9': 128, '8': 64, '7': 32, '6': 16, '5': 8, '4': 4, '3': 2, '2': 1
+}
+
+/**
+ * Compute Petri net kicker score: sum of power-of-2 weights for each unique rank
+ */
+function computePetriKickerScore(cards) {
+  const ranks = new Set(cards.map(c => typeof c === 'string' ? parseCard(c)?.rank : c.rank).filter(Boolean))
+  let score = 0
+  for (const rank of ranks) {
+    score += RANK_KICKER_WEIGHTS[rank] || 0
+  }
+  return score
+}
+
+/**
  * Straight patterns (high card first)
  */
 const STRAIGHT_PATTERNS = [
@@ -131,6 +152,7 @@ export function evaluateHand(cards) {
       rankName: 'No Cards',
       strength: 0,
       petriStrength: 0,
+      petriKickerScore: 0,
       kickers: [],
       description: 'No cards'
     }
@@ -172,6 +194,7 @@ export function evaluateHand(cards) {
         rankName: highCard === 'A' ? 'Royal Flush' : 'Straight Flush',
         strength: normalizeStrength(HandRank.STRAIGHT_FLUSH, [getRankValue(highCard)]),
         petriStrength: PetriNetStrength[HandRank.STRAIGHT_FLUSH],
+        petriKickerScore: computePetriKickerScore(parsed),
         kickers: [highCard],
         description: highCard === 'A' ? 'Royal Flush' : `Straight Flush, ${highCard}-high`
       }
@@ -195,6 +218,7 @@ export function evaluateHand(cards) {
       rankName: 'Four of a Kind',
       strength: normalizeStrength(HandRank.FOUR_OF_A_KIND, [quads[0].value, kicker?.value || 0]),
       petriStrength: PetriNetStrength[HandRank.FOUR_OF_A_KIND],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [quads[0].rank, kicker?.rank].filter(Boolean),
       description: `Four ${quads[0].rank}s`
     }
@@ -209,6 +233,7 @@ export function evaluateHand(cards) {
       rankName: 'Full House',
       strength: normalizeStrength(HandRank.FULL_HOUSE, [tripRank.value, pairRank.value]),
       petriStrength: PetriNetStrength[HandRank.FULL_HOUSE],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [tripRank.rank, pairRank.rank],
       description: `Full House, ${tripRank.rank}s full of ${pairRank.rank}s`
     }
@@ -225,6 +250,7 @@ export function evaluateHand(cards) {
       rankName: 'Flush',
       strength: normalizeStrength(HandRank.FLUSH, flushCards.map(c => c.value)),
       petriStrength: PetriNetStrength[HandRank.FLUSH],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: flushCards.map(c => c.rank),
       description: `Flush, ${flushCards[0].rank}-high`
     }
@@ -238,6 +264,7 @@ export function evaluateHand(cards) {
       rankName: 'Straight',
       strength: normalizeStrength(HandRank.STRAIGHT, [getRankValue(highCard)]),
       petriStrength: PetriNetStrength[HandRank.STRAIGHT],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [highCard],
       description: `Straight, ${highCard}-high`
     }
@@ -253,6 +280,7 @@ export function evaluateHand(cards) {
       rankName: 'Three of a Kind',
       strength: normalizeStrength(HandRank.THREE_OF_A_KIND, [trips[0].value, ...kickers.map(k => k.value)]),
       petriStrength: PetriNetStrength[HandRank.THREE_OF_A_KIND],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [trips[0].rank, ...kickers.map(k => k.rank)],
       description: `Three ${trips[0].rank}s`
     }
@@ -266,6 +294,7 @@ export function evaluateHand(cards) {
       rankName: 'Two Pair',
       strength: normalizeStrength(HandRank.TWO_PAIR, [pairs[0].value, pairs[1].value, kicker?.value || 0]),
       petriStrength: PetriNetStrength[HandRank.TWO_PAIR],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [pairs[0].rank, pairs[1].rank, kicker?.rank].filter(Boolean),
       description: `Two Pair, ${pairs[0].rank}s and ${pairs[1].rank}s`
     }
@@ -281,6 +310,7 @@ export function evaluateHand(cards) {
       rankName: 'Pair',
       strength: normalizeStrength(HandRank.PAIR, [pairs[0].value, ...kickers.map(k => k.value)]),
       petriStrength: PetriNetStrength[HandRank.PAIR],
+      petriKickerScore: computePetriKickerScore(parsed),
       kickers: [pairs[0].rank, ...kickers.map(k => k.rank)],
       description: `Pair of ${pairs[0].rank}s`
     }
@@ -293,6 +323,7 @@ export function evaluateHand(cards) {
     rankName: 'High Card',
     strength: normalizeStrength(HandRank.HIGH_CARD, highCards.map(c => c.value)),
     petriStrength: PetriNetStrength[HandRank.HIGH_CARD],
+    petriKickerScore: computePetriKickerScore(parsed),
     kickers: highCards.map(c => c.rank),
     description: `High Card ${highCards[0].rank}`
   }
@@ -554,6 +585,8 @@ export const _test = {
   checkStraight,
   getStraightHighCard,
   normalizeStrength,
+  computePetriKickerScore,
   STRAIGHT_PATTERNS,
-  RANK_VALUES
+  RANK_VALUES,
+  RANK_KICKER_WEIGHTS
 }
