@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Thermostat Controller</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8C%A1%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,13 +15,92 @@
   <div class="app-container">
     <div class="header">
       <h1>Thermostat Controller</h1>
-      <p>Bang-bang feedback control with ODE dynamics on a Petri net</p>
+      <p>ODE prediction: how long to reach target temperature?</p>
+    </div>
+
+    <div class="predictions-bar">
+      <div class="prediction-card primary">
+        <div class="pred-label">Time to Target</div>
+        <div class="pred-value" id="pred-time">--</div>
+        <div class="pred-unit">seconds</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Equilibrium</div>
+        <div class="pred-value" id="pred-equil">--</div>
+        <div class="pred-unit">steady-state temp</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Overshoot</div>
+        <div class="pred-value" id="pred-overshoot">--</div>
+        <div class="pred-unit">degrees above target</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Heater Duty Cycle</div>
+        <div class="pred-value" id="pred-duty">--</div>
+        <div class="pred-unit">% of time on</div>
+      </div>
     </div>
 
     <div class="main-content">
       <div class="left-panel">
+        <div class="thermocouple-section">
+          <h3>Thermocouple</h3>
+          <div class="thermocouple">
+            <svg viewBox="0 0 200 320" class="thermocouple-svg">
+              <!-- Probe body -->
+              <rect x="85" y="10" width="30" height="240" rx="4" fill="#b0bec5" stroke="#78909c" stroke-width="1.5"/>
+              <!-- Sensing tip -->
+              <rect x="88" y="240" width="24" height="50" rx="12" fill="#546e7a" stroke="#37474f" stroke-width="1.5"/>
+              <!-- Temperature fill (animated) -->
+              <clipPath id="probe-clip">
+                <rect x="89" y="15" width="22" height="270" rx="3"/>
+              </clipPath>
+              <rect id="probe-fill" x="89" y="285" width="22" height="0" fill="#e74c3c" clip-path="url(#probe-clip)">
+                <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+              </rect>
+              <!-- Target marker -->
+              <g id="target-marker">
+                <line x1="75" y1="100" x2="85" y2="100" stroke="#3498db" stroke-width="2"/>
+                <line x1="115" y1="100" x2="125" y2="100" stroke="#3498db" stroke-width="2"/>
+                <text x="135" y="104" fill="#3498db" font-size="11" font-weight="600">target</text>
+              </g>
+              <!-- Temperature readout -->
+              <text id="probe-temp" x="100" y="310" text-anchor="middle" fill="#e74c3c" font-size="18" font-weight="700">15.0°</text>
+              <!-- Scale markings -->
+              <text x="72" y="18" text-anchor="end" fill="#999" font-size="9">40°</text>
+              <text x="72" y="75" text-anchor="end" fill="#999" font-size="9">30°</text>
+              <text x="72" y="138" text-anchor="end" fill="#999" font-size="9">20°</text>
+              <text x="72" y="200" text-anchor="end" fill="#999" font-size="9">10°</text>
+              <text x="72" y="258" text-anchor="end" fill="#999" font-size="9">0°</text>
+              <!-- Wire leads -->
+              <line x1="92" y1="10" x2="80" y2="0" stroke="#c62828" stroke-width="2"/>
+              <line x1="108" y1="10" x2="120" y2="0" stroke="#1565c0" stroke-width="2"/>
+              <text x="72" y="4" fill="#c62828" font-size="9" font-weight="600">+</text>
+              <text x="126" y="4" fill="#1565c0" font-size="9" font-weight="600">−</text>
+            </svg>
+          </div>
+          <div class="heater-status" id="heater-status">
+            <span class="heater-indicator off"></span>
+            <span>Heater OFF</span>
+          </div>
+        </div>
+
         <div class="params-section">
           <h3>Parameters</h3>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Target Temperature</span>
+              <span class="param-value" id="target-value">22°</span>
+            </label>
+            <input type="range" id="target" min="10" max="35" step="1" value="22">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Initial Temperature</span>
+              <span class="param-value" id="initial-value">15°</span>
+            </label>
+            <input type="range" id="initial" min="0" max="35" step="1" value="15">
+          </div>
           <div class="param-group">
             <label>
               <span class="param-name">Heating Rate</span>
@@ -32,70 +111,16 @@
           <div class="param-group">
             <label>
               <span class="param-name">Cooling Rate</span>
-              <span class="param-value" id="cool-rate-value">0.1</span>
+              <span class="param-value" id="cool-rate-value">0.10</span>
             </label>
             <input type="range" id="cool-rate" min="0.01" max="0.5" step="0.01" value="0.1">
           </div>
           <div class="param-group">
             <label>
-              <span class="param-name">Target Temperature</span>
-              <span class="param-value" id="target-value">22</span>
-            </label>
-            <input type="range" id="target" min="10" max="35" step="1" value="22">
-          </div>
-          <div class="param-group">
-            <label>
-              <span class="param-name">Initial Temperature</span>
-              <span class="param-value" id="initial-value">15</span>
-            </label>
-            <input type="range" id="initial" min="5" max="35" step="1" value="15">
-          </div>
-          <div class="param-group">
-            <label>
               <span class="param-name">Simulation Time</span>
-              <span class="param-value" id="tspan-value">60</span>
+              <span class="param-value" id="tspan-value">60s</span>
             </label>
             <input type="range" id="tspan" min="20" max="200" step="10" value="60">
-          </div>
-          <div class="actions">
-            <button class="btn btn-secondary" onclick="resetParams()">Reset</button>
-            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
-          </div>
-        </div>
-
-        <div class="gauge-section">
-          <h3>Temperature</h3>
-          <div class="gauge-display">
-            <div class="thermometer">
-              <div class="thermo-fill" id="thermo-fill"></div>
-              <div class="thermo-target" id="thermo-target"></div>
-            </div>
-            <div class="gauge-info">
-              <div class="gauge-current">
-                <div class="gauge-label">Current</div>
-                <div class="gauge-value" id="current-temp">15</div>
-              </div>
-              <div class="gauge-target">
-                <div class="gauge-label">Target</div>
-                <div class="gauge-value" id="target-temp">22</div>
-              </div>
-            </div>
-          </div>
-          <div class="heater-status" id="heater-status">
-            <span class="heater-indicator off"></span>
-            <span>Heater OFF</span>
-          </div>
-        </div>
-
-        <div class="equations-section">
-          <h3>Dynamics</h3>
-          <div class="eq-display">
-            <div class="equation">
-              <span class="eq-lhs">Heating</span>: d(T)/dt = +<span class="eq-heat">heat_rate</span> (when heater ON)
-            </div>
-            <div class="equation">
-              <span class="eq-lhs">Cooling</span>: d(T)/dt = -<span class="eq-cool">cool_rate</span> * T (always)
-            </div>
           </div>
         </div>
       </div>
@@ -106,21 +131,11 @@
           <div class="chart-container">
             <canvas id="temp-chart"></canvas>
           </div>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <div class="legend-color" style="background: #e74c3c;"></div>
-              <span>Temperature</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color" style="background: #3498db; opacity: 0.5;"></div>
-              <span>Target</span>
-            </div>
-          </div>
         </div>
 
         <div class="chart-section">
           <h3>Heater State <span class="hint">(on/off cycling)</span></h3>
-          <div class="chart-container">
+          <div class="chart-container short">
             <canvas id="heater-chart"></canvas>
           </div>
         </div>
@@ -128,14 +143,24 @@
         <div class="explainer-section">
           <h3>How It Works</h3>
           <div class="explainer-content">
-            <p>This models a <strong>bang-bang thermostat controller</strong> using a Petri net with ODE dynamics:</p>
+            <p>A <strong>thermocouple</strong> measures temperature by the voltage between two different metals joined at a sensing tip. Here, it reads the room temperature continuously while a bang-bang controller decides when to heat.</p>
+            <p>The Petri net has just <strong>3 places</strong> and <strong>4 transitions</strong>:</p>
             <ul>
-              <li><strong>heat</strong> transition: fires when heater_on has a token, increases temperature (rate-based)</li>
-              <li><strong>cool</strong> transition: fires continuously, decreases temperature proportional to current value</li>
-              <li><strong>turn_on / turn_off</strong>: toggle heater state based on temperature vs target</li>
+              <li><strong>temperature</strong> place &mdash; token count = current degrees</li>
+              <li><strong>heater_on / heater_off</strong> &mdash; mutual exclusion via a single token</li>
+              <li><strong>heat</strong> transition (rate-based) &mdash; adds tokens to temperature when heater is on</li>
+              <li><strong>cool</strong> transition (rate-based) &mdash; removes tokens proportional to current temperature</li>
+              <li><strong>turn_on / turn_off</strong> &mdash; toggle heater based on temperature vs target</li>
             </ul>
-            <p>The ODE solver simulates continuous dynamics. The heater toggles create a <strong>feedback loop</strong>: temperature oscillates around the setpoint because the heater overshoots slightly before turning off, then undershoots before turning back on.</p>
-            <p>This is a classic <strong>control systems</strong> pattern. Real thermostats add <strong>hysteresis</strong> (deadband) to prevent rapid cycling.</p>
+            <p>The ODE solver predicts the <strong>exact time</strong> the room reaches the target, the overshoot from delayed shutoff, and the equilibrium duty cycle. Adjust the heating and cooling rates to see how insulation (low cooling rate) and heater power (high heating rate) change the predictions.</p>
+            <div class="eq-display">
+              <div class="equation">
+                <span class="eq-lhs">dT/dt</span> = <span class="eq-heat">heat_rate</span> &middot; heater_on − <span class="eq-cool">cool_rate</span> &middot; T
+              </div>
+              <div class="equation">
+                <span class="eq-lhs">Equilibrium</span> = <span class="eq-heat">heat_rate</span> / <span class="eq-cool">cool_rate</span> <span class="eq-note">(heater always on)</span>
+              </div>
+            </div>
             <div style="margin-top: 1.5rem; text-align: center;">
               <pflow-model-link model="thermostat" label="Explore the Petri Net Model"></pflow-model-link>
             </div>
@@ -158,7 +183,7 @@
   </script>
   <script type="module" src="/shared/nav.js?v=3"></script>
   <script type="module" src="/shared/explainer.js"></script>
-  <script type="module" src="main.js?v=1"></script>
+  <script type="module" src="main.js?v=2"></script>
   <site-footer></site-footer>
 </body>
 </html>
