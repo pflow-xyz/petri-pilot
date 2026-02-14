@@ -706,6 +706,19 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
       }
     }
 
+    // Flatten nested net format (e.g., model.net.places -> model.places)
+    function normalizeModel(model) {
+      if (model.net && model.net.places) {
+        var net = model.net;
+        if (!model.name && net.name) model.name = net.name;
+        if (!model.description && net.description) model.description = net.description;
+        if (!model.places) model.places = net.places;
+        if (!model.transitions) model.transitions = net.transitions;
+        if (!model.arcs) model.arcs = net.arcs;
+      }
+      return model;
+    }
+
     function loadModelDetail(name) {
       if (modelsCache[name]) {
         renderDetail(name, modelsCache[name]);
@@ -715,6 +728,7 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
       fetch('/' + name + '/api/schema', {cache: 'no-store'})
         .then(function(r) { return r.json(); })
         .then(function(model) {
+          model = normalizeModel(model);
           modelsCache[name] = model;
           renderDetail(name, model);
         })
