@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thinking in Petri Nets</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin: 2.5rem 0 1rem;
+      color: #1a1a2e;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin: 1.5rem 0 0.5rem;
+      color: #333;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: #444;
+    }
+
+    strong { color: #1a1a2e; }
+    em { color: #555; }
+
+    code {
+      background: #e8e5f0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.9em;
+      color: #6366f1;
+    }
+
+    .callout {
+      background: #f0edff;
+      border-left: 4px solid #6366f1;
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout p { color: #444; margin-bottom: 0; }
+    .callout p + p { margin-top: 0.5rem; }
+
+    .callout.warning {
+      background: #fff8f0;
+      border-left-color: #e65100;
+    }
+
+    .callout.green {
+      background: #f0fff4;
+      border-left-color: #388e3c;
+    }
+
+    ul, ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+      color: #444;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    a { color: #6366f1; }
+    a:hover { color: #4f46e5; }
+
+    .diagram {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .diagram svg { max-width: 100%; }
+
+    .diagram .caption {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.75rem;
+    }
+
+    .pattern-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.25rem 0;
+    }
+
+    .pattern-card h3 {
+      margin: 0 0 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pattern-card h3 .icon {
+      font-size: 1.3rem;
+    }
+
+    .pattern-card p {
+      font-size: 0.95rem;
+    }
+
+    .pattern-card .demo-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #6366f1;
+      text-decoration: none;
+    }
+
+    .pattern-card .demo-link:hover { text-decoration: underline; }
+
+    .path-list {
+      list-style: none;
+      margin: 1rem 0;
+      padding: 0;
+      counter-reset: step;
+    }
+
+    .path-list li {
+      counter-increment: step;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .path-list li:last-child { border-bottom: none; }
+
+    .path-list li::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      background: #6366f1;
+      color: white;
+      border-radius: 50%;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .path-list .step-content {
+      flex: 1;
+    }
+
+    .path-list .step-name {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .path-list .step-name a {
+      color: #1a1a2e;
+      text-decoration: none;
+    }
+
+    .path-list .step-name a:hover { color: #6366f1; }
+
+    .path-list .step-desc {
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .property-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .property-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 2px solid #e0e0e0;
+      color: #1a1a2e;
+      font-size: 0.9rem;
+    }
+
+    .property-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid #f0f0f0;
+      color: #444;
+    }
+
+    .property-table td:first-child {
+      font-weight: 600;
+      color: #6366f1;
+      white-space: nowrap;
+    }
+
+    .property-table tr:last-child td { border-bottom: none; }
+
+    .try-it {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: #6366f1;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .try-it:hover { background: #4f46e5; color: white; }
+
+    .design-steps {
+      list-style: none;
+      margin: 1rem 0;
+      padding: 0;
+    }
+
+    .design-steps li {
+      padding: 0.5rem 0;
+      padding-left: 2rem;
+      position: relative;
+    }
+
+    .design-steps li::before {
+      content: attr(data-icon);
+      position: absolute;
+      left: 0;
+      font-size: 1.1rem;
+    }
+
+    .nav-links {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .nav-links a {
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .nav-links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>Thinking in Petri Nets</h1>
+    <p class="subtitle">Patterns, properties, and design intuition &mdash; the middle ground between "what is a place" and "solve it with ODEs."</p>
+
+    <h2>From One Token to Many</h2>
+
+    <p>The <a href="/stoplight/">stoplight</a> uses a single token cycling through three places. It's a <strong>state machine</strong> &mdash; exactly one state is active at any time. Simple and predictable.</p>
+
+    <p>But what happens when you add a <em>second</em> token? Now two things are true at once. Two places are occupied. Multiple transitions might be enabled simultaneously. This is <strong>concurrency</strong> &mdash; and it's the reason Petri nets exist.</p>
+
+    <div class="callout">
+      <p><strong>Flowcharts can't express concurrency.</strong> They follow a single thread of execution. Petri nets track <em>all</em> tokens simultaneously, making it natural to model parallel activities, shared resources, and synchronization.</p>
+    </div>
+
+    <p>Every pattern below emerges from how tokens interact with transitions. One token gives you a state machine. Many tokens give you a concurrent system.</p>
+
+    <h2>Six Patterns You'll See Everywhere</h2>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#128260;</span> State Machine</h3>
+      <p>A single token cycles through places. Each place represents one state; each transition represents one event. Only one state is active at a time.</p>
+      <p>This is the simplest Petri net pattern. If you've used finite automata or state charts, this is the same idea but drawn differently.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 340 80" xmlns="http://www.w3.org/2000/svg" width="340">
+          <defs>
+            <marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#888"/>
+            </marker>
+          </defs>
+          <circle cx="50" cy="40" r="22" fill="#fee" stroke="#d32f2f" stroke-width="2"/>
+          <text x="50" y="44" text-anchor="middle" font-size="11" fill="#333">A</text>
+          <circle cx="50" cy="26" r="5" fill="#d32f2f"/>
+
+          <line x1="73" y1="40" x2="108" y2="40" stroke="#888" stroke-width="1.2" marker-end="url(#a1)"/>
+          <rect x="110" y="28" width="26" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+          <text x="123" y="44" text-anchor="middle" font-size="9" fill="#333">t1</text>
+          <line x1="138" y1="40" x2="168" y2="40" stroke="#888" stroke-width="1.2" marker-end="url(#a1)"/>
+
+          <circle cx="192" cy="40" r="22" fill="#efe" stroke="#388e3c" stroke-width="2"/>
+          <text x="192" y="44" text-anchor="middle" font-size="11" fill="#333">B</text>
+
+          <line x1="215" y1="40" x2="248" y2="40" stroke="#888" stroke-width="1.2" marker-end="url(#a1)"/>
+          <rect x="250" y="28" width="26" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+          <text x="263" y="44" text-anchor="middle" font-size="9" fill="#333">t2</text>
+          <line x1="278" y1="40" x2="308" y2="40" stroke="#888" stroke-width="1.2" marker-end="url(#a1)"/>
+
+          <circle cx="330" cy="40" r="8" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <text x="330" y="44" text-anchor="middle" font-size="9" fill="#999">...</text>
+        </svg>
+        <div class="caption">One token, one active state. The token at A means "we're in state A."</div>
+      </div>
+
+      <a href="/stoplight/" class="demo-link">See it: Stoplight &rarr;</a>
+    </div>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#128268;</span> Fork (Parallel Split)</h3>
+      <p>One transition produces tokens in <em>multiple</em> output places. Those tokens then move independently &mdash; parallel activities have begun.</p>
+      <p>In workflow terms, this is a parallel gateway. One event triggers two (or more) things that happen concurrently.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg" width="300">
+          <defs>
+            <marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#888"/>
+            </marker>
+          </defs>
+          <circle cx="50" cy="70" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="50" y="74" text-anchor="middle" font-size="11" fill="#333">ready</text>
+          <circle cx="50" cy="56" r="5" fill="#6366f1"/>
+
+          <line x1="73" y1="70" x2="118" y2="70" stroke="#888" stroke-width="1.2" marker-end="url(#a2)"/>
+          <rect x="120" y="58" width="30" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+          <text x="135" y="74" text-anchor="middle" font-size="9" fill="#333">fork</text>
+
+          <line x1="152" y1="64" x2="198" y2="36" stroke="#888" stroke-width="1.2" marker-end="url(#a2)"/>
+          <line x1="152" y1="76" x2="198" y2="104" stroke="#888" stroke-width="1.2" marker-end="url(#a2)"/>
+
+          <circle cx="222" cy="30" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="222" y="34" text-anchor="middle" font-size="10" fill="#333">task A</text>
+
+          <circle cx="222" cy="110" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="222" y="114" text-anchor="middle" font-size="10" fill="#333">task B</text>
+        </svg>
+        <div class="caption">One input token becomes two. Tasks A and B now proceed in parallel.</div>
+      </div>
+
+      <a href="/loan-approval/" class="demo-link">See it: Loan Approval (start_reviews forks into credit + employment) &rarr;</a>
+    </div>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#129309;</span> Join (Synchronization)</h3>
+      <p>A transition requires tokens from <em>multiple</em> input places. It only fires when <strong>all</strong> inputs are ready. This is how you wait for parallel tasks to complete before proceeding.</p>
+      <p>Fork and join together form the <strong>fork/join pattern</strong> &mdash; split work into parallel branches, then merge the results.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg" width="300">
+          <defs>
+            <marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#888"/>
+            </marker>
+          </defs>
+          <circle cx="60" cy="30" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="60" y="34" text-anchor="middle" font-size="10" fill="#333">done A</text>
+          <circle cx="60" cy="16" r="5" fill="#6366f1"/>
+
+          <circle cx="60" cy="110" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="60" y="114" text-anchor="middle" font-size="10" fill="#333">done B</text>
+          <circle cx="60" cy="96" r="5" fill="#6366f1"/>
+
+          <line x1="83" y1="36" x2="128" y2="64" stroke="#888" stroke-width="1.2" marker-end="url(#a3)"/>
+          <line x1="83" y1="104" x2="128" y2="76" stroke="#888" stroke-width="1.2" marker-end="url(#a3)"/>
+
+          <rect x="130" y="58" width="30" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+          <text x="145" y="74" text-anchor="middle" font-size="9" fill="#333">join</text>
+
+          <line x1="162" y1="70" x2="208" y2="70" stroke="#888" stroke-width="1.2" marker-end="url(#a3)"/>
+
+          <circle cx="232" cy="70" r="22" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+          <text x="232" y="74" text-anchor="middle" font-size="10" fill="#333">next</text>
+        </svg>
+        <div class="caption">The join transition waits for both A and B to finish. Neither alone is enough.</div>
+      </div>
+
+      <a href="/hiring-pipeline/" class="demo-link">See it: Hiring Pipeline (tech + culture interviews must both pass) &rarr;</a>
+    </div>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#127984;</span> Resource Pool</h3>
+      <p>A place holds <em>multiple</em> tokens representing a shared resource with limited capacity (exam rooms, cups, forks, staff). Transitions consume a resource token to begin work and return it when done.</p>
+      <p>This naturally models capacity constraints. If the pool is empty, no transition consuming from it can fire &mdash; work waits.</p>
+
+      <a href="/coffeeshop/" class="demo-link">See it: Coffee Shop (beans, milk, cups deplete and restock) &rarr;</a>
+      <span style="margin: 0 0.25rem; color: #ccc;">|</span>
+      <a href="/vet-clinic/" class="demo-link">Vet Clinic (exam rooms, DVMs, surgery suites) &rarr;</a>
+    </div>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#128274;</span> Mutual Exclusion</h3>
+      <p>Two or more transitions compete for the same resource token. Only one can win. The loser has to wait until the token is returned.</p>
+      <p>This is how Petri nets model locks, shared equipment, and turn-taking. The resource place acts as a mutex &mdash; exactly one consumer at a time.</p>
+
+      <a href="/dining-philosophers/" class="demo-link">See it: Dining Philosophers (adjacent philosophers share forks) &rarr;</a>
+    </div>
+
+    <div class="pattern-card">
+      <h3><span class="icon">&#128230;</span> Bounded Buffer</h3>
+      <p>A producer adds tokens to a buffer. A consumer removes them. A <em>counter place</em> tracks remaining capacity. When the buffer is full (counter is zero), the producer blocks. When the buffer is empty, the consumer blocks.</p>
+      <p>The trick: use two places &mdash; <code>buffer</code> (how many items) and <code>buffer_space</code> (how much room). They always sum to the capacity.</p>
+
+      <a href="/producer-consumer/" class="demo-link">See it: Producer-Consumer (bounded buffer with capacity 5) &rarr;</a>
+    </div>
+
+    <h2>Properties That Matter</h2>
+
+    <p>Once you build a net, you want to know: does it behave well? Petri net theory gives precise names to the things that can go right or wrong.</p>
+
+    <table class="property-table">
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>What It Means</th>
+          <th>Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Live</td>
+          <td>Every transition can eventually fire again, no matter what state you reach. Nothing is permanently disabled.</td>
+          <td><a href="/stoplight/">Stoplight</a> &mdash; all three transitions keep cycling forever</td>
+        </tr>
+        <tr>
+          <td>Bounded</td>
+          <td>No place ever accumulates more than <em>k</em> tokens. Resources stay finite; memory stays bounded.</td>
+          <td><a href="/producer-consumer/">Producer-Consumer</a> &mdash; buffer never exceeds 5</td>
+        </tr>
+        <tr>
+          <td>Safe</td>
+          <td>A special case of bounded where <em>k</em> = 1. Each place holds at most one token.</td>
+          <td><a href="/stoplight/">Stoplight</a> &mdash; each light is either on or off</td>
+        </tr>
+        <tr>
+          <td>Deadlock-free</td>
+          <td>The system can never reach a state where <em>nothing</em> can fire. It always has a next step.</td>
+          <td><a href="/dining-philosophers/">Dining Philosophers</a> &mdash; deliberately <strong>not</strong> deadlock-free</td>
+        </tr>
+        <tr>
+          <td>Reversible</td>
+          <td>From any reachable state, you can always get back to the initial state.</td>
+          <td><a href="/stoplight/">Stoplight</a> &mdash; always returns to red</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>The Petri Net Viewer's analysis tools check these automatically.</strong> Open any model in <a href="/pflow">the viewer</a> and the sidebar shows place/transition counts. Use the <a href="https://github.com/pflow-xyz/petri-pilot">MCP tools</a> (<code>petri_analyze</code>) for full reachability and deadlock analysis.</p>
+    </div>
+
+    <h2>When Things Go Wrong: Deadlock</h2>
+
+    <p>A <strong>deadlock</strong> happens when the system reaches a state where no transition can fire. Every transition is waiting for a token that will never come.</p>
+
+    <p>The <a href="/dining-philosophers/">Dining Philosophers</a> demo is the classic example. Five philosophers sit around a table, each needing two forks to eat. Each fork is shared with a neighbor.</p>
+
+    <ol>
+      <li>All five philosophers pick up their left fork</li>
+      <li>Each now holds one fork and needs their right fork</li>
+      <li>Every right fork is held by someone else</li>
+      <li>Nobody can eat. Nobody will put down their fork. <strong>Deadlock.</strong></li>
+    </ol>
+
+    <div class="callout warning">
+      <p><strong>Deadlock requires four conditions</strong> (all must be true at once):</p>
+      <p>1. <strong>Mutual exclusion</strong> &mdash; resources can't be shared<br>
+      2. <strong>Hold and wait</strong> &mdash; processes hold one resource while waiting for another<br>
+      3. <strong>No preemption</strong> &mdash; resources can't be forcibly taken<br>
+      4. <strong>Circular wait</strong> &mdash; a cycle of processes each waiting for the next</p>
+      <p>Break any one condition and deadlock becomes impossible.</p>
+    </div>
+
+    <p>This is one of the great strengths of Petri nets: deadlock isn't an abstract concept you reason about in your head. You can <em>see</em> it happen. Step through the transitions in the <a href="/dining-philosophers/">demo</a> and watch the system freeze.</p>
+
+    <h2>Designing Your Own Net</h2>
+
+    <p>When you face a new problem, here's how to translate it into a Petri net:</p>
+
+    <ul class="design-steps">
+      <li data-icon="&#9898;"><strong>Identify the conditions.</strong> What can be true or false? What has a count? Each condition becomes a <em>place</em>. (Examples: "order is pending," "room is available," "3 items in stock.")</li>
+      <li data-icon="&#9646;"><strong>Identify the events.</strong> What can happen? What changes state? Each event becomes a <em>transition</em>. (Examples: "customer orders," "doctor starts exam," "restock shelf.")</li>
+      <li data-icon="&#10132;"><strong>Draw the preconditions.</strong> For each event, what must be true before it can happen? Draw arcs <em>from</em> those places <em>to</em> the transition.</li>
+      <li data-icon="&#10132;"><strong>Draw the postconditions.</strong> After the event happens, what becomes true? Draw arcs <em>from</em> the transition <em>to</em> those places.</li>
+      <li data-icon="&#9679;"><strong>Place the initial tokens.</strong> What's true at the start? Put tokens in those places.</li>
+      <li data-icon="&#128269;"><strong>Look for resources.</strong> Is anything shared or limited? Give it a place with tokens equal to its capacity. Transitions should consume and return resource tokens.</li>
+      <li data-icon="&#9654;"><strong>Simulate.</strong> Step through the net. Do transitions fire when they should? Does the system get stuck? Adjust and repeat.</li>
+    </ul>
+
+    <div class="callout green">
+      <p><strong>Try it now.</strong> Open the <a href="/pflow?model=new">empty canvas</a> in the Petri Net Viewer. Model something simple: a vending machine (insert coin &rarr; select drink &rarr; dispense), a door lock (locked/unlocked with a key), or a two-player turn-taking game.</p>
+    </div>
+
+    <h2>Suggested Learning Path</h2>
+
+    <p>Work through the demos in this order. Each one introduces a new concept that builds on the previous ones.</p>
+
+    <ol class="path-list">
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/stoplight/">Stoplight</a></div>
+          <div class="step-desc">State machine. One token, three states. Liveness and boundedness.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/tcp-handshake/">TCP Handshake</a></div>
+          <div class="step-desc">Two parallel state machines connected by shared transitions. Protocol modeling.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/producer-consumer/">Producer-Consumer</a></div>
+          <div class="step-desc">Multiple tokens, synchronization. Bounded buffer enforced by net structure.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/dining-philosophers/">Dining Philosophers</a></div>
+          <div class="step-desc">Mutual exclusion and deadlock. See all four conditions in action.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/coffeeshop/">Coffee Shop</a></div>
+          <div class="step-desc">Resource pools, depletion, and restocking. Capacity planning.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/loan-approval/">Loan Approval</a></div>
+          <div class="step-desc">Fork/join workflow. Parallel branches that must synchronize before proceeding.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/predator-prey/">Predator-Prey</a></div>
+          <div class="step-desc">Transition from discrete to continuous. Same net, ODE simulation reveals oscillations.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <div class="step-name"><a href="/tic-tac-toe/">Tic-Tac-Toe</a></div>
+          <div class="step-desc">Net topology encodes strategy. ODE flow discovers cell values without search.</div>
+        </div>
+      </li>
+    </ol>
+
+    <a href="/pflow?model=new" class="try-it">Build your own net &rarr;</a>
+
+    <div class="nav-links">
+      <a href="/learn/">&larr; Basics: What is a Petri Net?</a>
+      <a href="/advanced/">Advanced: ODE Simulation &amp; Prediction &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>
