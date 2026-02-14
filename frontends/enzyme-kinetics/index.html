@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Enzyme Kinetics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
   <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
@@ -16,6 +17,29 @@
     <div class="header">
       <h1>Enzyme Kinetics</h1>
       <p>Michaelis-Menten kinetics from mass-action on a 4-place Petri net</p>
+    </div>
+
+    <div class="predictions-bar">
+      <div class="prediction-card primary">
+        <div class="pred-label">Time to 50% Conversion</div>
+        <div class="pred-value" id="pred-half">--</div>
+        <div class="pred-unit">seconds</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Peak Rate</div>
+        <div class="pred-value" id="pred-peak-rate">--</div>
+        <div class="pred-unit">concentration / sec</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Final Yield</div>
+        <div class="pred-value" id="pred-yield">--</div>
+        <div class="pred-unit">% substrate converted</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Km / Vmax</div>
+        <div class="pred-value" id="pred-km-vmax">--</div>
+        <div class="pred-unit">Michaelis-Menten constants</div>
+      </div>
     </div>
 
     <div class="main-content">
@@ -66,26 +90,25 @@
           </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="resetParams()">Reset</button>
-            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
           </div>
         </div>
 
         <div class="molecules-section">
           <h3>Concentrations</h3>
           <div class="mol-display">
-            <div class="mol-box substrate">
+            <div class="mol-box substrate" id="mol-box-substrate">
               <div class="mol-label">Substrate [S]</div>
               <div class="mol-value" id="mol-substrate">100</div>
             </div>
-            <div class="mol-box enzyme">
+            <div class="mol-box enzyme" id="mol-box-enzyme">
               <div class="mol-label">Enzyme [E]</div>
               <div class="mol-value" id="mol-enzyme">10</div>
             </div>
-            <div class="mol-box complex">
+            <div class="mol-box complex" id="mol-box-complex">
               <div class="mol-label">Complex [ES]</div>
               <div class="mol-value" id="mol-complex">0</div>
             </div>
-            <div class="mol-box product">
+            <div class="mol-box product" id="mol-box-product">
               <div class="mol-label">Product [P]</div>
               <div class="mol-value" id="mol-product">0</div>
             </div>

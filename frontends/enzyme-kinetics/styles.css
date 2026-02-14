@@ -23,7 +23,7 @@ body {
 
 .header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .header h1 {
@@ -36,6 +36,60 @@ body {
 .header p {
   color: rgba(255,255,255,0.85);
   font-size: 1.1rem;
+}
+
+/* Predictions bar */
+.predictions-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 800px) {
+  .predictions-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.prediction-card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+.prediction-card.primary {
+  background: rgba(39, 174, 96, 0.2);
+  border-color: rgba(39, 174, 96, 0.4);
+}
+
+.pred-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.6);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.pred-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.2;
+}
+
+.prediction-card.primary .pred-value {
+  color: #6bff9e;
+}
+
+.pred-unit {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.15rem;
 }
 
 .main-content {
@@ -167,27 +221,52 @@ h3 .hint {
 }
 
 .mol-box {
+  --fill-pct: 100%;
   text-align: center;
   padding: 0.75rem;
   border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
 }
 
-.mol-box.substrate { background: linear-gradient(135deg, #d6eaf8 0%, #aed6f1 100%); }
-.mol-box.enzyme { background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%); }
-.mol-box.complex { background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%); }
-.mol-box.product { background: linear-gradient(135deg, #fadbd8 0%, #f5b7b1 100%); }
+.mol-box::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--fill-pct);
+  transition: height 0.1s linear;
+  z-index: -1;
+  border-radius: 10px;
+}
+
+.mol-box.substrate { background: rgba(214,234,248,0.3); }
+.mol-box.substrate::before { background: linear-gradient(135deg, #d6eaf8 0%, #aed6f1 100%); }
+
+.mol-box.enzyme { background: rgba(213,245,227,0.3); }
+.mol-box.enzyme::before { background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%); }
+
+.mol-box.complex { background: rgba(254,245,231,0.3); }
+.mol-box.complex::before { background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%); }
+
+.mol-box.product { background: rgba(250,219,216,0.3); }
+.mol-box.product::before { background: linear-gradient(135deg, #fadbd8 0%, #f5b7b1 100%); }
 
 .mol-label {
   font-size: 0.75rem;
   color: #666;
   text-transform: uppercase;
   font-weight: 600;
+  position: relative;
 }
 
 .mol-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: #333;
+  position: relative;
 }
 
 /* Equations */

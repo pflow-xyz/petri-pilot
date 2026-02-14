@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero-Knowledge Proofs for Petri Nets</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin: 2.5rem 0 1rem;
+      color: #1a1a2e;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: #444;
+    }
+
+    strong { color: #1a1a2e; }
+    em { color: #555; }
+
+    code {
+      background: #e8e5f0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.9em;
+      color: #6366f1;
+    }
+
+    .math {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.95rem;
+      color: #333;
+      overflow-x: auto;
+    }
+
+    .math .comment {
+      color: #888;
+    }
+
+    .math .public {
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .math .private {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .callout {
+      background: #f0edff;
+      border-left: 4px solid #6366f1;
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout p { color: #444; margin-bottom: 0; }
+    .callout p + p { margin-top: 0.5rem; }
+
+    .callout.green {
+      background: #f0fdf4;
+      border-left-color: #16a34a;
+    }
+
+    .callout.orange {
+      background: #fff8f0;
+      border-left-color: #e65100;
+    }
+
+    ul, ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+      color: #444;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    a { color: #6366f1; }
+    a:hover { color: #4f46e5; }
+
+    .diagram {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .diagram .caption {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.75rem;
+    }
+
+    .diagram svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    @media (max-width: 600px) {
+      .comparison { grid-template-columns: 1fr; }
+    }
+
+    .comp-box {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .comp-box h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .comp-box.public h4 { color: #2563eb; }
+    .comp-box.private h4 { color: #dc2626; }
+
+    .comp-box p, .comp-box ul {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    .step-grid {
+      display: grid;
+      grid-template-columns: 60px 1fr;
+      gap: 0 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .step-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .step-content {
+      padding-top: 0.25rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .step-content h4 {
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .step-content p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    .try-it {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: #6366f1;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .try-it:hover { background: #4f46e5; color: white; }
+
+    .nav-links {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .nav-links a {
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .nav-links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>Zero-Knowledge Proofs for Petri Nets</h1>
+    <p class="subtitle">How gnark circuits prove that a state transition is valid &mdash; without revealing the state itself.</p>
+
+    <h2>The Problem</h2>
+
+    <p>When a Petri net fires a transition, the <strong>marking</strong> (token counts for every place) changes. In a multiplayer game or a blockchain, you want to prove that the transition was <em>legal</em> &mdash; that the input places had enough tokens and the output places received the right amount &mdash; without revealing the full game state to everyone.</p>
+
+    <p>This is exactly what <strong>zero-knowledge proofs</strong> (ZK proofs) do: they let a <em>prover</em> convince a <em>verifier</em> that a statement is true, without revealing <em>why</em> it's true.</p>
+
+    <h2>What Gets Proven</h2>
+
+    <p>Every ZK proof in this system proves one statement:</p>
+
+    <div class="callout">
+      <p><strong>"I know a valid Petri net marking that, when transition T fires, produces the claimed next state."</strong></p>
+    </div>
+
+    <p>More precisely, the proof demonstrates:</p>
+
+    <ol>
+      <li>The <strong>pre-state root</strong> (a hash) matches a specific private marking</li>
+      <li>The <strong>post-state root</strong> matches a specific private marking</li>
+      <li>The chosen <strong>transition was enabled</strong> &mdash; all input places had sufficient tokens</li>
+      <li>The <strong>marking change is correct</strong> &mdash; post = pre + delta, where delta comes from the net topology</li>
+    </ol>
+
+    <p>The verifier sees only the two state roots and which transition fired. The actual token counts (the full game state) remain hidden.</p>
+
+    <div class="comparison">
+      <div class="comp-box public">
+        <h4>Public inputs (verifier sees)</h4>
+        <ul>
+          <li>Pre-state root (hash)</li>
+          <li>Post-state root (hash)</li>
+          <li>Transition ID</li>
+        </ul>
+      </div>
+      <div class="comp-box private">
+        <h4>Private inputs (prover knows)</h4>
+        <ul>
+          <li>Pre-marking (all token counts)</li>
+          <li>Post-marking (all token counts)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>How It Works: The Circuit</h2>
+
+    <p>A ZK proof is generated by an <strong>arithmetic circuit</strong> &mdash; a program built from additions and multiplications over a finite field. We use <a href="https://github.com/ConsenSys/gnark">gnark</a>, a Go library for writing these circuits.</p>
+
+    <p>The circuit for a Petri net transition has five steps:</p>
+
+    <div class="step-grid">
+      <div><div class="step-num">1</div></div>
+      <div class="step-content">
+        <h4>Hash the pre-marking</h4>
+        <p>Compute <code>MiMC(pre[0], pre[1], ..., pre[N])</code> and assert it equals the public pre-state root. This binds the private marking to the public commitment.</p>
+      </div>
+
+      <div><div class="step-num">2</div></div>
+      <div class="step-content">
+        <h4>Hash the post-marking</h4>
+        <p>Same hash, same check. Now both states are committed.</p>
+      </div>
+
+      <div><div class="step-num">3</div></div>
+      <div class="step-content">
+        <h4>Compute the delta</h4>
+        <p>From the transition ID, look up the Petri net topology: which places lose tokens (inputs) and which gain tokens (outputs). Build a delta vector: <code>delta[p] = outputs[p] - inputs[p]</code>.</p>
+      </div>
+
+      <div><div class="step-num">4</div></div>
+      <div class="step-content">
+        <h4>Assert post = pre + delta</h4>
+        <p>For every place, check that <code>post[p] == pre[p] + delta[p]</code>. This ensures the marking changed exactly as the topology dictates.</p>
+      </div>
+
+      <div><div class="step-num">5</div></div>
+      <div class="step-content">
+        <h4>Assert enabledness</h4>
+        <p>For every input place of the transition, check that <code>pre[p] >= 1</code>. This is done by decomposing <code>pre[p] - 1</code> into bits &mdash; if the value were negative, it would wrap to a huge field element and the bit decomposition would fail.</p>
+      </div>
+    </div>
+
+    <p>In gnark code, the core constraint looks like this:</p>
+
+    <div class="math">
+<span class="comment">// For each transition in the topology...</span>
+isThis := api.IsZero(api.Sub(c.Transition, t))
+
+<span class="comment">// Subtract from input places, add to output places</span>
+deltas[p] = api.Sub(deltas[p], isThis)  <span class="comment">// inputs</span>
+deltas[p] = api.Add(deltas[p], isThis)  <span class="comment">// outputs</span>
+
+<span class="comment">// Assert marking change matches topology</span>
+expected := api.Add(c.PreMarking[p], deltas[p])
+api.AssertIsEqual(c.PostMarking[p], expected)
+    </div>
+
+    <h2>Why MiMC?</h2>
+
+    <p>The hash function <strong>MiMC</strong> (Minimal Multiplicative Complexity) is designed for ZK circuits. Unlike SHA-256 which needs thousands of boolean operations, MiMC is defined over the same finite field the circuit uses, making it extremely cheap in constraints.</p>
+
+    <p>Each state root is a MiMC hash of all token counts in the marking:</p>
+
+    <div class="math">
+stateRoot = MiMC(<span class="private">marking[0]</span>, <span class="private">marking[1]</span>, ..., <span class="private">marking[N]</span>)
+    </div>
+
+    <p>The verifier only sees the state root. To find the actual token counts, an attacker would need to invert the hash &mdash; computationally infeasible.</p>
+
+    <h2>The Two Circuits</h2>
+
+    <p>The ZK Tic-Tac-Toe demo uses two circuits, both encoding the full 33-place Petri net:</p>
+
+    <div class="comparison">
+      <div class="comp-box public">
+        <h4>Transition Circuit</h4>
+        <p>Proves a move is legal. The prover shows they know a valid marking where the transition fires and produces the next state. Used for every move.</p>
+      </div>
+      <div class="comp-box private">
+        <h4>Win Circuit</h4>
+        <p>Proves a player has won. The win condition is already in the Petri net topology (win-detection transitions). The circuit just checks that the <code>win_x</code> or <code>win_o</code> place has a token.</p>
+      </div>
+    </div>
+
+    <p>Because the Petri net topology <em>is</em> the game rules, the ZK circuit doesn't need to know anything about tic-tac-toe specifically. It proves valid Petri net state transitions &mdash; the game logic lives in the net structure.</p>
+
+    <div class="callout green">
+      <p><strong>Key insight:</strong> The same circuit structure works for <em>any</em> Petri net. Change the topology constants and you get ZK proofs for a different game, workflow, or token standard &mdash; without writing a new circuit.</p>
+    </div>
+
+    <h2>Beyond Games: Token Transfers</h2>
+
+    <p>The <a href="https://github.com/pflow-xyz/arcnet">arcnet</a> project uses the same approach for blockchain token transfers. An ERC-20 transfer is just a Petri net transition:</p>
+
+    <ul>
+      <li><code>balances[from]</code> is an input place (tokens consumed)</li>
+      <li><code>balances[to]</code> is an output place (tokens produced)</li>
+      <li>The guard <code>balances[from] >= amount</code> is the enabledness check</li>
+    </ul>
+
+    <p>The gnark circuit proves the transfer is valid using a Merkle tree of account balances, so the full state doesn't need to live on-chain. Only state roots are published &mdash; the bridge contract verifies the proof and updates the root.</p>
+
+    <div class="math">
+<span class="comment">// TransferCircuit: prove balances[from] >= amount</span>
+diff := api.Sub(c.BalanceFrom, c.Amount)
+api.ToBinary(diff, 64) <span class="comment">// Fails if negative (insufficient balance)</span>
+
+<span class="comment">// Verify Merkle inclusion of balance in state tree</span>
+leaf := MiMC(<span class="public">from</span>, <span class="private">balanceFrom</span>)
+<span class="comment">// Walk 20-level Merkle proof to reach state root...</span>
+api.AssertIsEqual(computedRoot, <span class="public">preStateRoot</span>)
+    </div>
+
+    <h2>The Proof Pipeline</h2>
+
+    <ol>
+      <li><strong>Player makes a move</strong> in the browser (fires a Petri net transition)</li>
+      <li><strong>Frontend computes</strong> the new marking and MiMC state root client-side</li>
+      <li><strong>Prover service</strong> receives the witness (pre/post markings + transition ID) and generates a Groth16 proof using gnark</li>
+      <li><strong>Proof is returned</strong> as a compact byte string (~256 bytes) with public inputs</li>
+      <li><strong>Anyone can verify</strong> the proof in constant time using only the public inputs, without knowing the private marking</li>
+      <li><strong>On-chain verification</strong> is possible via an auto-generated Solidity verifier contract</li>
+    </ol>
+
+    <div class="callout orange">
+      <p><strong>Groth16</strong> is the proving system used. It requires a one-time trusted setup per circuit but produces the smallest proofs (~128 bytes) and fastest verification. gnark handles the setup, proving, and Solidity export.</p>
+    </div>
+
+    <h2>Try It</h2>
+
+    <p>Play the <a href="/zk-tic-tac-toe/">ZK Tic-Tac-Toe</a> demo to see proofs generated in real time. Each move fires a Petri net transition, generates a gnark proof, and displays the proof structure. You can inspect the state roots, verify the chain of proofs, and export Solidity calldata for on-chain verification.</p>
+
+    <a href="/zk-tic-tac-toe/" class="try-it">Play ZK Tic-Tac-Toe &rarr;</a>
+
+    <div class="nav-links">
+      <a href="/advanced/">&larr; ODE Simulation &amp; Prediction</a>
+      <a href="/patterns/">Thinking in Petri Nets &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>

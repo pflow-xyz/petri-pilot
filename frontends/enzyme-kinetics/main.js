@@ -1,9 +1,11 @@
 // Enzyme Kinetics - Michaelis-Menten ODE Simulation
+// Auto-runs simulation on any parameter change
 
 import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js'
 
 let concChart = null
 let rateChart = null
+let animFrame = null
 
 function buildModel(k1, km1, kcat, s0, e0) {
   return {
@@ -50,7 +52,6 @@ function runODE(params) {
   try {
     const net = Solver.fromJSON(model)
     const initialState = Solver.setState(net)
-    // Rates must be passed explicitly
     const rates = {
       'bind': params.k1,
       'unbind': params.km1,
@@ -63,6 +64,65 @@ function runODE(params) {
     console.error('ODE solve error:', err)
     return null
   }
+}
+
+// Extract predictions from simulation results
+function computePredictions(solution, params) {
+  if (!solution || !solution.t || !solution.u) {
+    return { halfTime: null, peakRate: 0, peakRateTime: 0, finalYield: 0, Km: 0, Vmax: 0 }
+  }
+
+  const times = solution.t
+  const halfTarget = params.s0 * 0.5
+
+  // Time to 50% substrate conversion
+  let halfTime = null
+  for (let i = 0; i < times.length; i++) {
+    const s = solution.u[i]['substrate'] || 0
+    if (s <= halfTarget) {
+      halfTime = times[i]
+      break
+    }
+  }
+
+  // Peak reaction rate (d[P]/dt)
+  let peakRate = 0
+  let peakRateTime = 0
+  for (let i = 1; i < times.length; i++) {
+    const dt = times[i] - times[i - 1]
+    if (dt === 0) continue
+    const dP = (solution.u[i]['product'] || 0) - (solution.u[i - 1]['product'] || 0)
+    const rate = Math.max(0, dP / dt)
+    if (rate > peakRate) {
+      peakRate = rate
+      peakRateTime = times[i]
+    }
+  }
+
+  // Final yield
+  const lastState = solution.u[solution.u.length - 1]
+  const finalProduct = Math.max(0, lastState['product'] || 0)
+  const finalYield = params.s0 > 0 ? (finalProduct / params.s0) * 100 : 0
+
+  // Michaelis-Menten constants
+  const Km = (params.km1 + params.kcat) / params.k1
+  const Vmax = params.kcat * params.e0
+
+  return { halfTime, peakRate, peakRateTime, finalYield, Km, Vmax }
+}
+
+function updatePredictions(preds) {
+  const halfEl = document.getElementById('pred-half')
+  if (preds.halfTime !== null) {
+    halfEl.textContent = preds.halfTime.toFixed(1) + 's'
+  } else {
+    halfEl.textContent = '>' + document.getElementById('tspan').value + 's'
+  }
+
+  document.getElementById('pred-peak-rate').textContent = preds.peakRate.toFixed(2)
+  document.getElementById('pred-yield').textContent = preds.finalYield.toFixed(0) + '%'
+  document.getElementById('pred-km-vmax').textContent =
+    preds.Km.toFixed(0) + ' / ' + preds.Vmax.toFixed(1)
 }
 
 function initCharts() {
@@ -81,6 +141,7 @@ function initCharts() {
       },
       plugins: {
         legend: { display: false },
+        annotation: { annotations: {} },
         tooltip: {
           callbacks: {
             label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`
@@ -103,13 +164,14 @@ function initCharts() {
         y: { title: { display: true, text: 'Reaction Rate (d[P]/dt)' }, min: 0 }
       },
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        annotation: { annotations: {} }
       }
     }
   })
 }
 
-function updateCharts(solution, params) {
+function updateCharts(solution, params, preds) {
   if (!solution || !solution.t || !solution.u) return
 
   const times = solution.t
@@ -117,6 +179,27 @@ function updateCharts(solution, params) {
   const enzData = times.map((t, i) => ({ x: t, y: Math.max(0, solution.u[i]['enzyme'] || 0) }))
   const cplxData = times.map((t, i) => ({ x: t, y: Math.max(0, solution.u[i]['complex'] || 0) }))
   const prodData = times.map((t, i) => ({ x: t, y: Math.max(0, solution.u[i]['product'] || 0) }))
+
+  // Annotation for 50% conversion
+  const annotations = {}
+  if (preds.halfTime !== null) {
+    annotations.halfLine = {
+      type: 'line',
+      xMin: preds.halfTime,
+      xMax: preds.halfTime,
+      borderColor: 'rgba(46, 204, 113, 0.7)',
+      borderWidth: 2,
+      borderDash: [6, 3],
+      label: {
+        display: true,
+        content: '50% at ' + preds.halfTime.toFixed(1) + 's',
+        position: 'start',
+        backgroundColor: 'rgba(46, 204, 113, 0.85)',
+        color: 'white',
+        font: { size: 11, weight: 'bold' }
+      }
+    }
+  }
 
   concChart.data.datasets = [
     {
@@ -148,20 +231,42 @@ function updateCharts(solution, params) {
       borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0
     }
   ]
+  concChart.options.plugins.annotation.annotations = annotations
   concChart.update()
 
   // Compute reaction rate: d[P]/dt using finite differences
   const rateData = []
   for (let i = 1; i < times.length; i++) {
-    const dt = times[i] - times[i-1]
+    const dt = times[i] - times[i - 1]
     if (dt === 0) continue
-    const dP = (solution.u[i]['product'] || 0) - (solution.u[i-1]['product'] || 0)
+    const dP = (solution.u[i]['product'] || 0) - (solution.u[i - 1]['product'] || 0)
     rateData.push({ x: times[i], y: Math.max(0, dP / dt) })
   }
 
-  // Also show Vmax line
+  // Vmax line
   const Vmax = params.kcat * params.e0
   const vmaxLine = [{ x: 0, y: Vmax }, { x: params.tspan, y: Vmax }]
+
+  // Annotation for peak rate
+  const rateAnnotations = {}
+  if (preds.peakRateTime > 0) {
+    rateAnnotations.peakLine = {
+      type: 'line',
+      xMin: preds.peakRateTime,
+      xMax: preds.peakRateTime,
+      borderColor: 'rgba(142, 68, 173, 0.6)',
+      borderWidth: 2,
+      borderDash: [6, 3],
+      label: {
+        display: true,
+        content: 'Peak: ' + preds.peakRate.toFixed(2),
+        position: 'start',
+        backgroundColor: 'rgba(142, 68, 173, 0.85)',
+        color: 'white',
+        font: { size: 11, weight: 'bold' }
+      }
+    }
+  }
 
   rateChart.data.datasets = [
     {
@@ -179,14 +284,64 @@ function updateCharts(solution, params) {
       borderWidth: 1.5, borderDash: [6, 3], fill: false, pointRadius: 0
     }
   ]
+  rateChart.options.plugins.annotation.annotations = rateAnnotations
   rateChart.update()
+}
 
-  // Update molecule displays
-  const lastState = solution.u[solution.u.length - 1]
-  document.getElementById('mol-substrate').textContent = Math.round(Math.max(0, lastState['substrate'] || 0))
-  document.getElementById('mol-enzyme').textContent = Math.round(Math.max(0, lastState['enzyme'] || 0))
-  document.getElementById('mol-complex').textContent = Math.round(Math.max(0, lastState['complex'] || 0))
-  document.getElementById('mol-product').textContent = Math.round(Math.max(0, lastState['product'] || 0))
+// Animate molecule boxes through simulation time
+function animateMolecules(solution, params) {
+  if (animFrame) cancelAnimationFrame(animFrame)
+  if (!solution || !solution.t || !solution.u || solution.u.length === 0) return
+
+  const duration = 3000 // 3 second animation
+  const startTime = performance.now()
+
+  const molSub = document.getElementById('mol-substrate')
+  const molEnz = document.getElementById('mol-enzyme')
+  const molCplx = document.getElementById('mol-complex')
+  const molProd = document.getElementById('mol-product')
+
+  // Compute bar fill percentages (relative to max possible = s0 + e0)
+  const maxConc = params.s0
+
+  function step(now) {
+    const elapsed = now - startTime
+    const progress = Math.min(1, elapsed / duration)
+    const idx = Math.min(
+      solution.u.length - 1,
+      Math.floor(progress * (solution.u.length - 1))
+    )
+
+    const state = solution.u[idx]
+    const s = Math.max(0, state['substrate'] || 0)
+    const e = Math.max(0, state['enzyme'] || 0)
+    const c = Math.max(0, state['complex'] || 0)
+    const p = Math.max(0, state['product'] || 0)
+
+    molSub.textContent = Math.round(s)
+    molEnz.textContent = Math.round(e)
+    molCplx.textContent = Math.round(c)
+    molProd.textContent = Math.round(p)
+
+    // Update fill bars
+    updateMolFill('mol-box-substrate', s / maxConc)
+    updateMolFill('mol-box-enzyme', e / params.e0)
+    updateMolFill('mol-box-complex', c / params.e0)
+    updateMolFill('mol-box-product', p / maxConc)
+
+    if (progress < 1) {
+      animFrame = requestAnimationFrame(step)
+    }
+  }
+
+  animFrame = requestAnimationFrame(step)
+}
+
+function updateMolFill(id, fraction) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const pct = Math.max(0, Math.min(100, fraction * 100))
+  el.style.setProperty('--fill-pct', pct + '%')
 }
 
 function updateMM(params) {
@@ -203,7 +358,7 @@ function setupSliders() {
     const display = document.getElementById(id + '-value')
     slider.addEventListener('input', () => {
       display.textContent = slider.value
-      updateMM(getParams())
+      runSimulation()
     })
   })
 }
@@ -212,7 +367,10 @@ window.runSimulation = function() {
   const params = getParams()
   const solution = runODE(params)
   if (solution) {
-    updateCharts(solution, params)
+    const preds = computePredictions(solution, params)
+    updatePredictions(preds)
+    updateCharts(solution, params, preds)
+    animateMolecules(solution, params)
     updateMM(params)
   }
 }
@@ -235,8 +393,7 @@ window.resetParams = function() {
   runSimulation()
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initCharts()
-  setupSliders()
-  runSimulation()
-})
+// Module scripts are deferred, DOM is ready
+initCharts()
+setupSliders()
+runSimulation()
