@@ -23,7 +23,7 @@ body {
 
 .header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .header h1 {
@@ -38,9 +38,64 @@ body {
   font-size: 1.1rem;
 }
 
+/* Predictions bar */
+.predictions-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 800px) {
+  .predictions-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.prediction-card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+.prediction-card.primary {
+  background: rgba(39, 174, 96, 0.2);
+  border-color: rgba(39, 174, 96, 0.4);
+}
+
+.pred-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.6);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.pred-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.2;
+}
+
+.prediction-card.primary .pred-value {
+  color: #6bff9e;
+}
+
+.pred-unit {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.15rem;
+}
+
+/* Main layout */
 .main-content {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 2rem;
 }
 
@@ -56,9 +111,8 @@ body {
   gap: 1.5rem;
 }
 
+.ecosystem-section,
 .params-section,
-.population-section,
-.equations-section,
 .chart-section,
 .explainer-section {
   background: white;
@@ -82,16 +136,66 @@ h3 .hint {
   color: #888;
 }
 
+/* Ecosystem SVG */
+.ecosystem {
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 0;
+}
+
+.ecosystem-svg {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Population display */
+.pop-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pop-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+}
+
+.pop-box.prey {
+  background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%);
+}
+
+.pop-box.predator {
+  background: linear-gradient(135deg, #fadbd8 0%, #f5b7b1 100%);
+}
+
+.pop-icon {
+  font-size: 1.3rem;
+}
+
+.pop-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #333;
+}
+
 /* Parameters */
 .param-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
 }
 
 .param-group label {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
 }
 
 .param-name {
@@ -126,156 +230,18 @@ h3 .hint {
   cursor: pointer;
 }
 
-.actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #1a472a 0%, #2d6b3f 100%);
-  color: white;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 71, 42, 0.4);
-}
-
-.btn-secondary {
-  background: #e9ecef;
-  color: #495057;
-}
-
-.btn-secondary:hover {
-  background: #dee2e6;
-}
-
-/* Population display */
-.pop-display {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.pop-box {
-  text-align: center;
-  padding: 1rem;
-  border-radius: 10px;
-}
-
-.pop-box.prey {
-  background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%);
-}
-
-.pop-box.predator {
-  background: linear-gradient(135deg, #fadbd8 0%, #f5b7b1 100%);
-}
-
-.pop-icon {
-  font-size: 2rem;
-  margin-bottom: 0.25rem;
-}
-
-.pop-label {
-  font-size: 0.8rem;
-  color: #666;
-  text-transform: uppercase;
-}
-
-.pop-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #333;
-}
-
-/* Equations */
-.eq-display {
-  font-family: 'SF Mono', Monaco, monospace;
-  font-size: 0.85rem;
-  line-height: 2;
-}
-
-.equation {
-  padding: 0.5rem;
-  background: #f8f9fa;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
-}
-
-.eq-lhs {
-  color: #555;
-  font-weight: 600;
-}
-
-.eq-alpha { color: #27ae60; font-weight: 600; }
-.eq-beta { color: #e74c3c; font-weight: 600; }
-.eq-gamma { color: #8e44ad; font-weight: 600; }
-
-.equilibrium {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #fef9e7 0%, #fdebd0 100%);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  color: #7d6608;
-}
-
-.equilibrium strong {
-  color: #d68910;
-}
-
-/* Chart Section */
+/* Charts */
 .chart-section {
-  min-height: 350px;
+  min-height: 300px;
 }
 
 .chart-container {
-  height: 280px;
+  height: 260px;
   position: relative;
 }
 
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-}
-
-.legend-marker {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #e67e22;
-  font-size: 1.2rem;
+.chart-container.short {
+  height: 220px;
 }
 
 /* Explainer */
@@ -285,19 +251,31 @@ h3 .hint {
   color: #555;
 }
 
-.explainer-content p {
-  margin-bottom: 0.75rem;
+.explainer-content p { margin-bottom: 0.75rem; }
+.explainer-content ul { margin: 0.75rem 0; padding-left: 1.5rem; }
+.explainer-content li { margin-bottom: 0.5rem; }
+.explainer-content strong { color: #333; }
+
+/* Equations */
+.eq-display {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85rem;
+  line-height: 2;
+  margin-top: 1rem;
 }
 
-.explainer-content ul {
-  margin: 0.75rem 0;
-  padding-left: 1.5rem;
-}
-
-.explainer-content li {
+.equation {
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 6px;
   margin-bottom: 0.5rem;
 }
 
-.explainer-content strong {
-  color: #333;
+.equation.eq-equil {
+  background: linear-gradient(135deg, #fef9e7 0%, #fdebd0 100%);
 }
+
+.eq-lhs { color: #555; font-weight: 600; }
+.eq-alpha { color: #27ae60; font-weight: 600; }
+.eq-beta { color: #e74c3c; font-weight: 600; }
+.eq-gamma { color: #8e44ad; font-weight: 600; }

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Predator-Prey Dynamics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
   <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
@@ -18,27 +19,97 @@
       <p>Lotka-Volterra equations emerge from mass-action kinetics on a Petri net</p>
     </div>
 
+    <div class="predictions-bar">
+      <div class="prediction-card primary">
+        <div class="pred-label">Oscillation Period</div>
+        <div class="pred-value" id="pred-period">--</div>
+        <div class="pred-unit">time units per cycle</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Peak Prey</div>
+        <div class="pred-value" id="pred-peak-prey">--</div>
+        <div class="pred-unit">maximum population</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Peak Predators</div>
+        <div class="pred-value" id="pred-peak-pred">--</div>
+        <div class="pred-unit">maximum population</div>
+      </div>
+      <div class="prediction-card">
+        <div class="pred-label">Amplitude</div>
+        <div class="pred-value" id="pred-amplitude">--</div>
+        <div class="pred-unit">prey swing from equilibrium</div>
+      </div>
+    </div>
+
     <div class="main-content">
       <div class="left-panel">
+        <div class="ecosystem-section">
+          <h3>Ecosystem</h3>
+          <div class="ecosystem">
+            <svg viewBox="0 0 280 200" class="ecosystem-svg">
+              <!-- Sky gradient -->
+              <defs>
+                <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#87ceeb"/>
+                  <stop offset="100%" stop-color="#e0f0e0"/>
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="280" height="140" fill="url(#sky)"/>
+              <!-- Ground -->
+              <rect x="0" y="140" width="280" height="60" fill="#4a7c3f" rx="0"/>
+              <ellipse cx="140" cy="140" rx="160" ry="12" fill="#5a8c4f"/>
+              <!-- Trees -->
+              <g opacity="0.6">
+                <rect x="30" y="90" width="6" height="50" fill="#8B4513"/>
+                <circle cx="33" cy="85" r="18" fill="#2d6b2d"/>
+                <rect x="230" y="100" width="5" height="40" fill="#8B4513"/>
+                <circle cx="232" cy="95" r="14" fill="#2d6b2d"/>
+              </g>
+              <!-- Prey (rabbits) group -->
+              <g id="prey-group"></g>
+              <!-- Predator (foxes) group -->
+              <g id="pred-group"></g>
+              <!-- Population labels -->
+              <g transform="translate(140, 170)">
+                <text x="-50" y="0" text-anchor="middle" fill="white" font-size="11" font-weight="600" id="prey-label">100 prey</text>
+                <text x="50" y="0" text-anchor="middle" fill="white" font-size="11" font-weight="600" id="pred-label">20 predators</text>
+              </g>
+              <!-- Phase indicator -->
+              <text id="phase-label" x="140" y="188" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9"></text>
+            </svg>
+          </div>
+          <div class="pop-display">
+            <div class="pop-box prey">
+              <span class="pop-icon">&#x1F407;</span>
+              <span class="pop-value" id="prey-count">100</span>
+            </div>
+            <div class="pop-box predator">
+              <span class="pop-icon">&#x1F43A;</span>
+              <span class="pop-value" id="pred-count">20</span>
+            </div>
+          </div>
+        </div>
+
         <div class="params-section">
           <h3>Parameters</h3>
           <div class="param-group">
             <label>
-              <span class="param-name">Birth Rate (alpha)</span>
+              <span class="param-name">Birth Rate (<span class="eq-alpha">&#x03B1;</span>)</span>
               <span class="param-value" id="alpha-value">1.0</span>
             </label>
             <input type="range" id="alpha" min="0.1" max="3.0" step="0.1" value="1.0">
           </div>
           <div class="param-group">
             <label>
-              <span class="param-name">Predation Rate (beta)</span>
-              <span class="param-value" id="beta-value">0.01</span>
+              <span class="param-name">Predation Rate (<span class="eq-beta">&#x03B2;</span>)</span>
+              <span class="param-value" id="beta-value">0.010</span>
             </label>
             <input type="range" id="beta" min="0.001" max="0.05" step="0.001" value="0.01">
           </div>
           <div class="param-group">
             <label>
-              <span class="param-name">Death Rate (gamma)</span>
+              <span class="param-name">Death Rate (<span class="eq-gamma">&#x03B3;</span>)</span>
               <span class="param-value" id="gamma-value">0.5</span>
             </label>
             <input type="range" id="gamma" min="0.1" max="2.0" step="0.1" value="0.5">
@@ -64,41 +135,6 @@
             </label>
             <input type="range" id="tspan" min="10" max="100" step="5" value="30">
           </div>
-          <div class="actions">
-            <button class="btn btn-secondary" onclick="resetParams()">Reset</button>
-            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
-          </div>
-        </div>
-
-        <div class="population-section">
-          <h3>Current Populations</h3>
-          <div class="pop-display">
-            <div class="pop-box prey">
-              <div class="pop-icon">🐇</div>
-              <div class="pop-label">Prey</div>
-              <div class="pop-value" id="prey-count">100</div>
-            </div>
-            <div class="pop-box predator">
-              <div class="pop-icon">🐺</div>
-              <div class="pop-label">Predators</div>
-              <div class="pop-value" id="pred-count">20</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="equations-section">
-          <h3>Equations</h3>
-          <div class="eq-display">
-            <div class="equation">
-              <span class="eq-lhs">d(prey)/dt</span> = <span class="eq-alpha">alpha</span> * prey - <span class="eq-beta">beta</span> * prey * predator
-            </div>
-            <div class="equation">
-              <span class="eq-lhs">d(pred)/dt</span> = <span class="eq-beta">beta</span> * prey * predator - <span class="eq-gamma">gamma</span> * predator
-            </div>
-          </div>
-          <div class="equilibrium" id="equilibrium">
-            Equilibrium: prey = <strong id="eq-prey">50</strong>, predator = <strong id="eq-pred">100</strong>
-          </div>
         </div>
       </div>
 
@@ -108,32 +144,12 @@
           <div class="chart-container">
             <canvas id="population-chart"></canvas>
           </div>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <div class="legend-color" style="background: #27ae60;"></div>
-              <span>Prey (rabbits)</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color" style="background: #e74c3c;"></div>
-              <span>Predators (foxes)</span>
-            </div>
-          </div>
         </div>
 
         <div class="chart-section">
           <h3>Phase Space <span class="hint">(closed orbits = stable oscillation)</span></h3>
-          <div class="chart-container">
+          <div class="chart-container short">
             <canvas id="phase-chart"></canvas>
-          </div>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <div class="legend-color" style="background: #8e44ad;"></div>
-              <span>Trajectory</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-marker">+</div>
-              <span>Equilibrium point</span>
-            </div>
           </div>
         </div>
 
@@ -141,14 +157,25 @@
           <h3>How It Works</h3>
           <div class="explainer-content">
             <p>The <strong>Lotka-Volterra</strong> predator-prey model is a classic example of a Petri net producing differential equations via <strong>mass-action kinetics</strong>.</p>
-            <p>The net has just 2 places and 3 transitions:</p>
+            <p>The net has just <strong>2 places</strong> and <strong>3 transitions</strong>:</p>
             <ul>
-              <li><strong>prey_reproduce</strong>: prey -> 2 prey (net +1, rate = alpha)</li>
-              <li><strong>predation</strong>: prey + predator -> 2 predator (prey dies, predator gains, rate = beta)</li>
-              <li><strong>predator_death</strong>: predator -> nothing (rate = gamma)</li>
+              <li><strong>prey_reproduce</strong> (rate <span class="eq-alpha">&#x03B1;</span>): prey &rarr; 2&times;prey &mdash; exponential growth without predators</li>
+              <li><strong>predation</strong> (rate <span class="eq-beta">&#x03B2;</span>): prey + predator &rarr; 2&times;predator &mdash; encounters convert prey into predators</li>
+              <li><strong>predator_death</strong> (rate <span class="eq-gamma">&#x03B3;</span>): predator &rarr; nothing &mdash; natural death without prey</li>
             </ul>
-            <p>Mass-action: each transition fires at rate proportional to the product of its input token concentrations. This automatically gives the Lotka-Volterra ODE system.</p>
-            <p>The <strong>phase space plot</strong> shows closed orbits around the equilibrium point, confirming the system conserves the Volterra integral.</p>
+            <p>Mass-action kinetics: each transition fires at a rate proportional to the product of its input token counts. This automatically gives the Lotka-Volterra system.</p>
+            <p>The <strong>phase space plot</strong> shows closed orbits around the equilibrium point. Closed orbits mean the system oscillates forever without damping &mdash; a conserved quantity called the <strong>Volterra integral</strong> prevents decay.</p>
+            <div class="eq-display">
+              <div class="equation">
+                <span class="eq-lhs">d(prey)/dt</span> = <span class="eq-alpha">&#x03B1;</span> &middot; prey &minus; <span class="eq-beta">&#x03B2;</span> &middot; prey &middot; predator
+              </div>
+              <div class="equation">
+                <span class="eq-lhs">d(pred)/dt</span> = <span class="eq-beta">&#x03B2;</span> &middot; prey &middot; predator &minus; <span class="eq-gamma">&#x03B3;</span> &middot; predator
+              </div>
+              <div class="equation eq-equil">
+                <span class="eq-lhs">Equilibrium</span>: prey = <span class="eq-gamma">&#x03B3;</span>/<span class="eq-beta">&#x03B2;</span> = <strong id="eq-prey">50</strong>, predator = <span class="eq-alpha">&#x03B1;</span>/<span class="eq-beta">&#x03B2;</span> = <strong id="eq-pred">100</strong>
+              </div>
+            </div>
             <div style="margin-top: 1.5rem; text-align: center;">
               <pflow-model-link model="predator-prey" label="Explore the Petri Net Model"></pflow-model-link>
             </div>
@@ -171,7 +198,7 @@
   </script>
   <script type="module" src="/shared/nav.js?v=3"></script>
   <script type="module" src="/shared/explainer.js"></script>
-  <script type="module" src="main.js?v=2"></script>
+  <script type="module" src="main.js?v=4"></script>
   <site-footer></site-footer>
 </body>
 </html>

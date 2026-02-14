@@ -1,23 +1,43 @@
-// Producer-Consumer - Bounded Buffer Simulation
+// Producer-Consumer - Bounded Buffer Simulation with Charts
 
 let state = {}
+let capacity = 5
 let autoRunning = false
 let autoTimer = null
 let totalProduced = 0
 let totalConsumed = 0
+let stepCount = 0
+let startTime = null
+
+// Statistics tracking
+let bufferHistory = []
+let producedHistory = []
+let consumedHistory = []
+let prodBlockedSteps = 0
+let consBlockedSteps = 0
+
+let bufferChart = null
+let throughputChart = null
 
 function initState() {
   state = {
     producer_idle: 1,
     producing: 0,
     buffer: 0,
-    buffer_space: 5,
+    buffer_space: capacity,
     consumer_idle: 1,
     consuming: 0,
     consumed: 0
   }
   totalProduced = 0
   totalConsumed = 0
+  stepCount = 0
+  startTime = null
+  bufferHistory = [{ step: 0, level: 0 }]
+  producedHistory = [{ step: 0, count: 0 }]
+  consumedHistory = [{ step: 0, count: 0 }]
+  prodBlockedSteps = 0
+  consBlockedSteps = 0
 }
 
 function getTransitions() {
@@ -65,6 +85,12 @@ function fire(transitionId) {
   const t = transitions[transitionId]
   if (!t || !isEnabled(t)) return false
 
+  // Track blocking before firing
+  const prodBlocked = state.buffer_space === 0 && state.producer_idle === 1
+  const consBlocked = state.buffer === 0 && state.consumer_idle === 1
+  if (prodBlocked) prodBlockedSteps++
+  if (consBlocked) consBlockedSteps++
+
   for (const [place, weight] of Object.entries(t.inputs)) {
     state[place] -= weight
   }
@@ -75,8 +101,24 @@ function fire(transitionId) {
   if (transitionId === 'finish_produce') totalProduced++
   if (transitionId === 'finish_consume') totalConsumed++
 
-  addLog(t.label, t.actor)
+  stepCount++
+  if (!startTime) startTime = performance.now()
+
+  // Record history
+  bufferHistory.push({ step: stepCount, level: state.buffer })
+  producedHistory.push({ step: stepCount, count: totalProduced })
+  consumedHistory.push({ step: stepCount, count: totalConsumed })
+
+  // Cap history length
+  if (bufferHistory.length > 500) {
+    bufferHistory = bufferHistory.slice(-400)
+    producedHistory = producedHistory.slice(-400)
+    consumedHistory = consumedHistory.slice(-400)
+  }
+
   updateUI()
+  updateCharts()
+  updatePredictions()
   return true
 }
 
@@ -89,11 +131,12 @@ function getEnabledTransitions() {
 
 function updateUI() {
   // Buffer slots
-  const slots = document.querySelectorAll('#buffer-slots .slot')
-  const bufferLevel = state.buffer
-  slots.forEach((slot, i) => {
-    slot.classList.toggle('filled', i < bufferLevel)
-  })
+  const slotsContainer = document.getElementById('buffer-slots')
+  let slotsHtml = ''
+  for (let i = 0; i < capacity; i++) {
+    slotsHtml += `<div class="slot${i < state.buffer ? ' filled' : ''}"></div>`
+  }
+  slotsContainer.innerHTML = slotsHtml
 
   // Actor states
   const producerState = state.producing ? 'Working' : (state.buffer_space === 0 && state.producer_idle ? 'Blocked' : 'Idle')
@@ -109,6 +152,7 @@ function updateUI() {
   document.getElementById('buffer-count').textContent = state.buffer
   document.getElementById('produced-count').textContent = totalProduced
   document.getElementById('consumed-count').textContent = totalConsumed
+  document.getElementById('capacity-display').textContent = capacity
 
   // Transition buttons
   renderTransitions()
@@ -124,26 +168,147 @@ function renderTransitions() {
     const isEn = enabled.includes(id)
     const color = t.actor === 'producer' ? '#3498db' : '#e67e22'
     html += `<button class="btn-transition ${isEn ? 'enabled' : 'disabled'}"
-              onclick="window.fire('${id}')" ${isEn ? '' : 'disabled'}
+              data-transition="${id}" ${isEn ? '' : 'disabled'}
               style="${isEn ? `border-color: ${color}; color: ${color};` : ''}">
               <span class="trans-label">${t.label}</span>
               <span class="trans-desc">${t.desc}</span>
             </button>`
   }
   container.innerHTML = html
+
+  // Attach click handlers
+  container.querySelectorAll('.btn-transition.enabled').forEach(btn => {
+    btn.addEventListener('click', () => fire(btn.dataset.transition))
+  })
 }
 
-function addLog(message, actor) {
-  const log = document.getElementById('event-log')
-  const entry = document.createElement('div')
-  const color = actor === 'producer' ? '#3498db' : '#e67e22'
-  entry.className = 'log-entry'
-  entry.innerHTML = `<span class="log-dot" style="background:${color};"></span> ${message} <span style="color:${color};font-size:0.8rem;">[${actor}]</span>`
-  log.insertBefore(entry, log.firstChild)
-  while (log.children.length > 40) log.removeChild(log.lastChild)
+function updatePredictions() {
+  // Throughput
+  const throughputEl = document.getElementById('pred-throughput')
+  if (startTime && stepCount > 0) {
+    const elapsed = (performance.now() - startTime) / 1000
+    const throughput = elapsed > 0 ? (totalConsumed / elapsed) : 0
+    throughputEl.textContent = throughput.toFixed(1)
+  } else {
+    throughputEl.textContent = '--'
+  }
+
+  // Buffer utilization
+  const utilEl = document.getElementById('pred-utilization')
+  if (bufferHistory.length > 1) {
+    const avg = bufferHistory.reduce((sum, h) => sum + h.level, 0) / bufferHistory.length
+    utilEl.textContent = Math.round((avg / capacity) * 100) + '%'
+  } else {
+    utilEl.textContent = '--'
+  }
+
+  // Blocking percentages
+  const prodBlockedEl = document.getElementById('pred-prod-blocked')
+  const consBlockedEl = document.getElementById('pred-cons-blocked')
+  if (stepCount > 0) {
+    prodBlockedEl.textContent = Math.round((prodBlockedSteps / stepCount) * 100) + '%'
+    consBlockedEl.textContent = Math.round((consBlockedSteps / stepCount) * 100) + '%'
+  } else {
+    prodBlockedEl.textContent = '--'
+    consBlockedEl.textContent = '--'
+  }
 }
 
-window.fire = function(id) { fire(id) }
+function initCharts() {
+  const bufCtx = document.getElementById('buffer-chart').getContext('2d')
+  bufferChart = new Chart(bufCtx, {
+    type: 'line',
+    data: { datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 0 },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Step' }, min: 0 },
+        y: {
+          title: { display: true, text: 'Buffer Level' },
+          min: 0,
+          max: capacity + 0.5,
+          ticks: { stepSize: 1 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Buffer: ${ctx.parsed.y}/${capacity}`
+          }
+        }
+      }
+    }
+  })
+
+  const tpCtx = document.getElementById('throughput-chart').getContext('2d')
+  throughputChart = new Chart(tpCtx, {
+    type: 'line',
+    data: { datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 0 },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Step' }, min: 0 },
+        y: { title: { display: true, text: 'Items' }, min: 0 }
+      },
+      plugins: {
+        legend: { display: true, position: 'top' }
+      }
+    }
+  })
+}
+
+function updateCharts() {
+  // Buffer level chart
+  const bufData = bufferHistory.map(h => ({ x: h.step, y: h.level }))
+
+  bufferChart.data.datasets = [
+    {
+      label: 'Buffer Level',
+      data: bufData,
+      borderColor: '#2ecc71',
+      backgroundColor: 'rgba(46, 204, 113, 0.15)',
+      borderWidth: 2,
+      fill: true,
+      stepped: true,
+      pointRadius: 0
+    }
+  ]
+  bufferChart.options.scales.y.max = capacity + 0.5
+  bufferChart.update()
+
+  // Throughput chart
+  const prodData = producedHistory.map(h => ({ x: h.step, y: h.count }))
+  const consData = consumedHistory.map(h => ({ x: h.step, y: h.count }))
+
+  throughputChart.data.datasets = [
+    {
+      label: 'Produced',
+      data: prodData,
+      borderColor: '#3498db',
+      backgroundColor: 'rgba(52, 152, 219, 0.08)',
+      borderWidth: 2,
+      fill: true,
+      pointRadius: 0,
+      tension: 0.1
+    },
+    {
+      label: 'Consumed',
+      data: consData,
+      borderColor: '#e67e22',
+      backgroundColor: 'rgba(230, 126, 34, 0.08)',
+      borderWidth: 2,
+      fill: true,
+      pointRadius: 0,
+      tension: 0.1
+    }
+  ]
+  throughputChart.update()
+}
 
 function autoStep() {
   const enabled = getEnabledTransitions()
@@ -152,7 +317,7 @@ function autoStep() {
   fire(pick)
 }
 
-window.toggleAuto = function() {
+function toggleAuto() {
   autoRunning = !autoRunning
   const btn = document.getElementById('auto-btn')
   if (autoRunning) {
@@ -170,37 +335,50 @@ window.toggleAuto = function() {
   }
 }
 
-window.fillBuffer = async function() {
+async function fillBuffer() {
   if (autoRunning) toggleAuto()
-  while (state.buffer < 5) {
+  while (state.buffer < capacity) {
     if (!fire('start_produce')) break
-    await new Promise(r => setTimeout(r, 200))
+    await new Promise(r => setTimeout(r, 150))
     if (!fire('finish_produce')) break
-    await new Promise(r => setTimeout(r, 200))
+    await new Promise(r => setTimeout(r, 150))
   }
 }
 
-window.drainBuffer = async function() {
+async function drainBuffer() {
   if (autoRunning) toggleAuto()
   while (state.buffer > 0) {
     if (!fire('start_consume')) break
-    await new Promise(r => setTimeout(r, 200))
+    await new Promise(r => setTimeout(r, 150))
     if (!fire('finish_consume')) break
-    await new Promise(r => setTimeout(r, 200))
+    await new Promise(r => setTimeout(r, 150))
   }
 }
 
-window.resetState = function() {
+function resetState() {
   if (autoRunning) toggleAuto()
   initState()
   updateUI()
-  addLog('System reset. Buffer empty.', 'system')
+  updateCharts()
+  updatePredictions()
 }
 
-window.clearLog = function() {
-  document.getElementById('event-log').innerHTML =
-    '<div class="log-entry info">Log cleared.</div>'
+function updateCapacity(newCapacity) {
+  if (autoRunning) toggleAuto()
+  capacity = newCapacity
+  initState()
+  updateUI()
+  updateCharts()
+  updatePredictions()
+  document.getElementById('capacity-label').textContent = capacity
+  document.getElementById('capacity-display').textContent = capacity
 }
+
+// Setup event listeners
+document.getElementById('auto-btn').addEventListener('click', toggleAuto)
+document.getElementById('reset-btn').addEventListener('click', resetState)
+document.getElementById('fill-btn').addEventListener('click', fillBuffer)
+document.getElementById('drain-btn').addEventListener('click', drainBuffer)
 
 document.getElementById('speed').addEventListener('input', function() {
   document.getElementById('speed-value').textContent = this.value + 'ms'
@@ -210,7 +388,14 @@ document.getElementById('speed').addEventListener('input', function() {
   }
 })
 
-document.addEventListener('DOMContentLoaded', () => {
-  initState()
-  updateUI()
+document.getElementById('capacity').addEventListener('input', function() {
+  document.getElementById('capacity-value').textContent = this.value
+  updateCapacity(parseInt(this.value))
 })
+
+// Module scripts are deferred, DOM is ready
+initState()
+initCharts()
+updateUI()
+updateCharts()
+updatePredictions()
