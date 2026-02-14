@@ -1116,6 +1116,18 @@ func PflowHandler() http.HandlerFunc {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    function normalizeModel(model) {
+      if (model.net && model.net.places) {
+        var net = model.net;
+        if (!model.name && net.name) model.name = net.name;
+        if (!model.description && net.description) model.description = net.description;
+        if (!model.places) model.places = net.places;
+        if (!model.transitions) model.transitions = net.transitions;
+        if (!model.arcs) model.arcs = net.arcs;
+      }
+      return model;
+    }
+
     function generateThumbSVG(model) {
       var places = model.places || [];
       var transitions = model.transitions || [];
@@ -1295,6 +1307,7 @@ func PflowHandler() http.HandlerFunc {
               fetch('/' + encodeURIComponent(name) + '/api/schema', {cache: 'no-store'})
                 .then(function(r) { return r.json(); })
                 .then(function(model) {
+                  model = normalizeModel(model);
                   thumb.innerHTML = generateThumbSVG(model);
                   // Add description if available
                   if (model.description) {
