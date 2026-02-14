@@ -10,6 +10,7 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/loanapproval"
 	_ "github.com/pflow-xyz/petri-pilot/generated/predatorprey"
 	_ "github.com/pflow-xyz/petri-pilot/generated/producerconsumer"
+	_ "github.com/pflow-xyz/petri-pilot/generated/stoplight"
 	_ "github.com/pflow-xyz/petri-pilot/generated/tcphandshake"
 	_ "github.com/pflow-xyz/petri-pilot/generated/texasholdem"
 	_ "github.com/pflow-xyz/petri-pilot/generated/thermostat"

@@ -258,7 +258,7 @@ func RunMultiple(names []string, opts Options) error {
 			}
 		}
 		allModels := append([]string{}, filteredNames...)
-		allModels = append(allModels, "poker-hand", "vet-clinic")
+		allModels = append(allModels, "poker-hand", "vet-clinic", "stoplight")
 
 		mux.HandleFunc("/models", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
