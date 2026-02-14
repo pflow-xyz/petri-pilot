@@ -81,8 +81,8 @@ async function fireTransition(transitionId) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.state) {
-          state = { red: data.state.red || 0, green: data.state.green || 0, yellow: data.state.yellow || 0 };
+        if (data.success) {
+          state = readState(data);
           addLog(t);
           render();
           return;
@@ -115,15 +115,19 @@ function addLog(t) {
   }
 }
 
+function readState(data) {
+  // Create returns token counts in "places", transitions return them in "state"
+  const s = data.places || data.state || {};
+  return { red: s.red || 0, green: s.green || 0, yellow: s.yellow || 0 };
+}
+
 async function initInstance() {
   try {
     const res = await fetch(window.API_BASE + '/api/stoplight', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     if (res.ok) {
       const data = await res.json();
       instance = data.aggregate_id;
-      if (data.state) {
-        state = { red: data.state.red || 0, green: data.state.green || 0, yellow: data.state.yellow || 0 };
-      }
+      state = readState(data);
     }
   } catch (e) {
     // Local mode
