@@ -134,7 +134,7 @@
     .subtitle {
       font-size: 0.95rem;
       color: rgba(255, 255, 255, 0.5);
-      max-width: 500px;
+      max-width: 560px;
     }
 
     .demos-section {
@@ -302,15 +302,15 @@
       color: #fff;
     }
 
-    /* Concept pills */
-    .concept-list {
+    /* Schema type pills */
+    .type-list {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
       margin-top: 1.25rem;
     }
 
-    .concept-pill {
+    .type-pill {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
@@ -322,51 +322,40 @@
       color: #c4b5fd;
     }
 
-    .concept-pill span {
+    .type-pill span {
       font-size: 0.9rem;
       opacity: 0.7;
     }
 
-    /* Learning path */
-    .learning-path {
+    /* Category headers */
+    .category-header {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
     }
 
-    .learning-path-label {
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
-      margin-right: 0.5rem;
+    .category-header h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
     }
 
-    .learning-step {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.35rem 0.7rem;
-      background: rgba(139, 92, 246, 0.1);
-      border: 1px solid rgba(139, 92, 246, 0.25);
-      border-radius: 6px;
-      font-size: 0.8rem;
-      color: #c4b5fd;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .learning-step:hover {
+    .category-type {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
       background: rgba(139, 92, 246, 0.2);
-      border-color: rgba(139, 92, 246, 0.5);
-      color: #e9d5ff;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 4px;
+      color: #c4b5fd;
+      font-family: 'SF Mono', Monaco, monospace;
     }
 
-    .learning-arrow {
-      color: rgba(139, 92, 246, 0.5);
-      font-size: 0.8rem;
+    .category-desc {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.9rem;
+      margin-top: -0.75rem;
+      margin-bottom: 1.5rem;
     }
 
     /* Auth styles */
@@ -445,48 +434,37 @@
     </div>
     <img src="/logo-light.svg" alt="Petri-Pilot" class="logo">
     <h1 class="title">Petri-Pilot</h1>
-    <p class="tagline">Explore Petri Nets Through Interactive Examples</p>
-    <p class="subtitle">Interactive tutorials for modeling workflows with Petri nets</p>
+    <p class="tagline">Model, simulate, and generate applications from Petri nets</p>
+    <p class="subtitle">Define any system as places, transitions, and arcs &mdash; then generate Go backends, ES module frontends, and GraphQL APIs from a single model.</p>
   </section>
 
   <section class="intro-section">
     <div class="intro-card">
-      <h2>What is go-pflow?</h2>
+      <h2>Model Types</h2>
       <p>
-        <a href="https://github.com/pflow-xyz/go-pflow">go-pflow</a> is a Go library for building
-        applications with <strong>Petri nets</strong> - a mathematical model for describing concurrent systems.
-        Instead of writing state machines by hand, you define <code>places</code> (states),
-        <code>transitions</code> (actions), and <code>arcs</code> (connections). The library handles
-        state management, concurrent execution, and even predictive analysis via ODE simulation.
+        Petri nets are a mathematical formalism for modeling systems with state and flow &mdash;
+        from business workflows and game mechanics to biochemical reactions and network protocols.
+        Define <code>places</code> (state), <code>transitions</code> (actions), and
+        <code>arcs</code> (connections). Petri-Pilot supports several
+        <a href="https://pflow.xyz/schema">model types</a>, each suited to a different class
+        of problem. The runtime handles state management, access control, event sourcing,
+        and ODE simulation.
       </p>
-      <p>
-        Each demo below teaches specific go-pflow concepts. Start with Tic-Tac-Toe to learn the basics,
-        then explore Coffee Shop for resource modeling, and Texas Hold'em for complex multi-player state.
-      </p>
-      <div class="concept-list">
-        <span class="concept-pill"><span>O</span> Places</span>
-        <span class="concept-pill"><span>|</span> Transitions</span>
-        <span class="concept-pill"><span>-></span> Arcs</span>
-        <span class="concept-pill"><span>#</span> Tokens</span>
-        <span class="concept-pill"><span>f(x)</span> ODE</span>
-        <span class="concept-pill"><span>E</span> Events</span>
-      </div>
-      <div class="learning-path">
-        <span class="learning-path-label">Recommended path:</span>
-        <a href="/tic-tac-toe/" class="learning-step">1. Tic-Tac-Toe</a>
-        <span class="learning-arrow">-></span>
-        <a href="/coffeeshop/" class="learning-step">2. Coffee Shop</a>
-        <span class="learning-arrow">-></span>
-        <a href="/texas-holdem/" class="learning-step">3. Texas Hold'em</a>
-        <span class="learning-arrow">-></span>
-        <a href="/pflow" class="learning-step">4. Build Your Own</a>
+      <div class="type-list">
+        <span class="type-pill"><span>&#9881;</span> WorkflowNet</span>
+        <span class="type-pill"><span>&#9883;</span> ComputationNet</span>
+        <span class="type-pill"><span>&#9741;</span> ResourceNet</span>
+        <span class="type-pill"><span>&#9823;</span> GameNet</span>
+        <span class="type-pill"><span>&#9733;</span> ClassificationNet</span>
+        <span class="type-pill"><span>&#9635;</span> CompositeNet</span>
       </div>
     </div>
   </section>
 
+  <!-- Tools -->
   <section class="demos-section">
-    <div class="demos-header">
-      <h2>Explore & Build</h2>
+    <div class="category-header">
+      <h2>Tools</h2>
     </div>
 
     <div class="demos-grid">
@@ -494,19 +472,19 @@
         <span class="demo-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 110" style="width:2.5rem;height:2.5rem;fill:rgba(255,255,255,0.8);vertical-align:middle;"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21z"/></svg>
         </span>
-        <h3 class="demo-name">Petri Net Editor</h3>
-        <p class="demo-desc"><strong>Build your own models.</strong> Visual editor for creating Petri nets. See all tutorial models, modify them, or design from scratch. Export JSON for use with go-pflow.</p>
+        <h3 class="demo-name">Petri Net Viewer</h3>
+        <p class="demo-desc">Browse all models, visualize their structure, run ODE simulations, and design new nets from scratch. Export JSON for use with any pflow runtime.</p>
         <div class="demo-meta">
           <span class="demo-tag">editor</span>
           <span class="demo-tag">visualization</span>
-          <span class="demo-tag">export</span>
+          <span class="demo-tag">ODE</span>
         </div>
       </a>
 
       <a href="/graphql/i" class="demo-card">
         <span class="demo-icon">&gt;_</span>
-        <h3 class="demo-name">GraphQL API</h3>
-        <p class="demo-desc"><strong>See the generated API.</strong> Every Petri net becomes a fully-typed GraphQL API. Query state, fire transitions, and explore the schema that go-pflow generates.</p>
+        <h3 class="demo-name">GraphQL Playground</h3>
+        <p class="demo-desc">Every model becomes a fully-typed GraphQL API. Query state, fire transitions, create instances, and explore the generated schema interactively.</p>
         <div class="demo-meta">
           <span class="demo-tag">api</span>
           <span class="demo-tag">codegen</span>
@@ -516,133 +494,162 @@
     </div>
   </section>
 
+  <!-- GameNet -->
   <section class="demos-section">
-    <div class="demos-header">
-      <h2>Interactive Tutorials</h2>
+    <div class="category-header">
+      <h2>Games</h2>
+      <span class="category-type">GameNet</span>
     </div>
+    <p class="category-desc">Turn-based and concurrent games where tokens represent game state and transitions encode legal moves.</p>
 
     <div class="demos-grid">
       <a href="/tic-tac-toe/" class="demo-card">
-        <span class="demo-icon">⭕</span>
-        <h3 class="demo-name">1. Tic-Tac-Toe</h3>
-        <p class="demo-desc"><strong>Start here.</strong> Learn the fundamentals: <strong>places</strong> hold tokens, <strong>transitions</strong> fire when enabled, <strong>arcs</strong> connect them. See how ODE simulation computes strategic value from net topology.</p>
+        <span class="demo-icon">&#11093;</span>
+        <h3 class="demo-name">Tic-Tac-Toe</h3>
+        <p class="demo-desc"><strong>Introductory model.</strong> Nine board cells as places, player moves as transitions. ODE simulation computes strategic value from net topology alone.</p>
         <div class="demo-meta">
           <span class="demo-tag">beginner</span>
-          <span class="demo-tag">places</span>
-          <span class="demo-tag">transitions</span>
           <span class="demo-tag">ODE</span>
+          <span class="demo-tag">strategy</span>
         </div>
       </a>
 
       <a href="/zk-tic-tac-toe/" class="demo-card">
-        <span class="demo-icon">🔐</span>
-        <h3 class="demo-name">1b. ZK Tic-Tac-Toe</h3>
-        <p class="demo-desc"><strong>Zero-knowledge proofs.</strong> Same game, but moves are verified cryptographically using gnark circuits. Proves valid play without revealing strategy.</p>
+        <span class="demo-icon">&#128274;</span>
+        <h3 class="demo-name">ZK Tic-Tac-Toe</h3>
+        <p class="demo-desc"><strong>Zero-knowledge variant.</strong> Same game, but moves are verified cryptographically using gnark circuits. Proves valid play without revealing strategy.</p>
         <div class="demo-meta">
-          <span class="demo-tag">advanced</span>
           <span class="demo-tag">zk-proofs</span>
           <span class="demo-tag">gnark</span>
-        </div>
-      </a>
-
-      <a href="/coffeeshop/" class="demo-card">
-        <span class="demo-icon">☕</span>
-        <h3 class="demo-name">2. Coffee Shop</h3>
-        <p class="demo-desc"><strong>Resource modeling.</strong> Add <strong>capacity</strong> limits to places, <strong>weighted arcs</strong> that consume multiple tokens, and <strong>rates</strong> for continuous flow. The ODE predicts when you'll run out of coffee beans.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">intermediate</span>
-          <span class="demo-tag">capacity</span>
-          <span class="demo-tag">weighted-arcs</span>
-          <span class="demo-tag">rates</span>
+          <span class="demo-tag">verification</span>
         </div>
       </a>
 
       <a href="/texas-holdem/" class="demo-card">
-        <span class="demo-icon">🃏</span>
-        <h3 class="demo-name">3. Texas Hold'em</h3>
-        <p class="demo-desc"><strong>Complex state machines.</strong> Model multi-player games with <strong>role-based access</strong>, <strong>guard conditions</strong>, and full <strong>event sourcing</strong>. Turn tokens control whose action fires next.</p>
+        <span class="demo-icon">&#127183;</span>
+        <h3 class="demo-name">Texas Hold'em</h3>
+        <p class="demo-desc"><strong>Multi-player state machine.</strong> Five players, four betting rounds, role-based actions (fold, check, raise). Turn tokens control whose transition fires next.</p>
         <div class="demo-meta">
-          <span class="demo-tag">advanced</span>
           <span class="demo-tag">roles</span>
           <span class="demo-tag">guards</span>
           <span class="demo-tag">events</span>
         </div>
       </a>
 
-      <a href="/knapsack/" class="demo-card">
-        <span class="demo-icon">🎒</span>
-        <h3 class="demo-name">4. Knapsack</h3>
-        <p class="demo-desc"><strong>Optimization problems.</strong> Classic 0/1 knapsack as a Petri net. Items compete for limited <strong>capacity</strong> using <strong>mass-action kinetics</strong>. ODE reveals which items provide best value per weight.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">optimization</span>
-          <span class="demo-tag">ODE</span>
-          <span class="demo-tag">weighted-arcs</span>
-          <span class="demo-tag">rates</span>
-        </div>
-      </a>
-
-      <a href="/vet-clinic/" class="demo-card">
-        <span class="demo-icon">🏥</span>
-        <h3 class="demo-name">5. Vet Clinic</h3>
-        <p class="demo-desc"><strong>ODE scheduling simulator.</strong> Model a small animal hospital with <strong>time-varying staff</strong>, service mix routing, and <strong>piecewise ODE</strong> solving. Financial dashboard tracks revenue, costs, and inventory in real time.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">ODE</span>
-          <span class="demo-tag">scheduling</span>
-          <span class="demo-tag">simulation</span>
-          <span class="demo-tag">rates</span>
-        </div>
-      </a>
-
-      <a href="/poker-hand/" class="demo-card">
-        <span class="demo-icon">🃑</span>
-        <h3 class="demo-name">6. Poker Hand</h3>
-        <p class="demo-desc"><strong>Classification net.</strong> A Petri net that detects poker hand patterns &mdash; pairs, flushes, straights, full houses. Cards are <strong>tokens</strong> in rank and suit places; pattern-detection transitions fire when the right combination is present. A pure structural classifier with no code.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">classification</span>
-          <span class="demo-tag">pattern-detection</span>
-          <span class="demo-tag">arcs</span>
-          <span class="demo-tag">tokens</span>
-        </div>
-      </a>
-
       <a href="/dining-philosophers/" class="demo-card">
-        <span class="demo-icon">🍽</span>
-        <h3 class="demo-name">7. Dining Philosophers</h3>
-        <p class="demo-desc"><strong>Concurrency &amp; deadlock.</strong> Five philosophers, five forks, one classic problem. Step through transitions to see <strong>mutual exclusion</strong> and <strong>circular wait</strong>. Force the deadlock and watch the system freeze.</p>
+        <span class="demo-icon">&#127860;</span>
+        <h3 class="demo-name">Dining Philosophers</h3>
+        <p class="demo-desc"><strong>Concurrency and deadlock.</strong> Five philosophers, five forks, one classic problem. Step through transitions to observe mutual exclusion and circular wait.</p>
         <div class="demo-meta">
           <span class="demo-tag">concurrency</span>
           <span class="demo-tag">deadlock</span>
-          <span class="demo-tag">resources</span>
+          <span class="demo-tag">mutual exclusion</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ResourceNet -->
+  <section class="demos-section">
+    <div class="category-header">
+      <h2>Resources</h2>
+      <span class="category-type">ResourceNet</span>
+    </div>
+    <p class="category-desc">Systems where tokens represent consumable or reusable resources with capacity constraints and flow rates.</p>
+
+    <div class="demos-grid">
+      <a href="/coffeeshop/" class="demo-card">
+        <span class="demo-icon">&#9749;</span>
+        <h3 class="demo-name">Coffee Shop</h3>
+        <p class="demo-desc"><strong>Inventory and flow.</strong> Weighted arcs consume beans, milk, and cups per order. Rates drive continuous flow. The ODE predicts when supplies run out.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">capacity</span>
+          <span class="demo-tag">weighted arcs</span>
+          <span class="demo-tag">rates</span>
         </div>
       </a>
 
-      <a href="/predator-prey/" class="demo-card">
-        <span class="demo-icon">🐺</span>
-        <h3 class="demo-name">8. Predator-Prey</h3>
-        <p class="demo-desc"><strong>ODE dynamics.</strong> Lotka-Volterra equations emerge from just 2 places and 3 transitions via <strong>mass-action kinetics</strong>. Tune parameters and watch population oscillations and phase-space orbits.</p>
+      <a href="/knapsack/" class="demo-card">
+        <span class="demo-icon">&#127890;</span>
+        <h3 class="demo-name">Knapsack</h3>
+        <p class="demo-desc"><strong>Optimization.</strong> Classic 0/1 knapsack as a Petri net. Items compete for limited capacity via mass-action kinetics. ODE reveals optimal item selection.</p>
         <div class="demo-meta">
+          <span class="demo-tag">optimization</span>
           <span class="demo-tag">ODE</span>
-          <span class="demo-tag">biology</span>
           <span class="demo-tag">mass-action</span>
         </div>
       </a>
 
-      <a href="/loan-approval/" class="demo-card">
-        <span class="demo-icon">🏦</span>
-        <h3 class="demo-name">9. Loan Approval</h3>
-        <p class="demo-desc"><strong>Workflow &amp; BPMN.</strong> A <strong>fork-join</strong> pipeline with parallel credit and employment reviews. Role-based access controls who can fire which transitions. The Petri net enforces the synchronization barrier.</p>
+      <a href="/producer-consumer/" class="demo-card">
+        <span class="demo-icon">&#128230;</span>
+        <h3 class="demo-name">Producer-Consumer</h3>
+        <p class="demo-desc"><strong>Bounded buffer.</strong> A producer and consumer share a fixed-size buffer. Capacity tokens block the producer when full and the consumer when empty.</p>
         <div class="demo-meta">
-          <span class="demo-tag">workflow</span>
+          <span class="demo-tag">synchronization</span>
+          <span class="demo-tag">capacity</span>
+          <span class="demo-tag">concurrency</span>
+        </div>
+      </a>
+
+      <a href="/vet-clinic/" class="demo-card">
+        <span class="demo-icon">&#127973;</span>
+        <h3 class="demo-name">Vet Clinic</h3>
+        <p class="demo-desc"><strong>Scheduling simulator.</strong> Staff, rooms, and equipment as resource tokens. Service mix routing with piecewise ODE. Financial dashboard tracks revenue and utilization.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">scheduling</span>
+          <span class="demo-tag">ODE</span>
+          <span class="demo-tag">simulation</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- WorkflowNet -->
+  <section class="demos-section">
+    <div class="category-header">
+      <h2>Workflows</h2>
+      <span class="category-type">WorkflowNet</span>
+    </div>
+    <p class="category-desc">Business processes with sequential stages, parallel branches, role-based access, and fork-join synchronization.</p>
+
+    <div class="demos-grid">
+      <a href="/loan-approval/" class="demo-card">
+        <span class="demo-icon">&#127974;</span>
+        <h3 class="demo-name">Loan Approval</h3>
+        <p class="demo-desc"><strong>Fork-join pipeline.</strong> Parallel credit and employment reviews with role-based access. The Petri net enforces the synchronization barrier before final decision.</p>
+        <div class="demo-meta">
           <span class="demo-tag">BPMN</span>
           <span class="demo-tag">roles</span>
           <span class="demo-tag">fork-join</span>
         </div>
       </a>
 
+      <a href="/hiring-pipeline/" class="demo-card">
+        <span class="demo-icon">&#128084;</span>
+        <h3 class="demo-name">Hiring Pipeline</h3>
+        <p class="demo-desc"><strong>Multi-stage process.</strong> Phone screen, parallel technical and culture interviews, then offer. Four roles (recruiter, engineer, manager, candidate) control different stages.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">BPMN</span>
+          <span class="demo-tag">roles</span>
+          <span class="demo-tag">kanban</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ComputationNet -->
+  <section class="demos-section">
+    <div class="category-header">
+      <h2>Computation</h2>
+      <span class="category-type">ComputationNet</span>
+    </div>
+    <p class="category-desc">Protocol state machines, control systems, and scientific models where dynamics emerge from net structure and rate constants.</p>
+
+    <div class="demos-grid">
       <a href="/tcp-handshake/" class="demo-card">
-        <span class="demo-icon">🔌</span>
-        <h3 class="demo-name">10. TCP Handshake</h3>
-        <p class="demo-desc"><strong>Protocol state machine.</strong> The classic TCP 3-way handshake (SYN, SYN-ACK, ACK) and connection teardown as two <strong>parallel state machines</strong> linked by shared transitions.</p>
+        <span class="demo-icon">&#128268;</span>
+        <h3 class="demo-name">TCP Handshake</h3>
+        <p class="demo-desc"><strong>Protocol state machine.</strong> The classic 3-way handshake (SYN, SYN-ACK, ACK) and connection teardown as two parallel state machines linked by shared transitions.</p>
         <div class="demo-meta">
           <span class="demo-tag">protocol</span>
           <span class="demo-tag">state machine</span>
@@ -651,9 +658,9 @@
       </a>
 
       <a href="/thermostat/" class="demo-card">
-        <span class="demo-icon">🌡</span>
-        <h3 class="demo-name">11. Thermostat</h3>
-        <p class="demo-desc"><strong>Control systems.</strong> A bang-bang thermostat controller with <strong>ODE dynamics</strong>. Temperature rises when the heater is on and decays naturally. Watch the <strong>feedback loop</strong> oscillate around the setpoint.</p>
+        <span class="demo-icon">&#127777;</span>
+        <h3 class="demo-name">Thermostat</h3>
+        <p class="demo-desc"><strong>Feedback control.</strong> A bang-bang controller with ODE dynamics. Temperature rises when the heater is on and decays naturally. Watch the feedback loop oscillate around the setpoint.</p>
         <div class="demo-meta">
           <span class="demo-tag">control</span>
           <span class="demo-tag">feedback</span>
@@ -661,35 +668,23 @@
         </div>
       </a>
 
-      <a href="/producer-consumer/" class="demo-card">
-        <span class="demo-icon">📦</span>
-        <h3 class="demo-name">12. Producer-Consumer</h3>
-        <p class="demo-desc"><strong>Bounded buffer.</strong> A producer and consumer share a fixed-size buffer. The Petri net's <strong>capacity constraint</strong> (buffer_space tokens) blocks the producer when full and the consumer when empty.</p>
+      <a href="/predator-prey/" class="demo-card">
+        <span class="demo-icon">&#128058;</span>
+        <h3 class="demo-name">Predator-Prey</h3>
+        <p class="demo-desc"><strong>Lotka-Volterra dynamics.</strong> Two places and three transitions produce classic population oscillations via mass-action kinetics. Tune parameters and observe phase-space orbits.</p>
         <div class="demo-meta">
-          <span class="demo-tag">concurrency</span>
-          <span class="demo-tag">synchronization</span>
-          <span class="demo-tag">buffer</span>
-        </div>
-      </a>
-
-      <a href="/hiring-pipeline/" class="demo-card">
-        <span class="demo-icon">👔</span>
-        <h3 class="demo-name">13. Hiring Pipeline</h3>
-        <p class="demo-desc"><strong>Multi-stage workflow.</strong> Phone screen, then <strong>parallel</strong> technical and culture interviews, then offer. Four roles (recruiter, engineer, manager, candidate) control different stages in a <strong>kanban-style</strong> pipeline.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">workflow</span>
-          <span class="demo-tag">BPMN</span>
-          <span class="demo-tag">roles</span>
-          <span class="demo-tag">kanban</span>
+          <span class="demo-tag">ODE</span>
+          <span class="demo-tag">ecology</span>
+          <span class="demo-tag">mass-action</span>
         </div>
       </a>
 
       <a href="/enzyme-kinetics/" class="demo-card">
-        <span class="demo-icon">🧬</span>
-        <h3 class="demo-name">14. Enzyme Kinetics</h3>
-        <p class="demo-desc"><strong>Michaelis-Menten.</strong> Substrate binds enzyme to form a complex, which either unbinds or catalyzes into product. The ODE produces the classic <strong>saturation curve</strong> from just 4 places and 3 transitions.</p>
+        <span class="demo-icon">&#129516;</span>
+        <h3 class="demo-name">Enzyme Kinetics</h3>
+        <p class="demo-desc"><strong>Michaelis-Menten.</strong> Substrate binds enzyme to form a complex, which either unbinds or catalyzes into product. Four places and three transitions produce the classic saturation curve.</p>
         <div class="demo-meta">
-          <span class="demo-tag">biology</span>
+          <span class="demo-tag">biochemistry</span>
           <span class="demo-tag">ODE</span>
           <span class="demo-tag">Michaelis-Menten</span>
         </div>
@@ -697,12 +692,36 @@
     </div>
   </section>
 
+  <!-- ClassificationNet -->
+  <section class="demos-section">
+    <div class="category-header">
+      <h2>Classification</h2>
+      <span class="category-type">ClassificationNet</span>
+    </div>
+    <p class="category-desc">Pattern-matching nets where tokens flow through structural detectors. No code &mdash; the net topology itself is the classifier.</p>
+
+    <div class="demos-grid">
+      <a href="/poker-hand/" class="demo-card">
+        <span class="demo-icon">&#127185;</span>
+        <h3 class="demo-name">Poker Hand</h3>
+        <p class="demo-desc"><strong>Structural classifier.</strong> Cards are tokens in rank and suit places. Pattern-detection transitions fire when the right combination is present &mdash; pairs, flushes, straights, full houses.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">pattern detection</span>
+          <span class="demo-tag">combinatorics</span>
+          <span class="demo-tag">tokens</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
   <footer class="footer">
     <p>
+      <a href="https://github.com/pflow-xyz/petri-pilot">petri-pilot</a>
+      &nbsp;&middot;&nbsp;
       <a href="https://github.com/pflow-xyz/go-pflow">go-pflow</a>
-      &nbsp;·&nbsp;
+      &nbsp;&middot;&nbsp;
       <a href="https://pflow.xyz">pflow.xyz</a>
-      &nbsp;·&nbsp;
+      &nbsp;&middot;&nbsp;
       <a href="https://blog.stackdump.com">blog</a>
     </p>
   </footer>
