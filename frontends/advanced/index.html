@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How Petri Nets Make Predictions</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin: 2.5rem 0 1rem;
+      color: #1a1a2e;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: #444;
+    }
+
+    strong { color: #1a1a2e; }
+    em { color: #555; }
+
+    code {
+      background: #e8e5f0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.9em;
+      color: #6366f1;
+    }
+
+    .math {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.95rem;
+      color: #333;
+      overflow-x: auto;
+    }
+
+    .math .comment {
+      color: #888;
+    }
+
+    .callout {
+      background: #f0edff;
+      border-left: 4px solid #6366f1;
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout p { color: #444; margin-bottom: 0; }
+    .callout p + p { margin-top: 0.5rem; }
+
+    .callout.orange {
+      background: #fff8f0;
+      border-left-color: #e65100;
+    }
+
+    ul, ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+      color: #444;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    a { color: #6366f1; }
+    a:hover { color: #4f46e5; }
+
+    .diagram {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .diagram .caption {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.75rem;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    @media (max-width: 600px) {
+      .comparison { grid-template-columns: 1fr; }
+    }
+
+    .comp-box {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .comp-box h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .comp-box.discrete h4 { color: #e65100; }
+    .comp-box.continuous h4 { color: #6366f1; }
+
+    .comp-box p, .comp-box ul {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    .try-it {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: #6366f1;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .try-it:hover { background: #4f46e5; color: white; }
+
+    .next-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e0e0e0;
+      text-align: center;
+    }
+
+    .next-section p {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .next-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .next-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>How Petri Nets Make Predictions</h1>
+    <p class="subtitle">From discrete tokens to continuous differential equations &mdash; and why the structure of a net tells you more than you'd expect.</p>
+
+    <h2>Two Ways to Run a Petri Net</h2>
+
+    <p>Every Petri net can be executed in two fundamentally different ways:</p>
+
+    <div class="comparison">
+      <div class="comp-box discrete">
+        <h4>Discrete (step-by-step)</h4>
+        <p>Fire one transition at a time. Tokens move as integers. This is what the interactive demos do when you click buttons.</p>
+      </div>
+      <div class="comp-box continuous">
+        <h4>Continuous (ODE simulation)</h4>
+        <p>Treat token counts as real numbers and let them flow continuously. Transitions fire at <em>rates</em> proportional to their inputs. This produces smooth curves over time.</p>
+      </div>
+    </div>
+
+    <p>The continuous version turns any Petri net into a system of <strong>ordinary differential equations (ODEs)</strong>. You've seen ODEs before if you've studied physics or population biology &mdash; they describe how quantities change over time.</p>
+
+    <h2>Mass-Action Kinetics: The Bridge</h2>
+
+    <p>The rule for converting a Petri net to ODEs comes from chemistry, where it's called <strong>mass-action kinetics</strong>:</p>
+
+    <div class="callout">
+      <p><strong>The rate of a reaction is proportional to the product of its reactant concentrations.</strong></p>
+      <p>In Petri net terms: the firing rate of a transition equals its rate constant <em>k</em> multiplied by the token count in each of its input places.</p>
+    </div>
+
+    <p>For a transition with rate <em>k</em> and two input places with token counts <em>x</em> and <em>y</em>:</p>
+
+    <div class="math">
+firing_rate = k &middot; x &middot; y
+    </div>
+
+    <p>Each place's token count changes based on the transitions connected to it:</p>
+
+    <div class="math">
+dx/dt = <span class="comment">(tokens added by transitions)</span> - <span class="comment">(tokens removed by transitions)</span>
+    </div>
+
+    <p>This is exactly how chemical kinetics works, which is why Petri nets model chemistry so naturally. But the same math works for <em>any</em> system with competing flows.</p>
+
+    <h2>Example: Predator-Prey</h2>
+
+    <p>The <a href="/predator-prey/">Predator-Prey</a> demo has just two places (<code>prey</code>, <code>predator</code>) and three transitions:</p>
+
+    <ul>
+      <li><code>prey_reproduce</code> (rate 1.0): prey &rarr; 2&times; prey</li>
+      <li><code>predation</code> (rate 0.01): prey + predator &rarr; 2&times; predator</li>
+      <li><code>predator_death</code> (rate 0.6): predator &rarr; (nothing)</li>
+    </ul>
+
+    <p>The ODE system is:</p>
+
+    <div class="math">
+d(prey)/dt     = 1.0 &middot; prey  -  0.01 &middot; prey &middot; predator<br>
+d(predator)/dt = 0.01 &middot; prey &middot; predator  -  0.6 &middot; predator
+    </div>
+
+    <p>These are the <strong>Lotka-Volterra equations</strong> &mdash; one of the most famous ODE systems in ecology. We didn't write them by hand. They emerged automatically from the Petri net structure.</p>
+
+    <a href="/predator-prey/" class="try-it">See the population oscillations &rarr;</a>
+
+    <h2>How Tic-Tac-Toe Uses This</h2>
+
+    <p>This is where it gets surprising. The <a href="/tic-tac-toe/">Tic-Tac-Toe</a> demo has 34 places and 36 transitions. The ODE simulation doesn't "play" the game. Instead, it reveals the <strong>strategic value</strong> of each cell.</p>
+
+    <p>Here's why it works:</p>
+
+    <ol>
+      <li><strong>Board cells are places.</strong> Each of the 9 cells has three places: empty, X, and O.</li>
+      <li><strong>Moves are transitions.</strong> Playing X in cell (0,0) consumes a token from "empty_00" and produces one in "x_00".</li>
+      <li><strong>Win patterns are transitions too.</strong> A transition like "x_win_row0" requires tokens in x_00, x_01, and x_02 &mdash; all three cells in the top row.</li>
+      <li><strong>ODE simulation lets everything flow.</strong> Token counts become fractional. Cells that participate in more win patterns attract more flow.</li>
+    </ol>
+
+    <div class="callout">
+      <p><strong>The center cell participates in 4 win patterns</strong> (2 diagonals, 1 row, 1 column). Corner cells participate in 3. Edge cells participate in 2. The ODE solver discovers this automatically &mdash; the center cell accumulates the highest token flow.</p>
+    </div>
+
+    <p>No game tree search. No minimax algorithm. The <em>topology of the net</em> &mdash; which places connect to which transitions &mdash; encodes the strategic structure. The ODE solver just reads it out.</p>
+
+    <a href="/tic-tac-toe/" class="try-it">Watch the ODE reveal strategy &rarr;</a>
+
+    <h2>The Pattern</h2>
+
+    <p>This same technique works across every ODE demo on this site:</p>
+
+    <ul>
+      <li><strong><a href="/coffeeshop/">Coffee Shop</a></strong> &mdash; ODE predicts when each ingredient runs out based on order rates and restock capacity</li>
+      <li><strong><a href="/knapsack/">Knapsack</a></strong> &mdash; items compete for limited capacity via mass-action kinetics; the ODE converges on the optimal selection</li>
+      <li><strong><a href="/enzyme-kinetics/">Enzyme Kinetics</a></strong> &mdash; the classic Michaelis-Menten saturation curve emerges from three transitions</li>
+      <li><strong><a href="/thermostat/">Thermostat</a></strong> &mdash; ODE shows temperature oscillation around the setpoint under bang-bang control</li>
+      <li><strong><a href="/vet-clinic/">Vet Clinic</a></strong> &mdash; piecewise ODE predicts patient throughput, resource bottlenecks, and revenue over a workday</li>
+    </ul>
+
+    <p>In every case, you define the <em>structure</em> (places, transitions, arcs, rates) and the ODE solver reveals the <em>behavior</em> (curves, equilibria, oscillations, bottlenecks).</p>
+
+    <h2>What Makes This Different</h2>
+
+    <p>Most simulation tools require you to write equations by hand. With Petri nets:</p>
+
+    <ul>
+      <li>The <strong>structure is the model</strong>. Draw circles and rectangles, connect them with arrows.</li>
+      <li>The <strong>equations are derived</strong>. Mass-action kinetics generates the ODE system automatically.</li>
+      <li>The <strong>same model works both ways</strong>. Step through it discretely to understand the logic, then run the ODE to see long-term behavior.</li>
+    </ul>
+
+    <div class="callout orange">
+      <p><strong>Key insight:</strong> A Petri net is not just a diagram. It's a mathematical object that simultaneously defines a discrete state machine, a continuous dynamical system, and the structure of a generated application (API, database, event log). One model, three interpretations.</p>
+    </div>
+
+    <h2>Try the ODE Solver</h2>
+
+    <p>Open any model in the <a href="/pflow">Petri Net Viewer</a> and click the play button (<strong>&#9654;</strong>) to run the ODE simulation. You'll see token counts evolve as smooth curves. Adjust transition rates and initial token counts to explore different scenarios.</p>
+
+    <a href="/pflow" class="try-it">Open the Petri Net Viewer &rarr;</a>
+
+    <div class="next-section">
+      <p>New to Petri nets?</p>
+      <a href="/learn/" class="next-link">&larr; Start with the basics: What is a Petri Net?</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What is a Petri Net?</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin: 2.5rem 0 1rem;
+      color: #1a1a2e;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin: 1.5rem 0 0.5rem;
+      color: #333;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: #444;
+    }
+
+    strong { color: #1a1a2e; }
+
+    code {
+      background: #e8e5f0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 0.9em;
+      color: #6366f1;
+    }
+
+    .diagram {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .diagram svg {
+      max-width: 100%;
+    }
+
+    .diagram .caption {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.75rem;
+    }
+
+    .callout {
+      background: #f0edff;
+      border-left: 4px solid #6366f1;
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout p { color: #444; margin-bottom: 0; }
+    .callout p + p { margin-top: 0.5rem; }
+
+    .example-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    @media (max-width: 600px) {
+      .example-grid { grid-template-columns: 1fr; }
+    }
+
+    .example-box {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .example-box h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      color: #6366f1;
+    }
+
+    .example-box p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    ul {
+      margin: 0.5rem 0 1rem 1.5rem;
+      color: #444;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    .try-it {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: #6366f1;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .try-it:hover { background: #4f46e5; }
+
+    .next-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e0e0e0;
+      text-align: center;
+    }
+
+    .next-section p {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .next-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .next-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>What is a Petri Net?</h1>
+    <p class="subtitle">A visual language for describing systems that have state and change over time.</p>
+
+    <h2>Three Building Blocks</h2>
+
+    <p>Every Petri net is built from just three things:</p>
+
+    <ul>
+      <li><strong>Places</strong> (circles) &mdash; represent <em>conditions</em> or <em>states</em>. Think of them as containers that can hold tokens.</li>
+      <li><strong>Transitions</strong> (rectangles) &mdash; represent <em>events</em> or <em>actions</em>. They fire when their input places have enough tokens.</li>
+      <li><strong>Arcs</strong> (arrows) &mdash; connect places to transitions and transitions to places, defining the flow.</li>
+    </ul>
+
+    <div class="diagram">
+      <svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg" width="400">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#888"/>
+          </marker>
+        </defs>
+        <!-- Place A -->
+        <circle cx="60" cy="60" r="30" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+        <text x="60" y="65" text-anchor="middle" font-size="13" fill="#333">Place</text>
+        <!-- Token -->
+        <circle cx="60" cy="42" r="6" fill="#6366f1"/>
+        <!-- Arc -->
+        <line x1="92" y1="60" x2="158" y2="60" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="125" y="50" text-anchor="middle" font-size="11" fill="#888">arc</text>
+        <!-- Transition -->
+        <rect x="160" y="40" width="80" height="40" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+        <text x="200" y="65" text-anchor="middle" font-size="13" fill="#333">Transition</text>
+        <!-- Arc -->
+        <line x1="242" y1="60" x2="308" y2="60" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="275" y="50" text-anchor="middle" font-size="11" fill="#888">arc</text>
+        <!-- Place B -->
+        <circle cx="340" cy="60" r="30" fill="#e8e5f0" stroke="#6366f1" stroke-width="2"/>
+        <text x="340" y="65" text-anchor="middle" font-size="13" fill="#333">Place</text>
+      </svg>
+      <div class="caption">A token sits in the left place. When the transition fires, it moves the token to the right place.</div>
+    </div>
+
+    <h2>Tokens Make It Go</h2>
+
+    <p><strong>Tokens</strong> are the dots inside places. They represent the current state of the system &mdash; like game pieces on a board. A transition can only <strong>fire</strong> (happen) when every input place has at least one token.</p>
+
+    <p>When a transition fires:</p>
+    <ul>
+      <li>It <strong>removes</strong> one token from each input place</li>
+      <li>It <strong>adds</strong> one token to each output place</li>
+    </ul>
+
+    <p>That's it. This simple rule is enough to model surprisingly complex systems.</p>
+
+    <div class="callout">
+      <p><strong>Think of it like a board game.</strong> Places are the spaces on the board. Tokens are the pieces. Transitions are the moves you can make. The arcs say which spaces connect to which moves.</p>
+    </div>
+
+    <h2>A Real Example: Traffic Light</h2>
+
+    <p>A traffic light has three states: <code>red</code>, <code>green</code>, and <code>yellow</code>. Only one can be active at a time. Here's how we model it:</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 380 200" xmlns="http://www.w3.org/2000/svg" width="380">
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#888"/>
+          </marker>
+        </defs>
+        <!-- Red place -->
+        <circle cx="190" cy="40" r="28" fill="#fee" stroke="#d32f2f" stroke-width="2"/>
+        <text x="190" y="44" text-anchor="middle" font-size="12" fill="#333">red</text>
+        <circle cx="190" cy="25" r="5" fill="#d32f2f"/>
+
+        <!-- Green place -->
+        <circle cx="330" cy="140" r="28" fill="#efe" stroke="#388e3c" stroke-width="2"/>
+        <text x="330" y="144" text-anchor="middle" font-size="12" fill="#333">green</text>
+
+        <!-- Yellow place -->
+        <circle cx="50" cy="140" r="28" fill="#ffd" stroke="#f9a825" stroke-width="2"/>
+        <text x="50" y="144" text-anchor="middle" font-size="12" fill="#333">yellow</text>
+
+        <!-- go transition -->
+        <rect x="248" y="70" width="40" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+        <text x="268" y="86" text-anchor="middle" font-size="10" fill="#333">go</text>
+        <line x1="212" y1="55" x2="248" y2="75" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <line x1="288" y1="88" x2="310" y2="120" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+        <!-- slow transition -->
+        <rect x="170" y="158" width="40" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+        <text x="190" y="174" text-anchor="middle" font-size="10" fill="#333">slow</text>
+        <line x1="305" y1="155" x2="210" y2="168" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <line x1="170" y1="168" x2="78" y2="148" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+        <!-- stop transition -->
+        <rect x="90" y="70" width="40" height="24" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+        <text x="110" y="86" text-anchor="middle" font-size="10" fill="#333">stop</text>
+        <line x1="55" y1="112" x2="92" y2="90" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <line x1="128" y1="78" x2="165" y2="54" stroke="#888" stroke-width="1.2" marker-end="url(#arr2)"/>
+      </svg>
+      <div class="caption">One token cycles: red &rarr; go &rarr; green &rarr; slow &rarr; yellow &rarr; stop &rarr; red. The token starts at "red".</div>
+    </div>
+
+    <p>The token starts in <code>red</code>. Only the <code>go</code> transition can fire (because <code>red</code> is its input). When it fires, the token moves to <code>green</code>. Now only <code>slow</code> can fire. And so on, forever. This net is:</p>
+
+    <ul>
+      <li><strong>Live</strong> &mdash; there's always some transition that can fire</li>
+      <li><strong>Bounded</strong> &mdash; no place ever has more than one token</li>
+      <li><strong>Deadlock-free</strong> &mdash; the system can never get stuck</li>
+    </ul>
+
+    <a href="/stoplight/" class="try-it">Try the Stoplight demo &rarr;</a>
+
+    <h2>Why Not Just Use a Flowchart?</h2>
+
+    <p>Flowcharts only show one thing happening at a time. Petri nets can show <strong>multiple things happening at once</strong>. This is because tokens move independently &mdash; you can have many tokens in many places, all at the same time.</p>
+
+    <div class="example-grid">
+      <div class="example-box">
+        <h4>Flowchart can't show:</h4>
+        <p>Two cooks working in a kitchen simultaneously, sharing the same oven.</p>
+      </div>
+      <div class="example-box">
+        <h4>Petri net can show:</h4>
+        <p>Two tokens (cooks) moving independently, both needing a token from the "oven available" place.</p>
+      </div>
+    </div>
+
+    <p>This makes Petri nets perfect for modeling:</p>
+    <ul>
+      <li><strong>Games</strong> &mdash; multiple players taking turns or acting simultaneously</li>
+      <li><strong>Workflows</strong> &mdash; tasks that split into parallel branches and rejoin later</li>
+      <li><strong>Resources</strong> &mdash; shared inventories, equipment, or capacity limits</li>
+      <li><strong>Protocols</strong> &mdash; two systems communicating in lockstep</li>
+    </ul>
+
+    <h2>Places, Transitions, Arcs &mdash; That's Really It</h2>
+
+    <p>Every demo on this site, from a coffee shop to a poker hand classifier to predator-prey ecology, is built from the same three elements. The only difference is how you connect them.</p>
+
+    <div class="callout">
+      <p><strong>The big idea:</strong> Simple rules, complex behavior. A few circles, rectangles, and arrows can describe everything from a traffic light to a biochemical reaction.</p>
+    </div>
+
+    <h2>Try It Yourself</h2>
+
+    <p>The <a href="/pflow">Petri Net Viewer</a> lets you browse every model on this site and build your own. Start with the <a href="/stoplight/">Stoplight</a> (three places, three transitions) and work up to the <a href="/tic-tac-toe/">Tic-Tac-Toe</a> (34 places, 36 transitions).</p>
+
+    <a href="/pflow" class="try-it">Open the Petri Net Viewer &rarr;</a>
+
+    <div class="next-section">
+      <p>Ready to go deeper?</p>
+      <a href="/advanced/" class="next-link">How Petri Nets Make Predictions (ODE Simulation) &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>
