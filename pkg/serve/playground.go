@@ -1300,7 +1300,7 @@ func PflowHandler() http.HandlerFunc {
     }
 
     // Fetch the Petri net model and convert to pflow JSON-LD format
-    // Pass through any additional query params (e.g., hole, community for hand-strength)
+    // Pass through any additional query params (e.g., hole, community for poker-hand)
     var extraParams = '';
     var hole = params.get('hole');
     var community = params.get('community');

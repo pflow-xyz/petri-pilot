@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 /**
- * Open the hand strength Petri net model in /pflow viewer
+ * Open the poker hand evaluator Petri net model in /pflow viewer
  */
 function viewPetriNetModel() {
   // Get current player's cards
@@ -189,7 +189,7 @@ function viewPetriNetModel() {
   const communityStr = community.length > 0 ? community.join(',') : ''
 
   // Build URL
-  let url = `/pflow?model=hand-strength`
+  let url = `/pflow?model=poker-hand`
   if (holeStr) {
     url += `&hole=${encodeURIComponent(holeStr)}`
   }
@@ -202,7 +202,7 @@ function viewPetriNetModel() {
 }
 
 /**
- * Open the deck tracker Petri net model in /pflow viewer
+ * Open the poker hand evaluator in /pflow viewer (deck view)
  */
 function viewDeckTracker() {
   // Get current player's cards
@@ -224,7 +224,7 @@ function viewDeckTracker() {
   const communityStr = community.length > 0 ? community.join(',') : ''
 
   // Build URL
-  let url = `/pflow?model=deck-tracker`
+  let url = `/pflow?model=poker-hand`
   if (holeStr) {
     url += `&hole=${encodeURIComponent(holeStr)}`
   }
