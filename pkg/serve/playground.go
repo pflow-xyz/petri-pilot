@@ -685,6 +685,16 @@ func PlaygroundHandler(endpoint string) http.HandlerFunc {
     function renderList(names) {
       modelsHeader.innerHTML = '<span>Models</span>';
       modelsContent.innerHTML = '';
+
+      // "New Model" entry at top
+      var newCard = document.createElement('div');
+      newCard.className = 'mp-card';
+      newCard.innerHTML = '<span class="mp-icon" style="color:#4fc3f7;">&#10010;</span><span class="mp-name" style="color:#4fc3f7;">New Model</span><span class="mp-arrow">&#9654;</span>';
+      newCard.addEventListener('click', function() {
+        window.location.href = '/pflow';
+      });
+      modelsContent.appendChild(newCard);
+
       for (var i = 0; i < names.length; i++) {
         var card = document.createElement('div');
         card.className = 'mp-card';
@@ -1335,9 +1345,12 @@ func PflowHandler() http.HandlerFunc {
       });
 
     function convertToPflowFormat(model) {
-      var places = model.places || [];
-      var transitions = model.transitions || [];
-      var arcs = model.arcs || [];
+      // Support nested net format (e.g., vet-clinic uses model.net.places)
+      var src = (model.net && model.net.places) ? model.net : model;
+      if (!model.name && model.net && model.net.name) model.name = model.net.name;
+      var places = src.places || [];
+      var transitions = src.transitions || [];
+      var arcs = src.arcs || [];
 
       // Build set of place and transition IDs for arc conversion
       var placeSet = {};
