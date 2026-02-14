@@ -124,8 +124,8 @@ stateDiagram-v2
     PlaceFork0 --> t_TransitionPickupLeft1
     t_TransitionPickupLeft1 --> PlaceHasLeft1
 
-    PlaceFork1 --> t_TransitionPickupLeft2
     PlaceThinking2 --> t_TransitionPickupLeft2
+    PlaceFork1 --> t_TransitionPickupLeft2
     t_TransitionPickupLeft2 --> PlaceHasLeft2
 
     PlaceThinking3 --> t_TransitionPickupLeft3
@@ -144,8 +144,8 @@ stateDiagram-v2
     PlaceFork1 --> t_TransitionPickupRight1
     t_TransitionPickupRight1 --> PlaceEating1
 
-    PlaceHasLeft2 --> t_TransitionPickupRight2
     PlaceFork2 --> t_TransitionPickupRight2
+    PlaceHasLeft2 --> t_TransitionPickupRight2
     t_TransitionPickupRight2 --> PlaceEating2
 
     PlaceHasLeft3 --> t_TransitionPickupRight3
@@ -157,19 +157,19 @@ stateDiagram-v2
     t_TransitionPickupRight4 --> PlaceEating4
 
     PlaceEating0 --> t_TransitionRelease0
+    t_TransitionRelease0 --> PlaceFork0
     t_TransitionRelease0 --> PlaceThinking0
     t_TransitionRelease0 --> PlaceFork4
-    t_TransitionRelease0 --> PlaceFork0
 
     PlaceEating1 --> t_TransitionRelease1
+    t_TransitionRelease1 --> PlaceFork0
     t_TransitionRelease1 --> PlaceFork1
     t_TransitionRelease1 --> PlaceThinking1
-    t_TransitionRelease1 --> PlaceFork0
 
     PlaceEating2 --> t_TransitionRelease2
-    t_TransitionRelease2 --> PlaceFork1
     t_TransitionRelease2 --> PlaceFork2
     t_TransitionRelease2 --> PlaceThinking2
+    t_TransitionRelease2 --> PlaceFork1
 
     PlaceEating3 --> t_TransitionRelease3
     t_TransitionRelease3 --> PlaceThinking3
@@ -177,9 +177,9 @@ stateDiagram-v2
     t_TransitionRelease3 --> PlaceFork3
 
     PlaceEating4 --> t_TransitionRelease4
-    t_TransitionRelease4 --> PlaceFork4
     t_TransitionRelease4 --> PlaceThinking4
     t_TransitionRelease4 --> PlaceFork3
+    t_TransitionRelease4 --> PlaceFork4
 
 ```
 
@@ -237,8 +237,8 @@ flowchart TD
     PlaceFork0 --> t_TransitionPickupLeft1
     t_TransitionPickupLeft1 --> PlaceHasLeft1
 
-    PlaceFork1 --> t_TransitionPickupLeft2
     PlaceThinking2 --> t_TransitionPickupLeft2
+    PlaceFork1 --> t_TransitionPickupLeft2
     t_TransitionPickupLeft2 --> PlaceHasLeft2
 
     PlaceThinking3 --> t_TransitionPickupLeft3
@@ -257,8 +257,8 @@ flowchart TD
     PlaceFork1 --> t_TransitionPickupRight1
     t_TransitionPickupRight1 --> PlaceEating1
 
-    PlaceHasLeft2 --> t_TransitionPickupRight2
     PlaceFork2 --> t_TransitionPickupRight2
+    PlaceHasLeft2 --> t_TransitionPickupRight2
     t_TransitionPickupRight2 --> PlaceEating2
 
     PlaceHasLeft3 --> t_TransitionPickupRight3
@@ -270,19 +270,19 @@ flowchart TD
     t_TransitionPickupRight4 --> PlaceEating4
 
     PlaceEating0 --> t_TransitionRelease0
+    t_TransitionRelease0 --> PlaceFork0
     t_TransitionRelease0 --> PlaceThinking0
     t_TransitionRelease0 --> PlaceFork4
-    t_TransitionRelease0 --> PlaceFork0
 
     PlaceEating1 --> t_TransitionRelease1
+    t_TransitionRelease1 --> PlaceFork0
     t_TransitionRelease1 --> PlaceFork1
     t_TransitionRelease1 --> PlaceThinking1
-    t_TransitionRelease1 --> PlaceFork0
 
     PlaceEating2 --> t_TransitionRelease2
-    t_TransitionRelease2 --> PlaceFork1
     t_TransitionRelease2 --> PlaceFork2
     t_TransitionRelease2 --> PlaceThinking2
+    t_TransitionRelease2 --> PlaceFork1
 
     PlaceEating3 --> t_TransitionRelease3
     t_TransitionRelease3 --> PlaceThinking3
@@ -290,9 +290,9 @@ flowchart TD
     t_TransitionRelease3 --> PlaceFork3
 
     PlaceEating4 --> t_TransitionRelease4
-    t_TransitionRelease4 --> PlaceFork4
     t_TransitionRelease4 --> PlaceThinking4
     t_TransitionRelease4 --> PlaceFork3
+    t_TransitionRelease4 --> PlaceFork4
 
 
     style Places fill:#e1f5fe

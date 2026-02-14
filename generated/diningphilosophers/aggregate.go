@@ -80,8 +80,8 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionPickupLeft2,
 		EventType: EventTypePickupLeft2,
 		Inputs: map[string]int{
-			PlaceFork1: 1,
 			PlaceThinking2: 1,
+			PlaceFork1: 1,
 		},
 		Outputs: map[string]int{
 			PlaceHasLeft2: 1,
@@ -135,8 +135,8 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionPickupRight2,
 		EventType: EventTypePickupRight2,
 		Inputs: map[string]int{
-			PlaceHasLeft2: 1,
 			PlaceFork2: 1,
+			PlaceHasLeft2: 1,
 		},
 		Outputs: map[string]int{
 			PlaceEating2: 1,
@@ -171,9 +171,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceEating0: 1,
 		},
 		Outputs: map[string]int{
+			PlaceFork0: 1,
 			PlaceThinking0: 1,
 			PlaceFork4: 1,
-			PlaceFork0: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -183,9 +183,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceEating1: 1,
 		},
 		Outputs: map[string]int{
+			PlaceFork0: 1,
 			PlaceFork1: 1,
 			PlaceThinking1: 1,
-			PlaceFork0: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -195,9 +195,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceEating2: 1,
 		},
 		Outputs: map[string]int{
-			PlaceFork1: 1,
 			PlaceFork2: 1,
 			PlaceThinking2: 1,
+			PlaceFork1: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -219,9 +219,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceEating4: 1,
 		},
 		Outputs: map[string]int{
-			PlaceFork4: 1,
 			PlaceThinking4: 1,
 			PlaceFork3: 1,
+			PlaceFork4: 1,
 		},
 	})
 
