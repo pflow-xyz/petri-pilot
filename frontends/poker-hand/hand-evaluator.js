@@ -55,7 +55,7 @@ const RANK_VALUES = {
 }
 
 /**
- * Power-of-2 kicker weights for Petri net model parity.
+ * Power-of-2 rank weights for Petri net model parity.
  * Any single higher-rank card outweighs all lower cards combined.
  */
 const RANK_KICKER_WEIGHTS = {
@@ -64,13 +64,30 @@ const RANK_KICKER_WEIGHTS = {
 }
 
 /**
- * Compute Petri net kicker score: sum of power-of-2 weights for each unique rank
+ * Suit values for universal card ranking (tiebreaker within same rank).
+ * Spades > Hearts > Diamonds > Clubs.
+ */
+const SUIT_VALUES = { 's': 3, 'h': 2, 'd': 1, 'c': 0 }
+
+/**
+ * Compute universal card weight: rank_power * 4 + suit_value.
+ * Every card gets a unique score; rank dominates, suit breaks ties.
+ */
+function cardWeight(rank, suit) {
+  return (RANK_KICKER_WEIGHTS[rank] || 0) * 4 + (SUIT_VALUES[suit] || 0)
+}
+
+/**
+ * Compute Petri net kicker score: sum of universal card weights.
+ * Each card contributes rank_power * 4 + suit_value.
  */
 function computePetriKickerScore(cards) {
-  const ranks = new Set(cards.map(c => typeof c === 'string' ? parseCard(c)?.rank : c.rank).filter(Boolean))
+  const parsed = (typeof cards[0] === 'string')
+    ? cards.map(c => parseCard(c)).filter(Boolean)
+    : cards.filter(Boolean)
   let score = 0
-  for (const rank of ranks) {
-    score += RANK_KICKER_WEIGHTS[rank] || 0
+  for (const card of parsed) {
+    score += cardWeight(card.rank, card.suit)
   }
   return score
 }
@@ -408,6 +425,11 @@ export function compareHands(hand1, hand2) {
     }
   }
 
+  // Same ranks — use universal kicker score (includes suit tiebreaker)
+  if (eval1.petriKickerScore !== eval2.petriKickerScore) {
+    return eval1.petriKickerScore > eval2.petriKickerScore ? 1 : -1
+  }
+
   return 0 // Exact tie
 }
 
@@ -586,7 +608,9 @@ export const _test = {
   getStraightHighCard,
   normalizeStrength,
   computePetriKickerScore,
+  cardWeight,
   STRAIGHT_PATTERNS,
   RANK_VALUES,
-  RANK_KICKER_WEIGHTS
+  RANK_KICKER_WEIGHTS,
+  SUIT_VALUES
 }
