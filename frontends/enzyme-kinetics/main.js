@@ -313,6 +313,7 @@ function animateMolecules(solution, params) {
     )
 
     const state = solution.u[idx]
+    if (!state) return
     const s = Math.max(0, state['substrate'] || 0)
     const e = Math.max(0, state['enzyme'] || 0)
     const c = Math.max(0, state['complex'] || 0)
