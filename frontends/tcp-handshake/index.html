@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCP Handshake</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%94%8C%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="tcp-handshake"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>TCP Handshake</h1>
+      <p>3-way handshake and connection teardown as two parallel state machines in a Petri net</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="visualization-section">
+          <h3>Connection</h3>
+          <div class="connection-vis">
+            <div class="endpoint client-side">
+              <div class="endpoint-label">Client</div>
+              <div class="endpoint-state" id="client-state">CLOSED</div>
+            </div>
+            <div class="packet-lane" id="packet-lane">
+              <svg id="packet-svg" viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg">
+                <line x1="0" y1="10" x2="0" y2="110" stroke="#ddd" stroke-width="1" stroke-dasharray="4"/>
+                <line x1="300" y1="10" x2="300" y2="110" stroke="#ddd" stroke-width="1" stroke-dasharray="4"/>
+              </svg>
+            </div>
+            <div class="endpoint server-side">
+              <div class="endpoint-label">Server</div>
+              <div class="endpoint-state" id="server-state">LISTEN</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls-section">
+          <h3>Step Through</h3>
+          <div id="transitions-container" class="transitions-container">
+          </div>
+          <div class="control-buttons">
+            <button class="btn btn-primary" id="auto-handshake" onclick="autoHandshake()">Full Handshake</button>
+            <button class="btn btn-warning" id="auto-teardown" onclick="autoTeardown()">Teardown</button>
+            <button class="btn btn-secondary" onclick="resetState()">Reset</button>
+          </div>
+        </div>
+
+        <div class="sequence-section">
+          <h3>Sequence Diagram</h3>
+          <div id="sequence-log" class="sequence-log">
+            <div class="seq-entry info">Connection ready. Click "Full Handshake" or step through manually.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="state-section">
+          <h3>State Machine</h3>
+          <div class="state-machines">
+            <div class="sm-column">
+              <div class="sm-title">Client States</div>
+              <div id="client-states" class="state-list"></div>
+            </div>
+            <div class="sm-column">
+              <div class="sm-title">Server States</div>
+              <div id="server-states" class="state-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>The <strong>TCP 3-way handshake</strong> establishes a reliable connection between client and server using three messages:</p>
+            <ul>
+              <li><strong>SYN</strong>: Client initiates by sending a synchronize request</li>
+              <li><strong>SYN-ACK</strong>: Server acknowledges and sends its own synchronize</li>
+              <li><strong>ACK</strong>: Client acknowledges, both sides are now ESTABLISHED</li>
+            </ul>
+            <p>The Petri net models this as <strong>two parallel state machines</strong> (client + server) connected through shared transitions. Each transition consumes tokens from one machine and produces tokens in the other, enforcing the protocol ordering.</p>
+            <p>Connection <strong>teardown</strong> follows a similar pattern: FIN, FIN-ACK, then both sides return to their initial state.</p>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="tcp-handshake" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

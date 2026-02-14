@@ -1,0 +1,50 @@
+{
+  "name": "thermostat",
+  "description": "Bang-bang thermostat controller with ODE dynamics showing temperature regulation around a setpoint",
+  "prediction": {
+    "enabled": true,
+    "timeHours": 1,
+    "rateScale": 1.0
+  },
+  "debug": {
+    "enabled": true
+  },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
+  "places": [
+    {"id": "temperature", "description": "Current room temperature (token count = degrees)", "initial": 15, "x": 400, "y": 200},
+    {"id": "heater_on", "description": "Heater is active (heating)", "initial": 0, "x": 200, "y": 350},
+    {"id": "heater_off", "description": "Heater is inactive (cooling only)", "initial": 1, "x": 600, "y": 350}
+  ],
+  "transitions": [
+    {"id": "heat", "description": "Heater warms the room (active when heater is on)", "rate": 0.5, "x": 200, "y": 200},
+    {"id": "cool", "description": "Room naturally loses heat to environment", "rate": 0.1, "x": 600, "y": 200},
+    {"id": "turn_on", "description": "Turn heater on when temperature is below target", "x": 300, "y": 350},
+    {"id": "turn_off", "description": "Turn heater off when temperature reaches target", "x": 500, "y": 350}
+  ],
+  "arcs": [
+    {"from": "heater_on", "to": "heat", "weight": 1},
+    {"from": "heat", "to": "heater_on", "weight": 1},
+    {"from": "heat", "to": "temperature", "weight": 1},
+
+    {"from": "temperature", "to": "cool", "weight": 1},
+
+    {"from": "heater_off", "to": "turn_on"},
+    {"from": "turn_on", "to": "heater_on"},
+
+    {"from": "heater_on", "to": "turn_off"},
+    {"from": "turn_off", "to": "heater_off"}
+  ],
+  "metadata": {
+    "control": {
+      "description": "Bang-bang thermostat controller with continuous temperature dynamics",
+      "equations": {
+        "heating": "d(temp)/dt = heat_rate * heater_on - cool_rate * temperature",
+        "parameters": {"heat_rate": 0.5, "cool_rate": 0.1}
+      },
+      "concepts": ["feedback control", "bang-bang controller", "setpoint regulation", "ODE dynamics"]
+    }
+  }
+}

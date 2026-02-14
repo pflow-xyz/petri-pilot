@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hiring Pipeline</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%91%94%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="hiring-pipeline"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Hiring Pipeline</h1>
+      <p>Multi-stage workflow with parallel interviews, fork-join synchronization, and role-based actions</p>
+    </div>
+
+    <div class="main-content">
+      <div class="top-section">
+        <div class="kanban-section">
+          <h3>Pipeline</h3>
+          <div class="kanban-board">
+            <div class="kanban-column" id="col-applied">
+              <div class="col-header">Applied</div>
+              <div class="col-content" id="cards-applied"></div>
+            </div>
+            <div class="kanban-column" id="col-screening">
+              <div class="col-header">Screening</div>
+              <div class="col-content" id="cards-screening"></div>
+            </div>
+            <div class="kanban-column" id="col-interviews">
+              <div class="col-header">Interviews</div>
+              <div class="col-content" id="cards-interviews"></div>
+            </div>
+            <div class="kanban-column" id="col-offer">
+              <div class="col-header">Offer</div>
+              <div class="col-content" id="cards-offer"></div>
+            </div>
+            <div class="kanban-column" id="col-result">
+              <div class="col-header">Result</div>
+              <div class="col-content" id="cards-result"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-content">
+        <div class="left-panel">
+          <div class="role-section">
+            <h3>Role</h3>
+            <div class="role-selector">
+              <button class="role-btn active" data-role="recruiter" onclick="selectRole('recruiter')">Recruiter</button>
+              <button class="role-btn" data-role="engineer" onclick="selectRole('engineer')">Engineer</button>
+              <button class="role-btn" data-role="manager" onclick="selectRole('manager')">Manager</button>
+              <button class="role-btn" data-role="candidate" onclick="selectRole('candidate')">Candidate</button>
+            </div>
+            <div class="role-desc" id="role-desc">Screens candidates and manages initial pipeline</div>
+          </div>
+
+          <div class="actions-section">
+            <h3>Available Actions</h3>
+            <div id="actions-container" class="actions-container">
+            </div>
+          </div>
+
+          <div class="controls-section">
+            <button class="btn btn-secondary" onclick="resetState()">Reset Pipeline</button>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <div class="log-section">
+            <h3>Event Timeline <button class="btn-clear" onclick="clearLog()">Clear</button></h3>
+            <div id="event-log" class="event-log">
+              <div class="log-entry info">Candidate has applied. Recruiter can begin screening.</div>
+            </div>
+          </div>
+
+          <div class="explainer-section">
+            <h3>How It Works</h3>
+            <div class="explainer-content">
+              <p>This models a <strong>multi-stage hiring pipeline</strong> as a Petri net workflow:</p>
+              <ul>
+                <li><strong>Sequential gate</strong>: Phone screen before any interviews</li>
+                <li><strong>Fork</strong>: After screening, technical and culture interviews run in <strong>parallel</strong></li>
+                <li><strong>Join</strong>: Both interviews must pass before an offer can be made</li>
+                <li><strong>Role-based</strong>: Four roles control different stages</li>
+              </ul>
+              <p>Unlike the Loan Approval demo, this pipeline has a <strong>sequential screening step</strong> before the fork, and a <strong>candidate role</strong> that decides whether to accept the offer. The Petri net enforces the ordering: no interviews without screening, no offer without both passes.</p>
+              <div style="margin-top: 1.5rem; text-align: center;">
+                <pflow-model-link model="hiring-pipeline" label="Explore the Petri Net Model"></pflow-model-link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

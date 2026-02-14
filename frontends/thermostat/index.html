@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thermostat Controller</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8C%A1%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="thermostat"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Thermostat Controller</h1>
+      <p>Bang-bang feedback control with ODE dynamics on a Petri net</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="params-section">
+          <h3>Parameters</h3>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Heating Rate</span>
+              <span class="param-value" id="heat-rate-value">0.5</span>
+            </label>
+            <input type="range" id="heat-rate" min="0.1" max="2.0" step="0.1" value="0.5">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Cooling Rate</span>
+              <span class="param-value" id="cool-rate-value">0.1</span>
+            </label>
+            <input type="range" id="cool-rate" min="0.01" max="0.5" step="0.01" value="0.1">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Target Temperature</span>
+              <span class="param-value" id="target-value">22</span>
+            </label>
+            <input type="range" id="target" min="10" max="35" step="1" value="22">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Initial Temperature</span>
+              <span class="param-value" id="initial-value">15</span>
+            </label>
+            <input type="range" id="initial" min="5" max="35" step="1" value="15">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Simulation Time</span>
+              <span class="param-value" id="tspan-value">60</span>
+            </label>
+            <input type="range" id="tspan" min="20" max="200" step="10" value="60">
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="resetParams()">Reset</button>
+            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
+          </div>
+        </div>
+
+        <div class="gauge-section">
+          <h3>Temperature</h3>
+          <div class="gauge-display">
+            <div class="thermometer">
+              <div class="thermo-fill" id="thermo-fill"></div>
+              <div class="thermo-target" id="thermo-target"></div>
+            </div>
+            <div class="gauge-info">
+              <div class="gauge-current">
+                <div class="gauge-label">Current</div>
+                <div class="gauge-value" id="current-temp">15</div>
+              </div>
+              <div class="gauge-target">
+                <div class="gauge-label">Target</div>
+                <div class="gauge-value" id="target-temp">22</div>
+              </div>
+            </div>
+          </div>
+          <div class="heater-status" id="heater-status">
+            <span class="heater-indicator off"></span>
+            <span>Heater OFF</span>
+          </div>
+        </div>
+
+        <div class="equations-section">
+          <h3>Dynamics</h3>
+          <div class="eq-display">
+            <div class="equation">
+              <span class="eq-lhs">Heating</span>: d(T)/dt = +<span class="eq-heat">heat_rate</span> (when heater ON)
+            </div>
+            <div class="equation">
+              <span class="eq-lhs">Cooling</span>: d(T)/dt = -<span class="eq-cool">cool_rate</span> * T (always)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="chart-section">
+          <h3>Temperature Over Time</h3>
+          <div class="chart-container">
+            <canvas id="temp-chart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e74c3c;"></div>
+              <span>Temperature</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #3498db; opacity: 0.5;"></div>
+              <span>Target</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-section">
+          <h3>Heater State <span class="hint">(on/off cycling)</span></h3>
+          <div class="chart-container">
+            <canvas id="heater-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>This models a <strong>bang-bang thermostat controller</strong> using a Petri net with ODE dynamics:</p>
+            <ul>
+              <li><strong>heat</strong> transition: fires when heater_on has a token, increases temperature (rate-based)</li>
+              <li><strong>cool</strong> transition: fires continuously, decreases temperature proportional to current value</li>
+              <li><strong>turn_on / turn_off</strong>: toggle heater state based on temperature vs target</li>
+            </ul>
+            <p>The ODE solver simulates continuous dynamics. The heater toggles create a <strong>feedback loop</strong>: temperature oscillates around the setpoint because the heater overshoots slightly before turning off, then undershoots before turning back on.</p>
+            <p>This is a classic <strong>control systems</strong> pattern. Real thermostats add <strong>hysteresis</strong> (deadband) to prevent rapid cycling.</p>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="thermostat" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

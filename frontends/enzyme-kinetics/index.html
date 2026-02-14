@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enzyme Kinetics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js"></script>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="enzyme-kinetics"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Enzyme Kinetics</h1>
+      <p>Michaelis-Menten kinetics from mass-action on a 4-place Petri net</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="params-section">
+          <h3>Rate Constants</h3>
+          <div class="param-group">
+            <label>
+              <span class="param-name">k1 (binding)</span>
+              <span class="param-value" id="k1-value">0.01</span>
+            </label>
+            <input type="range" id="k1" min="0.001" max="0.05" step="0.001" value="0.01">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">k-1 (unbinding)</span>
+              <span class="param-value" id="km1-value">0.1</span>
+            </label>
+            <input type="range" id="km1" min="0.01" max="0.5" step="0.01" value="0.1">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">kcat (catalysis)</span>
+              <span class="param-value" id="kcat-value">0.5</span>
+            </label>
+            <input type="range" id="kcat" min="0.1" max="2.0" step="0.1" value="0.5">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Initial Substrate [S]</span>
+              <span class="param-value" id="s0-value">100</span>
+            </label>
+            <input type="range" id="s0" min="10" max="500" step="10" value="100">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Initial Enzyme [E]</span>
+              <span class="param-value" id="e0-value">10</span>
+            </label>
+            <input type="range" id="e0" min="1" max="50" step="1" value="10">
+          </div>
+          <div class="param-group">
+            <label>
+              <span class="param-name">Simulation Time</span>
+              <span class="param-value" id="tspan-value">30</span>
+            </label>
+            <input type="range" id="tspan" min="10" max="100" step="5" value="30">
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="resetParams()">Reset</button>
+            <button class="btn btn-primary" onclick="runSimulation()">Run ODE</button>
+          </div>
+        </div>
+
+        <div class="molecules-section">
+          <h3>Concentrations</h3>
+          <div class="mol-display">
+            <div class="mol-box substrate">
+              <div class="mol-label">Substrate [S]</div>
+              <div class="mol-value" id="mol-substrate">100</div>
+            </div>
+            <div class="mol-box enzyme">
+              <div class="mol-label">Enzyme [E]</div>
+              <div class="mol-value" id="mol-enzyme">10</div>
+            </div>
+            <div class="mol-box complex">
+              <div class="mol-label">Complex [ES]</div>
+              <div class="mol-value" id="mol-complex">0</div>
+            </div>
+            <div class="mol-box product">
+              <div class="mol-label">Product [P]</div>
+              <div class="mol-value" id="mol-product">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="equations-section">
+          <h3>Michaelis-Menten</h3>
+          <div class="eq-display">
+            <div class="equation">
+              E + S <span class="eq-arrow">&#8651;</span> ES <span class="eq-arrow">&#8594;</span> E + P
+            </div>
+            <div class="mm-params">
+              <div>Km = (k-1 + kcat) / k1 = <strong id="km-value">60</strong></div>
+              <div>Vmax = kcat * [E]total = <strong id="vmax-value">5</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="chart-section">
+          <h3>Concentrations Over Time</h3>
+          <div class="chart-container">
+            <canvas id="conc-chart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: #3498db;"></div>
+              <span>Substrate [S]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #27ae60;"></div>
+              <span>Enzyme [E]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e67e22;"></div>
+              <span>Complex [ES]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e74c3c;"></div>
+              <span>Product [P]</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-section">
+          <h3>Reaction Rate <span class="hint">(v = d[P]/dt, saturation curve)</span></h3>
+          <div class="chart-container">
+            <canvas id="rate-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>The <strong>Michaelis-Menten</strong> model describes how enzymes catalyze reactions. The Petri net has 4 places and 3 transitions:</p>
+            <ul>
+              <li><strong>bind</strong> (k1): substrate + enzyme &rarr; complex</li>
+              <li><strong>unbind</strong> (k-1): complex &rarr; substrate + enzyme (reverse)</li>
+              <li><strong>catalyze</strong> (kcat): complex &rarr; product + enzyme</li>
+            </ul>
+            <p>Mass-action kinetics on this net automatically produce the Michaelis-Menten equations. At <strong>steady state</strong>, the reaction rate follows:</p>
+            <p style="text-align:center; font-family: monospace; font-size: 1.1rem; margin: 1rem 0;">v = Vmax * [S] / (Km + [S])</p>
+            <p>The rate <strong>saturates</strong> at Vmax because all enzyme molecules become occupied (the complex reaches its maximum). <strong>Km</strong> is the substrate concentration at half-maximum rate.</p>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="enzyme-kinetics" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

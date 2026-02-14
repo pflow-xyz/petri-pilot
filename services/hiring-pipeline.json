@@ -1,0 +1,80 @@
+{
+  "name": "hiring-pipeline",
+  "description": "Multi-stage hiring pipeline with parallel interviews, role-based actions, and fork-join synchronization",
+  "debug": {
+    "enabled": true
+  },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
+  "places": [
+    {"id": "applied", "description": "Candidate has applied", "initial": 1, "x": 50, "y": 300},
+    {"id": "phone_screen", "description": "In phone screening", "initial": 0, "x": 200, "y": 300},
+    {"id": "technical_interview", "description": "In technical interview", "initial": 0, "x": 450, "y": 150},
+    {"id": "culture_interview", "description": "In culture interview", "initial": 0, "x": 450, "y": 450},
+    {"id": "tech_passed", "description": "Passed technical interview", "initial": 0, "x": 650, "y": 150},
+    {"id": "culture_passed", "description": "Passed culture interview", "initial": 0, "x": 650, "y": 450},
+    {"id": "ready_for_offer", "description": "Both interviews passed, ready for offer", "initial": 0, "x": 800, "y": 300},
+    {"id": "offer_extended", "description": "Offer has been extended to candidate", "initial": 0, "x": 950, "y": 300},
+    {"id": "hired", "description": "Candidate accepted and hired", "initial": 0, "x": 1100, "y": 200},
+    {"id": "rejected", "description": "Candidate rejected at some stage", "initial": 0, "x": 1100, "y": 450}
+  ],
+  "transitions": [
+    {"id": "screen_candidate", "description": "Recruiter conducts phone screen", "role": "recruiter", "x": 120, "y": 300},
+    {"id": "pass_screen", "description": "Candidate passes phone screen - begin parallel interviews", "role": "recruiter", "x": 320, "y": 300},
+    {"id": "fail_screen", "description": "Candidate fails phone screen", "role": "recruiter", "x": 320, "y": 500},
+    {"id": "pass_technical", "description": "Candidate passes technical interview", "role": "engineer", "x": 550, "y": 150},
+    {"id": "fail_technical", "description": "Candidate fails technical interview", "role": "engineer", "x": 550, "y": 50},
+    {"id": "pass_culture", "description": "Candidate passes culture interview", "role": "manager", "x": 550, "y": 450},
+    {"id": "fail_culture", "description": "Candidate fails culture interview", "role": "manager", "x": 550, "y": 550},
+    {"id": "merge_interviews", "description": "Both interviews passed - synchronization join", "x": 730, "y": 300},
+    {"id": "extend_offer", "description": "Manager extends job offer", "role": "manager", "x": 880, "y": 300},
+    {"id": "accept_offer", "description": "Candidate accepts the offer", "role": "candidate", "x": 1030, "y": 200},
+    {"id": "reject_offer", "description": "Candidate declines the offer", "role": "candidate", "x": 1030, "y": 400}
+  ],
+  "arcs": [
+    {"from": "applied", "to": "screen_candidate"},
+    {"from": "screen_candidate", "to": "phone_screen"},
+
+    {"from": "phone_screen", "to": "pass_screen"},
+    {"from": "pass_screen", "to": "technical_interview"},
+    {"from": "pass_screen", "to": "culture_interview"},
+
+    {"from": "phone_screen", "to": "fail_screen"},
+    {"from": "fail_screen", "to": "rejected"},
+
+    {"from": "technical_interview", "to": "pass_technical"},
+    {"from": "pass_technical", "to": "tech_passed"},
+
+    {"from": "technical_interview", "to": "fail_technical"},
+    {"from": "fail_technical", "to": "rejected"},
+
+    {"from": "culture_interview", "to": "pass_culture"},
+    {"from": "pass_culture", "to": "culture_passed"},
+
+    {"from": "culture_interview", "to": "fail_culture"},
+    {"from": "fail_culture", "to": "rejected"},
+
+    {"from": "tech_passed", "to": "merge_interviews"},
+    {"from": "culture_passed", "to": "merge_interviews"},
+    {"from": "merge_interviews", "to": "ready_for_offer"},
+
+    {"from": "ready_for_offer", "to": "extend_offer"},
+    {"from": "extend_offer", "to": "offer_extended"},
+
+    {"from": "offer_extended", "to": "accept_offer"},
+    {"from": "accept_offer", "to": "hired"},
+
+    {"from": "offer_extended", "to": "reject_offer"},
+    {"from": "reject_offer", "to": "rejected"}
+  ],
+  "metadata": {
+    "workflow": {
+      "description": "Multi-stage hiring pipeline with sequential screening then parallel interviews",
+      "pattern": "sequence -> fork-join -> sequence with early termination",
+      "roles": ["recruiter", "engineer", "manager", "candidate"],
+      "concepts": ["hiring pipeline", "parallel interviews", "fork-join", "BPMN gateway", "role-based workflow"]
+    }
+  }
+}

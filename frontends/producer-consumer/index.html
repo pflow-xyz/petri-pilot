@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Producer-Consumer</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="producer-consumer"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Producer-Consumer</h1>
+      <p>Bounded buffer synchronization via Petri net capacity constraints</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="buffer-section">
+          <h3>Buffer (capacity 5)</h3>
+          <div class="buffer-vis">
+            <div class="actor producer-actor">
+              <div class="actor-icon" id="producer-icon">P</div>
+              <div class="actor-label">Producer</div>
+              <div class="actor-state" id="producer-state">Idle</div>
+            </div>
+            <div class="buffer-slots" id="buffer-slots">
+              <div class="slot"></div>
+              <div class="slot"></div>
+              <div class="slot"></div>
+              <div class="slot"></div>
+              <div class="slot"></div>
+            </div>
+            <div class="actor consumer-actor">
+              <div class="actor-icon" id="consumer-icon">C</div>
+              <div class="actor-label">Consumer</div>
+              <div class="actor-state" id="consumer-state">Idle</div>
+            </div>
+          </div>
+          <div class="buffer-info">
+            <span>Buffer: <strong id="buffer-count">0</strong>/5</span>
+            <span>Produced: <strong id="produced-count">0</strong></span>
+            <span>Consumed: <strong id="consumed-count">0</strong></span>
+          </div>
+        </div>
+
+        <div class="controls-section">
+          <h3>Transitions</h3>
+          <div id="transitions-container" class="transitions-container">
+          </div>
+          <div class="control-buttons">
+            <button class="btn btn-primary" id="auto-btn" onclick="toggleAuto()">Auto Run</button>
+            <button class="btn btn-secondary" onclick="resetState()">Reset</button>
+          </div>
+          <div class="speed-control">
+            <label>
+              <span>Speed</span>
+              <span id="speed-value">500ms</span>
+            </label>
+            <input type="range" id="speed" min="100" max="2000" step="100" value="500">
+          </div>
+        </div>
+
+        <div class="convenience-section">
+          <h3>Quick Actions</h3>
+          <div class="quick-buttons">
+            <button class="btn btn-fill" onclick="fillBuffer()">Fill Buffer</button>
+            <button class="btn btn-drain" onclick="drainBuffer()">Drain Buffer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="log-section">
+          <h3>Event Log <button class="btn-clear" onclick="clearLog()">Clear</button></h3>
+          <div id="event-log" class="event-log">
+            <div class="log-entry info">System initialized. Producer and Consumer idle.</div>
+          </div>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>The <strong>producer-consumer problem</strong> is a classic synchronization scenario where:</p>
+            <ul>
+              <li><strong>Producer</strong> creates items and places them in a shared buffer</li>
+              <li><strong>Consumer</strong> takes items from the buffer and processes them</li>
+              <li>The buffer has <strong>fixed capacity</strong> (5 slots)</li>
+            </ul>
+            <p>The Petri net enforces synchronization using <strong>buffer_space</strong> tokens as a capacity counter:</p>
+            <ul>
+              <li>Producer needs a <strong>buffer_space</strong> token to start producing (blocks when buffer full)</li>
+              <li>Consumer needs a <strong>buffer</strong> token to start consuming (blocks when buffer empty)</li>
+              <li>When consumer finishes, a buffer_space token is returned</li>
+            </ul>
+            <p>This elegant pattern uses <strong>complementary places</strong> (buffer + buffer_space = constant) to model bounded capacity without guards or inhibitor arcs.</p>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <pflow-model-link model="producer-consumer" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js?v=1"></script>
+  <site-footer></site-footer>
+</body>
+</html>

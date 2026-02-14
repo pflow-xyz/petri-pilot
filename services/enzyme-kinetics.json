@@ -1,0 +1,56 @@
+{
+  "name": "enzyme-kinetics",
+  "description": "Michaelis-Menten enzyme kinetics modeled as a Petri net with ODE simulation",
+  "prediction": {
+    "enabled": true,
+    "timeHours": 1,
+    "rateScale": 1.0
+  },
+  "debug": {
+    "enabled": true
+  },
+  "graphql": {
+    "enabled": true,
+    "playground": true
+  },
+  "places": [
+    {"id": "substrate", "description": "Substrate molecules (S)", "initial": 100, "x": 100, "y": 200},
+    {"id": "enzyme", "description": "Free enzyme molecules (E)", "initial": 10, "x": 300, "y": 50},
+    {"id": "complex", "description": "Enzyme-substrate complex (ES)", "initial": 0, "x": 500, "y": 200},
+    {"id": "product", "description": "Product molecules (P)", "initial": 0, "x": 700, "y": 200}
+  ],
+  "transitions": [
+    {"id": "bind", "description": "Substrate binds to enzyme forming complex (rate k1)", "rate": 0.01, "x": 300, "y": 200},
+    {"id": "unbind", "description": "Complex dissociates back to substrate and enzyme (rate k-1)", "rate": 0.1, "x": 400, "y": 50},
+    {"id": "catalyze", "description": "Complex converts substrate to product, releasing enzyme (rate kcat)", "rate": 0.5, "x": 600, "y": 200}
+  ],
+  "arcs": [
+    {"from": "substrate", "to": "bind", "weight": 1},
+    {"from": "enzyme", "to": "bind", "weight": 1},
+    {"from": "bind", "to": "complex", "weight": 1},
+
+    {"from": "complex", "to": "unbind", "weight": 1},
+    {"from": "unbind", "to": "substrate", "weight": 1},
+    {"from": "unbind", "to": "enzyme", "weight": 1},
+
+    {"from": "complex", "to": "catalyze", "weight": 1},
+    {"from": "catalyze", "to": "product", "weight": 1},
+    {"from": "catalyze", "to": "enzyme", "weight": 1}
+  ],
+  "metadata": {
+    "equations": {
+      "description": "Michaelis-Menten enzyme kinetics via mass-action Petri net",
+      "substrate": "d[S]/dt = -k1*[S]*[E] + k-1*[ES]",
+      "enzyme": "d[E]/dt = -k1*[S]*[E] + k-1*[ES] + kcat*[ES]",
+      "complex": "d[ES]/dt = k1*[S]*[E] - k-1*[ES] - kcat*[ES]",
+      "product": "d[P]/dt = kcat*[ES]",
+      "parameters": {
+        "k1": 0.01,
+        "k_minus_1": 0.1,
+        "kcat": 0.5,
+        "Km": "(k-1 + kcat) / k1 = 60",
+        "Vmax": "kcat * [E]total = 5"
+      }
+    }
+  }
+}
