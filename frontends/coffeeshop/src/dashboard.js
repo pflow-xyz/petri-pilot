@@ -353,32 +353,33 @@ async function initializeInstance() {
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}${API_BASE}/ws`;
-  
-  webSocket = new WebSocket(wsUrl);
-  
+
+  try {
+    webSocket = new WebSocket(wsUrl);
+  } catch {
+    return; // WebSocket not available, fall back to HTTP polling
+  }
+
   webSocket.onopen = () => {
     console.log('WebSocket connected');
   };
-  
+
   webSocket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
       handleWebSocketMessage(data);
     } catch (error) {
-      console.error('WebSocket message error:', error);
+      // ignore parse errors
     }
   };
-  
-  webSocket.onerror = (error) => {
-    console.error('WebSocket error:', error);
+
+  webSocket.onerror = () => {
+    // Silently fail - dashboard works fine via HTTP polling
   };
-  
+
   webSocket.onclose = () => {
-    console.log('WebSocket disconnected');
-    // Only attempt to reconnect if dashboard is still active
-    if (isDashboardActive) {
-      setTimeout(connectWebSocket, 5000);
-    }
+    webSocket = null;
+    // Don't reconnect - avoids console error spam when WS isn't available
   };
 }
 
