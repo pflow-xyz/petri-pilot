@@ -1287,6 +1287,23 @@ func PflowHandler() http.HandlerFunc {
             '<p style="color:#8899aa;margin:0 0 24px;">Select a model to view:</p>' +
             '<div id="pflow-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;"></div>';
           var grid = document.getElementById('pflow-grid');
+
+          // "New" card — create an empty net
+          var newCard = document.createElement('a');
+          newCard.href = '/pflow?model=new';
+          newCard.style.cssText = 'display:block;border:2px dashed rgba(255,255,255,0.25);border-radius:10px;text-decoration:none;color:#e0e4e8;overflow:hidden;transition:box-shadow 0.2s,transform 0.2s,border-color 0.2s;background:transparent;';
+          newCard.addEventListener('mouseenter', function() { this.style.boxShadow = '0 4px 20px rgba(0,0,0,0.4)'; this.style.transform = 'translateY(-2px)'; this.style.borderColor = 'rgba(255,255,255,0.5)'; });
+          newCard.addEventListener('mouseleave', function() { this.style.boxShadow = ''; this.style.transform = ''; this.style.borderColor = 'rgba(255,255,255,0.25)'; });
+          var newThumb = document.createElement('div');
+          newThumb.style.cssText = 'height:160px;display:flex;align-items:center;justify-content:center;';
+          newThumb.innerHTML = '<div style="font-size:48px;opacity:0.5;">+</div>';
+          newCard.appendChild(newThumb);
+          var newInfo = document.createElement('div');
+          newInfo.style.cssText = 'padding:12px 14px;';
+          newInfo.innerHTML = '<div style="font-size:15px;font-weight:600;">New Petri Net</div><div style="font-size:12px;color:#8899aa;margin-top:4px;">Start with an empty canvas</div>';
+          newCard.appendChild(newInfo);
+          grid.appendChild(newCard);
+
           for (var i = 0; i < names.length; i++) {
             (function(name) {
               var card = document.createElement('a');
@@ -1333,6 +1350,25 @@ func PflowHandler() http.HandlerFunc {
         .catch(function() {
           document.getElementById('pflow-loading').textContent = 'Failed to load models';
         });
+      return;
+    }
+
+    // Handle "new" — empty canvas for creating a net from scratch
+    if (modelName === 'new') {
+      document.getElementById('pflow-loading').style.display = 'none';
+      document.title = 'New Petri Net - Petri Net Viewer';
+      var pv = document.createElement('petri-view');
+      var script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify({
+        '@context': 'https://pflow.xyz/schema',
+        '@type': 'PetriNet',
+        places: {},
+        transitions: {},
+        arcs: []
+      });
+      pv.appendChild(script);
+      document.body.appendChild(pv);
       return;
     }
 
