@@ -204,11 +204,13 @@ function animateEcosystem(solution, params) {
     const elapsed = now - startTime
     const progress = Math.min(1, elapsed / duration)
     const idx = Math.min(
-      solution.t.length - 1,
-      Math.floor(progress * (solution.t.length - 1))
+      solution.u.length - 1,
+      Math.floor(progress * (solution.u.length - 1))
     )
-    const prey = Math.max(0, solution.u[idx]['prey'] || 0)
-    const pred = Math.max(0, solution.u[idx]['predator'] || 0)
+    const state = solution.u[idx]
+    if (!state) return
+    const prey = Math.max(0, state['prey'] || 0)
+    const pred = Math.max(0, state['predator'] || 0)
     renderEcosystem(prey, pred)
 
     if (progress < 1) {
