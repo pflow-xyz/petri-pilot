@@ -1587,7 +1587,7 @@ async function loadPetriView() {
   if (!document.querySelector('link[href*="petri-view.css"]')) {
     const css = document.createElement('link')
     css.rel = 'stylesheet'
-    css.href = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.css'
+    css.href = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-view.css'
     document.head.appendChild(css)
   }
 
@@ -1596,7 +1596,7 @@ async function loadPetriView() {
     await new Promise((resolve, reject) => {
       const script = document.createElement('script')
       script.type = 'module'
-      script.src = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@main/public/petri-view.js'
+      script.src = 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-view.js'
       script.onload = resolve
       script.onerror = reject
       document.head.appendChild(script)
