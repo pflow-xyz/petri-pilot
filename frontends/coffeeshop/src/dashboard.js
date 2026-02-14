@@ -348,39 +348,13 @@ async function initializeInstance() {
 }
 
 /**
- * Connect WebSocket for real-time updates
+ * Connect WebSocket for real-time updates.
+ * Currently disabled - the dashboard works via HTTP polling and the
+ * WS handshake fails behind nginx (returns 200 instead of 101),
+ * producing browser-level console errors we can't suppress.
  */
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}${API_BASE}/ws`;
-
-  try {
-    webSocket = new WebSocket(wsUrl);
-  } catch {
-    return; // WebSocket not available, fall back to HTTP polling
-  }
-
-  webSocket.onopen = () => {
-    console.log('WebSocket connected');
-  };
-
-  webSocket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      handleWebSocketMessage(data);
-    } catch (error) {
-      // ignore parse errors
-    }
-  };
-
-  webSocket.onerror = () => {
-    // Silently fail - dashboard works fine via HTTP polling
-  };
-
-  webSocket.onclose = () => {
-    webSocket = null;
-    // Don't reconnect - avoids console error spam when WS isn't available
-  };
+  // no-op: WS not available behind current nginx config
 }
 
 /**
