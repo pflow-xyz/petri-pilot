@@ -909,10 +909,9 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 	}
 
 	// === HIGH-CARD KICKER SCORING (52 transitions: one per card) ===
-	// Universal ranking: weight = rank_power * 4 + suit_value.
-	// Rank dominates (any higher rank beats all lower), suit breaks ties (♠>♥>♦>♣).
-	// Every card gets a unique score, enabling total ordering.
-	suitValues := map[string]int{"s": 3, "h": 2, "d": 1, "c": 0}
+	// Uses power-of-2 weighted arcs so any single higher-rank card outweighs
+	// all lower cards combined (2^n > 2^(n-1) + ... + 2^0).
+	// This matches lexicographic kicker comparison for hands with distinct ranks.
 	places = append(places, map[string]interface{}{
 		"id":      "kicker_score",
 		"initial": 0,
@@ -929,7 +928,7 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		for suitIdx, suit := range suits {
 			cardSymbol := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
 			transID := fmt.Sprintf("hc_%s", cardSymbol)
-			weight := (1<<(12-rankIdx))*4 + suitValues[suit] // A♠=16387, A♥=16386, ..., 2♣=4
+			weight := 1 << (12 - rankIdx) // A=4096, K=2048, ..., 2=1
 			transitions = append(transitions, map[string]interface{}{
 				"id": transID,
 				"x":  -500,

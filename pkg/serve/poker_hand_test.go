@@ -867,24 +867,21 @@ func TestHighCardKickerScoring(t *testing.T) {
 	if !hasCounterInput {
 		t.Error("hc_A♥ should have input arc from card_counter")
 	}
-	// Universal weight: rank_power * 4 + suit_value (♠=3, ♥=2, ♦=1, ♣=0)
-	// A♥ = 4096*4 + 2 = 16386
-	if hcAhOutputWeight != 4096*4+2 {
-		t.Errorf("hc_A♥ output weight should be %d, got %d", 4096*4+2, hcAhOutputWeight)
+	if hcAhOutputWeight != 4096 {
+		t.Errorf("hc_A♥ output weight should be 4096, got %d", hcAhOutputWeight)
 	}
 
 	// Verify expected kicker scores for different high-card hands
-	// Universal weights: rank_power * 4 + suit_value
-	// A♥=16386, K♦=8193, Q♠=4099, J♣=2048, 9♥=514, 8♥=258
+	// Weights: A=4096, K=2048, Q=1024, J=512, 9=128, 8=64
 	testCases := []struct {
 		name     string
 		hole     string
 		board    string
 		expected int
 	}{
-		{"A,K,Q,J,9", "Ah,Kd", "Qs,Jc,9h", 4096*4 + 2 + 2048*4 + 1 + 1024*4 + 3 + 512*4 + 0 + 128*4 + 2}, // A♥+K♦+Q♠+J♣+9♥ = 31240
-		{"A,K,Q,J,8", "Ah,Kd", "Qs,Jc,8h", 4096*4 + 2 + 2048*4 + 1 + 1024*4 + 3 + 512*4 + 0 + 64*4 + 2},  // A♥+K♦+Q♠+J♣+8♥ = 30984
-		{"7,6,5,4,2", "7h,6d", "5s,4c,2h", 32*4 + 2 + 16*4 + 1 + 8*4 + 3 + 4*4 + 0 + 1*4 + 2},            // 7♥+6♦+5♠+4♣+2♥ = 252
+		{"A,K,Q,J,9", "Ah,Kd", "Qs,Jc,9h", 4096 + 2048 + 1024 + 512 + 128},   // 7808
+		{"A,K,Q,J,8", "Ah,Kd", "Qs,Jc,8h", 4096 + 2048 + 1024 + 512 + 64},    // 7744
+		{"7,6,5,4,2", "7h,6d", "5s,4c,2h", 32 + 16 + 8 + 4 + 1},              // 61
 	}
 
 	for _, tc := range testCases {
@@ -935,15 +932,9 @@ func TestHighCardKickerScoring(t *testing.T) {
 		})
 	}
 
-	// Verify ordering: 9-kicker beats 8-kicker (31240 vs 30984)
-	if 31240 <= 30984 {
-		t.Error("A,K,Q,J,9 (31240) should beat A,K,Q,J,8 (30984)")
+	// Verify ordering: 9-kicker beats 8-kicker
+	if 7808 <= 7744 {
+		t.Error("A,K,Q,J,9 (7808) should beat A,K,Q,J,8 (7744)")
 	}
-	// Verify suit tiebreaker: A♠ (16387) > A♥ (16386)
-	aSpade := 4096*4 + 3
-	aHeart := 4096*4 + 2
-	if aSpade <= aHeart {
-		t.Errorf("A♠ (%d) should beat A♥ (%d)", aSpade, aHeart)
-	}
-	t.Logf("Universal kicker scoring verified: 52 transitions, rank*4+suit weights")
+	t.Logf("Kicker scoring verified: 52 transitions, power-of-2 weights")
 }

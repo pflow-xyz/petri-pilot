@@ -112,20 +112,17 @@ const RANK_KICKER_WEIGHTS = {
   '9': 128, '8': 64, '7': 32, '6': 16, '5': 8, '4': 4, '3': 2, '2': 1
 }
 
-const SUIT_VALUES = { 's': 3, 'h': 2, 'd': 1, 'c': 0 }
-const SUIT_SYMBOLS = { 's': '\u2660', 'h': '\u2665', 'd': '\u2666', 'c': '\u2663' }
-
 function kickerBreakdown(cards) {
   const parsed = parseCards(cards)
+  const seen = new Set()
   const terms = []
   for (const c of parsed) {
-    const rankW = RANK_KICKER_WEIGHTS[c.rank] || 0
-    const suitV = SUIT_VALUES[c.suit] || 0
-    const weight = rankW * 4 + suitV
-    terms.push({ rank: c.rank, suit: c.suit, weight })
+    if (seen.has(c.rank)) continue
+    seen.add(c.rank)
+    terms.push({ rank: c.rank, weight: RANK_KICKER_WEIGHTS[c.rank] || 0 })
   }
   terms.sort((a, b) => b.weight - a.weight)
-  return terms.map(t => `${t.rank}${SUIT_SYMBOLS[t.suit]}=${t.weight}`).join(' + ')
+  return terms.map(t => `${t.rank}=${t.weight}`).join(' + ')
 }
 
 function renderHandEval(cards) {
