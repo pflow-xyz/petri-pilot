@@ -908,6 +908,41 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		})
 	}
 
+	// === HIGH-CARD KICKER SCORING (52 transitions: one per card) ===
+	// Universal ranking: weight = rank_power * 4 + suit_value.
+	// Rank dominates (any higher rank beats all lower), suit breaks ties (♠>♥>♦>♣).
+	// Every card gets a unique score, enabling total ordering.
+	suitValues := map[string]int{"s": 3, "h": 2, "d": 1, "c": 0}
+	places = append(places, map[string]interface{}{
+		"id":      "kicker_score",
+		"initial": 0,
+		"x":       2000,
+		"y":       800,
+	})
+	for rankIdx, rank := range ranks {
+		for suitIdx, suit := range suits {
+			cardSymbol := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
+			transID := fmt.Sprintf("hc_%s", cardSymbol)
+			weight := (1<<(12-rankIdx))*4 + suitValues[suit] // A♠=16387, A♥=16386, ..., 2♣=4
+			transitions = append(transitions, map[string]interface{}{
+				"id": transID,
+				"x":  -500,
+				"y":  50 + rankIdx*100 + suitIdx*20,
+			})
+			// Input arc from card place (consuming - each card can only score once)
+			arcs = append(arcs, map[string]interface{}{
+				"from": cardSymbol,
+				"to":   transID,
+			})
+			// Output weighted arc to kicker_score
+			arcs = append(arcs, map[string]interface{}{
+				"from":   transID,
+				"to":     "kicker_score",
+				"weight": weight,
+			})
+		}
+	}
+
 	// === STRAIGHT FLUSH DETECTION (40 total: 10 straights × 4 suits) ===
 	// Specific 5-card sequences in the same suit
 	straightStarts := []string{"A", "K", "Q", "J", "T", "9", "8", "7", "6", "5"} // A-high through 5-high (wheel)
