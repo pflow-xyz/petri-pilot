@@ -1,5 +1,5 @@
 // Poker Hand Comparison — main.js
-import { evaluateHand, compareHands, HandRankNames, parseCards } from './hand-evaluator.js'
+import { evaluateHand, compareHands, HandRankNames } from './hand-evaluator.js'
 import { renderCard } from './cards.js'
 
 // ── State ──
@@ -63,14 +63,9 @@ const MATCHUPS = [
     hand2: ['Ks','Qs','9s','7s','3s'],
   },
   {
-    name: 'Identical Straights (Suit Tiebreak)',
+    name: 'Identical Straights (Tie)',
     hand1: ['6s','7h','8d','9c','Ts'],
     hand2: ['6h','7d','8c','9s','Td'],
-  },
-  {
-    name: 'High Card Kicker Battle',
-    hand1: ['Ah','Kd','Qs','Jc','9h'],
-    hand2: ['As','Kc','Qh','Jd','8s'],
   },
 ]
 
@@ -107,44 +102,18 @@ function renderHandCards(cards) {
   return cards.map(c => renderCard(c)).join('')
 }
 
-const RANK_KICKER_WEIGHTS = {
-  'A': 4096, 'K': 2048, 'Q': 1024, 'J': 512, 'T': 256,
-  '9': 128, '8': 64, '7': 32, '6': 16, '5': 8, '4': 4, '3': 2, '2': 1
-}
-
-const SUIT_VALUES = { 's': 3, 'h': 2, 'd': 1, 'c': 0 }
-const SUIT_SYMBOLS = { 's': '\u2660', 'h': '\u2665', 'd': '\u2666', 'c': '\u2663' }
-
-function kickerBreakdown(cards) {
-  const parsed = parseCards(cards)
-  const terms = []
-  for (const c of parsed) {
-    const rankW = RANK_KICKER_WEIGHTS[c.rank] || 0
-    const suitV = SUIT_VALUES[c.suit] || 0
-    const weight = rankW * 4 + suitV
-    terms.push({ rank: c.rank, suit: c.suit, weight })
-  }
-  terms.sort((a, b) => b.weight - a.weight)
-  return terms.map(t => `${t.rank}${SUIT_SYMBOLS[t.suit]}=${t.weight}`).join(' + ')
-}
-
 function renderHandEval(cards) {
   if (cards.length === 0) {
     return '<div class="hand-eval"><div class="hand-rank-name" style="color:rgba(255,255,255,0.3)">Select cards below</div></div>'
   }
   const ev = evaluateHand(cards)
   const color = strengthColor(ev.strength)
-  const breakdown = kickerBreakdown(cards)
   return `
     <div class="hand-eval">
       <div class="hand-rank-name">${ev.rankName === 'No Cards' ? 'Evaluating...' : ev.description}</div>
       <div class="hand-description">${ev.rankName} &mdash; Strength: ${(ev.strength * 100).toFixed(1)}%</div>
       <div class="strength-bar">
         <div class="strength-fill" style="width:${ev.strength * 100}%;background:${color}"></div>
-      </div>
-      <div class="kicker-score">
-        Kicker Score: <span class="kicker-value">${ev.petriKickerScore}</span>
-        <div class="kicker-breakdown">${breakdown}</div>
       </div>
     </div>
   `
@@ -163,29 +132,18 @@ function renderResultBanner() {
   const el = document.getElementById('result-banner')
   if (!result) {
     el.className = 'result-banner hidden'
-    el.innerHTML = ''
+    el.textContent = ''
     return
   }
-
-  const sameRank = result.ev1.rank === result.ev2.rank
-  const k1 = result.ev1.petriKickerScore
-  const k2 = result.ev2.petriKickerScore
-
   if (result.cmp > 0) {
     el.className = 'result-banner hand1-wins'
-    const kickerDetail = sameRank
-      ? ` <span class="kicker-detail">(kicker ${k1} vs ${k2})</span>`
-      : ''
-    el.innerHTML = `Hand 1 wins! ${result.ev1.description} beats ${result.ev2.description}${kickerDetail}`
+    el.textContent = `Hand 1 wins! ${result.ev1.description} beats ${result.ev2.description}`
   } else if (result.cmp < 0) {
     el.className = 'result-banner hand2-wins'
-    const kickerDetail = sameRank
-      ? ` <span class="kicker-detail">(kicker ${k2} vs ${k1})</span>`
-      : ''
-    el.innerHTML = `Hand 2 wins! ${result.ev2.description} beats ${result.ev1.description}${kickerDetail}`
+    el.textContent = `Hand 2 wins! ${result.ev2.description} beats ${result.ev1.description}`
   } else {
     el.className = 'result-banner tie'
-    el.innerHTML = `Tie! Both hands: ${result.ev1.description} <span class="kicker-detail">(kicker ${k1} = ${k2})</span>`
+    el.textContent = `Tie! Both hands: ${result.ev1.description}`
   }
 }
 
@@ -373,12 +331,6 @@ export function init() {
 
       <explainer-panel title="Arcs and Token Flow" icon="➡️">
         <p>Arcs with weights connect card-pattern places to classification transitions. A flush needs 5 tokens from one suit place (weight=5 arc). The Petri net formalism makes the classification rules explicit, visual, and formally verifiable.</p>
-      </explainer-panel>
-
-      <explainer-panel title="Kicker Scoring with Weighted Arcs" icon="🏆">
-        <p>When two hands share the same rank (e.g. both &ldquo;High Card A&rdquo;), the <strong>kicker score</strong> breaks the tie. The Petri net encodes this using <strong>power-of-2 weighted arcs</strong>:</p>
-        <p>Each of the 52 cards has a detection transition (<code>hc_*</code>) that fires when that card is in hand. The output arc to <code>kicker_score</code> carries a weight of <strong>2<sup>n</sup></strong> based on rank: A&rarr;4096, K&rarr;2048, Q&rarr;1024, &hellip; 2&rarr;1.</p>
-        <p>This binary encoding guarantees that any single higher-rank card outweighs all lower cards combined (2<sup>n</sup> &gt; 2<sup>n&minus;1</sup> + &hellip; + 2<sup>0</sup>), matching the lexicographic comparison poker uses. Try the <strong>High Card Kicker Battle</strong> matchup to see it in action &mdash; the 9-kicker (128) vs 8-kicker (64) is the difference between 7808 and 7744.</p>
       </explainer-panel>
 
       <pflow-model-link model="poker-hand"></pflow-model-link>
