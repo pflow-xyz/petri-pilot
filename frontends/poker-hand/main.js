@@ -63,7 +63,7 @@ const MATCHUPS = [
     hand2: ['Ks','Qs','9s','7s','3s'],
   },
   {
-    name: 'Identical Straights (Suit Tiebreak)',
+    name: 'Identical Straights (Tie)',
     hand1: ['6s','7h','8d','9c','Ts'],
     hand2: ['6h','7d','8c','9s','Td'],
   },
