@@ -802,25 +802,13 @@ func TestHighCardKickerScoring(t *testing.T) {
 	transitions := model["transitions"].([]map[string]any)
 	arcs := model["arcs"].([]map[string]any)
 
-	// Verify kicker_score and card_counter places exist
+	// Verify kicker_score place exists (card_counter removed - card arcs are self-limiting)
 	placeIDs := make(map[string]bool)
 	for _, p := range places {
 		placeIDs[p["id"].(string)] = true
 	}
 	if !placeIDs["kicker_score"] {
 		t.Error("Missing kicker_score place")
-	}
-	if !placeIDs["card_counter"] {
-		t.Error("Missing card_counter place")
-	}
-
-	// Verify card_counter has initial=1
-	for _, p := range places {
-		if p["id"].(string) == "card_counter" {
-			if p["initial"].(int) != 1 {
-				t.Errorf("card_counter initial should be 1, got %d", p["initial"].(int))
-			}
-		}
 	}
 
 	// Verify 52 hc_* transitions exist
@@ -850,22 +838,15 @@ func TestHighCardKickerScoring(t *testing.T) {
 			}
 		}
 	}
-	// Should have inputs from A♥ (card place) and card_counter
+	// Should have input from A♥ card place (consuming arc, self-limiting)
 	hasCardInput := false
-	hasCounterInput := false
 	for _, input := range hcAhInputs {
 		if input == "A♥" {
 			hasCardInput = true
 		}
-		if input == "card_counter" {
-			hasCounterInput = true
-		}
 	}
 	if !hasCardInput {
 		t.Error("hc_A♥ should have input arc from A♥")
-	}
-	if !hasCounterInput {
-		t.Error("hc_A♥ should have input arc from card_counter")
 	}
 	// Universal weight: rank_power * 4 + suit_value (♠=3, ♥=2, ♦=1, ♣=0)
 	// A♥ = 4096*4 + 2 = 16386

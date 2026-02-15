@@ -919,12 +919,6 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 		"x":       2000,
 		"y":       800,
 	})
-	places = append(places, map[string]interface{}{
-		"id":      "card_counter",
-		"initial": 1,
-		"x":       2000,
-		"y":       1000,
-	})
 	for rankIdx, rank := range ranks {
 		for suitIdx, suit := range suits {
 			cardSymbol := fmt.Sprintf("%s%s", rank, suitSymbols[suit])
@@ -935,14 +929,9 @@ func buildPokerHandModel(holeStr, communityStr string) map[string]interface{} {
 				"x":  -500,
 				"y":  50 + rankIdx*100 + suitIdx*20,
 			})
-			// Input test arc from card place (read-only, enables only if card is in hand)
+			// Input arc from card place (consuming - each card can only score once)
 			arcs = append(arcs, map[string]interface{}{
 				"from": cardSymbol,
-				"to":   transID,
-			})
-			// Input consuming arc from card_counter (prevents infinite re-firing)
-			arcs = append(arcs, map[string]interface{}{
-				"from": "card_counter",
 				"to":   transID,
 			})
 			// Output weighted arc to kicker_score
