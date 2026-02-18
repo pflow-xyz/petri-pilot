@@ -52,12 +52,50 @@ petri-pilot mcp
 | `petri_extend` | Modify existing models |
 | `service_start/stop/logs` | Manage running services |
 
+## Install
+
+```bash
+# From source
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+
+# Or via Docker
+docker run ghcr.io/pflow-xyz/petri-pilot version
+
+# Or download a binary from GitHub Releases
+# https://github.com/pflow-xyz/petri-pilot/releases
+```
+
+### Claude Desktop / Cursor
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "command": "petri-pilot",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Or with Docker:
+
+```json
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/pflow-xyz/petri-pilot", "mcp"]
+    }
+  }
+}
+```
+
 ## Quick Start
 
 ```bash
-# Install
-go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
-
 # Run the demo server
 petri-pilot serve tic-tac-toe coffeeshop knapsack
 
