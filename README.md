@@ -1,41 +1,54 @@
 # Petri Pilot
 
-**An experimental workshop for Petri net tooling.**
+**Compile Petri net models into running applications.**
 
-This is where ideas get built, tested, and refined. Patterns that prove useful graduate upstream to [go-pflow](https://github.com/pflow-xyz/go-pflow).
-
-## What's Here
-
-Petri Pilot explores the question: *what if the model was the app?*
+A Petri net model defines places (states), transitions (actions), and arcs (connections). Petri-pilot compiles that model into a complete, deployable application. The generation is deterministic — the same model always produces the same code.
 
 ```
-JSON Model ──> Deterministic Codegen ──> Running Application
+Model ──> Context ──> Templates ──> Running Application
 ```
 
-A Petri net model defines **places** (states), **transitions** (actions), and **arcs** (connections). From that single file, codegen produces:
+The model is the source of truth. Code is a derived artifact.
+
+**Live demos:** [pilot.pflow.xyz](https://pilot.pflow.xyz) | **Book:** [book.pflow.xyz](https://book.pflow.xyz)
+
+## What It Generates
+
+From a single model file, petri-pilot produces:
 
 - **Go backend** — event-sourced aggregate, REST API, SQLite storage
 - **ES modules frontend** — admin dashboard, simulation, event history
 - **GraphQL API** — unified query layer with built-in playground
 - **pflow viewer** — interactive Petri net visualization
 
-No LLM-generated code. The LLM designs models. Templates produce apps.
+No LLM-generated code. The LLM designs models. Templates compile apps.
 
-**Live demos:** [pilot.pflow.xyz](https://pilot.pflow.xyz)
+## Install
 
-## Experiments in Progress
+```bash
+# From source
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
 
-| Experiment | Status | Notes |
-|------------|--------|-------|
-| MCP-native model design | Active | LLM designs, validates, simulates models via MCP tools |
-| ODE simulation | Active | Continuous-time analysis, optimization (knapsack, resource allocation) |
-| Multi-model serving | Active | Multiple apps on one port, shared GraphQL layer |
-| ZK circuits from Petri nets | Early | Tic-tac-toe with gnark proofs |
-| Code generation patterns | Ongoing | Templates for auth, permissions, views, navigation |
+# Or via Docker
+docker run ghcr.io/pflow-xyz/petri-pilot version
+
+# Or download a binary from GitHub Releases
+# https://github.com/pflow-xyz/petri-pilot/releases
+```
+
+## Quick Start
+
+```bash
+# Run the demo server
+petri-pilot serve tic-tac-toe coffeeshop knapsack
+
+# Or start the MCP server
+petri-pilot mcp
+```
 
 ## MCP Server
 
-Petri Pilot runs as an MCP server. An LLM can design, validate, simulate, and generate without leaving the conversation.
+Petri-pilot runs as an MCP server. An LLM can design, validate, simulate, and generate without leaving the conversation.
 
 ```bash
 petri-pilot mcp
@@ -51,19 +64,6 @@ petri-pilot mcp
 | `petri_application` | Full-stack from high-level spec |
 | `petri_extend` | Modify existing models |
 | `service_start/stop/logs` | Manage running services |
-
-## Install
-
-```bash
-# From source
-go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
-
-# Or via Docker
-docker run ghcr.io/pflow-xyz/petri-pilot version
-
-# Or download a binary from GitHub Releases
-# https://github.com/pflow-xyz/petri-pilot/releases
-```
 
 ### Claude Desktop / Cursor
 
@@ -93,16 +93,6 @@ Or with Docker:
 }
 ```
 
-## Quick Start
-
-```bash
-# Run the demo server
-petri-pilot serve tic-tac-toe coffeeshop knapsack
-
-# Or start the MCP server
-petri-pilot mcp
-```
-
 ## Model Format
 
 ```json
@@ -124,9 +114,22 @@ petri-pilot mcp
 
 Models can include roles, access rules, typed events, views, and navigation. See `services/` for examples.
 
+## Ecosystem
+
+Petri-pilot is part of the [pflow](https://pflow.xyz) toolchain. All three tools share the same JSON-LD model format.
+
+| Tool | Role |
+|------|------|
+| [pflow.xyz](https://pflow.xyz) | Visual editor — design and simulate nets in the browser |
+| [go-pflow](https://github.com/pflow-xyz/go-pflow) | Core library — ODE simulation, reachability analysis, P-invariants |
+| **petri-pilot** | Code generator — compiles models into running applications |
+
+A net designed in the editor can be analyzed by the library and compiled by petri-pilot without format conversion.
+
 ## Project Structure
 
 ```
+cmd/petri-pilot/     CLI and MCP server entry point
 pkg/mcp/             MCP server and tools
 pkg/codegen/         Go and ES modules templates
 pkg/serve/           Multi-model HTTP server
@@ -135,14 +138,6 @@ services/            Example models (tic-tac-toe, coffeeshop, knapsack, texas-ho
 frontends/           Custom frontends for demos
 generated/           Output from codegen (derived, not source)
 ```
-
-## Relationship to go-pflow
-
-[go-pflow](https://github.com/pflow-xyz/go-pflow) is the stable Petri net library. Petri Pilot is the experimental counterpart where new ideas are prototyped.
-
-When something works well here — a code generation pattern, an analysis technique, a runtime feature — it may be extracted and added to go-pflow as a stable API.
-
-Think of this repo as a pilot project. Some experiments succeed and ship. Others teach us something and get archived. That's the point.
 
 ## License
 
