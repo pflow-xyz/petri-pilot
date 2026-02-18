@@ -13,8 +13,9 @@ import (
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
-	"github.com/pflow-xyz/petri-pilot/services"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
+	"github.com/pflow-xyz/petri-pilot/internal/version"
+	"github.com/pflow-xyz/petri-pilot/services"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
@@ -61,7 +62,7 @@ func main() {
 	case "help", "-h", "--help":
 		printUsage()
 	case "version", "-v", "--version":
-		fmt.Println("petri-pilot v0.1.0")
+		fmt.Printf("petri-pilot %s\n", version.Version)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", cmd)
 		printUsage()

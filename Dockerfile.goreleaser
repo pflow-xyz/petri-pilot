@@ -1,0 +1,6 @@
+# Minimal image used by goreleaser (binary already built)
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates
+COPY petri-pilot /usr/local/bin/petri-pilot
+ENTRYPOINT ["petri-pilot"]
+CMD ["mcp"]

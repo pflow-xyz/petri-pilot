@@ -1,0 +1,57 @@
+{
+  "name": "petri-pilot",
+  "description": "Generate full-stack applications from Petri net models. Design, validate, simulate, and generate Go backends and ES modules frontends from workflow specifications.",
+  "repository": "https://github.com/pflow-xyz/petri-pilot",
+  "homepage": "https://pilot.pflow.xyz",
+  "license": "MIT",
+  "server": {
+    "command": "petri-pilot",
+    "args": ["mcp"]
+  },
+  "install": {
+    "go": "go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest",
+    "docker": "docker run -i ghcr.io/pflow-xyz/petri-pilot mcp",
+    "binary": "https://github.com/pflow-xyz/petri-pilot/releases"
+  },
+  "config_examples": {
+    "claude_desktop": {
+      "mcpServers": {
+        "petri-pilot": {
+          "command": "petri-pilot",
+          "args": ["mcp"]
+        }
+      }
+    },
+    "claude_desktop_docker": {
+      "mcpServers": {
+        "petri-pilot": {
+          "command": "docker",
+          "args": ["run", "-i", "--rm", "ghcr.io/pflow-xyz/petri-pilot", "mcp"]
+        }
+      }
+    }
+  },
+  "tools": [
+    "petri_validate",
+    "petri_analyze",
+    "petri_simulate",
+    "petri_preview",
+    "petri_diff",
+    "petri_extend",
+    "petri_codegen",
+    "petri_frontend",
+    "petri_visualize",
+    "petri_application",
+    "petri_docs",
+    "petri_migrate",
+    "delegate_app",
+    "delegate_status",
+    "delegate_tasks",
+    "service_start",
+    "service_stop",
+    "service_list",
+    "service_logs",
+    "service_health",
+    "service_stats"
+  ]
+}

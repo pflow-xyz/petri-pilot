@@ -11,6 +11,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/pflow-xyz/petri-pilot/internal/version"
 	"github.com/pflow-xyz/petri-pilot/services"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
@@ -28,7 +29,7 @@ import (
 func NewServer() *server.MCPServer {
 	s := server.NewMCPServer(
 		"petri-pilot",
-		"1.0.0",
+		version.Version,
 		server.WithToolCapabilities(false),
 		server.WithRecovery(),
 	)
