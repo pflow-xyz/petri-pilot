@@ -9,22 +9,15 @@ builds:
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     ldflags:
       - -s -w -X github.com/pflow-xyz/petri-pilot/internal/version.Version={{.Version}}
 
 archives:
   - id: default
-    format: tar.gz
-    format_overrides:
-      - goos: windows
-        format: zip
+    formats: [ 'tar.gz' ]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -41,28 +34,10 @@ changelog:
       - Merge pull request
       - Merge branch
 
-dockers:
-  - image_templates:
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-amd64"
+dockers_v2:
+  - images:
+      - "ghcr.io/pflow-xyz/petri-pilot"
     dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    goarch: amd64
-  - image_templates:
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-arm64"
-    dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-    goarch: arm64
-
-docker_manifests:
-  - name_template: "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-amd64"
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/pflow-xyz/petri-pilot:latest"
-    image_templates:
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-amd64"
-      - "ghcr.io/pflow-xyz/petri-pilot:{{ .Version }}-arm64"
+    tags:
+      - "v{{ .Version }}"
+      - latest
