@@ -12,7 +12,7 @@
     <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
 
     <h1>ZK-ODE</h1>
-    <p class="subtitle">Tsit5 ODE solver running inside a ZK circuit over encrypted Petri net state.</p>
+    <p class="subtitle">Tsit5 ODE solver running inside a ZK circuit over encrypted Petri net state. This system is <strong>unconstrained</strong> &mdash; it has no step limit, no halting condition, and no terminal state.</p>
 
     <!-- Net topology diagram -->
     <section class="card topology-card">
@@ -112,7 +112,7 @@
     <!-- On-chain status -->
     <section class="card onchain-card" id="onchain-card">
       <h2>On-Chain <span class="chain-badge">Base Sepolia</span></h2>
-      <p class="card-desc">Live state from the ZkOde contract. Proofs are verified on-chain via BN254 ecPairing.</p>
+      <p class="card-desc">Live state from the ZkOde contract. The contract accepts proofs indefinitely &mdash; there is no step limit, no pause mechanism, and no terminal state. The ODE is a continuous exponential cascade that asymptotically approaches equilibrium but never halts.</p>
       <div class="state-grid">
         <div class="state-item">
           <span class="state-label">Step Count</span>
@@ -155,6 +155,19 @@
         <li><strong>Chain:</strong> PostStateRoot of step N = PreStateRoot of step N+1. This forms a verifiable commitment chain.</li>
         <li><strong>On-chain:</strong> Proofs are submitted to the ZkOde contract on Base L2, which verifies via the BN254 ecPairing precompile.</li>
       </ol>
+    </section>
+
+    <!-- Unconstrained -->
+    <section class="card unconstrained-card">
+      <h2>Unconstrained Execution</h2>
+      <p class="card-desc">This system has no built-in termination. Unlike discrete Petri nets that can deadlock when tokens are exhausted, the continuous ODE dynamics guarantee that every transition always has a non-zero firing rate.</p>
+      <ul class="info-list">
+        <li><strong>No step limit:</strong> The contract has no maximum step count. Proofs can be submitted forever.</li>
+        <li><strong>No halting state:</strong> The A &rarr; B &rarr; C cascade follows exponential decay. Concentrations approach zero asymptotically but never reach it &mdash; there is always a next valid step.</li>
+        <li><strong>No pause or kill switch:</strong> The contract has no owner override, no pause mechanism, and no way to stop accepting proofs. Once deployed, it runs until the chain itself stops.</li>
+        <li><strong>Conservation law:</strong> A + B + C = 1 is invariant across all steps. The circuit enforces this via the stoichiometry matrix, so no tokens are created or destroyed.</li>
+        <li><strong>Equal rates:</strong> With k<sub>0</sub> = k<sub>1</sub> = 1.0 and <code>enforceOptimal = true</code>, either transition is a valid choice at every step (tied rates satisfy the optimality constraint).</li>
+      </ul>
     </section>
   </div>
 
