@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import {ZkOdeVerifier} from "../src/ZkOdeVerifier.sol";
+import {Verifier} from "../src/Groth16Verifier.sol";
+import {Groth16VerifierAdapter} from "../src/Groth16VerifierAdapter.sol";
 import {ZkOde} from "../src/ZkOde.sol";
 
 contract ZkOdeTest is Test {
@@ -243,5 +245,57 @@ contract ZkOdeOptimalTest is Test {
         // Suboptimal choice accepted when enforcement is off
         zkOde.submitStep(proof, publicInputs, 0);
         assertEq(zkOde.stepCount(), 1);
+    }
+}
+
+/// @dev Test the adapter pattern: Groth16Verifier + Groth16VerifierAdapter + ZkOde.
+///      The real verifier rejects invalid proofs, so submitStep should revert.
+contract ZkOdeAdapterTest is Test {
+    Verifier groth16;
+    Groth16VerifierAdapter adapter;
+    ZkOde zkOde;
+
+    uint256 constant GENESIS_ROOT = 12345;
+    uint256 constant NUM_TRANSITIONS = 2;
+    uint256 constant NUM_PUBLIC_INPUTS = 5;
+
+    function setUp() public {
+        groth16 = new Verifier();
+        bytes4 selector = bytes4(keccak256("verifyProof(uint256[8],uint256[5])"));
+        adapter = new Groth16VerifierAdapter(address(groth16), selector, NUM_PUBLIC_INPUTS);
+        zkOde = new ZkOde(address(adapter), GENESIS_ROOT, NUM_TRANSITIONS, true);
+    }
+
+    function testAdapterConfig() public view {
+        assertEq(adapter.groth16Verifier(), address(groth16));
+        assertEq(adapter.numPublicInputs(), NUM_PUBLIC_INPUTS);
+    }
+
+    function testAdapterRejectsInvalidProof() public {
+        // An all-zero proof is invalid — the gnark verifier reverts,
+        // adapter catches it and returns false, ZkOde reverts with InvalidProof.
+        uint256[8] memory proof;
+        uint256[] memory publicInputs = new uint256[](5);
+        publicInputs[0] = GENESIS_ROOT;
+        publicInputs[1] = 67890;
+        publicInputs[2] = 1e16;
+        publicInputs[3] = 1e18;
+        publicInputs[4] = 1e18;
+
+        vm.expectRevert(ZkOde.InvalidProof.selector);
+        zkOde.submitStep(proof, publicInputs, 0);
+    }
+
+    function testAdapterRejectsWrongInputCount() public {
+        uint256[8] memory proof;
+        // Wrong number of public inputs (3 instead of 5)
+        uint256[] memory publicInputs = new uint256[](3);
+        publicInputs[0] = GENESIS_ROOT;
+        publicInputs[1] = 67890;
+        publicInputs[2] = 1e16;
+
+        // ZkOde requires >= 3 + numTransitions = 5 inputs
+        vm.expectRevert();
+        zkOde.submitStep(proof, publicInputs, 0);
     }
 }

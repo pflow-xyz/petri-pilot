@@ -499,6 +499,63 @@ Requires `GITHUB_TOKEN` environment variable for status commands.
 export GITHUB_TOKEN=$(gh auth token)
 ```
 
+## ZkOde Contracts (Base Sepolia)
+
+ZK-proven ODE state machine contracts deployed on Base Sepolia (2026-02-21).
+
+### Deployed Contracts
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| Groth16Verifier | `0x6dE3168E133ed8EeD8953F97177962B0029D295A` | gnark-generated BN254 pairing verifier |
+| Groth16VerifierAdapter | `0xa1be2e71c304aE2b0F9C7947170F71284Db94971` | Adapts fixed-size gnark interface to IVerifier |
+| ZkOde | `0x9717edf857352DDC2f0c00c67282889F6d695346` | State commitment manager (enforceOptimal=true) |
+
+- **Network:** Base Sepolia (chain ID 84532)
+- **Explorer:** https://sepolia.basescan.org
+- **Deployer/Prover:** `0x762593292f543948CA9A9a290adC1770746d059a`
+- **Config:** genesis root=0, numTransitions=2, enforceOptimal=true, 5 public inputs
+
+### Circuit Constraint
+
+The current gnark circuit (`zk-ode/circuits.go`) is hard-coded for `NumPlaces=3, NumTransitions=2` (A→B→C linear cascade). A tic-tac-toe circuit with 35 transitions would require new topology constants and a circuit recompile.
+
+### Architecture
+
+```
+ZkOde → IVerifier(Groth16VerifierAdapter) → Groth16Verifier (gnark BN254)
+```
+
+The adapter translates between IVerifier's structured proof format `(uint256[2] a, uint256[2][2] b, uint256[2] c, uint256[] inputs)` and gnark's flat format `(uint256[8] proof, uint256[5] input)`.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `solidity/src/ZkOde.sol` | State commitment manager with optimal play enforcement |
+| `solidity/src/IVerifier.sol` | Standard verifier interface |
+| `solidity/src/Groth16Verifier.sol` | gnark-generated verifier with BN254 pairing |
+| `solidity/src/Groth16VerifierAdapter.sol` | Adapts gnark verifier to IVerifier interface |
+| `solidity/src/ZkOdeVerifier.sol` | Stub verifier (testing only) |
+| `solidity/script/Deploy.s.sol` | Foundry deploy script (3-contract pattern) |
+| `solidity/test/ZkOde.t.sol` | Tests (17 total: stub, optimal play, adapter) |
+
+### Deployment Commands
+
+```bash
+# Deploy (requires PRIVATE_KEY, BASE_SEPOLIA_RPC_URL, BASESCAN_API_KEY in env)
+cd solidity && PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY \
+  forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
+
+# Verify a contract manually
+BASESCAN_API_KEY=$BASESCAN_API_KEY forge verify-contract <address> src/ZkOde.sol:ZkOde \
+  --chain base-sepolia --constructor-args $(cast abi-encode "constructor(address,uint256,uint256,bool)" <adapter> 0 2 true) --watch
+
+# Query on-chain state
+cast call 0x9717edf857352DDC2f0c00c67282889F6d695346 "currentStateRoot()" --rpc-url https://sepolia.base.org
+cast call 0x9717edf857352DDC2f0c00c67282889F6d695346 "enforceOptimal()" --rpc-url https://sepolia.base.org
+```
+
 ## Adding a New Service to Landing Page
 
 To add a new service/app to the petri-pilot landing page and deployment:
