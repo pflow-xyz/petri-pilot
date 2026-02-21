@@ -526,6 +526,7 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia.
 - **Genesis root:** MiMC(empty board) = `0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c`
 - **Config:** numTransitions=34, enforceOptimal=true, 37 public inputs
 - **Circuit:** 118,622 constraints, 32 places (9 empty + 9 X + 9 O + 5 control), 34 transitions (18 play + 16 win)
+- **First on-chain proof:** [tx `0x99d44bd1...`](https://sepolia.basescan.org/tx/0x99d44bd1ce2c534b4d88f3eb5eac065690c2e863c6959908113a1e5ed7080d1b) — X plays (0,0), transition 0, 606k gas
 
 ### Common
 
