@@ -122,17 +122,105 @@
       <h2>How Scores Work</h2>
       <p class="card-desc">Strategic values emerge from network topology, not hand-coded heuristics.</p>
       <ol class="info-list">
-        <li>The tic-tac-toe board is modeled as a <strong>Petri net</strong>: 9 cells as places, moves as transitions, win patterns as output arcs.</li>
-        <li>The ODE solver applies <strong>mass-action kinetics</strong> &mdash; each transition's firing rate is proportional to the tokens in its input places.</li>
-        <li>For each empty cell, a hypothetical move is placed and the resulting net is simulated. The difference in token flow toward win-places becomes the <strong>strategic score</strong>.</li>
-        <li>Center scores highest (4 win patterns), corners next (3), edges lowest (2). These values arise purely from <strong>graph structure</strong>.</li>
+        <li>The tic-tac-toe board is modeled as a <strong>Petri net</strong> with <strong>32 places</strong> and <strong>34 transitions</strong>. Each cell has three places (empty, X, O) plus five control places for turns, wins, and game state.</li>
+        <li>The ODE solver applies <strong>mass-action kinetics</strong> &mdash; each transition's firing rate equals its rate constant <em>k</em> multiplied by the product of tokens in its input places: <code>rate = k * &prod; inputs</code>.</li>
+        <li>Rate constants come directly from <strong>graph topology</strong>: center <em>k</em>=4 (4 win lines), corners <em>k</em>=3 (3 win lines), edges <em>k</em>=2 (2 win lines). No tuning, no training data.</li>
+        <li>On top of base rates, the circuit applies <strong>tactical adjustments</strong>: +10.0 for winning moves and &minus;1.5 for moves that leave the opponent an unblocked threat.</li>
       </ol>
+    </section>
+
+    <!-- Building the Circuit -->
+    <section class="card">
+      <h2>Building the Heatmap Circuit</h2>
+      <p class="card-desc">A <strong>176,891-constraint</strong> Groth16 circuit (gnark/BN254) that proves ODE integration + tactical evaluation in zero knowledge.</p>
+
+      <h3 class="section-subhead">Board Representation: 32 Places</h3>
+      <p class="card-desc">The Petri net encodes the full game state as a marking vector:</p>
+      <pre class="code-block"><code>Places 0-8:    P00..P22   empty cell tokens (1 = available, 0 = taken)
+Places 9-17:   X00..X22   X pieces (1 = X placed here)
+Places 18-26:  O00..O22   O pieces (1 = O placed here)
+Place 27:      XTurn      (1 = X's turn)
+Place 28:      OTurn      (1 = O's turn)
+Places 29-30:  WinX, WinO (accumulators)
+Place 31:      GameActive (1 = game in progress)</code></pre>
+
+      <h3 class="section-subhead">34 Transitions</h3>
+      <p class="card-desc">18 play transitions (9 for X, 9 for O) plus 16 win-detection transitions (8 win patterns per player). Play transitions consume the empty-cell token and a turn token, producing a piece token and the opponent's turn:</p>
+      <pre class="code-block"><code>X plays center: P11 + XTurn &rarr; X11 + OTurn    (k=4)
+X plays corner: P00 + XTurn &rarr; X00 + OTurn    (k=3)
+X plays edge:   P01 + XTurn &rarr; X01 + OTurn    (k=2)</code></pre>
+
+      <h3 class="section-subhead">Five Circuit Stages</h3>
+      <p class="card-desc">The circuit verifies computation in five stages, all within a single Groth16 proof:</p>
+      <ol class="info-list">
+        <li><strong>Pre-state root check:</strong> MiMC hash of the 32-element marking vector must match the public <code>PreStateRoot</code>.</li>
+        <li><strong>Tsit5 ODE integration:</strong> A 7-stage Runge-Kutta method computes transition rates from the marking via mass-action kinetics, then integrates one step. Each rate is <code>k * &prod;(input tokens)</code> computed with fixed-point multiplication at 10<sup>18</sup> scale.</li>
+        <li><strong>Post-state root check:</strong> MiMC hash of the post-integration marking must match <code>PostStateRoot</code>.</li>
+        <li><strong>Tactical heatmap scoring:</strong> For each of the 9 cells, the circuit evaluates win detection (does placing here complete 3-in-a-row?) and block detection (does this leave the opponent an unblocked threat?), then computes the final score.</li>
+        <li><strong>Score assertion:</strong> Each computed score must match the corresponding public <code>HeatmapScores[i]</code> input.</li>
+      </ol>
+
+      <h3 class="section-subhead">Tactical Scoring Formula</h3>
+      <p class="card-desc">For each empty cell <em>i</em>:</p>
+      <pre class="code-block"><code>win_flag[i]   = any win line completable by placing here?   (0 or 1)
+block_flag[i] = opponent has unblocked threat after move?   (0 or 1)
+
+score[i] = base_rate[i]
+         + 10.0 * win_flag[i]
+         -  1.5 * block_flag[i] * (1 - win_flag[i])
+         *  cell_empty[i]           // zero out occupied cells</code></pre>
+      <p class="card-desc">The +10.0 bonus dominates any base rate, so winning moves are always preferred. The &minus;1.5 penalty only applies when a win isn't available, incentivizing defensive play. The <code>(1 - win_flag)</code> term ensures a simultaneous win-and-block still gets the full bonus.</p>
+
+      <h3 class="section-subhead">Fixed-Point Arithmetic in ZK</h3>
+      <p class="card-desc">All arithmetic uses 10<sup>18</sup> fixed-point scaling over the BN254 scalar field (254-bit prime). Multiplication uses a gnark hint to compute quotient and remainder outside the circuit, then verifies <code>a * b == q * SCALE + r</code> with a range check on <code>r</code> inside the circuit. This avoids expensive in-circuit division while maintaining soundness.</p>
+
+      <h3 class="section-subhead">Public Inputs (12 total)</h3>
+      <pre class="code-block"><code> 0  PreStateRoot    MiMC hash of board before ODE step
+ 1  PostStateRoot   MiMC hash of board after ODE step
+ 2  StepSize        ODE integration step (fixed-point)
+3-11 HeatmapScores  Strategic score for each cell position</code></pre>
+    </section>
+
+    <!-- On-Chain Proof Chain -->
+    <section class="card">
+      <h2>On-Chain Proof Chain</h2>
+      <p class="card-desc">Each proof advances the contract's state root, enabling multi-move verification on Base Sepolia.</p>
+
+      <pre class="code-block"><code>ZkOde.sol
+  &boxur; currentStateRoot: tracks the chain of board states
+  &boxur; stepCount: number of verified moves
+  &boxur; enforceOptimal: rejects suboptimal moves
+
+Architecture:
+  ZkOde &rarr; IVerifier(Adapter) &rarr; Groth16Verifier (gnark BN254)
+                                    177k constraints, 12 inputs</code></pre>
+
+      <p class="card-desc">After each verified proof, <code>currentStateRoot</code> advances to the MiMC hash of the discrete post-move board (the piece actually placed), not the ODE post-state. This lets proofs chain across multiple moves &mdash; each proof's pre-state root must match the contract's current root.</p>
+
+      <div class="onchain-grid" style="margin-top: 1rem;">
+        <div class="onchain-item">
+          <span class="onchain-label">Step 1</span>
+          <span class="onchain-value mono"><a href="https://sepolia.basescan.org/tx/0xa01f44fcbe73a7598127e5cf25c57210c000e0e249ff7b041f6af4f17b5b709a" target="_blank" class="onchain-link">X plays center (k=4)</a></span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Gas</span>
+          <span class="onchain-value">475k</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Step 2</span>
+          <span class="onchain-value mono"><a href="https://sepolia.basescan.org/tx/0x628b0ba6b54d7a0cf16112ef2fc929d650d2e24480e9cfcc14cb7a59fcf9cb27" target="_blank" class="onchain-link">O plays corner (k=3)</a></span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Gas</span>
+          <span class="onchain-value">438k</span>
+        </div>
+      </div>
     </section>
 
     <!-- Contract Enforcement -->
     <section class="card">
       <h2>Contract Enforcement</h2>
-      <p class="card-desc">The <code>enforceOptimal</code> modifier in <code>ZkOde.sol</code> iterates over all transition rates and reverts if a higher-rate transition exists.</p>
+      <p class="card-desc">The <code>enforceOptimal</code> modifier in <code>ZkOde.sol</code> iterates over all 9 heatmap scores and reverts if a higher-scored move exists.</p>
 
       <pre class="code-block"><code>// Enforce optimal play: chosen transition must have the highest rate
 if (enforceOptimal) {
@@ -147,17 +235,17 @@ if (enforceOptimal) {
     }
 }</code></pre>
 
-      <p class="card-desc" style="margin-top: 1rem;">The ZK proof embeds the ODE-computed transition rates as public inputs. The contract doesn't re-run the ODE &mdash; it trusts the proof and only checks that the player picked the best-scoring move.</p>
+      <p class="card-desc" style="margin-top: 1rem;">The contract never re-runs the ODE or the heatmap evaluation. It trusts the Groth16 proof that the scores were computed correctly, then simply checks that the player picked the highest-scoring cell. Verification costs ~275k gas regardless of circuit complexity.</p>
     </section>
 
-    <!-- How It All Connects -->
+    <!-- Why This Matters -->
     <section class="card info-card">
       <h2>Why This Matters</h2>
       <ol class="info-list">
-        <li><strong>No AI black box:</strong> The strategy comes from differential equations over graph topology. Every score is deterministic and reproducible.</li>
-        <li><strong>Verifiable computation:</strong> The ZK proof guarantees the ODE was computed correctly without revealing the full board state.</li>
-        <li><strong>On-chain enforcement:</strong> Smart contracts can now enforce "play optimally or forfeit" without running the AI on-chain.</li>
-        <li><strong>General pattern:</strong> Any Petri net model can be evaluated, proved, and enforced this way &mdash; not just tic-tac-toe.</li>
+        <li><strong>No AI black box:</strong> The strategy comes from differential equations over graph topology. Every score is deterministic and reproducible &mdash; the 176,891-constraint circuit is the specification.</li>
+        <li><strong>Verifiable computation:</strong> The ZK proof guarantees the ODE integration and tactical evaluation were computed correctly. The 32-place board state stays private; only the 12 public inputs are revealed.</li>
+        <li><strong>On-chain enforcement:</strong> Smart contracts enforce "play optimally or forfeit" at ~450k gas per move, without running any AI on-chain.</li>
+        <li><strong>General pattern:</strong> Any Petri net model &mdash; not just tic-tac-toe &mdash; can be evaluated with mass-action kinetics, proved with Groth16, and enforced on-chain. The circuit generator is parametric over the Petri net topology.</li>
       </ol>
     </section>
   </div>

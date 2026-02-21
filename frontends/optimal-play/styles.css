@@ -269,6 +269,19 @@ h1 {
   flex-shrink: 0;
 }
 
+/* Section subheadings */
+.section-subhead {
+  font-size: 0.9rem;
+  color: #a5b4fc;
+  margin: 1.25rem 0 0.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.section-subhead:first-of-type {
+  margin-top: 0.5rem;
+}
+
 /* Code block */
 .code-block {
   background: #0f0f1a;
