@@ -32,6 +32,11 @@ node_modules/
 **/dist/
 generated/*/frontend/assets/
 
+# Foundry
+solidity/cache/
+solidity/out/
+solidity/lib/
+
 # SQLite databases
 *.db
 *.db-shm
