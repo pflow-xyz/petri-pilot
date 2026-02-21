@@ -12,9 +12,9 @@ const WIN_LINES = [
 
 // TTT contract addresses on Base Sepolia (updated after deployment)
 const TTT_CONTRACT = {
-  zkOde: '0xe260BA6e13a393018F394B9d847aEd4809f8d9Fa',
-  verifier: '0xC092A5e3aFCB760741754f24d2869505F707f924',
-  adapter: '0x1d8Ce7Cb332fa4F6Fc0DFCA72A981Bc3b8d7a4bE',
+  zkOde: '0xF5d9cB0247698361D561faA2E30dDA7855fC25Db',
+  verifier: '0x97a6Bb8FBBbBb81BF36456829A6a41e29030f351',
+  adapter: '0x3211ac2a941d357819EdC2b4ce0D0888953b950E',
 };
 const BASE_SEPOLIA_RPC = 'https://sepolia.base.org';
 const BASESCAN_URL = 'https://sepolia.basescan.org';
