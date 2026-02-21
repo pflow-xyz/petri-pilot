@@ -2,6 +2,12 @@
 
 const SCALE = 1000000000000000000n; // 10^18
 
+// On-chain contract addresses (Base Sepolia)
+const ZKODE_ADDRESS = '0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8';
+const VERIFIER_ADDRESS = '0xA675a162C5097e5eBa2968C918D4D0530b7005Ae';
+const RPC_URL = 'https://sepolia.base.org';
+const BASESCAN = 'https://sepolia.basescan.org';
+
 // Tsit5 Butcher tableau (scaled to fixed-point integers for display accuracy).
 // We use float64 for the browser simulation and compare with the ZK prover.
 const B = [
@@ -293,6 +299,7 @@ document.getElementById('btn-prove').addEventListener('click', async () => {
 
     $proofStatus.textContent = 'Proof generated and verified!';
     $proofData.textContent = JSON.stringify(data, null, 2);
+    fetchOnchainState(); // Refresh on-chain state after proof
   } catch (err) {
     $proofStatus.textContent = 'ZK prover backend is not running';
     $proofData.textContent = 'Proof generation requires the ZK prover backend.\n\n' +
@@ -301,6 +308,64 @@ document.getElementById('btn-prove').addEventListener('click', async () => {
       '  go run ./cmd/zk-ode/...';
   }
 });
+
+// On-chain state via raw JSON-RPC eth_call
+async function ethCall(to, selector) {
+  const resp = await fetch(RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_call',
+      params: [{ to, data: selector }, 'latest'],
+    }),
+  });
+  const json = await resp.json();
+  if (json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+async function fetchOnchainState() {
+  const $card = document.getElementById('onchain-card');
+  const $status = document.getElementById('onchain-status');
+  const $stepCount = document.getElementById('onchain-step-count');
+  const $enforce = document.getElementById('onchain-enforce');
+  const $root = document.getElementById('onchain-root');
+
+  if (!$card) return;
+
+  try {
+    $status.textContent = 'Fetching...';
+    $status.className = 'onchain-status loading';
+
+    const [rootHex, stepHex, enforceHex] = await Promise.all([
+      ethCall(ZKODE_ADDRESS, '0xac2eba98'), // currentStateRoot()
+      ethCall(ZKODE_ADDRESS, '0x415deffa'), // stepCount()
+      ethCall(ZKODE_ADDRESS, '0x51fef09f'), // enforceOptimal()
+    ]);
+
+    const stepCount = parseInt(stepHex, 16);
+    const enforceOptimal = parseInt(enforceHex, 16) === 1;
+    const rootShort = rootHex.slice(0, 18) + '...' + rootHex.slice(-8);
+
+    $stepCount.textContent = stepCount;
+    $enforce.textContent = enforceOptimal ? 'Yes' : 'No';
+    $root.textContent = rootShort;
+    $root.title = rootHex;
+    $status.textContent = 'Connected';
+    $status.className = 'onchain-status connected';
+  } catch (err) {
+    $status.textContent = 'Unable to connect';
+    $status.className = 'onchain-status error';
+    $stepCount.textContent = '-';
+    $enforce.textContent = '-';
+    $root.textContent = 'RPC unavailable';
+  }
+}
+
+// Fetch on-chain state on page load
+fetchOnchainState();
 
 // Initial display
 updateDisplay(currentState, 0, 0.01);

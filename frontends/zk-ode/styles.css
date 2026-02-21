@@ -272,6 +272,47 @@ h1 {
   flex-shrink: 0;
 }
 
+/* On-chain */
+.chain-badge {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  vertical-align: middle;
+  margin-left: 0.5rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.onchain-status {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.onchain-status.loading { color: #9ca3af; }
+.onchain-status.connected { color: #34d399; }
+.onchain-status.error { color: #f87171; }
+
+.onchain-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.onchain-links a {
+  color: #818cf8;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+.onchain-links a:hover {
+  text-decoration: underline;
+}
+
 /* Proof */
 .proof-pre {
   background: #0f0f1a;

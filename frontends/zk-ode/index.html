@@ -109,6 +109,35 @@
       </div>
     </section>
 
+    <!-- On-chain status -->
+    <section class="card onchain-card" id="onchain-card">
+      <h2>On-Chain <span class="chain-badge">Base Sepolia</span></h2>
+      <p class="card-desc">Live state from the ZkOde contract. Proofs are verified on-chain via BN254 ecPairing.</p>
+      <div class="state-grid">
+        <div class="state-item">
+          <span class="state-label">Step Count</span>
+          <span class="state-value" id="onchain-step-count">-</span>
+        </div>
+        <div class="state-item">
+          <span class="state-label">Enforce Optimal</span>
+          <span class="state-value" id="onchain-enforce">-</span>
+        </div>
+        <div class="state-item">
+          <span class="state-label">Status</span>
+          <span class="onchain-status loading" id="onchain-status">Loading...</span>
+        </div>
+      </div>
+      <div class="root-display">
+        <span class="root-label">State Root</span>
+        <code class="root-hash" id="onchain-root">-</code>
+      </div>
+      <div class="onchain-links">
+        <a href="https://sepolia.basescan.org/address/0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8" target="_blank" rel="noopener">ZkOde Contract</a>
+        <a href="https://sepolia.basescan.org/address/0xA675a162C5097e5eBa2968C918D4D0530b7005Ae" target="_blank" rel="noopener">Groth16 Verifier</a>
+        <a href="https://sepolia.basescan.org/tx/0xeaa4bae92172acb2e4c024142b279eb5fb0417631c698a6e16a39e306a41ba0e" target="_blank" rel="noopener">First Proof Tx</a>
+      </div>
+    </section>
+
     <!-- Proof status -->
     <section class="card proof-card" id="proof-section" style="display:none">
       <h2>ZK Proof</h2>
@@ -129,6 +158,6 @@
     </section>
   </div>
 
-  <script type="module" src="main.js?v=2"></script>
+  <script type="module" src="main.js?v=3"></script>
 </body>
 </html>
