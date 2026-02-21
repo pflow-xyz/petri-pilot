@@ -434,6 +434,7 @@ Generated code imports from:
 - **Unused imports**: Make imports conditional with `{{if .HasFeature}}`
 - **Undefined functions**: Add standalone helpers in template, don't reference non-existent methods
 - **Test file count**: Update `generator_test.go` when adding new templates
+- **GitHub @-mentions in commits**: Never write `@main`, `@latest`, or similar `@word` patterns in commit messages or changelogs. GitHub renders these as user mentions (e.g. `@latest` tags a real user). Use backticks (`\`main\``) or write without the `@` prefix.
 
 ## GitHub Copilot Delegation
 
