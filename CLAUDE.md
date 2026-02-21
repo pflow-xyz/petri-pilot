@@ -507,14 +507,14 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia (2026-02-21).
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| Groth16Verifier | `0x97e0449de6b142f5bfafedd7ab3673b13efafd54` | gnark-generated BN254 pairing verifier |
-| Groth16VerifierAdapter | `0x0cbcdc06fda126d6968d7d6adb6a1bfd393113c6` | Adapts fixed-size gnark interface to IVerifier |
-| ZkOde | `0xdf7f1559061297f65b491126103d56fd4019c3cb` | State commitment manager (enforceOptimal=true) |
+| Groth16Verifier | `0x199A6BFF6aBdC0fA1Cb0c437591f03c5D1792199` | gnark-generated BN254 pairing verifier |
+| Groth16VerifierAdapter | `0xb13e0ad0ac8EbC48459bE8d23c278F63D703D275` | Adapts fixed-size gnark interface to IVerifier |
+| ZkOde | `0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4` | State commitment manager (enforceOptimal=true) |
 
 - **Network:** Base Sepolia (chain ID 84532)
 - **Explorer:** https://sepolia.basescan.org
 - **Deployer/Prover:** `0x762593292f543948CA9A9a290adC1770746d059a`
-- **Genesis root:** MiMC([1,0,0]) = `0x2cc32c87522be4b588f26301aef43e600ea46d912b6d781416c83074185892aa`
+- **Genesis root:** 0 (default; VK matches persisted keys in `keys/zk-ode/`)
 - **Config:** numTransitions=2, enforceOptimal=true, 5 public inputs
 
 ### Circuit Constraint
@@ -553,8 +553,8 @@ BASESCAN_API_KEY=$BASESCAN_API_KEY forge verify-contract <address> src/ZkOde.sol
   --chain base-sepolia --constructor-args $(cast abi-encode "constructor(address,uint256,uint256,bool)" <adapter> 0 2 true) --watch
 
 # Query on-chain state
-cast call 0xdf7f1559061297f65b491126103d56fd4019c3cb "currentStateRoot()" --rpc-url https://sepolia.base.org
-cast call 0xdf7f1559061297f65b491126103d56fd4019c3cb "enforceOptimal()" --rpc-url https://sepolia.base.org
+cast call 0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4 "currentStateRoot()" --rpc-url https://sepolia.base.org
+cast call 0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4 "enforceOptimal()" --rpc-url https://sepolia.base.org
 ```
 
 ## Adding a New Service to Landing Page
