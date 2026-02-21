@@ -16,7 +16,7 @@ test:
 
 # Run dev server (used on pilot.pflow.xyz)
 dev-run: build
-	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight
+	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight zk-ode
 
 # Build the binary
 build:

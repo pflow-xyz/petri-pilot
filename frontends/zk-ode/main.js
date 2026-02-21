@@ -270,7 +270,7 @@ document.getElementById('btn-prove').addEventListener('click', async () => {
     const k0 = parseFloat(document.getElementById('rate-0').value);
     const k1 = parseFloat(document.getElementById('rate-1').value);
 
-    const resp = await fetch('/api/zk-ode/prove', {
+    const resp = await fetch('api/prove', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
