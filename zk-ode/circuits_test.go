@@ -1,8 +1,10 @@
 package zkode
 
 import (
+	"fmt"
 	"math"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -266,6 +268,34 @@ func TestTicTacToeProof(t *testing.T) {
 	}
 
 	t.Log("Tic-tac-toe single step proof verified successfully")
+}
+
+func TestExportCascadeVerifier(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping verifier export in short mode")
+	}
+
+	sol, err := ExportVerifier(CascadeNet())
+	if err != nil {
+		t.Fatalf("export failed: %v", err)
+	}
+
+	t.Logf("Exported Solidity verifier (%d bytes)", len(sol))
+
+	// Write to solidity directory for inspection
+	outPath := "../solidity/src/Groth16Verifier.sol"
+	if err := os.WriteFile(outPath, []byte(sol), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	t.Logf("Written to %s", outPath)
+
+	// Log the function selector for the adapter
+	// For cascade: verifyProof(uint256[8],uint256[5]) — 5 = 3 + 2 transitions
+	net := CascadeNet()
+	numPublicInputs := 3 + net.NumTransitions // preRoot, postRoot, stepSize, rates...
+	sig := fmt.Sprintf("verifyProof(uint256[8],uint256[%d])", numPublicInputs)
+	t.Logf("gnark verifier function signature: %s", sig)
+	t.Logf("Use this signature to compute the selector for Groth16VerifierAdapter")
 }
 
 // fixedToFloat converts a fixed-point field element back to float64 for display.

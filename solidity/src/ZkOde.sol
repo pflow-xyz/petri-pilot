@@ -165,11 +165,7 @@ contract ZkOde {
         }
 
         // Verify the ZK proof
-        uint256[2] memory a = [proof[0], proof[1]];
-        uint256[2][2] memory b = [[proof[2], proof[3]], [proof[4], proof[5]]];
-        uint256[2] memory c = [proof[6], proof[7]];
-
-        bool valid = verifier.verifyProof(a, b, c, publicInputs);
+        bool valid = verifier.verifyProof(proof, publicInputs);
         if (!valid) revert InvalidProof();
 
         // Record step

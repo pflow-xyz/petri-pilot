@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import {ZkOdeVerifier} from "../src/ZkOdeVerifier.sol";
+import {Groth16VerifierAdapter} from "../src/Groth16VerifierAdapter.sol";
 import {ZkOde} from "../src/ZkOde.sol";
 
 contract ZkOdeTest is Test {
@@ -243,5 +244,55 @@ contract ZkOdeOptimalTest is Test {
         // Suboptimal choice accepted when enforcement is off
         zkOde.submitStep(proof, publicInputs, 0);
         assertEq(zkOde.stepCount(), 1);
+    }
+}
+
+/// @dev Test the Groth16VerifierAdapter contract.
+contract Groth16VerifierAdapterTest is Test {
+    Groth16VerifierAdapter adapter;
+    ZkOdeVerifier stub;
+
+    function setUp() public {
+        // Use stub as the target (always accepts) to test adapter mechanics
+        stub = new ZkOdeVerifier();
+
+        // Compute selector for the stub's verifyProof(uint256[8],uint256[])
+        bytes4 sel = bytes4(keccak256("verifyProof(uint256[8],uint256[])"));
+        adapter = new Groth16VerifierAdapter(address(stub), sel, 5);
+    }
+
+    function testAdapterForwardsToTarget() public view {
+        uint256[8] memory proof;
+        uint256[] memory input = new uint256[](5);
+        input[0] = 111;
+        input[1] = 222;
+        input[2] = 333;
+        input[3] = 444;
+        input[4] = 555;
+
+        bool valid = adapter.verifyProof(proof, input);
+        assertTrue(valid);
+    }
+
+    function testAdapterRejectsWrongInputLength() public {
+        uint256[8] memory proof;
+        uint256[] memory input = new uint256[](3); // wrong length
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Groth16VerifierAdapter.InputLengthMismatch.selector, 5, 3
+            )
+        );
+        adapter.verifyProof(proof, input);
+    }
+
+    function testAdapterConstructorValidation() public {
+        bytes4 sel = bytes4(keccak256("verifyProof(uint256[8],uint256[5])"));
+
+        vm.expectRevert("zero verifier");
+        new Groth16VerifierAdapter(address(0), sel, 5);
+
+        vm.expectRevert("zero inputs");
+        new Groth16VerifierAdapter(address(stub), sel, 0);
     }
 }

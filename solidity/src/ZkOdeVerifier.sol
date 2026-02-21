@@ -5,20 +5,13 @@ import {IVerifier} from "./IVerifier.sol";
 
 /// @title ZkOdeVerifier
 /// @notice Stub Groth16 verifier for ZK-ODE Tsit5 step circuit.
-/// @dev Replace with the gnark-generated verifier contract from:
-///      prover.ExportVerifier("tsit5_step")
-///
-///      The generated verifier uses the BN254 ecPairing precompile (EIP-196/197)
-///      which is available on Base L2.
+/// @dev Replace with Groth16VerifierAdapter wrapping the gnark-generated verifier.
 contract ZkOdeVerifier is IVerifier {
     function verifyProof(
-        uint256[2] calldata,
-        uint256[2][2] calldata,
-        uint256[2] calldata,
+        uint256[8] calldata,
         uint256[] calldata
     ) external pure override returns (bool) {
         // Stub: always returns true.
-        // Replace this contract with the gnark-generated Groth16 verifier.
         return true;
     }
 }

@@ -98,6 +98,19 @@ func NewZkODEService(net NetConfig) (*prover.Service, error) {
 	return prover.NewService(p, factory), nil
 }
 
+// ExportVerifier compiles the Tsit5 circuit for the given net, runs trusted setup,
+// and exports the gnark-generated Groth16 Solidity verifier.
+func ExportVerifier(net NetConfig) (string, error) {
+	p := prover.NewProver()
+	template := NewTsit5StepCircuit(net)
+	cc, err := p.CompileCircuit("tsit5_step", template)
+	if err != nil {
+		return "", fmt.Errorf("compile: %w", err)
+	}
+	p.StoreCircuit("tsit5_step", cc)
+	return p.ExportVerifier("tsit5_step")
+}
+
 // ProveStep generates a Groth16 proof for a single ODE step.
 // This is a convenience wrapper for programmatic use (vs HTTP API).
 func ProveStep(net NetConfig, p *prover.Prover, state *ODEState, h *big.Int, rates []*big.Int) (*prover.ProofResult, *ODEState, error) {
