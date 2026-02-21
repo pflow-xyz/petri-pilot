@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {IVerifier} from "./IVerifier.sol";
 
 /// @title ZkOde
+/// @author pflow-xyz (https://github.com/pflow-xyz/petri-pilot/tree/main/solidity)
 /// @notice State commitment manager for ZK-proven ODE steps on a Petri net.
 /// @dev Accepts Groth16 proofs of Tsit5 ODE integration steps and maintains
 ///      a chain of state root commitments. Each step proves that the prover

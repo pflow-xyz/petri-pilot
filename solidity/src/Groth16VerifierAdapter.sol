@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {IVerifier} from "./IVerifier.sol";
 
 /// @title Groth16VerifierAdapter
+/// @author pflow-xyz (https://github.com/pflow-xyz/petri-pilot/tree/main/solidity)
 /// @notice Adapts a gnark-generated Groth16 verifier to the IVerifier interface.
 /// @dev gnark's ExportSolidity produces a contract with fixed-size public input arrays:
 ///        verifyProof(uint256[8] calldata proof, uint256[N] calldata input)

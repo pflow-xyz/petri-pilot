@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {IVerifier} from "./IVerifier.sol";
 
 /// @title ZkOdeVerifier
+/// @author pflow-xyz (https://github.com/pflow-xyz/petri-pilot/tree/main/solidity)
 /// @notice Stub Groth16 verifier for ZK-ODE Tsit5 step circuit.
 /// @dev Replace with the gnark-generated verifier contract from:
 ///      prover.ExportVerifier("tsit5_step")
