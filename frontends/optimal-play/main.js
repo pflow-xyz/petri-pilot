@@ -12,9 +12,9 @@ const WIN_LINES = [
 
 // TTT contract addresses on Base Sepolia (updated after deployment)
 const TTT_CONTRACT = {
-  zkOde: '0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8',
-  verifier: '0x6c8f6dC588f0f3f89aF581338d2196B06F3Fd989',
-  adapter: '0x1DDfa68Ac8578aEF0D33948622a87d3614A9B462',
+  zkOde: '0xe260BA6e13a393018F394B9d847aEd4809f8d9Fa',
+  verifier: '0xC092A5e3aFCB760741754f24d2869505F707f924',
+  adapter: '0x1d8Ce7Cb332fa4F6Fc0DFCA72A981Bc3b8d7a4bE',
 };
 const BASE_SEPOLIA_RPC = 'https://sepolia.base.org';
 const BASESCAN_URL = 'https://sepolia.basescan.org';
@@ -329,7 +329,7 @@ async function fetchOnChainStatus() {
 
   try {
     // currentStateRoot()
-    const rootData = '0x53f3a866'; // keccak256("currentStateRoot()")[:4]
+    const rootData = '0xac2eba98'; // cast sig "currentStateRoot()"
     const rootResp = await ethCall(addr, rootData);
     if (rootResp && rootResp !== '0x') {
       const rootHex = '0x' + rootResp.slice(2, 18) + '...';
@@ -337,7 +337,7 @@ async function fetchOnChainStatus() {
     }
 
     // enforceOptimal()
-    const enforceData = '0x6c63a6a8'; // keccak256("enforceOptimal()")[:4]
+    const enforceData = '0x51fef09f'; // cast sig "enforceOptimal()"
     const enforceResp = await ethCall(addr, enforceData);
     if (enforceResp) {
       const enforced = parseInt(enforceResp, 16) !== 0;
@@ -345,7 +345,7 @@ async function fetchOnChainStatus() {
     }
 
     // stepCount()
-    const stepsData = '0xc4b55e77'; // keccak256("stepCount()")[:4]
+    const stepsData = '0x415deffa'; // cast sig "stepCount()"
     const stepsResp = await ethCall(addr, stepsData);
     if (stepsResp) {
       document.getElementById('ttt-steps').textContent = parseInt(stepsResp, 16).toString();

@@ -31,6 +31,7 @@ contract ZkOde {
     struct Step {
         uint256 preRoot;
         uint256 postRoot;
+        uint256 nextRoot;
         uint256 stepSize;
         uint256 chosenTransition;
         uint256 timestamp;
@@ -43,6 +44,7 @@ contract ZkOde {
         uint256 indexed stepNumber,
         uint256 preRoot,
         uint256 postRoot,
+        uint256 nextRoot,
         uint256 stepSize,
         uint256 chosenTransition,
         uint256 timestamp
@@ -83,9 +85,10 @@ contract ZkOde {
     function submitStep(
         uint256[8] calldata proof,
         uint256[] calldata publicInputs,
-        uint256 chosenTransition
+        uint256 chosenTransition,
+        uint256 nextStateRoot
     ) external onlyProver {
-        _verifyAndRecord(proof, publicInputs, chosenTransition);
+        _verifyAndRecord(proof, publicInputs, chosenTransition, nextStateRoot);
     }
 
     /// @notice Submit a batch of sequential ODE step proofs in one transaction.
@@ -95,12 +98,14 @@ contract ZkOde {
     function submitBatchSteps(
         uint256[8][] calldata proofs,
         uint256[][] calldata publicInputsBatch,
-        uint256[] calldata chosenTransitions
+        uint256[] calldata chosenTransitions,
+        uint256[] calldata nextStateRoots
     ) external onlyProver {
         require(proofs.length == publicInputsBatch.length, "length mismatch");
         require(proofs.length == chosenTransitions.length, "transitions length mismatch");
+        require(proofs.length == nextStateRoots.length, "nextStateRoots length mismatch");
         for (uint256 i = 0; i < proofs.length; i++) {
-            _verifyAndRecord(proofs[i], publicInputsBatch[i], chosenTransitions[i]);
+            _verifyAndRecord(proofs[i], publicInputsBatch[i], chosenTransitions[i], nextStateRoots[i]);
         }
     }
 
@@ -132,7 +137,8 @@ contract ZkOde {
     function _verifyAndRecord(
         uint256[8] calldata proof,
         uint256[] calldata publicInputs,
-        uint256 chosenTransition
+        uint256 chosenTransition,
+        uint256 nextStateRoot
     ) internal {
         require(publicInputs.length >= 3 + numTransitions, "insufficient public inputs");
 
@@ -173,13 +179,15 @@ contract ZkOde {
         steps[stepCount] = Step({
             preRoot: preRoot,
             postRoot: postRoot,
+            nextRoot: nextStateRoot,
             stepSize: stepSize,
             chosenTransition: chosenTransition,
             timestamp: block.timestamp
         });
 
-        currentStateRoot = postRoot;
-        emit StepVerified(stepCount, preRoot, postRoot, stepSize, chosenTransition, block.timestamp);
+        // Chain on the discrete post-move board, not the ODE post-state
+        currentStateRoot = nextStateRoot;
+        emit StepVerified(stepCount, preRoot, postRoot, nextStateRoot, stepSize, chosenTransition, block.timestamp);
         stepCount++;
     }
 }

@@ -42,14 +42,16 @@ contract ZkOdeTest is Test {
         uint256[8] memory proof;
         uint256[] memory publicInputs = _makePublicInputs(GENESIS_ROOT, 67890);
 
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
 
-        assertEq(zkOde.currentStateRoot(), 67890);
+        // currentStateRoot chains on nextStateRoot, not postRoot
+        assertEq(zkOde.currentStateRoot(), 99999);
         assertEq(zkOde.stepCount(), 1);
 
         ZkOde.Step memory step = zkOde.getStep(0);
         assertEq(step.preRoot, GENESIS_ROOT);
         assertEq(step.postRoot, 67890);
+        assertEq(step.nextRoot, 99999);
         assertEq(step.stepSize, 1e16);
         assertEq(step.chosenTransition, 0);
     }
@@ -58,10 +60,11 @@ contract ZkOdeTest is Test {
         uint256 root = GENESIS_ROOT;
         for (uint256 i = 0; i < 5; i++) {
             uint256[8] memory proof;
+            uint256 postRoot = root + 500 * (i + 1);
             uint256 nextRoot = root + 1000 * (i + 1);
-            uint256[] memory publicInputs = _makePublicInputs(root, nextRoot);
+            uint256[] memory publicInputs = _makePublicInputs(root, postRoot);
 
-            zkOde.submitStep(proof, publicInputs, i % NUM_TRANSITIONS);
+            zkOde.submitStep(proof, publicInputs, i % NUM_TRANSITIONS, nextRoot);
             root = nextRoot;
         }
 
@@ -73,16 +76,19 @@ contract ZkOdeTest is Test {
         uint256[8][] memory proofs = new uint256[8][](3);
         uint256[][] memory publicInputsBatch = new uint256[][](3);
         uint256[] memory chosenTransitions = new uint256[](3);
+        uint256[] memory nextStateRoots = new uint256[](3);
 
         uint256 root = GENESIS_ROOT;
         for (uint256 i = 0; i < 3; i++) {
+            uint256 postRoot = root + 50 * (i + 1);
             uint256 nextRoot = root + 100 * (i + 1);
-            publicInputsBatch[i] = _makePublicInputs(root, nextRoot);
+            publicInputsBatch[i] = _makePublicInputs(root, postRoot);
             chosenTransitions[i] = 0;
+            nextStateRoots[i] = nextRoot;
             root = nextRoot;
         }
 
-        zkOde.submitBatchSteps(proofs, publicInputsBatch, chosenTransitions);
+        zkOde.submitBatchSteps(proofs, publicInputsBatch, chosenTransitions, nextStateRoots);
 
         assertEq(zkOde.stepCount(), 3);
         assertEq(zkOde.currentStateRoot(), root);
@@ -99,7 +105,7 @@ contract ZkOdeTest is Test {
                 99999
             )
         );
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 67890);
     }
 
     function testRevertOnNonProver() public {
@@ -109,7 +115,7 @@ contract ZkOdeTest is Test {
 
         vm.prank(other);
         vm.expectRevert(ZkOde.OnlyProver.selector);
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 67890);
     }
 
     function testRevertOnInvalidTransition() public {
@@ -119,7 +125,7 @@ contract ZkOdeTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(ZkOde.InvalidTransition.selector, 5, NUM_TRANSITIONS)
         );
-        zkOde.submitStep(proof, publicInputs, 5);
+        zkOde.submitStep(proof, publicInputs, 5, 67890);
     }
 
     function testSetProver() public {
@@ -182,11 +188,13 @@ contract ZkOdeOptimalTest is Test {
         uint256[] memory publicInputs = _makeTTTPublicInputs(GENESIS_ROOT, 67890, rates);
 
         // Choosing transition 4 (highest rate) should succeed
-        zkOde.submitStep(proof, publicInputs, 4);
+        zkOde.submitStep(proof, publicInputs, 4, 99999);
 
         assertEq(zkOde.stepCount(), 1);
+        assertEq(zkOde.currentStateRoot(), 99999);
         ZkOde.Step memory step = zkOde.getStep(0);
         assertEq(step.chosenTransition, 4);
+        assertEq(step.nextRoot, 99999);
     }
 
     function testSuboptimalPlayReverted() public {
@@ -211,7 +219,7 @@ contract ZkOdeOptimalTest is Test {
                 5e18     // betterRate
             )
         );
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
     }
 
     function testTiedRatesAccepted() public {
@@ -228,7 +236,7 @@ contract ZkOdeOptimalTest is Test {
         uint256[] memory publicInputs = _makeTTTPublicInputs(GENESIS_ROOT, 67890, rates);
 
         // Either tied transition should be accepted
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
         assertEq(zkOde.stepCount(), 1);
     }
 
@@ -243,7 +251,7 @@ contract ZkOdeOptimalTest is Test {
         uint256[] memory publicInputs = _makeTTTPublicInputs(GENESIS_ROOT, 67890, rates);
 
         // Suboptimal choice accepted when enforcement is off
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
         assertEq(zkOde.stepCount(), 1);
     }
 }
@@ -283,7 +291,7 @@ contract ZkOdeAdapterTest is Test {
         publicInputs[4] = 1e18;
 
         vm.expectRevert(ZkOde.InvalidProof.selector);
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
     }
 
     function testAdapterRejectsWrongInputCount() public {
@@ -296,6 +304,6 @@ contract ZkOdeAdapterTest is Test {
 
         // ZkOde requires >= 3 + numTransitions = 5 inputs
         vm.expectRevert();
-        zkOde.submitStep(proof, publicInputs, 0);
+        zkOde.submitStep(proof, publicInputs, 0, 99999);
     }
 }

@@ -124,6 +124,16 @@ var TTTTransitionNames = [TTTNumTransitions]string{
 	"o_win_row0", "o_win_row1", "o_win_row2", "o_win_col0", "o_win_col1", "o_win_col2", "o_win_diag", "o_win_anti",
 }
 
+// TTTRateConstants holds the rate constant k[t] for each transition.
+// Play transitions use position-based strategic weights:
+//   - Center (1,1): k=4 (participates in 4 win lines: row, col, diag, anti-diag)
+//   - Corners: k=3 (participates in 3 win lines: row, col, one diagonal)
+//   - Edges: k=2 (participates in 2 win lines: row, col)
+//   - Win transitions: k=1 (unchanged)
+//
+// Rate formula: rate[t] = k[t] * product(marking[inputs[t]])
+var TTTRateConstants [TTTNumTransitions]*big.Int
+
 // TTTStoichiometry is the net-change matrix S[place][transition].
 // S = Output - Input for each (place, transition) pair.
 //
@@ -141,6 +151,7 @@ var TTTTransitionInputs [TTTNumTransitions][]int
 var TTTNumInputs [TTTNumTransitions]int
 
 func init() {
+	initTTTRateConstants()
 	initTTTStoichiometry()
 	initTTTTransitionInputs()
 }
@@ -242,6 +253,34 @@ func initTTTTransitionInputs() {
 		p := winPatterns[i]
 		TTTTransitionInputs[t] = []int{O00 + p[0], O00 + p[1], O00 + p[2], XTurn, GameActive}
 		TTTNumInputs[t] = 5
+	}
+}
+
+func initTTTRateConstants() {
+	// Position weights based on number of win lines each cell participates in.
+	// Grid positions: 0=corner, 1=edge, 2=corner, 3=edge, 4=center, etc.
+	positionWeights := [9]float64{
+		3, 2, 3, // (0,0) corner, (0,1) edge, (0,2) corner
+		2, 4, 2, // (1,0) edge, (1,1) center, (1,2) edge
+		3, 2, 3, // (2,0) corner, (2,1) edge, (2,2) corner
+	}
+
+	// X play transitions (0-8): use position weights
+	for i := 0; i < 9; i++ {
+		TTTRateConstants[TXPlay00+i] = FixFromFloat(positionWeights[i])
+	}
+
+	// O play transitions (9-17): use same position weights
+	for i := 0; i < 9; i++ {
+		TTTRateConstants[TOPlay00+i] = FixFromFloat(positionWeights[i])
+	}
+
+	// Win transitions (18-33): k=1
+	for i := 0; i < 8; i++ {
+		TTTRateConstants[TXWinRow0+i] = FixFromFloat(1.0)
+	}
+	for i := 0; i < 8; i++ {
+		TTTRateConstants[TOWinRow0+i] = FixFromFloat(1.0)
 	}
 }
 

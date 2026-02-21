@@ -29,13 +29,14 @@ type TTTStepWitness struct {
 	ActualRates [TTTNumTransitions]*big.Int
 }
 
-// nativeMultiInputRate computes rate = product(marking[inputs[t]]) in native big.Int.
+// nativeMultiInputRate computes rate = k[t] * product(marking[inputs[t]]) in native big.Int.
 func nativeMultiInputRate(marking [TTTNumPlaces]*big.Int, t int) *big.Int {
 	inputs := TTTTransitionInputs[t]
 	rate := new(big.Int).Set(marking[inputs[0]])
 	for i := 1; i < len(inputs); i++ {
 		rate = NativeFixMul(rate, marking[inputs[i]])
 	}
+	rate = NativeFixMul(rate, TTTRateConstants[t])
 	return rate
 }
 
@@ -153,6 +154,24 @@ func (w *TTTStepWitness) ToCircuitAssignment() *TTTStepCircuit {
 	}
 
 	return c
+}
+
+// ApplyDiscreteMove applies a transition to a discrete marking using the
+// stoichiometry matrix. For each place where S[p][t]==-1, subtracts 1.0;
+// where S[p][t]==+1, adds 1.0. Returns a new marking with clean integer values.
+func ApplyDiscreteMove(marking [TTTNumPlaces]*big.Int, transition int) [TTTNumPlaces]*big.Int {
+	one := FixFromFloat(1.0)
+	var result [TTTNumPlaces]*big.Int
+	for p := 0; p < TTTNumPlaces; p++ {
+		result[p] = new(big.Int).Set(marking[p])
+		s := TTTStoichiometry[p][transition]
+		if s == -1 {
+			result[p] = NativeFixSub(result[p], one)
+		} else if s == 1 {
+			result[p] = NativeFixAdd(result[p], one)
+		}
+	}
+	return result
 }
 
 // BoardToTTTODEState converts a Board + player turn into a TTTODEState.

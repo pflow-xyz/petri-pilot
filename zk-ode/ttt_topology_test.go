@@ -165,6 +165,47 @@ func TestTTTDefaultInitialMarking(t *testing.T) {
 	}
 }
 
+func TestTTTRateConstants(t *testing.T) {
+	// Position weights: center=4, corners=3, edges=2
+	expectedK := [9]float64{
+		3, 2, 3, // row 0: corner, edge, corner
+		2, 4, 2, // row 1: edge, center, edge
+		3, 2, 3, // row 2: corner, edge, corner
+	}
+
+	for i := 0; i < 9; i++ {
+		// X play rate constants
+		k := FixToFloat(TTTRateConstants[TXPlay00+i])
+		if k != expectedK[i] {
+			t.Errorf("x_play_%d: expected k=%.0f, got %.6f", i, expectedK[i], k)
+		}
+		// O play rate constants (same weights)
+		k = FixToFloat(TTTRateConstants[TOPlay00+i])
+		if k != expectedK[i] {
+			t.Errorf("o_play_%d: expected k=%.0f, got %.6f", i, expectedK[i], k)
+		}
+	}
+
+	// Win transitions: k=1
+	for i := 0; i < 8; i++ {
+		k := FixToFloat(TTTRateConstants[TXWinRow0+i])
+		if k != 1.0 {
+			t.Errorf("x_win_%d: expected k=1, got %.6f", i, k)
+		}
+		k = FixToFloat(TTTRateConstants[TOWinRow0+i])
+		if k != 1.0 {
+			t.Errorf("o_win_%d: expected k=1, got %.6f", i, k)
+		}
+	}
+
+	// All rate constants should be non-nil
+	for i := 0; i < TTTNumTransitions; i++ {
+		if TTTRateConstants[i] == nil {
+			t.Fatalf("TTTRateConstants[%d] (%s) is nil", i, TTTTransitionNames[i])
+		}
+	}
+}
+
 func TestTTTMatchesBuildTicTacToeNet(t *testing.T) {
 	// Verify topology constants match the dynamic BuildTicTacToeNet()
 	net := BuildTicTacToeNet()

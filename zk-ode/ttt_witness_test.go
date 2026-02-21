@@ -74,8 +74,8 @@ func TestNativeTTTStepEmptyBoard(t *testing.T) {
 	post := NativeTTTStep(marking, h)
 
 	// After one step from empty board with X's turn:
-	// - x_play transitions fire (rate = cell * x_turn = 1*1 = 1)
-	// - o_play transitions are disabled (o_turn = 0, so rate = cell * 0 = 0)
+	// - x_play transitions fire (rate = k * cell * x_turn; k=4 center, 3 corner, 2 edge)
+	// - o_play transitions are disabled (o_turn = 0, so rate = k * cell * 0 = 0)
 	// - win transitions disabled (no pieces placed, so product of inputs = 0)
 	//
 	// The empty cells should decrease slightly (consumed by x_play)
@@ -132,13 +132,25 @@ func TestComputeTTTStep(t *testing.T) {
 		}
 	}
 
-	// x_play_00 rate should be 1.0 (p00=1, x_turn=1, product=1)
-	xPlayRate := FixToFloat(w.ActualRates[TXPlay00])
-	if xPlayRate < 0.99 || xPlayRate > 1.01 {
-		t.Errorf("x_play_00 rate: expected ~1.0, got %.6f", xPlayRate)
+	// x_play_00 rate should be 3.0 (p00=1, x_turn=1, product=1, k=3 for corner)
+	xPlayCornerRate := FixToFloat(w.ActualRates[TXPlay00])
+	if xPlayCornerRate < 2.99 || xPlayCornerRate > 3.01 {
+		t.Errorf("x_play_00 rate: expected ~3.0 (corner k=3), got %.6f", xPlayCornerRate)
 	}
 
-	// o_play_00 rate should be 0.0 (p00=1, o_turn=0, product=0)
+	// x_play_11 rate should be 4.0 (p11=1, x_turn=1, product=1, k=4 for center)
+	xPlayCenterRate := FixToFloat(w.ActualRates[TXPlay11])
+	if xPlayCenterRate < 3.99 || xPlayCenterRate > 4.01 {
+		t.Errorf("x_play_11 rate: expected ~4.0 (center k=4), got %.6f", xPlayCenterRate)
+	}
+
+	// x_play_01 rate should be 2.0 (p01=1, x_turn=1, product=1, k=2 for edge)
+	xPlayEdgeRate := FixToFloat(w.ActualRates[TXPlay01])
+	if xPlayEdgeRate < 1.99 || xPlayEdgeRate > 2.01 {
+		t.Errorf("x_play_01 rate: expected ~2.0 (edge k=2), got %.6f", xPlayEdgeRate)
+	}
+
+	// o_play_00 rate should be 0.0 (p00=1, o_turn=0, product=0, k irrelevant)
 	oPlayRate := FixToFloat(w.ActualRates[TOPlay00])
 	if oPlayRate != 0 {
 		t.Errorf("o_play_00 rate: expected 0.0, got %.6f", oPlayRate)
@@ -246,20 +258,110 @@ func TestBoardWithMoveToTTTState(t *testing.T) {
 	}
 
 	// Check rates: o_play transitions should be enabled for empty cells
+	// Rates now include position-based rate constants (k)
+	expectedK := [9]float64{3, 2, 3, 2, 4, 2, 3, 2, 3}
 	w := ComputeTTTStep(state, FixFromFloat(0.01))
 	for i := 0; i < 9; i++ {
+		oPlayRate := FixToFloat(w.ActualRates[TOPlay00+i])
 		if i == 4 { // center is occupied
-			oPlayRate := FixToFloat(w.ActualRates[TOPlay00+i])
 			if oPlayRate != 0 {
 				t.Errorf("o_play_%d (occupied cell): expected rate 0, got %.6f", i, oPlayRate)
 			}
 		} else {
-			oPlayRate := FixToFloat(w.ActualRates[TOPlay00+i])
-			if oPlayRate < 0.99 || oPlayRate > 1.01 {
-				t.Errorf("o_play_%d (empty cell): expected rate ~1.0, got %.6f", i, oPlayRate)
+			k := expectedK[i]
+			if oPlayRate < k-0.01 || oPlayRate > k+0.01 {
+				t.Errorf("o_play_%d (empty cell): expected rate ~%.1f (k=%.0f), got %.6f", i, k, k, oPlayRate)
 			}
 		}
 	}
+}
+
+func TestApplyDiscreteMove(t *testing.T) {
+	marking := TTTDefaultInitialMarking()
+	one := FixFromFloat(1.0)
+	zero := FixFromFloat(0.0)
+
+	// Apply x_play_11 (X plays center)
+	post := ApplyDiscreteMove(marking, TXPlay11)
+
+	// p11 should go from 1 to 0 (consumed)
+	if post[P11].Cmp(zero) != 0 {
+		t.Errorf("p11: expected 0, got %s", post[P11].Text(10))
+	}
+	// x11 should go from 0 to 1 (produced)
+	if post[X11].Cmp(one) != 0 {
+		t.Errorf("x11: expected 1, got %s", post[X11].Text(10))
+	}
+	// x_turn should go from 1 to 0
+	if post[XTurn].Cmp(zero) != 0 {
+		t.Errorf("x_turn: expected 0, got %s", post[XTurn].Text(10))
+	}
+	// o_turn should go from 0 to 1
+	if post[OTurn].Cmp(one) != 0 {
+		t.Errorf("o_turn: expected 1, got %s", post[OTurn].Text(10))
+	}
+
+	// All other cells should be unchanged
+	for i := P00; i <= P22; i++ {
+		if i == P11 {
+			continue
+		}
+		if post[i].Cmp(marking[i]) != 0 {
+			t.Errorf("%s: expected unchanged, got %s", TTTPlaceNames[i], post[i].Text(10))
+		}
+	}
+
+	// Verify the discrete post-move board matches BoardToTTTODEState
+	board := Board{
+		{"", "", ""},
+		{"", "X", ""},
+		{"", "", ""},
+	}
+	expected := BoardToTTTODEState(board, "O")
+	for p := 0; p < TTTNumPlaces; p++ {
+		if post[p].Cmp(expected.Marking[p]) != 0 {
+			t.Errorf("%s: ApplyDiscreteMove=%s, BoardToTTTODEState=%s",
+				TTTPlaceNames[p], post[p].Text(10), expected.Marking[p].Text(10))
+		}
+	}
+
+	// Verify root matches
+	postRoot := ComputeRoot(post[:])
+	if postRoot.Cmp(expected.Root) != 0 {
+		t.Errorf("root mismatch: ApplyDiscreteMove=0x%s, BoardToTTTODEState=0x%s",
+			postRoot.Text(16), expected.Root.Text(16))
+	}
+
+	t.Logf("Discrete post-move root (X@center): 0x%s", postRoot.Text(16))
+}
+
+func TestApplyDiscreteMoveOTurn(t *testing.T) {
+	// Start from X@center board, O's turn
+	marking := TTTDefaultInitialMarking()
+	afterX := ApplyDiscreteMove(marking, TXPlay11)
+
+	one := FixFromFloat(1.0)
+	zero := FixFromFloat(0.0)
+
+	// Apply o_play_00 (O plays corner)
+	post := ApplyDiscreteMove(afterX, TOPlay00)
+
+	// p00 consumed, o00 produced
+	if post[P00].Cmp(zero) != 0 {
+		t.Errorf("p00: expected 0, got %s", post[P00].Text(10))
+	}
+	if post[O00].Cmp(one) != 0 {
+		t.Errorf("o00: expected 1, got %s", post[O00].Text(10))
+	}
+	// Turn should swap back to X
+	if post[XTurn].Cmp(one) != 0 {
+		t.Errorf("x_turn: expected 1, got %s", post[XTurn].Text(10))
+	}
+	if post[OTurn].Cmp(zero) != 0 {
+		t.Errorf("o_turn: expected 0, got %s", post[OTurn].Text(10))
+	}
+
+	t.Logf("After O@(0,0) root: 0x%s", ComputeRoot(post[:]).Text(16))
 }
 
 func TestNativeTTTStepConservation(t *testing.T) {

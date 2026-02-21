@@ -519,14 +519,18 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia.
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| TTTVerifier | `0x6c8f6dC588f0f3f89aF581338d2196B06F3Fd989` | gnark BN254 verifier (37 inputs, 118k constraints) |
-| Groth16VerifierAdapter | `0x1DDfa68Ac8578aEF0D33948622a87d3614A9B462` | Adapts gnark interface to IVerifier |
-| ZkOde (TTT) | `0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8` | State manager (34 transitions, enforceOptimal=true) |
+| TTTVerifier | `0xC092A5e3aFCB760741754f24d2869505F707f924` | gnark BN254 verifier (37 inputs, 135k constraints) |
+| Groth16VerifierAdapter | `0x1d8Ce7Cb332fa4F6Fc0DFCA72A981Bc3b8d7a4bE` | Adapts gnark interface to IVerifier |
+| ZkOde (TTT) | `0xe260BA6e13a393018F394B9d847aEd4809f8d9Fa` | State manager (34 transitions, enforceOptimal=true, discrete board chaining) |
 
 - **Genesis root:** MiMC(empty board) = `0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c`
 - **Config:** numTransitions=34, enforceOptimal=true, 37 public inputs
-- **Circuit:** 118,622 constraints, 32 places (9 empty + 9 X + 9 O + 5 control), 34 transitions (18 play + 16 win)
-- **First on-chain proof:** [tx `0x99d44bd1...`](https://sepolia.basescan.org/tx/0x99d44bd1ce2c534b4d88f3eb5eac065690c2e863c6959908113a1e5ed7080d1b) — X plays (0,0), transition 0, 606k gas
+- **Circuit:** 135,486 constraints, 32 places (9 empty + 9 X + 9 O + 5 control), 34 transitions (18 play + 16 win)
+- **Rate constants:** center k=4, corners k=3, edges k=2, wins k=1 (breaks symmetry for optimal play)
+- **Discrete board chaining:** After each proof, `currentStateRoot` advances to the MiMC hash of the discrete post-move board (piece staked), not the ODE post-state. This enables multi-move proof chains.
+- **On-chain proofs (2 steps):**
+  - Step 1: [tx `0x2e502d74...`](https://sepolia.basescan.org/tx/0x2e502d74716d9d6dd35c276fb9974bc9e8ef06e02b4c7b0c6752c6815d7e85f7) — X plays center (t=4, rate=4.0), 649k gas
+  - Step 2: [tx `0x397e6235...`](https://sepolia.basescan.org/tx/0x397e6235f955ee89ceb7d1afbf1d7d745412f8c84855bfebad35c70aa86bd175) — O plays corner (t=9, rate=3.0), 632k gas
 
 ### Common
 

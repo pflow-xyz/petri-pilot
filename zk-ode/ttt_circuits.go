@@ -107,14 +107,14 @@ func (c *TTTStepCircuit) Define(api frontend.API) error {
 }
 
 // computeMultiInputRate computes the mass-action rate for transition t:
-// rate = product(marking[input]) for all input places.
-// With k=1 hardcoded, this is just the product of input markings.
+// rate = k[t] * product(marking[input]) for all input places.
 func computeMultiInputRate(api frontend.API, marking []frontend.Variable, t int) frontend.Variable {
 	inputs := TTTTransitionInputs[t]
 	rate := marking[inputs[0]]
 	for i := 1; i < len(inputs); i++ {
 		rate = FixMul(api, rate, marking[inputs[i]])
 	}
+	rate = FixMul(api, rate, TTTRateConstants[t])
 	return rate
 }
 
