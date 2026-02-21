@@ -245,15 +245,59 @@ func (s *HTTPService) handleProveOptimal(w http.ResponseWriter, r *http.Request)
 	isOptimal := result.Optimal != nil &&
 		result.Optimal.Row == row && result.Optimal.Col == col
 
-	// Build the hypothetical state for the chosen move and run ODE to get rates
+	// Build the hypothetical state for the chosen move
+	hypotheticalBoard := Board(req.Board)
+	hypotheticalBoard[row][col] = req.Player
+	opponent := "O"
+	if req.Player == "O" {
+		opponent = "X"
+	}
+
+	h := FixFromFloat(0.01)
+
+	// Use TTT circuit if enabled, otherwise fall back to cascade
+	if _, hasTTT := s.prover.GetCircuit("ttt_step"); hasTTT {
+		state := BoardToTTTODEState(hypotheticalBoard, opponent)
+		proof, _, witness, err := ProveTTTStep(s.prover, state, h)
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, fmt.Sprintf("TTT proof generation failed: %v", err))
+			return
+		}
+
+		// Find the transition index for the chosen move
+		transitionIndex := -1
+		if req.Player == "X" {
+			transitionIndex = TXPlay00 + row*3 + col
+		} else {
+			transitionIndex = TOPlay00 + row*3 + col
+		}
+
+		// Convert rates to float for response
+		rateValues := make(map[string]float64)
+		for t := 0; t < TTTNumTransitions; t++ {
+			rateValues[TTTTransitionNames[t]] = FixToFloat(witness.ActualRates[t])
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"proof":            proof,
+			"is_optimal":       isOptimal,
+			"objective_value":  moveScore.Adjusted,
+			"scores":           result.Scores,
+			"transition_index": transitionIndex,
+			"rates":            rateValues,
+			"circuit":          "ttt_step",
+			"pre_state_root":   fmt.Sprintf("0x%s", state.Root.Text(16)),
+			"status":           "ok",
+		})
+		return
+	}
+
+	// Fallback: cascade circuit (legacy)
 	net := BuildTicTacToeNet()
 	hypotheticalState := buildStateWithMove(Board(req.Board), req.Player, row, col)
 	rates := net.SetRates(nil)
 
-	// Convert to fixed-point for the ZK circuit (cascade A→B→C topology)
-	// The Tsit5 circuit operates on the 3-place cascade, not the full TTT net.
-	// We use the first two rates from the TTT net as representative.
-	h := FixFromFloat(0.01)
 	var fixedRates [NumTransitions]*big.Int
 	fixedRates[0] = FixFromFloat(rates["x_play_00"])
 	fixedRates[1] = FixFromFloat(rates["x_play_01"])
@@ -265,7 +309,6 @@ func (s *HTTPService) handleProveOptimal(w http.ResponseWriter, r *http.Request)
 
 	state := NewODEState(marking)
 
-	// Generate proof
 	proof, _, err := ProveStep(s.prover, state, h, fixedRates)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, fmt.Sprintf("proof generation failed: %v", err))
@@ -278,6 +321,7 @@ func (s *HTTPService) handleProveOptimal(w http.ResponseWriter, r *http.Request)
 		"is_optimal":      isOptimal,
 		"objective_value": moveScore.Adjusted,
 		"scores":          result.Scores,
+		"circuit":         "tsit5_step",
 		"status":          "ok",
 	})
 }

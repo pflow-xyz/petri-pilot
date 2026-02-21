@@ -77,6 +77,46 @@
       </div>
     </section>
 
+    <!-- On-Chain Status -->
+    <section class="card onchain-card">
+      <h2>On-Chain Status</h2>
+      <p class="card-desc">TTT ZK-ODE contract on Base Sepolia. All 34 transition rates verified on-chain.</p>
+
+      <div class="onchain-grid" id="onchain-status">
+        <div class="onchain-item">
+          <span class="onchain-label">Network</span>
+          <span class="onchain-value">Base Sepolia</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">ZkOde Contract</span>
+          <span class="onchain-value" id="ttt-contract">Not deployed</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Current State Root</span>
+          <span class="onchain-value mono" id="ttt-state-root">--</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Transitions</span>
+          <span class="onchain-value" id="ttt-transitions">34</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Enforce Optimal</span>
+          <span class="onchain-value" id="ttt-enforce">--</span>
+        </div>
+        <div class="onchain-item">
+          <span class="onchain-label">Steps Verified</span>
+          <span class="onchain-value" id="ttt-steps">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Proof Status -->
+    <section class="card proof-card" id="proof-section" style="display: none;">
+      <h2>ZK Proof</h2>
+      <p class="card-desc" id="proof-status">Generating proof for AI move...</p>
+      <div id="proof-details"></div>
+    </section>
+
     <!-- How Scores Work -->
     <section class="card">
       <h2>How Scores Work</h2>

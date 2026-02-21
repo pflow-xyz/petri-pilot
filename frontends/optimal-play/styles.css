@@ -294,10 +294,89 @@ h1 {
   color: #c7d2fe;
 }
 
+/* On-chain status */
+.onchain-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.onchain-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.onchain-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.onchain-value {
+  font-size: 0.85rem;
+  color: #e0e0f0;
+  font-weight: 500;
+}
+
+.onchain-value.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+
+.onchain-link {
+  color: #818cf8;
+  text-decoration: none;
+}
+.onchain-link:hover { text-decoration: underline; }
+
+/* Proof section */
+.proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.proof-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.proof-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proof-value {
+  font-size: 0.85rem;
+  color: #e0e0f0;
+  font-weight: 500;
+}
+
+.proof-value.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+
+.proof-optimal {
+  color: #34d399;
+}
+
+.proof-suboptimal {
+  color: #f87171;
+}
+
 @media (max-width: 600px) {
   .board { width: 264px; }
   .cell { width: 84px; height: 84px; font-size: 2rem; }
   .pipeline { flex-wrap: wrap; }
   .pipeline-arrow { display: none; }
   .pipeline-stage { min-width: 45%; }
+  .onchain-grid { grid-template-columns: 1fr; }
+  .proof-grid { grid-template-columns: 1fr; }
 }

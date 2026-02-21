@@ -1,4 +1,4 @@
-// Provably Optimal Play — interactive board + ODE heatmap
+// Provably Optimal Play — interactive board + ODE heatmap + ZK proofs
 
 const EMPTY = '';
 const X = 'X';
@@ -9,6 +9,15 @@ const WIN_LINES = [
   [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]], // cols
   [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]],                      // diags
 ];
+
+// TTT contract addresses on Base Sepolia (updated after deployment)
+const TTT_CONTRACT = {
+  zkOde: null,     // Set after deployment
+  verifier: null,
+  adapter: null,
+};
+const BASE_SEPOLIA_RPC = 'https://sepolia.base.org';
+const BASESCAN_URL = 'https://sepolia.basescan.org';
 
 let board = Array.from({ length: 3 }, () => Array(3).fill(EMPTY));
 let currentPlayer = X;
@@ -25,6 +34,7 @@ function resetGame() {
   gameOver = false;
   $status.textContent = "X\u2019s turn \u2014 click a cell to play";
   clearPipelineHighlights();
+  hideProofSection();
 
   cells.forEach(cell => {
     cell.innerHTML = '';
@@ -45,7 +55,6 @@ function checkWinner() {
       return { winner: va, line };
     }
   }
-  // Check draw
   const full = board.every(row => row.every(c => c !== EMPTY));
   if (full) return { winner: 'draw', line: null };
   return null;
@@ -68,9 +77,16 @@ function onCellClick(e) {
 
   if (board[r][c] !== EMPTY || gameOver) return;
 
+  // Capture board state BEFORE the move for the proof request
+  const boardBeforeMove = board.map(row => [...row]);
+  const playerForProof = currentPlayer;
+
   board[r][c] = currentPlayer;
   cell.innerHTML = `<span class="piece ${currentPlayer.toLowerCase()}">${currentPlayer}</span>`;
   cell.classList.add('occupied');
+
+  // Request proof for the move (async, non-blocking)
+  requestProof(boardBeforeMove, playerForProof, r, c);
 
   const result = checkWinner();
   if (result) {
@@ -127,7 +143,6 @@ function scoreColor(t) {
 async function evaluate() {
   clearHeatmap();
 
-  // Check if there are any empty cells
   const hasEmpty = board.some(row => row.some(c => c === EMPTY));
   if (!hasEmpty || gameOver) return;
 
@@ -157,7 +172,6 @@ async function evaluate() {
 
 // Render heatmap overlay on empty cells
 function renderHeatmap(values, optimalKey) {
-  // Collect all scores to normalize
   const scores = Object.values(values);
   if (scores.length === 0) return;
 
@@ -178,18 +192,15 @@ function renderHeatmap(values, optimalKey) {
     const t = (score - min) / range;
     const color = scoreColor(t);
 
-    // Background tint
     cell.style.background = `${color}22`;
     cell.style.borderColor = color;
 
-    // Overlay with score value
     const overlay = document.createElement('div');
     overlay.className = 'heat-overlay';
     overlay.style.background = `${color}33`;
     overlay.innerHTML = `<span class="heat-value">${score.toFixed(2)}</span>`;
     cell.appendChild(overlay);
 
-    // Mark optimal
     if (key === optimalKey) {
       const marker = document.createElement('span');
       marker.className = 'optimal-marker';
@@ -212,8 +223,156 @@ function clearPipelineHighlights() {
   document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.remove('active'));
 }
 
+// --- ZK Proof Section ---
+
+function showProofSection(msg) {
+  const section = document.getElementById('proof-section');
+  const status = document.getElementById('proof-status');
+  section.style.display = '';
+  status.textContent = msg;
+  document.getElementById('proof-details').innerHTML = '';
+}
+
+function hideProofSection() {
+  document.getElementById('proof-section').style.display = 'none';
+}
+
+async function requestProof(boardBeforeMove, player, row, col) {
+  showProofSection(`Generating ZK proof for ${player} at (${row},${col})...`);
+  highlightPipelineStage('stage-zk');
+
+  try {
+    const resp = await fetch('/zk-ode/api/prove-optimal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board: boardBeforeMove,
+        player: player,
+        move: [row, col],
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showProofSection(`Proof failed: ${err.error || resp.status}`);
+      return;
+    }
+
+    const data = await resp.json();
+    highlightPipelineStage('stage-contract');
+    renderProofResult(data, player, row, col);
+  } catch (err) {
+    showProofSection(`Proof unavailable: ${err.message}`);
+  }
+}
+
+function renderProofResult(data, player, row, col) {
+  const status = document.getElementById('proof-status');
+  const details = document.getElementById('proof-details');
+
+  const circuit = data.circuit || 'tsit5_step';
+  const isOptimal = data.is_optimal;
+  const optimalLabel = isOptimal ? 'Optimal' : 'Suboptimal';
+  const optimalClass = isOptimal ? 'proof-optimal' : 'proof-suboptimal';
+
+  status.textContent = `Proof generated for ${player} at (${row},${col})`;
+
+  let html = `
+    <div class="proof-grid">
+      <div class="proof-item">
+        <span class="proof-label">Circuit</span>
+        <span class="proof-value">${circuit}</span>
+      </div>
+      <div class="proof-item">
+        <span class="proof-label">Move</span>
+        <span class="proof-value ${optimalClass}">${optimalLabel}</span>
+      </div>
+      <div class="proof-item">
+        <span class="proof-label">Score</span>
+        <span class="proof-value">${(data.objective_value || 0).toFixed(4)}</span>
+      </div>`;
+
+  if (data.pre_state_root) {
+    const root = data.pre_state_root;
+    const short = root.slice(0, 10) + '...' + root.slice(-8);
+    html += `
+      <div class="proof-item">
+        <span class="proof-label">State Root</span>
+        <span class="proof-value mono">${short}</span>
+      </div>`;
+  }
+
+  if (data.transition_index !== undefined) {
+    html += `
+      <div class="proof-item">
+        <span class="proof-label">Transition</span>
+        <span class="proof-value">#${data.transition_index}</span>
+      </div>`;
+  }
+
+  html += '</div>';
+  details.innerHTML = html;
+}
+
+// --- On-Chain Status ---
+
+async function fetchOnChainStatus() {
+  if (!TTT_CONTRACT.zkOde) {
+    document.getElementById('ttt-contract').textContent = 'Awaiting deployment';
+    return;
+  }
+
+  const addr = TTT_CONTRACT.zkOde;
+  const short = addr.slice(0, 6) + '...' + addr.slice(-4);
+  const link = `<a href="${BASESCAN_URL}/address/${addr}" target="_blank" class="onchain-link">${short}</a>`;
+  document.getElementById('ttt-contract').innerHTML = link;
+
+  try {
+    // currentStateRoot()
+    const rootData = '0x53f3a866'; // keccak256("currentStateRoot()")[:4]
+    const rootResp = await ethCall(addr, rootData);
+    if (rootResp && rootResp !== '0x') {
+      const rootHex = '0x' + rootResp.slice(2, 18) + '...';
+      document.getElementById('ttt-state-root').textContent = rootHex;
+    }
+
+    // enforceOptimal()
+    const enforceData = '0x6c63a6a8'; // keccak256("enforceOptimal()")[:4]
+    const enforceResp = await ethCall(addr, enforceData);
+    if (enforceResp) {
+      const enforced = parseInt(enforceResp, 16) !== 0;
+      document.getElementById('ttt-enforce').textContent = enforced ? 'Yes' : 'No';
+    }
+
+    // stepCount()
+    const stepsData = '0xc4b55e77'; // keccak256("stepCount()")[:4]
+    const stepsResp = await ethCall(addr, stepsData);
+    if (stepsResp) {
+      document.getElementById('ttt-steps').textContent = parseInt(stepsResp, 16).toString();
+    }
+  } catch (err) {
+    console.warn('On-chain fetch error:', err.message);
+  }
+}
+
+async function ethCall(to, data) {
+  const resp = await fetch(BASE_SEPOLIA_RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_call',
+      params: [{ to, data }, 'latest'],
+    }),
+  });
+  const json = await resp.json();
+  return json.result;
+}
+
 // New game button
 document.getElementById('btn-new').addEventListener('click', resetGame);
 
-// Initial evaluation
+// Initial evaluation + on-chain status
 evaluate();
+fetchOnChainStatus();

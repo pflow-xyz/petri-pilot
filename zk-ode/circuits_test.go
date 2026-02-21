@@ -2,7 +2,6 @@ package zkode
 
 import (
 	"math"
-	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -137,7 +136,7 @@ func TestChainedProofs(t *testing.T) {
 	final := steps[len(steps)-1].PostState
 	t.Logf("Final marking after %d steps:", len(steps))
 	for p := 0; p < NumPlaces; p++ {
-		f := fixedToFloat(final.Marking[p])
+		f := FixToFloat(final.Marking[p])
 		t.Logf("  %s: %.6f", PlaceNames[p], f)
 	}
 }
@@ -165,9 +164,9 @@ func TestNativeSolverAccuracy(t *testing.T) {
 	exactB := t1 * math.Exp(-t1)
 	exactC := 1 - (1+t1)*math.Exp(-t1)
 
-	gotA := fixedToFloat(state.Marking[PlaceA])
-	gotB := fixedToFloat(state.Marking[PlaceB])
-	gotC := fixedToFloat(state.Marking[PlaceC])
+	gotA := FixToFloat(state.Marking[PlaceA])
+	gotB := FixToFloat(state.Marking[PlaceB])
+	gotC := FixToFloat(state.Marking[PlaceC])
 
 	t.Logf("At t=1.0 (100 steps of h=0.01):")
 	t.Logf("  A: got=%.10f exact=%.10f err=%.2e", gotA, exactA, math.Abs(gotA-exactA))
@@ -193,18 +192,3 @@ func TestNativeSolverAccuracy(t *testing.T) {
 	}
 }
 
-// fixedToFloat converts a fixed-point field element back to float64 for display.
-func fixedToFloat(v *big.Int) float64 {
-	// If value is in upper half of field, it's negative
-	halfField := new(big.Int).Rsh(fieldModulus, 1)
-	val := new(big.Int).Set(v)
-	if val.Cmp(halfField) > 0 {
-		val.Sub(val, fieldModulus) // make it negative
-	}
-
-	f := new(big.Float).SetPrec(128).SetInt(val)
-	s := new(big.Float).SetPrec(128).SetInt(Scale)
-	f.Quo(f, s)
-	result, _ := f.Float64()
-	return result
-}

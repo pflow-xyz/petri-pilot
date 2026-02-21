@@ -19,10 +19,17 @@ type ZkODEWitnessFactory struct{}
 //
 //	pre_state_root, post_state_root, step_size, rate_0, rate_1,
 //	pre_marking_0..pre_marking_2, post_marking_0..post_marking_2
+//
+// For "ttt_step" circuit, expected witness keys:
+//
+//	pre_state_root, post_state_root, step_size, actual_rate_0..actual_rate_33,
+//	pre_marking_0..pre_marking_31, post_marking_0..post_marking_31
 func (f *ZkODEWitnessFactory) CreateAssignment(circuitName string, witness map[string]string) (frontend.Circuit, error) {
 	switch circuitName {
 	case "tsit5_step":
 		return createTsit5Assignment(witness)
+	case "ttt_step":
+		return createTTTAssignment(witness)
 	default:
 		return nil, fmt.Errorf("unknown circuit: %s", circuitName)
 	}
@@ -65,6 +72,43 @@ func createTsit5Assignment(w map[string]string) (*Tsit5StepCircuit, error) {
 	return c, nil
 }
 
+func createTTTAssignment(w map[string]string) (*TTTStepCircuit, error) {
+	c := &TTTStepCircuit{}
+	var err error
+
+	c.PreStateRoot, err = parseWitnessField(w, "pre_state_root")
+	if err != nil {
+		return nil, err
+	}
+	c.PostStateRoot, err = parseWitnessField(w, "post_state_root")
+	if err != nil {
+		return nil, err
+	}
+	c.StepSize, err = parseWitnessField(w, "step_size")
+	if err != nil {
+		return nil, err
+	}
+
+	for t := 0; t < TTTNumTransitions; t++ {
+		c.ActualRates[t], err = parseWitnessField(w, fmt.Sprintf("actual_rate_%d", t))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for p := 0; p < TTTNumPlaces; p++ {
+		c.PreMarking[p], err = parseWitnessField(w, fmt.Sprintf("pre_marking_%d", p))
+		if err != nil {
+			return nil, err
+		}
+		c.PostMarking[p], err = parseWitnessField(w, fmt.Sprintf("post_marking_%d", p))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
+}
+
 func parseWitnessField(w map[string]string, key string) (interface{}, error) {
 	val, ok := w[key]
 	if !ok {
@@ -74,6 +118,7 @@ func parseWitnessField(w map[string]string, key string) (interface{}, error) {
 }
 
 // NewZkODEService creates a prover.Service with the "tsit5_step" circuit registered.
+// If TTT_CIRCUIT_ENABLED=1, also registers the "ttt_step" circuit.
 func NewZkODEService() (*prover.Service, error) {
 	keyDir := os.Getenv("ZK_KEY_DIR")
 	if keyDir == "" {
@@ -95,6 +140,21 @@ func NewZkODEService() (*prover.Service, error) {
 		"private", cc.PrivateVars,
 	)
 
+	// Optionally load the TTT circuit (gated because setup takes ~10 min)
+	if os.Getenv("TTT_CIRCUIT_ENABLED") == "1" {
+		slog.Info("Loading TTT circuit (this may take several minutes for first-time setup)...")
+		tttCC, err := p.LoadOrCompile("ttt_step", &TTTStepCircuit{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load/compile ttt_step circuit: %w", err)
+		}
+		slog.Info("Circuit ready",
+			"name", "ttt_step",
+			"constraints", tttCC.Constraints,
+			"public", tttCC.PublicVars,
+			"private", tttCC.PrivateVars,
+		)
+	}
+
 	factory := &ZkODEWitnessFactory{}
 	return prover.NewService(p, factory), nil
 }
@@ -111,4 +171,17 @@ func ProveStep(p *prover.Prover, state *ODEState, h *big.Int, rates [NumTransiti
 	}
 
 	return result, w.PostState, nil
+}
+
+// ProveTTTStep generates a Groth16 proof for a single TTT ODE step.
+func ProveTTTStep(p *prover.Prover, state *TTTODEState, h *big.Int) (*prover.ProofResult, *TTTODEState, *TTTStepWitness, error) {
+	w := ComputeTTTStep(state, h)
+	assignment := w.ToCircuitAssignment()
+
+	result, err := p.Prove("ttt_step", assignment)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("TTT proof generation failed: %w", err)
+	}
+
+	return result, w.PostState, w, nil
 }

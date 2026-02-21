@@ -1,0 +1,201 @@
+package zkode
+
+import (
+	"math/big"
+)
+
+// TTTODEState tracks the current marking and MiMC state root for the TTT net.
+type TTTODEState struct {
+	Marking [TTTNumPlaces]*big.Int
+	Root    *big.Int
+	Step    int
+}
+
+// NewTTTODEState creates an initial TTT state from a marking.
+func NewTTTODEState(marking [TTTNumPlaces]*big.Int) *TTTODEState {
+	s := &TTTODEState{
+		Marking: marking,
+		Step:    0,
+	}
+	s.Root = ComputeRoot(marking[:])
+	return s
+}
+
+// TTTStepWitness contains all data needed for one TTT circuit assignment.
+type TTTStepWitness struct {
+	PreState    *TTTODEState
+	PostState   *TTTODEState
+	StepSize    *big.Int
+	ActualRates [TTTNumTransitions]*big.Int
+}
+
+// nativeMultiInputRate computes rate = product(marking[inputs[t]]) in native big.Int.
+func nativeMultiInputRate(marking [TTTNumPlaces]*big.Int, t int) *big.Int {
+	inputs := TTTTransitionInputs[t]
+	rate := new(big.Int).Set(marking[inputs[0]])
+	for i := 1; i < len(inputs); i++ {
+		rate = NativeFixMul(rate, marking[inputs[i]])
+	}
+	return rate
+}
+
+// NativeTTTStep performs one Tsit5 ODE integration step over the TTT net using
+// native big.Int field arithmetic. Mirrors the circuit computation exactly.
+func NativeTTTStep(
+	marking [TTTNumPlaces]*big.Int,
+	h *big.Int,
+) [TTTNumPlaces]*big.Int {
+	var k [7][TTTNumPlaces]*big.Int
+
+	zero := big.NewInt(0)
+	for s := 0; s < 7; s++ {
+		for p := 0; p < TTTNumPlaces; p++ {
+			k[s][p] = new(big.Int).Set(zero)
+		}
+	}
+
+	for stage := 0; stage < 7; stage++ {
+		// yStage[p] = marking[p] + h * sum(A[stage][j] * k[j][p])
+		var yStage [TTTNumPlaces]*big.Int
+		for p := 0; p < TTTNumPlaces; p++ {
+			yStage[p] = new(big.Int).Set(marking[p])
+		}
+
+		for j := 0; j < len(tsit5A[stage]); j++ {
+			hA := NativeFixMul(h, tsit5A[stage][j])
+			for p := 0; p < TTTNumPlaces; p++ {
+				contrib := NativeFixMul(hA, k[j][p])
+				yStage[p] = NativeFixAdd(yStage[p], contrib)
+			}
+		}
+
+		// Multi-input mass-action rates
+		var rates [TTTNumTransitions]*big.Int
+		for t := 0; t < TTTNumTransitions; t++ {
+			rates[t] = nativeMultiInputRate(yStage, t)
+		}
+
+		// Derivatives: k[stage][p] = sum(S[p][t] * rate[t])
+		for p := 0; p < TTTNumPlaces; p++ {
+			k[stage][p] = new(big.Int).Set(zero)
+			for t := 0; t < TTTNumTransitions; t++ {
+				s := TTTStoichiometry[p][t]
+				if s == 0 {
+					continue
+				}
+				if s == 1 {
+					k[stage][p] = NativeFixAdd(k[stage][p], rates[t])
+				} else if s == -1 {
+					k[stage][p] = NativeFixSub(k[stage][p], rates[t])
+				}
+			}
+		}
+	}
+
+	// Final weighted sum: post[p] = marking[p] + h * sum(B[j] * k[j][p])
+	var post [TTTNumPlaces]*big.Int
+	for p := 0; p < TTTNumPlaces; p++ {
+		post[p] = new(big.Int).Set(marking[p])
+	}
+
+	for j := 0; j < 7; j++ {
+		if tsit5B[j].Sign() == 0 {
+			continue
+		}
+		hB := NativeFixMul(h, tsit5B[j])
+		for p := 0; p < TTTNumPlaces; p++ {
+			contrib := NativeFixMul(hB, k[j][p])
+			post[p] = NativeFixAdd(post[p], contrib)
+		}
+	}
+
+	return post
+}
+
+// ComputeTTTStep runs one Tsit5 step and generates a full witness for the TTT circuit.
+func ComputeTTTStep(state *TTTODEState, h *big.Int) *TTTStepWitness {
+	// Compute initial rates (public inputs for on-chain verification)
+	var actualRates [TTTNumTransitions]*big.Int
+	for t := 0; t < TTTNumTransitions; t++ {
+		actualRates[t] = nativeMultiInputRate(state.Marking, t)
+	}
+
+	postMarking := NativeTTTStep(state.Marking, h)
+
+	postState := &TTTODEState{
+		Marking: postMarking,
+		Root:    ComputeRoot(postMarking[:]),
+		Step:    state.Step + 1,
+	}
+
+	return &TTTStepWitness{
+		PreState:    state,
+		PostState:   postState,
+		StepSize:    h,
+		ActualRates: actualRates,
+	}
+}
+
+// ToCircuitAssignment converts a TTTStepWitness into a gnark circuit assignment.
+func (w *TTTStepWitness) ToCircuitAssignment() *TTTStepCircuit {
+	c := &TTTStepCircuit{
+		PreStateRoot:  w.PreState.Root,
+		PostStateRoot: w.PostState.Root,
+		StepSize:      w.StepSize,
+	}
+
+	for t := 0; t < TTTNumTransitions; t++ {
+		c.ActualRates[t] = w.ActualRates[t]
+	}
+	for p := 0; p < TTTNumPlaces; p++ {
+		c.PreMarking[p] = w.PreState.Marking[p]
+		c.PostMarking[p] = w.PostState.Marking[p]
+	}
+
+	return c
+}
+
+// BoardToTTTODEState converts a Board + player turn into a TTTODEState.
+func BoardToTTTODEState(board Board, currentPlayer string) *TTTODEState {
+	var marking [TTTNumPlaces]*big.Int
+	zero := FixFromFloat(0.0)
+	one := FixFromFloat(1.0)
+
+	for r := 0; r < 3; r++ {
+		for c := 0; c < 3; c++ {
+			idx := r*3 + c
+			cellPlace := P00 + idx
+			xPlace := X00 + idx
+			oPlace := O00 + idx
+
+			switch board[r][c] {
+			case "X":
+				marking[cellPlace] = new(big.Int).Set(zero)
+				marking[xPlace] = new(big.Int).Set(one)
+				marking[oPlace] = new(big.Int).Set(zero)
+			case "O":
+				marking[cellPlace] = new(big.Int).Set(zero)
+				marking[xPlace] = new(big.Int).Set(zero)
+				marking[oPlace] = new(big.Int).Set(one)
+			default:
+				marking[cellPlace] = new(big.Int).Set(one)
+				marking[xPlace] = new(big.Int).Set(zero)
+				marking[oPlace] = new(big.Int).Set(zero)
+			}
+		}
+	}
+
+	if currentPlayer == "X" {
+		marking[XTurn] = new(big.Int).Set(one)
+		marking[OTurn] = new(big.Int).Set(zero)
+	} else {
+		marking[XTurn] = new(big.Int).Set(zero)
+		marking[OTurn] = new(big.Int).Set(one)
+	}
+
+	marking[WinX] = new(big.Int).Set(zero)
+	marking[WinO] = new(big.Int).Set(zero)
+	marking[GameActive] = new(big.Int).Set(one)
+
+	return NewTTTODEState(marking)
+}

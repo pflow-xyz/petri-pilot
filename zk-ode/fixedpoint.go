@@ -136,3 +136,17 @@ func NativeFixSub(a, b *big.Int) *big.Int {
 	result.Mod(result, fieldModulus)
 	return result
 }
+
+// FixToFloat converts a fixed-point field element back to float64.
+// Values in the upper half of the field are interpreted as negative.
+func FixToFloat(v *big.Int) float64 {
+	val := new(big.Int).Set(v)
+	if val.Cmp(halfField) > 0 {
+		val.Sub(val, fieldModulus)
+	}
+	f := new(big.Float).SetPrec(128).SetInt(val)
+	s := new(big.Float).SetPrec(128).SetInt(Scale)
+	f.Quo(f, s)
+	result, _ := f.Float64()
+	return result
+}
