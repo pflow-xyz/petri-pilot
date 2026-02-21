@@ -281,16 +281,20 @@ document.getElementById('btn-prove').addEventListener('click', async () => {
       }),
     });
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`Prover error: ${text}`);
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('ZK prover backend is not running');
     }
 
     const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.error || resp.statusText);
+    }
+
     $proofStatus.textContent = 'Proof generated and verified!';
     $proofData.textContent = JSON.stringify(data, null, 2);
   } catch (err) {
-    $proofStatus.textContent = `Error: ${err.message}`;
+    $proofStatus.textContent = 'ZK prover backend is not running';
     $proofData.textContent = 'Proof generation requires the ZK prover backend.\n\n' +
       'The simulation above runs locally in the browser.\n' +
       'To generate real Groth16 proofs, start the prover service:\n\n' +

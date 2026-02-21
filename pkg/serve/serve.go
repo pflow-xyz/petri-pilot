@@ -611,6 +611,14 @@ func createSPAHandler(frontendPath string) http.Handler {
 			return
 		}
 
+		// Return JSON 404 for API routes that don't match a backend service
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/zk/") || strings.HasPrefix(r.URL.Path, "/admin/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error":"no backend service available for this route"}`))
+			return
+		}
+
 		// For SPA routing, serve index.html for non-existent paths
 		// (but not for paths that look like static assets)
 		ext := filepath.Ext(path)
