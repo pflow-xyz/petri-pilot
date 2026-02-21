@@ -73,13 +73,6 @@ func TestNativeTTTStepEmptyBoard(t *testing.T) {
 
 	post := NativeTTTStep(marking, h)
 
-	// After one step from empty board with X's turn:
-	// - x_play transitions fire (rate = k * cell * x_turn; k=4 center, 3 corner, 2 edge)
-	// - o_play transitions are disabled (o_turn = 0, so rate = k * cell * 0 = 0)
-	// - win transitions disabled (no pieces placed, so product of inputs = 0)
-	//
-	// The empty cells should decrease slightly (consumed by x_play)
-	// x_turn should decrease, o_turn should increase
 	for p := 0; p < TTTNumPlaces; p++ {
 		if post[p] == nil {
 			t.Fatalf("post marking[%d] is nil", p)
@@ -108,69 +101,12 @@ func TestNativeTTTStepEmptyBoard(t *testing.T) {
 	}
 }
 
-func TestComputeTTTStep(t *testing.T) {
+func TestTTTHeatmapRootChaining(t *testing.T) {
 	state := NewTTTODEState(TTTDefaultInitialMarking())
 	h := FixFromFloat(0.01)
 
-	w := ComputeTTTStep(state, h)
-
-	// Verify witness fields
-	if w.PreState.Root.Cmp(state.Root) != 0 {
-		t.Error("pre state root mismatch")
-	}
-	if w.PostState.Root == nil || w.PostState.Root.Sign() == 0 {
-		t.Error("post state root should be non-zero")
-	}
-	if w.StepSize.Cmp(h) != 0 {
-		t.Error("step size mismatch")
-	}
-
-	// Check that actual rates are computed
-	for tr := 0; tr < TTTNumTransitions; tr++ {
-		if w.ActualRates[tr] == nil {
-			t.Fatalf("actual rate[%d] is nil", tr)
-		}
-	}
-
-	// x_play_00 rate should be 3.0 (p00=1, x_turn=1, product=1, k=3 for corner)
-	xPlayCornerRate := FixToFloat(w.ActualRates[TXPlay00])
-	if xPlayCornerRate < 2.99 || xPlayCornerRate > 3.01 {
-		t.Errorf("x_play_00 rate: expected ~3.0 (corner k=3), got %.6f", xPlayCornerRate)
-	}
-
-	// x_play_11 rate should be 4.0 (p11=1, x_turn=1, product=1, k=4 for center)
-	xPlayCenterRate := FixToFloat(w.ActualRates[TXPlay11])
-	if xPlayCenterRate < 3.99 || xPlayCenterRate > 4.01 {
-		t.Errorf("x_play_11 rate: expected ~4.0 (center k=4), got %.6f", xPlayCenterRate)
-	}
-
-	// x_play_01 rate should be 2.0 (p01=1, x_turn=1, product=1, k=2 for edge)
-	xPlayEdgeRate := FixToFloat(w.ActualRates[TXPlay01])
-	if xPlayEdgeRate < 1.99 || xPlayEdgeRate > 2.01 {
-		t.Errorf("x_play_01 rate: expected ~2.0 (edge k=2), got %.6f", xPlayEdgeRate)
-	}
-
-	// o_play_00 rate should be 0.0 (p00=1, o_turn=0, product=0, k irrelevant)
-	oPlayRate := FixToFloat(w.ActualRates[TOPlay00])
-	if oPlayRate != 0 {
-		t.Errorf("o_play_00 rate: expected 0.0, got %.6f", oPlayRate)
-	}
-
-	// Win transitions should have rate 0 (no pieces placed)
-	for i := 0; i < 8; i++ {
-		xWinRate := FixToFloat(w.ActualRates[TXWinRow0+i])
-		if xWinRate != 0 {
-			t.Errorf("x_win_%d rate: expected 0.0, got %.6f", i, xWinRate)
-		}
-	}
-}
-
-func TestTTTRootChaining(t *testing.T) {
-	state := NewTTTODEState(TTTDefaultInitialMarking())
-	h := FixFromFloat(0.01)
-
-	w1 := ComputeTTTStep(state, h)
-	w2 := ComputeTTTStep(w1.PostState, h)
+	w1 := ComputeTTTHeatmapStep(state, h)
+	w2 := ComputeTTTHeatmapStep(w1.PostState, h)
 
 	// Post root of step 1 should equal pre root of step 2
 	if w1.PostState.Root.Cmp(w2.PreState.Root) != 0 {
@@ -197,14 +133,13 @@ func TestTTTDefaultGenesisRoot(t *testing.T) {
 	}
 }
 
-func TestToCircuitAssignment(t *testing.T) {
+func TestToHeatmapCircuitAssignment(t *testing.T) {
 	state := NewTTTODEState(TTTDefaultInitialMarking())
 	h := FixFromFloat(0.01)
-	w := ComputeTTTStep(state, h)
+	w := ComputeTTTHeatmapStep(state, h)
 
-	assignment := w.ToCircuitAssignment()
+	assignment := w.ToHeatmapCircuitAssignment()
 
-	// Verify all fields are populated
 	if assignment.PreStateRoot == nil {
 		t.Error("PreStateRoot is nil")
 	}
@@ -221,9 +156,9 @@ func TestToCircuitAssignment(t *testing.T) {
 		}
 	}
 
-	for tr := 0; tr < TTTNumTransitions; tr++ {
-		if assignment.ActualRates[tr] == nil {
-			t.Errorf("ActualRates[%d] is nil", tr)
+	for i := 0; i < 9; i++ {
+		if assignment.HeatmapScores[i] == nil {
+			t.Errorf("HeatmapScores[%d] is nil", i)
 		}
 	}
 }
@@ -257,20 +192,20 @@ func TestBoardWithMoveToTTTState(t *testing.T) {
 		t.Error("x_turn should be 0")
 	}
 
-	// Check rates: o_play transitions should be enabled for empty cells
-	// Rates now include position-based rate constants (k)
+	// Check heatmap scores: O play positions should reflect expected rates
 	expectedK := [9]float64{3, 2, 3, 2, 4, 2, 3, 2, 3}
-	w := ComputeTTTStep(state, FixFromFloat(0.01))
+	w := ComputeTTTHeatmapStep(state, FixFromFloat(0.01))
 	for i := 0; i < 9; i++ {
-		oPlayRate := FixToFloat(w.ActualRates[TOPlay00+i])
+		score := FixToFloat(w.HeatmapScores[i])
 		if i == 4 { // center is occupied
-			if oPlayRate != 0 {
-				t.Errorf("o_play_%d (occupied cell): expected rate 0, got %.6f", i, oPlayRate)
+			if score != 0 {
+				t.Errorf("cell %d (occupied): expected score 0, got %.6f", i, score)
 			}
 		} else {
+			// On this board, no tactical adjustments apply yet (no 2-in-a-row threats)
 			k := expectedK[i]
-			if oPlayRate < k-0.01 || oPlayRate > k+0.01 {
-				t.Errorf("o_play_%d (empty cell): expected rate ~%.1f (k=%.0f), got %.6f", i, k, k, oPlayRate)
+			if score < k-0.01 || score > k+0.01 {
+				t.Errorf("cell %d (empty): expected score ~%.1f (k=%.0f), got %.6f", i, k, k, score)
 			}
 		}
 	}
@@ -365,13 +300,9 @@ func TestApplyDiscreteMoveOTurn(t *testing.T) {
 }
 
 func TestNativeTTTStepConservation(t *testing.T) {
-	// In the TTT net, total tokens across cells + pieces should be conserved
-	// (each play moves 1 token from cell to piece). Turn tokens swap. Game state changes on win.
-	// With small h and no wins possible, the total should be approximately conserved.
 	marking := TTTDefaultInitialMarking()
 	h := FixFromFloat(0.01)
 
-	// Total tokens in cell + piece pairs
 	preTotal := big.NewInt(0)
 	for i := 0; i < 9; i++ {
 		preTotal = NativeFixAdd(preTotal, marking[P00+i])
@@ -393,8 +324,6 @@ func TestNativeTTTStepConservation(t *testing.T) {
 
 	t.Logf("Cell+piece total: pre=%.10f post=%.10f delta=%.2e", preFloat, postFloat, postFloat-preFloat)
 
-	// With play transitions only (no wins), cell+piece tokens are conserved
-	// (play removes from cell, adds to piece). The difference should be very small.
 	if diff := postFloat - preFloat; diff < -0.001 || diff > 0.001 {
 		t.Errorf("cell+piece conservation violated: delta=%.6f", diff)
 	}

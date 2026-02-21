@@ -1,5 +1,5 @@
-// Command submit-ttt-proof generates TTT ZK proofs from the genesis state
-// and prints cast send commands for on-chain submission.
+// Command submit-ttt-proof generates TTT ZK proofs using the heatmap circuit
+// (tactical win/block detection) and prints cast send commands for on-chain submission.
 //
 // Set TTT_STEPS=N to generate N chained proofs (default: 1).
 // Each proof starts from the post-state of the previous one.
@@ -48,8 +48,8 @@ func main() {
 
 	p := prover.NewProverWithKeyDir(keyDir)
 
-	log.Println("Loading TTT circuit...")
-	cc, err := p.LoadOrCompile("ttt_step", &zkode.TTTStepCircuit{})
+	log.Println("Loading TTT heatmap circuit...")
+	cc, err := p.LoadOrCompile("ttt_heatmap", &zkode.TTTHeatmapCircuit{})
 	if err != nil {
 		log.Fatalf("Failed to load circuit: %v", err)
 	}
@@ -66,37 +66,49 @@ func main() {
 	for step := 0; step < numSteps; step++ {
 		log.Printf("=== Step %d (from root 0x%s) ===", step+1, state.Root.Text(16))
 
-		// Log all non-zero rates before proving
-		witness := zkode.ComputeTTTStep(state, h)
-		log.Printf("Transition rates:")
-		for t := 0; t < zkode.TTTNumTransitions; t++ {
-			rate := zkode.FixToFloat(witness.ActualRates[t])
-			if rate > 0.001 {
-				log.Printf("  %s (t=%d): %.6f", zkode.TTTTransitionNames[t], t, rate)
+		w := zkode.ComputeTTTHeatmapStep(state, h)
+
+		log.Printf("Heatmap scores:")
+		for i := 0; i < 9; i++ {
+			score := zkode.FixToFloat(w.HeatmapScores[i])
+			if score > 0.001 {
+				log.Printf("  cell %d (%d,%d): %.4f", i, i/3, i%3, score)
 			}
 		}
 
-		log.Printf("Generating proof...")
-		result, _, witness, err := zkode.ProveTTTStep(p, state, h)
+		// Find position with highest heatmap score
+		bestPos := 0
+		bestScore := w.HeatmapScores[0]
+		for i := 1; i < 9; i++ {
+			if w.HeatmapScores[i].Cmp(bestScore) > 0 {
+				bestPos = i
+				bestScore = w.HeatmapScores[i]
+			}
+		}
+		chosenScore := zkode.FixToFloat(bestScore)
+
+		// Map position to transition for discrete move application
+		isXTurn := state.Marking[zkode.XTurn].Cmp(zkode.FixFromFloat(0.0)) > 0
+		var discreteTransition int
+		if isXTurn {
+			discreteTransition = zkode.TXPlay00 + bestPos
+		} else {
+			discreteTransition = zkode.TOPlay00 + bestPos
+		}
+		chosenLabel := zkode.TTTTransitionNames[discreteTransition]
+
+		log.Printf("Optimal: cell %d (%d,%d) -> %s (score: %.4f)",
+			bestPos, bestPos/3, bestPos%3, chosenLabel, chosenScore)
+
+		log.Printf("Generating heatmap proof...")
+		result, _, _, err := zkode.ProveTTTHeatmapStep(p, state, h)
 		if err != nil {
 			log.Fatalf("Proof generation failed at step %d: %v", step+1, err)
 		}
 		log.Printf("Proof generated: %d public inputs", len(result.PublicInputs))
 
-		// Find optimal transition (highest rate)
-		bestT := 0
-		bestRate := witness.ActualRates[0]
-		for t := 1; t < zkode.TTTNumTransitions; t++ {
-			if witness.ActualRates[t].Cmp(bestRate) > 0 {
-				bestT = t
-				bestRate = witness.ActualRates[t]
-			}
-		}
-		log.Printf("Optimal transition: %d (%s, rate: %.4f)",
-			bestT, zkode.TTTTransitionNames[bestT], zkode.FixToFloat(bestRate))
-
 		// Compute discrete post-move board and its root
-		discretePost := zkode.ApplyDiscreteMove(state.Marking, bestT)
+		discretePost := zkode.ApplyDiscreteMove(state.Marking, discreteTransition)
 		nextRoot := zkode.ComputeRoot(discretePost[:])
 		log.Printf("Discrete next root: 0x%s", nextRoot.Text(16))
 
@@ -107,7 +119,7 @@ func main() {
 		}
 		proofStr := "[" + strings.Join(proofParts, ",") + "]"
 
-		// Format public inputs as [i0,i1,...,i36]
+		// Format public inputs
 		var inputParts []string
 		for _, hex := range result.PublicInputs {
 			v := new(big.Int)
@@ -126,14 +138,14 @@ func main() {
 		fmt.Printf("  \"submitStep(uint256[8],uint256[],uint256,uint256)\" \\\n")
 		fmt.Printf("  \"%s\" \\\n", proofStr)
 		fmt.Printf("  \"%s\" \\\n", inputsStr)
-		fmt.Printf("  %d \\\n", bestT)
+		fmt.Printf("  %d \\\n", bestPos)
 		fmt.Printf("  %s \\\n", nextRootStr)
 		fmt.Printf("  --rpc-url %s \\\n", rpcURL)
 		fmt.Println("  --private-key $DEPLOYER_PRIVATE_KEY")
 		fmt.Println()
 
 		scriptParts = append(scriptParts, fmt.Sprintf(
-			`echo "Submitting step %d: %s (transition %d, rate %.4f)"
+			`echo "Submitting step %d: %s (cell %d, score %.4f)"
 cast send %s \
   "submitStep(uint256[8],uint256[],uint256,uint256)" \
   "%s" \
@@ -143,8 +155,8 @@ cast send %s \
   --rpc-url %s \
   --private-key $DEPLOYER_PRIVATE_KEY
 `,
-			step+1, zkode.TTTTransitionNames[bestT], bestT, zkode.FixToFloat(bestRate),
-			contractAddr, proofStr, inputsStr, bestT, nextRootStr, rpcURL))
+			step+1, chosenLabel, bestPos, chosenScore,
+			contractAddr, proofStr, inputsStr, bestPos, nextRootStr, rpcURL))
 
 		// Advance to the discrete post-move board for next step
 		state = zkode.NewTTTODEState(discretePost)

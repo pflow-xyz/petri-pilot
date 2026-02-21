@@ -150,10 +150,39 @@ var TTTTransitionInputs [TTTNumTransitions][]int
 // TTTNumInputs is the number of input places per transition.
 var TTTNumInputs [TTTNumTransitions]int
 
+// TTTWinLines defines the 8 winning lines (rows, cols, diagonals) as cell indices 0-8.
+var TTTWinLines = [8][3]int{
+	{0, 1, 2}, // row 0
+	{3, 4, 5}, // row 1
+	{6, 7, 8}, // row 2
+	{0, 3, 6}, // col 0
+	{1, 4, 7}, // col 1
+	{2, 5, 8}, // col 2
+	{0, 4, 8}, // diag
+	{2, 4, 6}, // anti-diag
+}
+
+// TTTCellWinLines maps each cell (0-8) to the indices of win lines passing through it.
+var TTTCellWinLines [9][]int
+
 func init() {
+	initTTTCellWinLines()
 	initTTTRateConstants()
 	initTTTStoichiometry()
 	initTTTTransitionInputs()
+}
+
+func initTTTCellWinLines() {
+	for cell := 0; cell < 9; cell++ {
+		for lineIdx, line := range TTTWinLines {
+			for _, c := range line {
+				if c == cell {
+					TTTCellWinLines[cell] = append(TTTCellWinLines[cell], lineIdx)
+					break
+				}
+			}
+		}
+	}
 }
 
 func initTTTStoichiometry() {

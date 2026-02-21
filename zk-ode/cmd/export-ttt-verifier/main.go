@@ -1,5 +1,5 @@
-// Command export-ttt-verifier compiles the TTT circuit, generates keys, and
-// exports the Solidity verifier contract.
+// Command export-ttt-verifier compiles the TTT heatmap circuit, generates keys,
+// and exports the Solidity verifier contract.
 package main
 
 import (
@@ -17,7 +17,7 @@ func main() {
 		keyDir = d
 	}
 
-	outFile := "solidity/src/TTTGroth16Verifier.sol"
+	outFile := "solidity/src/TTTHeatmapVerifier.sol"
 	if len(os.Args) > 1 {
 		outFile = os.Args[1]
 	}
@@ -27,8 +27,8 @@ func main() {
 
 	p := prover.NewProverWithKeyDir(keyDir)
 
-	log.Println("Compiling TTT circuit (118k constraints)...")
-	cc, err := p.LoadOrCompile("ttt_step", &zkode.TTTStepCircuit{})
+	log.Println("Compiling TTT heatmap circuit (~179k constraints)...")
+	cc, err := p.LoadOrCompile("ttt_heatmap", &zkode.TTTHeatmapCircuit{})
 	if err != nil {
 		log.Fatalf("Failed to compile: %v", err)
 	}
@@ -36,7 +36,7 @@ func main() {
 		cc.Constraints, cc.PublicVars, cc.PrivateVars)
 
 	log.Println("Exporting Solidity verifier...")
-	solidity, err := p.ExportVerifier("ttt_step")
+	solidity, err := p.ExportVerifier("ttt_heatmap")
 	if err != nil {
 		log.Fatalf("Failed to export verifier: %v", err)
 	}

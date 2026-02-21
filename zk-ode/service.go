@@ -14,22 +14,12 @@ import (
 type ZkODEWitnessFactory struct{}
 
 // CreateAssignment builds a circuit assignment from a witness map.
-//
-// For "tsit5_step" circuit, expected witness keys:
-//
-//	pre_state_root, post_state_root, step_size, rate_0, rate_1,
-//	pre_marking_0..pre_marking_2, post_marking_0..post_marking_2
-//
-// For "ttt_step" circuit, expected witness keys:
-//
-//	pre_state_root, post_state_root, step_size, actual_rate_0..actual_rate_33,
-//	pre_marking_0..pre_marking_31, post_marking_0..post_marking_31
 func (f *ZkODEWitnessFactory) CreateAssignment(circuitName string, witness map[string]string) (frontend.Circuit, error) {
 	switch circuitName {
 	case "tsit5_step":
 		return createTsit5Assignment(witness)
-	case "ttt_step":
-		return createTTTAssignment(witness)
+	case "ttt_heatmap":
+		return createTTTHeatmapAssignment(witness)
 	default:
 		return nil, fmt.Errorf("unknown circuit: %s", circuitName)
 	}
@@ -72,8 +62,8 @@ func createTsit5Assignment(w map[string]string) (*Tsit5StepCircuit, error) {
 	return c, nil
 }
 
-func createTTTAssignment(w map[string]string) (*TTTStepCircuit, error) {
-	c := &TTTStepCircuit{}
+func createTTTHeatmapAssignment(w map[string]string) (*TTTHeatmapCircuit, error) {
+	c := &TTTHeatmapCircuit{}
 	var err error
 
 	c.PreStateRoot, err = parseWitnessField(w, "pre_state_root")
@@ -89,8 +79,8 @@ func createTTTAssignment(w map[string]string) (*TTTStepCircuit, error) {
 		return nil, err
 	}
 
-	for t := 0; t < TTTNumTransitions; t++ {
-		c.ActualRates[t], err = parseWitnessField(w, fmt.Sprintf("actual_rate_%d", t))
+	for i := 0; i < 9; i++ {
+		c.HeatmapScores[i], err = parseWitnessField(w, fmt.Sprintf("heatmap_score_%d", i))
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +108,7 @@ func parseWitnessField(w map[string]string, key string) (interface{}, error) {
 }
 
 // NewZkODEService creates a prover.Service with the "tsit5_step" circuit registered.
-// If TTT_CIRCUIT_ENABLED=1, also registers the "ttt_step" circuit.
+// If TTT_HEATMAP_ENABLED=1, also registers the "ttt_heatmap" circuit.
 func NewZkODEService() (*prover.Service, error) {
 	keyDir := os.Getenv("ZK_KEY_DIR")
 	if keyDir == "" {
@@ -140,18 +130,18 @@ func NewZkODEService() (*prover.Service, error) {
 		"private", cc.PrivateVars,
 	)
 
-	// Optionally load the TTT circuit (gated because setup takes ~10 min)
-	if os.Getenv("TTT_CIRCUIT_ENABLED") == "1" {
-		slog.Info("Loading TTT circuit (this may take several minutes for first-time setup)...")
-		tttCC, err := p.LoadOrCompile("ttt_step", &TTTStepCircuit{})
+	// Optionally load the TTT heatmap circuit (tactical win/block detection)
+	if os.Getenv("TTT_HEATMAP_ENABLED") == "1" {
+		slog.Info("Loading TTT heatmap circuit...")
+		hmCC, err := p.LoadOrCompile("ttt_heatmap", &TTTHeatmapCircuit{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to load/compile ttt_step circuit: %w", err)
+			return nil, fmt.Errorf("failed to load/compile ttt_heatmap circuit: %w", err)
 		}
 		slog.Info("Circuit ready",
-			"name", "ttt_step",
-			"constraints", tttCC.Constraints,
-			"public", tttCC.PublicVars,
-			"private", tttCC.PrivateVars,
+			"name", "ttt_heatmap",
+			"constraints", hmCC.Constraints,
+			"public", hmCC.PublicVars,
+			"private", hmCC.PrivateVars,
 		)
 	}
 
@@ -173,14 +163,15 @@ func ProveStep(p *prover.Prover, state *ODEState, h *big.Int, rates [NumTransiti
 	return result, w.PostState, nil
 }
 
-// ProveTTTStep generates a Groth16 proof for a single TTT ODE step.
-func ProveTTTStep(p *prover.Prover, state *TTTODEState, h *big.Int) (*prover.ProofResult, *TTTODEState, *TTTStepWitness, error) {
-	w := ComputeTTTStep(state, h)
-	assignment := w.ToCircuitAssignment()
+// ProveTTTHeatmapStep generates a Groth16 proof for a TTT heatmap step
+// (ODE integration + tactical win/block evaluation).
+func ProveTTTHeatmapStep(p *prover.Prover, state *TTTODEState, h *big.Int) (*prover.ProofResult, *TTTODEState, *TTTHeatmapWitness, error) {
+	w := ComputeTTTHeatmapStep(state, h)
+	assignment := w.ToHeatmapCircuitAssignment()
 
-	result, err := p.Prove("ttt_step", assignment)
+	result, err := p.Prove("ttt_heatmap", assignment)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("TTT proof generation failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("TTT heatmap proof generation failed: %w", err)
 	}
 
 	return result, w.PostState, w, nil

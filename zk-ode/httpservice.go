@@ -255,40 +255,35 @@ func (s *HTTPService) handleProveOptimal(w http.ResponseWriter, r *http.Request)
 
 	h := FixFromFloat(0.01)
 
-	// Use TTT circuit if enabled, otherwise fall back to cascade
-	if _, hasTTT := s.prover.GetCircuit("ttt_step"); hasTTT {
+	// Use TTT heatmap circuit if enabled, otherwise fall back to cascade
+	if _, hasTTT := s.prover.GetCircuit("ttt_heatmap"); hasTTT {
 		state := BoardToTTTODEState(hypotheticalBoard, opponent)
-		proof, _, witness, err := ProveTTTStep(s.prover, state, h)
+		proof, _, witness, err := ProveTTTHeatmapStep(s.prover, state, h)
 		if err != nil {
-			jsonError(w, http.StatusInternalServerError, fmt.Sprintf("TTT proof generation failed: %v", err))
+			jsonError(w, http.StatusInternalServerError, fmt.Sprintf("TTT heatmap proof generation failed: %v", err))
 			return
 		}
 
-		// Find the transition index for the chosen move
-		transitionIndex := -1
-		if req.Player == "X" {
-			transitionIndex = TXPlay00 + row*3 + col
-		} else {
-			transitionIndex = TOPlay00 + row*3 + col
-		}
+		// Cell position for the chosen move
+		cellPos := row*3 + col
 
-		// Convert rates to float for response
-		rateValues := make(map[string]float64)
-		for t := 0; t < TTTNumTransitions; t++ {
-			rateValues[TTTTransitionNames[t]] = FixToFloat(witness.ActualRates[t])
+		// Convert heatmap scores to float for response
+		scoreValues := make(map[string]float64)
+		for i := 0; i < 9; i++ {
+			scoreValues[fmt.Sprintf("cell_%d%d", i/3, i%3)] = FixToFloat(witness.HeatmapScores[i])
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"proof":            proof,
-			"is_optimal":       isOptimal,
-			"objective_value":  moveScore.Adjusted,
-			"scores":           result.Scores,
-			"transition_index": transitionIndex,
-			"rates":            rateValues,
-			"circuit":          "ttt_step",
-			"pre_state_root":   fmt.Sprintf("0x%s", state.Root.Text(16)),
-			"status":           "ok",
+			"proof":           proof,
+			"is_optimal":      isOptimal,
+			"objective_value": moveScore.Adjusted,
+			"scores":          result.Scores,
+			"cell_position":   cellPos,
+			"heatmap_scores":  scoreValues,
+			"circuit":         "ttt_heatmap",
+			"pre_state_root":  fmt.Sprintf("0x%s", state.Root.Text(16)),
+			"status":          "ok",
 		})
 		return
 	}

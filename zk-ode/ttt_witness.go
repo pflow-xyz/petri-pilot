@@ -21,14 +21,6 @@ func NewTTTODEState(marking [TTTNumPlaces]*big.Int) *TTTODEState {
 	return s
 }
 
-// TTTStepWitness contains all data needed for one TTT circuit assignment.
-type TTTStepWitness struct {
-	PreState    *TTTODEState
-	PostState   *TTTODEState
-	StepSize    *big.Int
-	ActualRates [TTTNumTransitions]*big.Int
-}
-
 // nativeMultiInputRate computes rate = k[t] * product(marking[inputs[t]]) in native big.Int.
 func nativeMultiInputRate(marking [TTTNumPlaces]*big.Int, t int) *big.Int {
 	inputs := TTTTransitionInputs[t]
@@ -111,49 +103,6 @@ func NativeTTTStep(
 	}
 
 	return post
-}
-
-// ComputeTTTStep runs one Tsit5 step and generates a full witness for the TTT circuit.
-func ComputeTTTStep(state *TTTODEState, h *big.Int) *TTTStepWitness {
-	// Compute initial rates (public inputs for on-chain verification)
-	var actualRates [TTTNumTransitions]*big.Int
-	for t := 0; t < TTTNumTransitions; t++ {
-		actualRates[t] = nativeMultiInputRate(state.Marking, t)
-	}
-
-	postMarking := NativeTTTStep(state.Marking, h)
-
-	postState := &TTTODEState{
-		Marking: postMarking,
-		Root:    ComputeRoot(postMarking[:]),
-		Step:    state.Step + 1,
-	}
-
-	return &TTTStepWitness{
-		PreState:    state,
-		PostState:   postState,
-		StepSize:    h,
-		ActualRates: actualRates,
-	}
-}
-
-// ToCircuitAssignment converts a TTTStepWitness into a gnark circuit assignment.
-func (w *TTTStepWitness) ToCircuitAssignment() *TTTStepCircuit {
-	c := &TTTStepCircuit{
-		PreStateRoot:  w.PreState.Root,
-		PostStateRoot: w.PostState.Root,
-		StepSize:      w.StepSize,
-	}
-
-	for t := 0; t < TTTNumTransitions; t++ {
-		c.ActualRates[t] = w.ActualRates[t]
-	}
-	for p := 0; p < TTTNumPlaces; p++ {
-		c.PreMarking[p] = w.PreState.Marking[p]
-		c.PostMarking[p] = w.PostState.Marking[p]
-	}
-
-	return c
 }
 
 // ApplyDiscreteMove applies a transition to a discrete marking using the
