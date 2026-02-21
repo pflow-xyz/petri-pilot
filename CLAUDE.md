@@ -507,15 +507,16 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia (2026-02-21).
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| Groth16Verifier | `0x199A6BFF6aBdC0fA1Cb0c437591f03c5D1792199` | gnark-generated BN254 pairing verifier |
-| Groth16VerifierAdapter | `0xb13e0ad0ac8EbC48459bE8d23c278F63D703D275` | Adapts fixed-size gnark interface to IVerifier |
-| ZkOde | `0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4` | State commitment manager (enforceOptimal=true) |
+| Groth16Verifier | `0xA675a162C5097e5eBa2968C918D4D0530b7005Ae` | gnark-generated BN254 pairing verifier |
+| Groth16VerifierAdapter | `0xf0aB1678309B12fd02CFD8bABf08ec87238B2E03` | Adapts fixed-size gnark interface to IVerifier |
+| ZkOde | `0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8` | State commitment manager (enforceOptimal=true) |
 
 - **Network:** Base Sepolia (chain ID 84532)
 - **Explorer:** https://sepolia.basescan.org
 - **Deployer/Prover:** `0x762593292f543948CA9A9a290adC1770746d059a`
-- **Genesis root:** 0 (default; VK matches persisted keys in `keys/zk-ode/`)
+- **Genesis root:** MiMC([1,0,0]) = `0x2cc32c87522be4b588f26301aef43e600ea46d912b6d781416c83074185892aa`
 - **Config:** numTransitions=2, enforceOptimal=true, 5 public inputs
+- **First on-chain proof:** [tx `0xeaa4bae9...`](https://sepolia.basescan.org/tx/0xeaa4bae92172acb2e4c024142b279eb5fb0417631c698a6e16a39e306a41ba0e)
 
 ### Circuit Constraint
 
@@ -553,8 +554,8 @@ BASESCAN_API_KEY=$BASESCAN_API_KEY forge verify-contract <address> src/ZkOde.sol
   --chain base-sepolia --constructor-args $(cast abi-encode "constructor(address,uint256,uint256,bool)" <adapter> 0 2 true) --watch
 
 # Query on-chain state
-cast call 0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4 "currentStateRoot()" --rpc-url https://sepolia.base.org
-cast call 0x1B347215F260aD712E3D2A66B75b75461b6c1Ce4 "enforceOptimal()" --rpc-url https://sepolia.base.org
+cast call 0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8 "currentStateRoot()" --rpc-url https://sepolia.base.org
+cast call 0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8 "enforceOptimal()" --rpc-url https://sepolia.base.org
 ```
 
 ## Adding a New Service to Landing Page
