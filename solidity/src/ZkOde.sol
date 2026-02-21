@@ -66,6 +66,8 @@ contract ZkOde {
 
     // --- Constructor ---
     constructor(address _verifier, uint256 _genesisRoot, uint256 _numTransitions, bool _enforceOptimal) {
+        require(_verifier != address(0), "zero verifier");
+        require(_numTransitions > 0, "zero transitions");
         verifier = IVerifier(_verifier);
         prover = msg.sender;
         currentStateRoot = _genesisRoot;
@@ -106,11 +108,13 @@ contract ZkOde {
     // --- Admin ---
 
     function setProver(address _prover) external onlyProver {
+        require(_prover != address(0), "zero address");
         emit ProverUpdated(prover, _prover);
         prover = _prover;
     }
 
     function setVerifier(address _verifier) external onlyProver {
+        require(_verifier != address(0), "zero address");
         emit VerifierUpdated(address(verifier), _verifier);
         verifier = IVerifier(_verifier);
     }

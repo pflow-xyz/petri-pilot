@@ -134,7 +134,10 @@ func (c *Tsit5StepCircuit) Define(api frontend.API) error {
 
 // mimcHash computes MiMC hash over a slice of field elements.
 func mimcHash(api frontend.API, values []frontend.Variable) frontend.Variable {
-	h, _ := mimc.NewMiMC(api)
+	h, err := mimc.NewMiMC(api)
+	if err != nil {
+		panic("mimcHash: " + err.Error())
+	}
 	for _, v := range values {
 		h.Write(v)
 	}

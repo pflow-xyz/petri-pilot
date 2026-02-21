@@ -188,17 +188,6 @@ func TicTacToeInitialMarking() []*big.Int {
 // Tsit5 Butcher tableau coefficients, pre-converted to fixed-point field elements.
 // Reference: Tsitouras 5(4) RK method.
 
-// tsit5C are the node coefficients.
-var tsit5C = [7]*big.Int{
-	FixFromFloat(0),
-	FixFromFloat(0.161),
-	FixFromFloat(0.327),
-	FixFromFloat(0.9),
-	FixFromFloat(0.9800255409045097),
-	FixFromFloat(1),
-	FixFromFloat(1),
-}
-
 // tsit5A is the Runge-Kutta coefficient matrix. Only lower-triangular entries
 // are non-zero. Stored as a ragged array matching the reference implementation.
 var tsit5A = [7][]*big.Int{
