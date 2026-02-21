@@ -9,18 +9,18 @@ import (
 
 // ODEState tracks the current marking and its MiMC state root.
 type ODEState struct {
-	Marking [NumPlaces]*big.Int // Fixed-point field elements
-	Root    *big.Int            // MiMC hash of Marking
-	Step    int                 // Step number (0 = genesis)
+	Marking []*big.Int // Fixed-point field elements
+	Root    *big.Int   // MiMC hash of Marking
+	Step    int        // Step number (0 = genesis)
 }
 
 // NewODEState creates an initial state from a marking.
-func NewODEState(marking [NumPlaces]*big.Int) *ODEState {
+func NewODEState(marking []*big.Int) *ODEState {
 	s := &ODEState{
 		Marking: marking,
 		Step:    0,
 	}
-	s.Root = ComputeRoot(marking[:])
+	s.Root = ComputeRoot(marking)
 	return s
 }
 

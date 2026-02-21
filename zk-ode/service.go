@@ -10,25 +10,27 @@ import (
 )
 
 // ZkODEWitnessFactory converts raw JSON witness maps into typed circuit assignments.
-type ZkODEWitnessFactory struct{}
+type ZkODEWitnessFactory struct {
+	Net NetConfig
+}
 
 // CreateAssignment builds a circuit assignment from a witness map.
 //
 // For "tsit5_step" circuit, expected witness keys:
 //
-//	pre_state_root, post_state_root, step_size, rate_0, rate_1,
-//	pre_marking_0..pre_marking_2, post_marking_0..post_marking_2
+//	pre_state_root, post_state_root, step_size,
+//	rate_0..rate_{M-1}, pre_marking_0..pre_marking_{N-1}, post_marking_0..post_marking_{N-1}
 func (f *ZkODEWitnessFactory) CreateAssignment(circuitName string, witness map[string]string) (frontend.Circuit, error) {
 	switch circuitName {
 	case "tsit5_step":
-		return createTsit5Assignment(witness)
+		return f.createTsit5Assignment(witness)
 	default:
 		return nil, fmt.Errorf("unknown circuit: %s", circuitName)
 	}
 }
 
-func createTsit5Assignment(w map[string]string) (*Tsit5StepCircuit, error) {
-	c := &Tsit5StepCircuit{}
+func (f *ZkODEWitnessFactory) createTsit5Assignment(w map[string]string) (*Tsit5StepCircuit, error) {
+	c := NewTsit5StepCircuit(f.Net)
 	var err error
 
 	c.PreStateRoot, err = parseWitnessField(w, "pre_state_root")
@@ -44,14 +46,14 @@ func createTsit5Assignment(w map[string]string) (*Tsit5StepCircuit, error) {
 		return nil, err
 	}
 
-	for t := 0; t < NumTransitions; t++ {
+	for t := 0; t < f.Net.NumTransitions; t++ {
 		c.Rates[t], err = parseWitnessField(w, fmt.Sprintf("rate_%d", t))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	for p := 0; p < NumPlaces; p++ {
+	for p := 0; p < f.Net.NumPlaces; p++ {
 		c.PreMarking[p], err = parseWitnessField(w, fmt.Sprintf("pre_marking_%d", p))
 		if err != nil {
 			return nil, err
@@ -73,12 +75,13 @@ func parseWitnessField(w map[string]string, key string) (interface{}, error) {
 }
 
 // NewZkODEService creates a prover.Service with the "tsit5_step" circuit registered.
-func NewZkODEService() (*prover.Service, error) {
+func NewZkODEService(net NetConfig) (*prover.Service, error) {
 	p := prover.NewProver()
 
 	slog.Info("Compiling zk-ode circuits...")
 
-	cc, err := p.CompileCircuit("tsit5_step", &Tsit5StepCircuit{})
+	template := NewTsit5StepCircuit(net)
+	cc, err := p.CompileCircuit("tsit5_step", template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile tsit5_step circuit: %w", err)
 	}
@@ -91,14 +94,14 @@ func NewZkODEService() (*prover.Service, error) {
 		"private", cc.PrivateVars,
 	)
 
-	factory := &ZkODEWitnessFactory{}
+	factory := &ZkODEWitnessFactory{Net: net}
 	return prover.NewService(p, factory), nil
 }
 
 // ProveStep generates a Groth16 proof for a single ODE step.
 // This is a convenience wrapper for programmatic use (vs HTTP API).
-func ProveStep(p *prover.Prover, state *ODEState, h *big.Int, rates [NumTransitions]*big.Int) (*prover.ProofResult, *ODEState, error) {
-	w := ComputeStep(state, h, rates)
+func ProveStep(net NetConfig, p *prover.Prover, state *ODEState, h *big.Int, rates []*big.Int) (*prover.ProofResult, *ODEState, error) {
+	w := ComputeStep(net, state, h, rates)
 	assignment := w.ToCircuitAssignment()
 
 	result, err := p.Prove("tsit5_step", assignment)
