@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provably Optimal Play</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>Provably Optimal Play</h1>
+    <p class="subtitle">ODE heatmap scores every legal move. A ZK proof attests to the computation. A Solidity contract rejects suboptimal play.</p>
+
+    <!-- Interactive Board + Heatmap -->
+    <section class="card board-card">
+      <div class="board-header">
+        <h2>Play &amp; Evaluate</h2>
+        <div class="btn-row">
+          <button id="btn-new" class="btn btn-primary">New Game</button>
+        </div>
+      </div>
+      <p class="card-desc" id="status-text">X's turn &mdash; click a cell to play</p>
+
+      <div class="board-area">
+        <div class="board" id="board">
+          <button class="cell" data-r="0" data-c="0"></button>
+          <button class="cell" data-r="0" data-c="1"></button>
+          <button class="cell" data-r="0" data-c="2"></button>
+          <button class="cell" data-r="1" data-c="0"></button>
+          <button class="cell" data-r="1" data-c="1"></button>
+          <button class="cell" data-r="1" data-c="2"></button>
+          <button class="cell" data-r="2" data-c="0"></button>
+          <button class="cell" data-r="2" data-c="1"></button>
+          <button class="cell" data-r="2" data-c="2"></button>
+        </div>
+
+        <div class="legend-bar">
+          <span class="legend-label">Bad</span>
+          <div class="legend-gradient"></div>
+          <span class="legend-label">Good</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pipeline Explainer -->
+    <section class="card pipeline-card">
+      <h2>The Pipeline</h2>
+      <p class="card-desc">Four stages connect ODE simulation to on-chain enforcement.</p>
+
+      <div class="pipeline">
+        <div class="pipeline-stage" id="stage-ode">
+          <div class="stage-icon">&#9881;</div>
+          <div class="stage-name">ODE Solver</div>
+          <div class="stage-desc">Tsit5 evaluates every legal move using mass-action kinetics on the Petri net</div>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage" id="stage-heatmap">
+          <div class="stage-icon">&#9608;</div>
+          <div class="stage-name">Heatmap</div>
+          <div class="stage-desc">Transition rates become per-cell scores: green = good, red = bad</div>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage" id="stage-zk">
+          <div class="stage-icon">&#128274;</div>
+          <div class="stage-name">ZK Prover</div>
+          <div class="stage-desc">Groth16 proof attests that the ODE step was computed correctly</div>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage" id="stage-contract">
+          <div class="stage-icon">&#9878;</div>
+          <div class="stage-name">Contract</div>
+          <div class="stage-desc">Solidity verifies the proof and reverts if the chosen move isn't optimal</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How Scores Work -->
+    <section class="card">
+      <h2>How Scores Work</h2>
+      <p class="card-desc">Strategic values emerge from network topology, not hand-coded heuristics.</p>
+      <ol class="info-list">
+        <li>The tic-tac-toe board is modeled as a <strong>Petri net</strong>: 9 cells as places, moves as transitions, win patterns as output arcs.</li>
+        <li>The ODE solver applies <strong>mass-action kinetics</strong> &mdash; each transition's firing rate is proportional to the tokens in its input places.</li>
+        <li>For each empty cell, a hypothetical move is placed and the resulting net is simulated. The difference in token flow toward win-places becomes the <strong>strategic score</strong>.</li>
+        <li>Center scores highest (4 win patterns), corners next (3), edges lowest (2). These values arise purely from <strong>graph structure</strong>.</li>
+      </ol>
+    </section>
+
+    <!-- Contract Enforcement -->
+    <section class="card">
+      <h2>Contract Enforcement</h2>
+      <p class="card-desc">The <code>enforceOptimal</code> modifier in <code>ZkOde.sol</code> iterates over all transition rates and reverts if a higher-rate transition exists.</p>
+
+      <pre class="code-block"><code>// Enforce optimal play: chosen transition must have the highest rate
+if (enforceOptimal) {
+    uint256 chosenRate = publicInputs[3 + chosenTransition];
+    for (uint256 t = 0; t &lt; numTransitions; t++) {
+        uint256 rate = publicInputs[3 + t];
+        if (rate > chosenRate) {
+            revert NotOptimalPlay(
+                chosenTransition, chosenRate, t, rate
+            );
+        }
+    }
+}</code></pre>
+
+      <p class="card-desc" style="margin-top: 1rem;">The ZK proof embeds the ODE-computed transition rates as public inputs. The contract doesn't re-run the ODE &mdash; it trusts the proof and only checks that the player picked the best-scoring move.</p>
+    </section>
+
+    <!-- How It All Connects -->
+    <section class="card info-card">
+      <h2>Why This Matters</h2>
+      <ol class="info-list">
+        <li><strong>No AI black box:</strong> The strategy comes from differential equations over graph topology. Every score is deterministic and reproducible.</li>
+        <li><strong>Verifiable computation:</strong> The ZK proof guarantees the ODE was computed correctly without revealing the full board state.</li>
+        <li><strong>On-chain enforcement:</strong> Smart contracts can now enforce "play optimally or forfeit" without running the AI on-chain.</li>
+        <li><strong>General pattern:</strong> Any Petri net model can be evaluated, proved, and enforced this way &mdash; not just tic-tac-toe.</li>
+      </ol>
+    </section>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
