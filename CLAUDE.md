@@ -501,26 +501,37 @@ export GITHUB_TOKEN=$(gh auth token)
 
 ## ZkOde Contracts (Base Sepolia)
 
-ZK-proven ODE state machine contracts deployed on Base Sepolia (2026-02-21).
+ZK-proven ODE state machine contracts deployed on Base Sepolia.
 
-### Deployed Contracts
+### Cascade Contracts (3 places, 2 transitions)
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| Groth16Verifier | `0xA675a162C5097e5eBa2968C918D4D0530b7005Ae` | gnark-generated BN254 pairing verifier |
-| Groth16VerifierAdapter | `0xf0aB1678309B12fd02CFD8bABf08ec87238B2E03` | Adapts fixed-size gnark interface to IVerifier |
-| ZkOde | `0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8` | State commitment manager (enforceOptimal=true) |
+| Groth16Verifier | `0xA675a162C5097e5eBa2968C918D4D0530b7005Ae` | gnark BN254 verifier (5 inputs) |
+| Groth16VerifierAdapter | `0xf0aB1678309B12fd02CFD8bABf08ec87238B2E03` | Adapts gnark interface to IVerifier |
+| ZkOde | `0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8` | State manager (2 transitions) |
 
-- **Network:** Base Sepolia (chain ID 84532)
-- **Explorer:** https://sepolia.basescan.org
-- **Deployer/Prover:** `0x762593292f543948CA9A9a290adC1770746d059a`
 - **Genesis root:** MiMC([1,0,0]) = `0x2cc32c87522be4b588f26301aef43e600ea46d912b6d781416c83074185892aa`
 - **Config:** numTransitions=2, enforceOptimal=true, 5 public inputs
 - **First on-chain proof:** [tx `0xeaa4bae9...`](https://sepolia.basescan.org/tx/0xeaa4bae92172acb2e4c024142b279eb5fb0417631c698a6e16a39e306a41ba0e)
 
-### Circuit Constraint
+### TTT Contracts (32 places, 34 transitions)
 
-The current gnark circuit (`zk-ode/circuits.go`) is hard-coded for `NumPlaces=3, NumTransitions=2` (A→B→C linear cascade). A tic-tac-toe circuit with 35 transitions would require new topology constants and a circuit recompile.
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| TTTVerifier | `0x6c8f6dC588f0f3f89aF581338d2196B06F3Fd989` | gnark BN254 verifier (37 inputs, 118k constraints) |
+| Groth16VerifierAdapter | `0x1DDfa68Ac8578aEF0D33948622a87d3614A9B462` | Adapts gnark interface to IVerifier |
+| ZkOde (TTT) | `0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8` | State manager (34 transitions, enforceOptimal=true) |
+
+- **Genesis root:** MiMC(empty board) = `0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c`
+- **Config:** numTransitions=34, enforceOptimal=true, 37 public inputs
+- **Circuit:** 118,622 constraints, 32 places (9 empty + 9 X + 9 O + 5 control), 34 transitions (18 play + 16 win)
+
+### Common
+
+- **Network:** Base Sepolia (chain ID 84532)
+- **Explorer:** https://sepolia.basescan.org
+- **Deployer/Prover:** `0x762593292f543948CA9A9a290adC1770746d059a`
 
 ### Architecture
 
@@ -528,7 +539,7 @@ The current gnark circuit (`zk-ode/circuits.go`) is hard-coded for `NumPlaces=3,
 ZkOde → IVerifier(Groth16VerifierAdapter) → Groth16Verifier (gnark BN254)
 ```
 
-The adapter translates between IVerifier's structured proof format `(uint256[2] a, uint256[2][2] b, uint256[2] c, uint256[] inputs)` and gnark's flat format `(uint256[8] proof, uint256[5] input)`.
+The adapter translates between IVerifier's structured proof format `(uint256[2] a, uint256[2][2] b, uint256[2] c, uint256[] inputs)` and gnark's flat format `(uint256[8] proof, uint256[N] input)`.
 
 ### Key Files
 
@@ -536,26 +547,30 @@ The adapter translates between IVerifier's structured proof format `(uint256[2] 
 |------|---------|
 | `solidity/src/ZkOde.sol` | State commitment manager with optimal play enforcement |
 | `solidity/src/IVerifier.sol` | Standard verifier interface |
-| `solidity/src/Groth16Verifier.sol` | gnark-generated verifier with BN254 pairing |
+| `solidity/src/Groth16Verifier.sol` | Cascade gnark verifier (5 inputs) |
+| `solidity/src/TTTGroth16Verifier.sol` | TTT gnark verifier (37 inputs) |
 | `solidity/src/Groth16VerifierAdapter.sol` | Adapts gnark verifier to IVerifier interface |
 | `solidity/src/ZkOdeVerifier.sol` | Stub verifier (testing only) |
-| `solidity/script/Deploy.s.sol` | Foundry deploy script (3-contract pattern) |
+| `solidity/script/Deploy.s.sol` | Cascade deploy script |
+| `solidity/script/DeployTTT.s.sol` | TTT deploy script (34 transitions) |
 | `solidity/test/ZkOde.t.sol` | Tests (17 total: stub, optimal play, adapter) |
+| `zk-ode/cmd/export-ttt-verifier/main.go` | Export TTT Solidity verifier from gnark keys |
 
 ### Deployment Commands
 
 ```bash
-# Deploy (requires PRIVATE_KEY, BASE_SEPOLIA_RPC_URL, BASESCAN_API_KEY in env)
+# Deploy cascade (requires PRIVATE_KEY, BASE_SEPOLIA_RPC_URL, BASESCAN_API_KEY in env)
 cd solidity && PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY \
   forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
 
-# Verify a contract manually
-BASESCAN_API_KEY=$BASESCAN_API_KEY forge verify-contract <address> src/ZkOde.sol:ZkOde \
-  --chain base-sepolia --constructor-args $(cast abi-encode "constructor(address,uint256,uint256,bool)" <adapter> 0 2 true) --watch
+# Deploy TTT
+cd solidity && PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY \
+  forge script script/DeployTTT.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
 
-# Query on-chain state
-cast call 0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8 "currentStateRoot()" --rpc-url https://sepolia.base.org
-cast call 0x2084d59f9797d96ddAA3BaE2E38745D2a5D0f6F8 "enforceOptimal()" --rpc-url https://sepolia.base.org
+# Query TTT on-chain state
+cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "currentStateRoot()" --rpc-url https://sepolia.base.org
+cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "enforceOptimal()" --rpc-url https://sepolia.base.org
+cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "stepCount()" --rpc-url https://sepolia.base.org
 ```
 
 ## Adding a New Service to Landing Page
