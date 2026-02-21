@@ -45,6 +45,9 @@ solidity/lib/
 # Headless chrome
 .playwright-mcp
 
+# ZK proving keys (contain trusted setup secrets)
+keys/
+
 # Root-level generated files (should only exist in subdirectories)
 generated/*.go
 !generated/imports.go

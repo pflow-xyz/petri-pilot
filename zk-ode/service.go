@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/pflow-xyz/go-pflow/prover"
@@ -74,17 +75,20 @@ func parseWitnessField(w map[string]string, key string) (interface{}, error) {
 
 // NewZkODEService creates a prover.Service with the "tsit5_step" circuit registered.
 func NewZkODEService() (*prover.Service, error) {
-	p := prover.NewProver()
-
-	slog.Info("Compiling zk-ode circuits...")
-
-	cc, err := p.CompileCircuit("tsit5_step", &Tsit5StepCircuit{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile tsit5_step circuit: %w", err)
+	keyDir := os.Getenv("ZK_KEY_DIR")
+	if keyDir == "" {
+		keyDir = "keys/zk-ode"
 	}
-	p.StoreCircuit("tsit5_step", cc)
+	p := prover.NewProverWithKeyDir(keyDir)
 
-	slog.Info("Circuit compiled",
+	slog.Info("Loading zk-ode circuits...", "key_dir", keyDir)
+
+	cc, err := p.LoadOrCompile("tsit5_step", &Tsit5StepCircuit{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to load/compile tsit5_step circuit: %w", err)
+	}
+
+	slog.Info("Circuit ready",
 		"name", "tsit5_step",
 		"constraints", cc.Constraints,
 		"public", cc.PublicVars,

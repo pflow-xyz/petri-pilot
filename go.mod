@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/mark3labs/mcp-go v0.43.2
-	github.com/pflow-xyz/go-pflow v0.11.0
+	github.com/pflow-xyz/go-pflow v0.13.0
 	golang.org/x/oauth2 v0.32.0
 )
 
