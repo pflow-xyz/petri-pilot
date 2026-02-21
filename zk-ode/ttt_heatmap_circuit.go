@@ -106,8 +106,8 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 	// === 4. Tactical heatmap evaluation ===
 
 	// Determine current player from XTurn marking.
-	// isXTurn = 1 if PreMarking[XTurn] != 0, else 0
-	xTurnNonZero := isNonZero(api, c.PreMarking[XTurn])
+	// isXTurn = 1 (raw) if PreMarking[XTurn] != 0, else 0 — for api.Select
+	xTurnNonZero := isNonZeroBool(api, c.PreMarking[XTurn])
 
 	// Select current/opponent pieces and base rates per cell
 	var currentPiece [9]frontend.Variable
@@ -138,7 +138,7 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 		score = api.Sub(score, penaltyTerm)
 
 		// Mask occupied cells: score = cellEmpty[i] > 0 ? score : 0
-		cellNonZero := isNonZero(api, cellEmpty[i])
+		cellNonZero := isNonZeroFP(api, cellEmpty[i])
 		score = FixMul(api, score, cellNonZero)
 
 		api.AssertIsEqual(score, c.HeatmapScores[i])
@@ -159,11 +159,17 @@ func computeMultiInputRate(api frontend.API, marking []frontend.Variable, t int)
 	return rate
 }
 
-// isNonZero returns 1 (fixed-point) if v != 0, else 0 (fixed-point).
-// Uses gnark's IsZero which returns 1 if zero, 0 if non-zero.
-func isNonZero(api frontend.API, v frontend.Variable) frontend.Variable {
-	iz := api.IsZero(v)
-	return api.Sub(FixFromFloat(1.0), FixMul(api, iz, FixFromFloat(1.0)))
+// isNonZeroBool returns raw 0 or 1 (for api.Select which requires boolean 0/1).
+func isNonZeroBool(api frontend.API, v frontend.Variable) frontend.Variable {
+	iz := api.IsZero(v) // raw 1 if v==0, raw 0 if v!=0
+	return api.Sub(1, iz)
+}
+
+// isNonZeroFP returns fixed-point 0 or 1.0 (Scale) for use in FixMul arithmetic.
+func isNonZeroFP(api frontend.API, v frontend.Variable) frontend.Variable {
+	iz := api.IsZero(v) // raw 0 or 1
+	izFP := api.Mul(iz, Scale)
+	return api.Sub(FixFromFloat(1.0), izFP)
 }
 
 // circuitWinFlag computes a fixed-point flag (0 or 1.0) indicating if placing
@@ -185,7 +191,7 @@ func circuitWinFlag(api frontend.API, cell int, currentPiece []frontend.Variable
 		winSum = api.Add(winSum, lineWin)
 	}
 	// win_flag = isNonZero(winSum) → 1.0 if any line completes
-	return isNonZero(api, winSum)
+	return isNonZeroFP(api, winSum)
 }
 
 // circuitBlockFlag computes a fixed-point flag (0 or 1.0) indicating if after
@@ -224,5 +230,5 @@ func circuitBlockFlag(api frontend.API, cell int, opponentPiece []frontend.Varia
 		}
 	}
 
-	return isNonZero(api, threatSum)
+	return isNonZeroFP(api, threatSum)
 }

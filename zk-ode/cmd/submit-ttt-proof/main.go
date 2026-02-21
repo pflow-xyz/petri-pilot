@@ -25,7 +25,7 @@ func main() {
 
 	contractAddr := os.Getenv("TTT_ZKODE_ADDRESS")
 	if contractAddr == "" {
-		contractAddr = "0xe260BA6e13a393018F394B9d847aEd4809f8d9Fa"
+		contractAddr = "0xF5d9cB0247698361D561faA2E30dDA7855fC25Db"
 	}
 
 	rpcURL := os.Getenv("BASE_SEPOLIA_RPC_URL")

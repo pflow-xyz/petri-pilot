@@ -515,22 +515,23 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia.
 - **Config:** numTransitions=2, enforceOptimal=true, 5 public inputs
 - **First on-chain proof:** [tx `0xeaa4bae9...`](https://sepolia.basescan.org/tx/0xeaa4bae92172acb2e4c024142b279eb5fb0417631c698a6e16a39e306a41ba0e)
 
-### TTT Contracts (32 places, 34 transitions)
+### TTT Heatmap Contracts (32 places, 9 cell positions)
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| TTTVerifier | `0xC092A5e3aFCB760741754f24d2869505F707f924` | gnark BN254 verifier (37 inputs, 135k constraints) |
-| Groth16VerifierAdapter | `0x1d8Ce7Cb332fa4F6Fc0DFCA72A981Bc3b8d7a4bE` | Adapts gnark interface to IVerifier |
-| ZkOde (TTT) | `0xe260BA6e13a393018F394B9d847aEd4809f8d9Fa` | State manager (34 transitions, enforceOptimal=true, discrete board chaining) |
+| HeatmapVerifier | `0x97a6Bb8FBBbBb81BF36456829A6a41e29030f351` | gnark BN254 verifier (12 inputs, 177k constraints) |
+| Groth16VerifierAdapter | `0x3211ac2a941d357819EdC2b4ce0D0888953b950E` | Adapts gnark interface to IVerifier |
+| ZkOde (Heatmap) | `0xF5d9cB0247698361D561faA2E30dDA7855fC25Db` | State manager (9 transitions, enforceOptimal=true) |
 
 - **Genesis root:** MiMC(empty board) = `0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c`
-- **Config:** numTransitions=34, enforceOptimal=true, 37 public inputs
-- **Circuit:** 135,486 constraints, 32 places (9 empty + 9 X + 9 O + 5 control), 34 transitions (18 play + 16 win)
+- **Config:** numTransitions=9, enforceOptimal=true, 12 public inputs
+- **Circuit:** 176,891 constraints, 12 public inputs (PreStateRoot, PostStateRoot, StepSize, HeatmapScores[9])
+- **Heatmap scoring:** `score[i] = base_rate + 10.0*win_flag - 1.5*block_flag*(1-win_flag)` — tactical win/block detection in ZK
 - **Rate constants:** center k=4, corners k=3, edges k=2, wins k=1 (breaks symmetry for optimal play)
 - **Discrete board chaining:** After each proof, `currentStateRoot` advances to the MiMC hash of the discrete post-move board (piece staked), not the ODE post-state. This enables multi-move proof chains.
 - **On-chain proofs (2 steps):**
-  - Step 1: [tx `0x2e502d74...`](https://sepolia.basescan.org/tx/0x2e502d74716d9d6dd35c276fb9974bc9e8ef06e02b4c7b0c6752c6815d7e85f7) — X plays center (t=4, rate=4.0), 649k gas
-  - Step 2: [tx `0x397e6235...`](https://sepolia.basescan.org/tx/0x397e6235f955ee89ceb7d1afbf1d7d745412f8c84855bfebad35c70aa86bd175) — O plays corner (t=9, rate=3.0), 632k gas
+  - Step 1: [tx `0xa01f44fc...`](https://sepolia.basescan.org/tx/0xa01f44fcbe73a7598127e5cf25c57210c000e0e249ff7b041f6af4f17b5b709a) — X plays center (cell 4, score=4.0), 475k gas
+  - Step 2: [tx `0x628b0ba6...`](https://sepolia.basescan.org/tx/0x628b0ba6b54d7a0cf16112ef2fc929d650d2e24480e9cfcc14cb7a59fcf9cb27) — O plays corner (cell 0, score=3.0), 438k gas
 
 ### Common
 
@@ -553,13 +554,13 @@ The adapter translates between IVerifier's structured proof format `(uint256[2] 
 | `solidity/src/ZkOde.sol` | State commitment manager with optimal play enforcement |
 | `solidity/src/IVerifier.sol` | Standard verifier interface |
 | `solidity/src/Groth16Verifier.sol` | Cascade gnark verifier (5 inputs) |
-| `solidity/src/TTTGroth16Verifier.sol` | TTT gnark verifier (37 inputs) |
+| `solidity/src/TTTHeatmapVerifier.sol` | TTT heatmap gnark verifier (12 inputs, 177k constraints) |
 | `solidity/src/Groth16VerifierAdapter.sol` | Adapts gnark verifier to IVerifier interface |
 | `solidity/src/ZkOdeVerifier.sol` | Stub verifier (testing only) |
 | `solidity/script/Deploy.s.sol` | Cascade deploy script |
-| `solidity/script/DeployTTT.s.sol` | TTT deploy script (34 transitions) |
+| `solidity/script/DeployHeatmap.s.sol` | TTT heatmap deploy script (9 transitions) |
 | `solidity/test/ZkOde.t.sol` | Tests (17 total: stub, optimal play, adapter) |
-| `zk-ode/cmd/export-ttt-verifier/main.go` | Export TTT Solidity verifier from gnark keys |
+| `zk-ode/cmd/export-ttt-verifier/main.go` | Export TTT heatmap Solidity verifier from gnark keys |
 
 ### Deployment Commands
 
@@ -568,14 +569,14 @@ The adapter translates between IVerifier's structured proof format `(uint256[2] 
 cd solidity && PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY \
   forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
 
-# Deploy TTT
+# Deploy TTT Heatmap
 cd solidity && PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY \
-  forge script script/DeployTTT.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
+  forge script script/DeployHeatmap.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
 
-# Query TTT on-chain state
-cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "currentStateRoot()" --rpc-url https://sepolia.base.org
-cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "enforceOptimal()" --rpc-url https://sepolia.base.org
-cast call 0x5B96db6164EC6d5c8F99c650B3979EF931771Dd8 "stepCount()" --rpc-url https://sepolia.base.org
+# Query TTT Heatmap on-chain state
+cast call 0xF5d9cB0247698361D561faA2E30dDA7855fC25Db "currentStateRoot()" --rpc-url https://sepolia.base.org
+cast call 0xF5d9cB0247698361D561faA2E30dDA7855fC25Db "enforceOptimal()" --rpc-url https://sepolia.base.org
+cast call 0xF5d9cB0247698361D561faA2E30dDA7855fC25Db "stepCount()" --rpc-url https://sepolia.base.org
 ```
 
 ## Adding a New Service to Landing Page
