@@ -1,8 +1,6 @@
 // Tic-Tac-Toe Simulator - Main Application
-// Uses pflow ODE solver for strategic value computation
-// Model is fetched from /api/schema to ensure consistency with Go backend
-
-import * as Solver from 'https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-solver.js'
+// Heatmap scoring matches the on-chain ZK heatmap verifier exactly (no ODE solver needed)
+// score[i] = position_weight + 10*win_flag - 1.5*block_flag*(1-win_flag)
 
 // ZK module - loaded dynamically to ensure proper initialization
 let ZK = null
@@ -21,165 +19,13 @@ function getApiBase() {
   return window.API_BASE || ''
 }
 
-// Normalize negative ODE values for display: show 1 + value if negative
-function displayOdeValue(value) {
+// Normalize heatmap values for display: clamp negatives
+function displayHeatValue(value) {
   return value < 0 ? 1 + value : value
 }
 
-// Cached schema model from /api/schema - single source of truth
-let cachedSchemaModel = null
-
-// Fetch the schema model from the API (same model as Go backend uses)
-async function fetchSchemaModel() {
-  if (cachedSchemaModel) return cachedSchemaModel
-
-  try {
-    const response = await fetch(`${getApiBase()}/api/schema`)
-    if (!response.ok) {
-      console.error('Failed to fetch schema:', response.status)
-      return null
-    }
-    cachedSchemaModel = await response.json()
-    console.log('Schema model loaded from /api/schema')
-    return cachedSchemaModel
-  } catch (err) {
-    console.error('Error fetching schema:', err)
-    return null
-  }
-}
-
-// Convert schema JSON format to pflow.xyz Petri net format for ODE solver
-// Applies current board state as initial token values
-function schemaToODEModel(schema, board, currentPlayer, hypRow, hypCol) {
-  const places = {}
-  const transitions = {}
-  const arcs = []
-
-  // Build place ID to index mapping for applying board state
-  const placeIds = schema.places.map(p => p.id)
-
-  // Convert places from schema format to pflow format
-  for (const place of schema.places) {
-    let initial = place.initial || 0
-
-    // Apply current board state to piece places
-    // p00-p22: 1 if empty, 0 if occupied
-    const pMatch = place.id.match(/^p(\d)(\d)$/)
-    if (pMatch) {
-      const r = parseInt(pMatch[1])
-      const c = parseInt(pMatch[2])
-      if (board && board[r][c] !== '') initial = 0
-      else initial = 1
-      // Apply hypothetical move
-      if (r === hypRow && c === hypCol) initial = 0
-    }
-
-    // x00-x22: 1 if X has played here
-    const xMatch = place.id.match(/^x(\d)(\d)$/)
-    if (xMatch) {
-      const r = parseInt(xMatch[1])
-      const c = parseInt(xMatch[2])
-      initial = (board && board[r][c] === 'X') ? 1 : 0
-      // Apply hypothetical move for X
-      if (currentPlayer === 'X' && r === hypRow && c === hypCol) initial = 1
-    }
-
-    // o00-o22: 1 if O has played here
-    const oMatch = place.id.match(/^o(\d)(\d)$/)
-    if (oMatch) {
-      const r = parseInt(oMatch[1])
-      const c = parseInt(oMatch[2])
-      initial = (board && board[r][c] === 'O') ? 1 : 0
-      // Apply hypothetical move for O
-      if (currentPlayer === 'O' && r === hypRow && c === hypCol) initial = 1
-    }
-
-    // Turn control: after hypothetical move, it's opponent's turn
-    if (place.id === 'x_turn') {
-      initial = currentPlayer === 'O' ? 1 : 0  // After O plays, X's turn
-    }
-    if (place.id === 'o_turn') {
-      initial = currentPlayer === 'X' ? 1 : 0  // After X plays, O's turn
-    }
-
-    // game_active: always 1 at start of ODE simulation
-    if (place.id === 'game_active') {
-      initial = 1
-    }
-
-    // win_x, win_o: always 0 at start
-    if (place.id === 'win_x' || place.id === 'win_o') {
-      initial = 0
-    }
-
-    // can_reset: not needed for ODE, set to 0
-    if (place.id === 'can_reset') {
-      initial = 0
-    }
-
-    // move_tokens: count current moves + 1 for hypothetical move
-    if (place.id === 'move_tokens') {
-      let moveCount = 0
-      if (board) {
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (board[r][c] !== '') moveCount++
-          }
-        }
-      }
-      // Add 1 for the hypothetical move being evaluated
-      if (hypRow !== null && hypCol !== null) moveCount++
-      initial = moveCount
-    }
-
-    places[place.id] = {
-      '@type': 'Place',
-      initial: [initial],
-      x: place.x || 0,
-      y: place.y || 0
-    }
-  }
-
-  // Convert transitions
-  for (const trans of schema.transitions) {
-    transitions[trans.id] = {
-      '@type': 'Transition',
-      x: trans.x || 0,
-      y: trans.y || 0
-    }
-  }
-
-  // Convert arcs (from/to format to source/target format)
-  for (const arc of schema.arcs) {
-    arcs.push({
-      '@type': 'Arrow',
-      source: arc.from,
-      target: arc.to,
-      weight: [arc.weight || 1]
-    })
-  }
-
-  return {
-    '@context': 'https://pflow.xyz/schema',
-    '@type': 'PetriNet',
-    places,
-    transitions,
-    arcs
-  }
-}
-
-// ODE simulation results cache
-let odeValues = null
-let odeSolution = null
-
-// Configurable ODE solver parameters
-let solverParams = {
-  tspan: 2.0,
-  dt: 0.2,
-  adaptive: false,
-  abstol: 1e-4,
-  reltol: 1e-3
-}
+// Heatmap scoring results cache
+let heatValues = null
 
 // Win patterns as position indices (derived from Petri net topology)
 // These are encoded as transitions in the net - each pattern is a transition
@@ -390,357 +236,111 @@ function buildTicTacToePetriNet(board = null, player = 'X') {
   }
 }
 
-// Compute strategic values using Go backend ODE API
-// Calls /api/heatmap endpoint which uses go-pflow ODE solver
-// Use local JS ODE by default, set to false to use Go backend API
-let useLocalODE = true
+// Win lines as flat cell indices (0-8) for heatmap scoring
+const HEATMAP_WIN_LINES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+  [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
+  [0, 4, 8], [2, 4, 6],             // diags
+]
 
-async function runODESimulation(board = null) {
-  if (useLocalODE) {
-    return runLocalODESimulation(board)
-  } else {
-    return runAPIHeatmap(board)
+// Position weights from Petri net rate constants (number of win lines through each cell)
+const POSITION_WEIGHTS = [
+  3, 2, 3, // corner, edge, corner
+  2, 4, 2, // edge, center, edge
+  3, 2, 3, // corner, edge, corner
+]
+
+const WIN_BONUS = 10.0
+const BLOCK_PENALTY = 1.5
+
+// Check if placing at cell completes a 3-in-a-row for current player
+function heatmapWinFlag(cell, currentPiece) {
+  for (const line of HEATMAP_WIN_LINES) {
+    if (!line.includes(cell)) continue
+    let allOwned = true
+    for (const c of line) {
+      if (c === cell) continue
+      if (!currentPiece[c]) { allOwned = false; break }
+    }
+    if (allOwned) return true
   }
+  return false
 }
 
-// Local JavaScript ODE computation using pflow.xyz solver
-// Uses the schema model from /api/schema (same as Go backend)
-// Note: Solver has shared state, so we run sequentially
-async function runLocalODESimulation(board = null) {
-  try {
-    const values = {}
-    const details = {}
-    const rawValues = {}
-    const positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22']
-
-    // Fetch schema model (cached after first fetch)
-    const schema = await fetchSchemaModel()
-    const useSchemaModel = schema !== null
-
-    // Determine current player
-    let xCount = 0, oCount = 0
-    if (board) {
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 3; c++) {
-          if (board[r][c] === 'X') xCount++
-          if (board[r][c] === 'O') oCount++
-        }
-      }
+// Check if after placing at cell, opponent has an unblocked winning threat
+function heatmapBlockFlag(cell, opponentPiece, cellEmpty) {
+  for (const line of HEATMAP_WIN_LINES) {
+    let oppCount = 0
+    let missingCell = -1
+    for (const c of line) {
+      if (opponentPiece[c]) oppCount++
+      else if (cellEmpty[c]) missingCell = c
     }
-    const currentPlayer = xCount > oCount ? 'O' : 'X'
-    const opponent = currentPlayer === 'X' ? 'O' : 'X'
-
-    console.log(`Local ODE: currentPlayer=${currentPlayer}, useSchemaModel=${useSchemaModel}, board=`, board)
-
-    // Run ODE simulations sequentially (Solver has shared state)
-    for (const pos of positions) {
-      const row = parseInt(pos[0])
-      const col = parseInt(pos[1])
-
-      // Skip occupied positions
-      if (board && board[row][col] !== '') {
-        values[pos] = 0
-        rawValues[pos] = 0
-        continue
-      }
-
-      // Build Petri net with hypothetical move
-      // Use schema model if available, otherwise fall back to local builder
-      const model = useSchemaModel
-        ? schemaToODEModel(schema, board, currentPlayer, row, col)
-        : buildODEPetriNet(board, currentPlayer, row, col)
-
-      // Run ODE simulation
-      const result = solveODE(model)
-
-      if (result) {
-        const { winX, winO } = result
-        // Score from current player's perspective
-        const score = currentPlayer === 'X' ? (winX - winO) : (winO - winX)
-        rawValues[pos] = score
-        details[pos] = { WinX: winX, WinO: winO, score }
-      } else {
-        rawValues[pos] = 0
-      }
-    }
-
-    // Use raw ODE values directly - draw detection in the model handles blocking preference
-    for (const pos of positions) {
-      if (board && board[parseInt(pos[0])][parseInt(pos[1])] !== '') {
-        values[pos] = 0
-        continue
-      }
-      values[pos] = rawValues[pos] || 0
-    }
-
-    console.log('Local ODE values:', values)
-    return { values, details, player: currentPlayer, solution: null, model: null }
-  } catch (err) {
-    console.error('Local ODE failed:', err)
-    return null
+    if (oppCount === 2 && missingCell >= 0 && missingCell !== cell) return true
   }
+  return false
 }
 
-// Ensure ODE values are computed (called before rendering if needed)
-// Note: This is now a sync fallback that just returns cached values.
-// Async callers should use runODESimulation() directly instead.
-function ensureODEValues(board = null) {
-  // If we have cached values, return them
-  if (odeValues !== null) {
-    return odeValues
-  }
+// Compute heatmap scores matching the ZK circuit exactly (no ODE solver needed)
+async function runHeatmapScoring(board = null) {
+  if (!board) board = Array.from({ length: 3 }, () => Array(3).fill(''))
 
-  // If schema is already cached, we can compute synchronously
-  // by using the sync version with fallback
-  if (cachedSchemaModel !== null) {
-    // Can't call async function synchronously, just return null
-    // The async callers (toggleHeatmap, makeMove, etc.) will handle this
-    console.log('ODE values not computed yet - async caller should handle this')
-  }
-
-  return odeValues
-}
-
-// Build Petri net for ODE with hypothetical move applied
-// Matches go-pflow structure: 33 places, 35 transitions
-function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
-  const places = {}
-  const transitions = {}
-  const arcs = []
-
-  // Board position places P00-P22
+  // Determine current player
+  let xCount = 0, oCount = 0
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
-      const id = `P${r}${c}`
-      let initial = 1 // empty
-      if (board && board[r][c] !== '') initial = 0
-      // Apply hypothetical move
-      if (r === hypRow && c === hypCol) initial = 0
-      places[id] = { '@type': 'Place', initial: [initial], x: 50 + c * 60, y: 50 + r * 60 }
+      if (board[r][c] === 'X') xCount++
+      if (board[r][c] === 'O') oCount++
     }
   }
+  const player = xCount > oCount ? 'O' : 'X'
+  const opponent = player === 'X' ? 'O' : 'X'
 
-  // X history places X00-X22
+  // Build flat cell arrays (indexed 0-8)
+  const currentPiece = []
+  const opponentPiece = []
+  const cellEmpty = []
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
-      const id = `X${r}${c}`
-      let initial = 0
-      if (board && board[r][c] === 'X') initial = 1
-      // Apply hypothetical move for X
-      if (currentPlayer === 'X' && r === hypRow && c === hypCol) initial = 1
-      places[id] = { '@type': 'Place', initial: [initial], x: 200 + c * 60, y: 50 + r * 60 }
+      currentPiece.push(board[r][c] === player ? 1 : 0)
+      opponentPiece.push(board[r][c] === opponent ? 1 : 0)
+      cellEmpty.push(board[r][c] === '' ? 1 : 0)
     }
   }
 
-  // O history places O00-O22
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      const id = `O${r}${c}`
-      let initial = 0
-      if (board && board[r][c] === 'O') initial = 1
-      // Apply hypothetical move for O
-      if (currentPlayer === 'O' && r === hypRow && c === hypCol) initial = 1
-      places[id] = { '@type': 'Place', initial: [initial], x: 350 + c * 60, y: 50 + r * 60 }
+  const values = {}
+  for (let i = 0; i < 9; i++) {
+    const r = Math.floor(i / 3)
+    const c = i % 3
+    const pos = `${r}${c}`
+
+    if (!cellEmpty[i]) {
+      values[pos] = 0
+      continue
     }
-  }
 
-  // Turn control: Two explicit places for turn tracking (matches schema naming)
-  // After hypothetical move, it's opponent's turn
-  // x_turn = X can move, o_turn = O can move
-  const isXTurn = currentPlayer === 'O' // After O's hypothetical move, it's X's turn
-  places['x_turn'] = { '@type': 'Place', initial: [isXTurn ? 1 : 0], x: 200, y: 250 }
-  places['o_turn'] = { '@type': 'Place', initial: [isXTurn ? 0 : 1], x: 300, y: 250 }
+    let score = POSITION_WEIGHTS[i]
+    const win = heatmapWinFlag(i, currentPiece)
+    const block = heatmapBlockFlag(i, opponentPiece, cellEmpty)
 
-  // Win detection places
-  places['win_x'] = { '@type': 'Place', initial: [0], x: 500, y: 100 }
-  places['win_o'] = { '@type': 'Place', initial: [0], x: 500, y: 200 }
-
-  // Move token counter for draw detection
-  // Count how many moves have been played (for hypothetical state)
-  let moveCount = 0
-  if (board) {
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
-        if (board[r][c] !== '') moveCount++
-      }
+    if (win) {
+      score += WIN_BONUS
+    } else if (block) {
+      score -= BLOCK_PENALTY
     }
-  }
-  // Add 1 for the hypothetical move
-  if (hypRow !== null && hypCol !== null) moveCount++
-  places['move_tokens'] = { '@type': 'Place', initial: [moveCount], x: 400, y: 300 }
 
-  // Game active place (consumed on win or draw)
-  places['game_active'] = { '@type': 'Place', initial: [1], x: 400, y: 350 }
-
-  // X move transitions: x_turn + P -> PlayX -> X + o_turn + move_tokens
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      const tid = `PlayX${r}${c}`
-      transitions[tid] = { '@type': 'Transition', x: 120 + c * 60, y: 50 + r * 60 }
-      arcs.push({ '@type': 'Arrow', source: 'x_turn', target: tid, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: 'o_turn', weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: 'move_tokens', weight: [1] })
-    }
+    values[pos] = score
   }
 
-  // O move transitions: o_turn + P -> PlayO -> O + x_turn + move_tokens
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      const tid = `PlayO${r}${c}`
-      transitions[tid] = { '@type': 'Transition', x: 270 + c * 60, y: 50 + r * 60 }
-      arcs.push({ '@type': 'Arrow', source: 'o_turn', target: tid, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: `P${r}${c}`, target: tid, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: 'x_turn', weight: [1] })
-      arcs.push({ '@type': 'Arrow', source: tid, target: 'move_tokens', weight: [1] })
-    }
-  }
-
-  // Win pattern transitions
-  const winPatterns = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
-    [0, 4, 8], [2, 4, 6]             // diags
-  ]
-  const patternNames = ['Row0', 'Row1', 'Row2', 'Col0', 'Col1', 'Col2', 'Dg0', 'Dg1']
-
-  // X win transitions: consume o_turn + game_active (X wins when it would be O's turn, after X played)
-  // Matches schema: o_turn + game_active -> x_win_* consumes tokens, ending the game
-  winPatterns.forEach((pattern, idx) => {
-    const tid = `X${patternNames[idx]}`
-    transitions[tid] = { '@type': 'Transition', x: 450, y: 50 + idx * 25 }
-    pattern.forEach(cellIdx => {
-      const r = Math.floor(cellIdx / 3)
-      const c = cellIdx % 3
-      // Consume from X place
-      arcs.push({ '@type': 'Arrow', source: `X${r}${c}`, target: tid, weight: [1] })
-      // Produce back to X place (read arc pattern)
-      arcs.push({ '@type': 'Arrow', source: tid, target: `X${r}${c}`, weight: [1] })
-    })
-    arcs.push({ '@type': 'Arrow', source: tid, target: 'win_x', weight: [1] })
-    // o_turn -> X win: X claims victory when it's O's turn (after X played)
-    arcs.push({ '@type': 'Arrow', source: 'o_turn', target: tid, weight: [1] })
-    // game_active -> X win: consume game_active to end game
-    arcs.push({ '@type': 'Arrow', source: 'game_active', target: tid, weight: [1] })
-  })
-
-  // O win transitions: consume x_turn + game_active (O wins when it would be X's turn, after O played)
-  // Matches schema: x_turn + game_active -> o_win_* consumes tokens, ending the game
-  winPatterns.forEach((pattern, idx) => {
-    const tid = `O${patternNames[idx]}`
-    transitions[tid] = { '@type': 'Transition', x: 450, y: 250 + idx * 25 }
-    pattern.forEach(cellIdx => {
-      const r = Math.floor(cellIdx / 3)
-      const c = cellIdx % 3
-      // Consume from O place
-      arcs.push({ '@type': 'Arrow', source: `O${r}${c}`, target: tid, weight: [1] })
-      // Produce back to O place (read arc pattern)
-      arcs.push({ '@type': 'Arrow', source: tid, target: `O${r}${c}`, weight: [1] })
-    })
-    arcs.push({ '@type': 'Arrow', source: tid, target: 'win_o', weight: [1] })
-    // x_turn -> O win: O claims victory when it's X's turn (after O played)
-    arcs.push({ '@type': 'Arrow', source: 'x_turn', target: tid, weight: [1] })
-    // game_active -> O win: consume game_active to end game
-    arcs.push({ '@type': 'Arrow', source: 'game_active', target: tid, weight: [1] })
-  })
-
-  // Draw transition: fires when 9 moves played and game still active (no winner)
-  // Consumes: 9 move_tokens + 1 game_active
-  // Produces: 1 win_o (draws count as O outcome for balanced scoring)
-  transitions['Draw'] = { '@type': 'Transition', x: 400, y: 400 }
-  arcs.push({ '@type': 'Arrow', source: 'move_tokens', target: 'Draw', weight: [9] })
-  arcs.push({ '@type': 'Arrow', source: 'game_active', target: 'Draw', weight: [1] })
-  arcs.push({ '@type': 'Arrow', source: 'Draw', target: 'win_o', weight: [1] })
-
-  return {
-    '@context': 'https://pflow.xyz/schema',
-    '@type': 'PetriNet',
-    places,
-    transitions,
-    arcs
-  }
+  return { values, player }
 }
 
-// Run ODE solver and extract win_x/win_o values
-function solveODE(model) {
-  try {
-    const net = Solver.fromJSON(model)
-    const initialState = Solver.setState(net)
-    const rates = Solver.setRates(net)
-
-    // Use configurable solver parameters
-    const prob = new Solver.ODEProblem(net, initialState, [0, solverParams.tspan], rates)
-    const opts = { dt: solverParams.dt, adaptive: solverParams.adaptive }
-    if (solverParams.adaptive) {
-      opts.abstol = solverParams.abstol
-      opts.reltol = solverParams.reltol
-    }
-    const solution = Solver.solve(prob, Solver.Tsit5(), opts)
-
-    const finalState = solution.u ? solution.u[solution.u.length - 1] : null
-    if (!finalState) return null
-
-    // finalState is a dictionary with place names as keys
-    return {
-      winX: finalState['win_x'] || 0,
-      winO: finalState['win_o'] || 0
-    }
-  } catch (err) {
-    console.error('ODE solve error:', err)
-    return null
+// Get heatmap-computed value for a position
+function getHeatValue(pos, board = null) {
+  if (heatValues === null) {
+    // heatmap computed async on demand
   }
-}
-
-// API-based heatmap (Go backend) - for demo/testing
-async function runAPIHeatmap(board = null) {
-  try {
-    const apiBoard = board ? board.map(row => [...row]) : [['','',''],['','',''],['','','']]
-
-    const response = await fetch(`${getApiBase()}/api/heatmap`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ board: apiBoard })
-    })
-
-    if (!response.ok) {
-      throw new Error(`Heatmap API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log('ODE heatmap from backend API:', data)
-
-    return {
-      values: data.values,
-      details: data.details,
-      player: data.current_player,
-      solution: null,
-      model: null
-    }
-  } catch (err) {
-    console.error('Heatmap API failed, falling back to local:', err)
-    return runLocalODESimulation(board)
-  }
-}
-
-// Toggle between local and API ODE computation
-function setODEMode(useLocal) {
-  useLocalODE = useLocal
-  console.log(`ODE mode: ${useLocal ? 'local (JS)' : 'API (Go backend)'}`)
-}
-
-// Export for console testing
-window.setODEMode = setODEMode
-window.runAPIHeatmap = runAPIHeatmap
-window.runLocalODESimulation = runLocalODESimulation
-
-// Get ODE-computed value for a position
-function getODEValue(pos, board = null) {
-  if (odeValues === null) {
-    ensureODEValues(board)
-  }
-  return (odeValues && odeValues[pos] !== undefined) ? odeValues[pos] : 0
+  return (heatValues && heatValues[pos] !== undefined) ? heatValues[pos] : 0
 }
 
 // Game state
@@ -816,18 +416,18 @@ async function newGame() {
       }
     }
 
-    // Always recalculate ODE for empty board if heat map is showing
+    // Always recalculate heatmap for empty board if heat map is showing
     if (showHeatmap) {
-      odeValues = null // Clear first
+      heatValues = null // Clear first
       renderGame() // Show board immediately
-      // Then compute ODE values async
-      const odeResult = await runODESimulation(gameState.board)
-      if (odeResult) {
-        odeValues = odeResult.values
+      // Then compute heatmap values
+      const heatResult = await runHeatmapScoring(gameState.board)
+      if (heatResult) {
+        heatValues = heatResult.values
         renderGame() // Re-render with new values
       }
     } else {
-      odeValues = null
+      heatValues = null
       renderGame()
     }
 
@@ -944,11 +544,11 @@ async function makeMove(row, col) {
       }
     }
 
-    // Recalculate ODE values if heat map is showing
+    // Recalculate heatmap values if heat map is showing
     if (showHeatmap && !gameState.gameOver) {
-      const result = await runODESimulation(gameState.board)
+      const result = await runHeatmapScoring(gameState.board)
       if (result) {
-        odeValues = result.values
+        heatValues = result.values
       }
     }
 
@@ -1024,13 +624,13 @@ async function toggleHeatmap() {
 
     // Auto-start a new game if none exists
     if (!gameState.id) {
-      await newGame() // newGame() handles ODE computation when showHeatmap is true
+      await newGame() // newGame() handles heatmap computation when showHeatmap is true
     } else {
-      // Run ODE simulation for current game state
-      const result = await runODESimulation(gameState.board)
+      // Run heatmap scoring for current game state
+      const result = await runHeatmapScoring(gameState.board)
       if (result) {
-        odeValues = result.values
-        renderGame() // Re-render with ODE values
+        heatValues = result.values
+        renderGame() // Re-render with heatmap values
       }
     }
   } else {
@@ -1041,11 +641,11 @@ async function toggleHeatmap() {
 }
 
 function getHeatColor(value, minVal = null, maxVal = null) {
-  // Auto-scale based on all available ODE values (including negative)
+  // Auto-scale based on all available heatmap values
   if (minVal === null || maxVal === null) {
-    if (odeValues) {
+    if (heatValues) {
       // Get all non-zero values (empty positions only)
-      const vals = Object.values(odeValues).filter(v => v !== 0)
+      const vals = Object.values(heatValues).filter(v => v !== 0)
       if (vals.length > 0) {
         minVal = Math.min(...vals)
         maxVal = Math.max(...vals)
@@ -1057,7 +657,7 @@ function getHeatColor(value, minVal = null, maxVal = null) {
   }
 
   // For occupied cells (value=0), return gray
-  if (value === 0 && odeValues) {
+  if (value === 0 && heatValues) {
     return 'rgb(180, 180, 180)'
   }
 
@@ -1095,15 +695,15 @@ function renderGame() {
   const statusEl = document.getElementById('status-display')
   const winningPattern = findWinningPattern()
 
-  // Ensure ODE values are computed for heatmap display
-  if (showHeatmap && !gameState.gameOver && odeValues === null) {
-    ensureODEValues(gameState.id ? gameState.board : null)
+  // Ensure heatmap values are computed for display
+  if (showHeatmap && !gameState.gameOver && heatValues === null) {
+    // heatmap computed async on demand
   }
 
-  // Find recommended move (highest ODE value among empty cells)
+  // Find recommended move (highest heatmap value among empty cells)
   // If there's a tie and preferredBest is set, use that position
   let recommendedPos = null
-  if (showHeatmap && odeValues && !gameState.gameOver) {
+  if (showHeatmap && heatValues && !gameState.gameOver) {
     let maxValue = -Infinity
     let tiedPositions = []
 
@@ -1111,7 +711,7 @@ function renderGame() {
       for (let c = 0; c < 3; c++) {
         if (gameState.board[r][c] === '') {
           const pos = `${r}${c}`
-          const val = odeValues[pos] || 0
+          const val = heatValues[pos] || 0
           if (val > maxValue) {
             maxValue = val
             tiedPositions = [pos]
@@ -1143,8 +743,8 @@ function renderGame() {
       if (gameState.gameOver && !piece) classes.push('disabled')
       if (isWinning) classes.push('winning')
 
-      // Always use ODE computed values
-      const odeValue = (odeValues && odeValues[pos] !== undefined) ? odeValues[pos] : 0
+      // Always use heatmap computed values
+      const odeValue = (heatValues && heatValues[pos] !== undefined) ? heatValues[pos] : 0
       const displayValue = piece ? 0 : odeValue
       const heatColor = getHeatColor(displayValue)
       const recommendedStyle = isRecommended ? 'border: 3px dashed #333; border-radius: 8px;' : ''
@@ -1156,7 +756,7 @@ function renderGame() {
                 ${piece || gameState.gameOver ? 'disabled' : ''}>
           ${piece ? `<span class="piece ${piece.toLowerCase()}">${piece}</span>` : ''}
           <div class="heat-overlay" style="background: ${heatColor};">
-            <span class="heat-value">${displayOdeValue(displayValue).toFixed(3)}</span>
+            <span class="heat-value">${displayHeatValue(displayValue).toFixed(3)}</span>
           </div>
         </button>
       `
@@ -1290,11 +890,11 @@ async function revertToMove(moveIndex) {
   // Check for win condition
   checkWinCondition()
 
-  // Recalculate ODE if heat map is showing
+  // Recalculate heatmap if heat map is showing
   if (showHeatmap && !gameState.gameOver) {
-    const result = await runODESimulation(gameState.board)
+    const result = await runHeatmapScoring(gameState.board)
     if (result) {
-      odeValues = result.values
+      heatValues = result.values
     }
   }
 
@@ -1418,7 +1018,7 @@ function initValueChart() {
       labels: positions,
       datasets: [
         {
-          label: 'ODE Strategic Value',
+          label: 'Heatmap Score',
           data: values,
           borderColor: 'rgba(150, 150, 150, 0.3)',
           borderWidth: 1,
@@ -1516,31 +1116,31 @@ async function setSimMode(mode) {
   // Update description
   const desc = document.getElementById('sim-description')
   if (mode === 'empty') {
-    desc.innerHTML = '<span style="color: #667eea;">Running ODE simulation...</span>'
-    // Run ODE simulation for empty board
-    const result = await runODESimulation(null)
+    desc.innerHTML = '<span style="color: #667eea;">Computing heatmap scores...</span>'
+    // Compute heatmap for empty board
+    const result = await runHeatmapScoring(null)
     if (result) {
-      odeValues = result.values
-      odeSolution = result.solution
-      desc.textContent = 'Values computed via Petri net ODE simulation (pflow.xyz). Higher values = more strategic.'
+      heatValues = result.values
+      // solution no longer tracked (heatmap is computed locally)
+      desc.textContent = 'Heatmap scores from Petri net topology (matches ZK circuit). Higher = more strategic.'
     } else {
-      desc.textContent = 'ODE simulation failed. Showing static values.'
+      desc.textContent = 'Heatmap computation failed. Showing static values.'
     }
   } else {
     if (!gameState.id) {
-      odeValues = null // Clear stale values
+      heatValues = null // Clear stale values
       desc.textContent = 'No game in progress. Start a new game to see contextual values.'
     } else if (gameState.gameOver) {
-      odeValues = null // Clear - no strategic values for completed game
+      heatValues = null // Clear - no strategic values for completed game
       desc.textContent = `Game over - ${gameState.winner === 'draw' ? 'Draw' : gameState.winner + ' wins'}.`
     } else {
-      desc.innerHTML = '<span style="color: #667eea;">Running ODE simulation for current state...</span>'
-      // Run ODE simulation for current board state
-      const result = await runODESimulation(gameState.board)
+      desc.innerHTML = '<span style="color: #667eea;">Computing heatmap for current state...</span>'
+      // Compute heatmap scores for current board state
+      const result = await runHeatmapScoring(gameState.board)
       if (result) {
-        odeValues = result.values
-        odeSolution = result.solution
-        desc.textContent = `ODE values for ${gameState.currentPlayer}'s turn. Computed from current board state.`
+        heatValues = result.values
+        // solution no longer tracked (heatmap is computed locally)
+        desc.textContent = `Heatmap scores for ${gameState.currentPlayer}'s turn. Matches ZK circuit.`
       } else {
         desc.textContent = `Showing pattern-based values for ${gameState.currentPlayer}'s turn.`
       }
@@ -1555,10 +1155,10 @@ function renderSimulationGrid() {
   const grid = document.getElementById('position-grid')
   if (!grid) return
 
-  // Ensure ODE values are computed
-  if (odeValues === null) {
+  // Ensure heatmap values are computed
+  if (heatValues === null) {
     const board = simMode === 'current' ? gameState.board : null
-    ensureODEValues(board)
+    // heatmap computed async on demand
   }
 
   const positionTypes = {
@@ -1572,12 +1172,12 @@ function renderSimulationGrid() {
 
   if (simMode === 'empty') {
     cells = positions.map(pos => {
-      const value = odeValues ? (odeValues[pos] || 0) : 0
+      const value = heatValues ? (heatValues[pos] || 0) : 0
       const type = positionTypes[pos]
       return `
         <div class="position-cell ${type}">
-          <span class="value">${displayOdeValue(value).toFixed(3)}</span>
-          <span class="type">ODE</span>
+          <span class="value">${displayHeatValue(value).toFixed(3)}</span>
+          <span class="type">Heatmap</span>
         </div>
       `
     })
@@ -1597,14 +1197,14 @@ function renderSimulationGrid() {
           </div>
         `
       } else {
-        const value = odeValues ? (odeValues[pos] || 0) : 0
-        const maxValue = odeValues ? Math.max(...Object.values(odeValues).map(Math.abs)) : 1
+        const value = heatValues ? (heatValues[pos] || 0) : 0
+        const maxValue = heatValues ? Math.max(...Object.values(heatValues).map(Math.abs)) : 1
         const opacity = 0.4 + (Math.abs(value) / maxValue) * 0.6
 
         return `
           <div class="position-cell ${type}" style="opacity: ${opacity};">
-            <span class="value">${displayOdeValue(value).toFixed(3)}</span>
-            <span class="type">ODE</span>
+            <span class="value">${displayHeatValue(value).toFixed(3)}</span>
+            <span class="type">Heatmap</span>
           </div>
         `
       }
@@ -1624,10 +1224,10 @@ function updateSimulationChart() {
     '20': 'corner', '21': 'edge', '22': 'corner'
   }
 
-  // Ensure ODE values are computed
-  if (odeValues === null) {
+  // Ensure heatmap values are computed
+  if (heatValues === null) {
     const board = simMode === 'current' ? gameState.board : null
-    ensureODEValues(board)
+    // heatmap computed async on demand
   }
 
   // Helper to update y-axis scale based on values
@@ -1662,7 +1262,7 @@ function updateSimulationChart() {
   }
 
   if (simMode === 'empty') {
-    const values = positions.map(pos => odeValues ? (odeValues[pos] || 0) : 0)
+    const values = positions.map(pos => heatValues ? (heatValues[pos] || 0) : 0)
     const colors = positions.map(pos => getPositionColor(pos))
 
     valueChart.data.datasets[0].data = values
@@ -1681,7 +1281,7 @@ function updateSimulationChart() {
       const col = parseInt(pos[1])
       const piece = gameState.board[row][col]
       if (piece === '') {
-        const val = odeValues ? (odeValues[pos] || 0) : 0
+        const val = heatValues ? (heatValues[pos] || 0) : 0
         openValues.push(val)
       } else {
         occupiedIndices.push(i)
@@ -1706,7 +1306,7 @@ function updateSimulationChart() {
       const col = parseInt(pos[1])
       const piece = gameState.board[row][col]
       if (piece !== '') return markedLevel  // Place at "marked" level
-      return odeValues ? (odeValues[pos] || 0) : 0
+      return heatValues ? (heatValues[pos] || 0) : 0
     })
 
     // Store marked level for axis label
@@ -1752,8 +1352,8 @@ function downloadSnapshot() {
 
   // Helper to get heat color
   function getHeatColorForSVG(value) {
-    if (!odeValues || value === 0) return '#e0e0e0'
-    const vals = Object.values(odeValues).filter(v => v !== 0)
+    if (!heatValues || value === 0) return '#e0e0e0'
+    const vals = Object.values(heatValues).filter(v => v !== 0)
     if (vals.length === 0) return '#e0e0e0'
     const minVal = Math.min(...vals)
     const maxVal = Math.max(...vals)
@@ -1776,10 +1376,10 @@ function downloadSnapshot() {
   gridLines += `<line x1="${boardX}" y1="${boardY + cellSize}" x2="${boardX + boardSize}" y2="${boardY + cellSize}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linecap="round"/>`
   gridLines += `<line x1="${boardX}" y1="${boardY + cellSize * 2}" x2="${boardX + boardSize}" y2="${boardY + cellSize * 2}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linecap="round"/>`
 
-  // Find recommended move (highest ODE value among empty cells)
+  // Find recommended move (highest heatmap value among empty cells)
   // If there's a tie and preferredBest is set, use that position
   let recommendedPos = null
-  if (showHeatmap && odeValues && !gameState.gameOver) {
+  if (showHeatmap && heatValues && !gameState.gameOver) {
     let maxValue = -Infinity
     let tiedPositions = []
 
@@ -1788,7 +1388,7 @@ function downloadSnapshot() {
       for (let c = 0; c < 3; c++) {
         if (gameState.board[r][c] === '') {
           const pos = `${r}${c}`
-          const val = odeValues[pos] || 0
+          const val = heatValues[pos] || 0
           if (val > maxValue) {
             maxValue = val
             tiedPositions = [{ row: r, col: c, pos }]
@@ -1834,10 +1434,10 @@ function downloadSnapshot() {
       if (piece) {
         const color = piece === 'X' ? '#e74c3c' : '#3498db'
         boardContent += `<text x="${centerX}" y="${centerY + 10}" font-family="Arial" font-size="36" font-weight="bold" fill="${color}" text-anchor="middle">${piece}</text>`
-      } else if (showHeatmap && odeValues && odeValues[pos] !== undefined) {
-        const heatColor = getHeatColorForSVG(odeValues[pos] || 0)
+      } else if (showHeatmap && heatValues && heatValues[pos] !== undefined) {
+        const heatColor = getHeatColorForSVG(heatValues[pos] || 0)
         boardContent += `<circle cx="${centerX}" cy="${centerY}" r="20" fill="${heatColor}" opacity="0.8"/>`
-        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayOdeValue(odeValues[pos]).toFixed(2)}</text>`
+        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayHeatValue(heatValues[pos]).toFixed(2)}</text>`
 
         // Dotted box for recommended move
         if (recommendedPos && recommendedPos.row === row && recommendedPos.col === col) {
@@ -1993,10 +1593,10 @@ async function loadFromURL() {
     }
     if (board) board.classList.add('show-heatmap')
 
-    // Compute ODE values
-    const result = await runODESimulation(gameState.board)
+    // Compute heatmap values
+    const result = await runHeatmapScoring(gameState.board)
     if (result) {
-      odeValues = result.values
+      heatValues = result.values
     }
   }
 
@@ -2063,8 +1663,8 @@ function generateSVGSnapshot() {
 
   // Helper to get heat color
   function getHeatColorForSVG(value) {
-    if (!odeValues || value === 0) return '#e0e0e0'
-    const vals = Object.values(odeValues).filter(v => v !== 0)
+    if (!heatValues || value === 0) return '#e0e0e0'
+    const vals = Object.values(heatValues).filter(v => v !== 0)
     if (vals.length === 0) return '#e0e0e0'
     const minVal = Math.min(...vals)
     const maxVal = Math.max(...vals)
@@ -2087,13 +1687,13 @@ function generateSVGSnapshot() {
 
   // Find recommended move
   let recommendedPos = null
-  if (showHeatmap && odeValues && !gameState.gameOver) {
+  if (showHeatmap && heatValues && !gameState.gameOver) {
     let maxValue = -Infinity
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
         if (gameState.board[r][c] === '') {
           const pos = `${r}${c}`
-          const val = odeValues[pos] || 0
+          const val = heatValues[pos] || 0
           if (val > maxValue) {
             maxValue = val
             recommendedPos = { row: r, col: c }
@@ -2124,10 +1724,10 @@ function generateSVGSnapshot() {
       if (piece) {
         const color = piece === 'X' ? '#e74c3c' : '#3498db'
         boardContent += `<text x="${centerX}" y="${centerY + 10}" font-family="Arial" font-size="36" font-weight="bold" fill="${color}" text-anchor="middle">${piece}</text>`
-      } else if (showHeatmap && odeValues && odeValues[pos] !== undefined) {
-        const heatColor = getHeatColorForSVG(odeValues[pos] || 0)
+      } else if (showHeatmap && heatValues && heatValues[pos] !== undefined) {
+        const heatColor = getHeatColorForSVG(heatValues[pos] || 0)
         boardContent += `<circle cx="${centerX}" cy="${centerY}" r="20" fill="${heatColor}" opacity="0.8"/>`
-        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayOdeValue(odeValues[pos]).toFixed(2)}</text>`
+        boardContent += `<text x="${centerX}" y="${centerY + 4}" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">${displayHeatValue(heatValues[pos]).toFixed(2)}</text>`
 
         if (recommendedPos && recommendedPos.row === row && recommendedPos.col === col) {
           const boxX = boardX + col * cellSize + 4
@@ -2175,14 +1775,6 @@ function generateSVGSnapshot() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  // Pre-fetch the schema model for ODE simulation (same as Go backend)
-  // This ensures we use the unified model for strategic value computation
-  fetchSchemaModel().then(schema => {
-    if (schema) {
-      console.log('Schema model pre-fetched for ODE simulation')
-    }
-  })
-
   // Check for URL parameters first
   const loadedFromURL = await loadFromURL()
 

@@ -1,4 +1,5 @@
-// Provably Optimal Play — interactive board + ODE heatmap + ZK proofs
+// Verifiable Computation — interactive board + heatmap scoring + ZK proofs
+// Scoring matches the on-chain ZK heatmap verifier exactly (no ODE solver needed)
 
 const EMPTY = '';
 const X = 'X';
@@ -9,6 +10,101 @@ const WIN_LINES = [
   [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]], // cols
   [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]],                      // diags
 ];
+
+// Win lines as flat cell indices (0-8) for heatmap scoring
+const WIN_LINES_FLAT = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+  [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
+  [0, 4, 8], [2, 4, 6],             // diags
+];
+
+// Position weights from Petri net rate constants (number of win lines through each cell)
+const POSITION_WEIGHTS = [
+  3, 2, 3, // corner, edge, corner
+  2, 4, 2, // edge, center, edge
+  3, 2, 3, // corner, edge, corner
+];
+
+const WIN_BONUS = 10.0;
+const BLOCK_PENALTY = 1.5;
+
+// Compute heatmap scores matching the ZK circuit exactly
+// score[i] = position_weight + 10*win_flag - 1.5*block_flag*(1-win_flag)
+function computeHeatmap(board, player) {
+  const opponent = player === X ? O : X;
+  const values = {};
+  let optimal = null;
+  let bestScore = -Infinity;
+
+  // Build flat cell arrays (indexed 0-8)
+  const currentPiece = [];
+  const opponentPiece = [];
+  const cellEmpty = [];
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      currentPiece.push(board[r][c] === player ? 1 : 0);
+      opponentPiece.push(board[r][c] === opponent ? 1 : 0);
+      cellEmpty.push(board[r][c] === EMPTY ? 1 : 0);
+    }
+  }
+
+  for (let i = 0; i < 9; i++) {
+    if (!cellEmpty[i]) continue;
+
+    let score = POSITION_WEIGHTS[i];
+
+    // Win flag: does placing here complete 3-in-a-row?
+    const win = heatmapWinFlag(i, currentPiece);
+    // Block flag: after placing here, does opponent have an unblocked threat?
+    const block = heatmapBlockFlag(i, opponentPiece, cellEmpty);
+
+    if (win) {
+      score += WIN_BONUS;
+    } else if (block) {
+      score -= BLOCK_PENALTY;
+    }
+
+    const r = Math.floor(i / 3);
+    const c = i % 3;
+    const key = `${r}${c}`;
+    values[key] = score;
+
+    if (score > bestScore) {
+      bestScore = score;
+      optimal = key;
+    }
+  }
+
+  return { values, optimal, player };
+}
+
+// Check if placing at cell completes a 3-in-a-row for current player
+function heatmapWinFlag(cell, currentPiece) {
+  for (const line of WIN_LINES_FLAT) {
+    if (!line.includes(cell)) continue;
+    let allOwned = true;
+    for (const c of line) {
+      if (c === cell) continue;
+      if (!currentPiece[c]) { allOwned = false; break; }
+    }
+    if (allOwned) return true;
+  }
+  return false;
+}
+
+// Check if after placing at cell, opponent has an unblocked winning threat
+function heatmapBlockFlag(cell, opponentPiece, cellEmpty) {
+  for (const line of WIN_LINES_FLAT) {
+    let oppCount = 0;
+    let missingCell = -1;
+    for (const c of line) {
+      if (opponentPiece[c]) oppCount++;
+      else if (cellEmpty[c]) missingCell = c;
+    }
+    if (oppCount === 2 && missingCell >= 0 && missingCell !== cell) return true;
+  }
+  return false;
+}
 
 // TTT contract addresses on Base Sepolia (updated after deployment)
 const TTT_CONTRACT = {
@@ -186,7 +282,9 @@ function updateApiResponse(data, status) {
 
 function buildCurlCommand() {
   const payload = JSON.stringify({ board, player: currentPlayer });
-  return `curl -s -X POST https://pilot.pflow.xyz/zk-ode/api/evaluate \\
+  return `# Scores computed locally (same algorithm as ZK circuit)
+# Server endpoint for comparison:
+curl -s -X POST https://pilot.pflow.xyz/zk-ode/api/evaluate \\
   -H "Content-Type: application/json" \\
   -d '${payload}' | jq .`;
 }
@@ -203,8 +301,8 @@ document.getElementById('btn-eval').addEventListener('click', () => {
   evaluate();
 });
 
-// Call /zk-ode/api/evaluate and render heatmap
-async function evaluate() {
+// Compute heatmap locally (matches ZK circuit exactly, no server needed)
+function evaluate() {
   clearHeatmap();
 
   const hasEmpty = board.some(row => row.some(c => c === EMPTY));
@@ -215,31 +313,12 @@ async function evaluate() {
 
   highlightPipelineStage('stage-ode');
   updateApiRequest();
-  updateApiResponse(null, 'loading');
 
-  try {
-    const resp = await fetch('/zk-ode/api/evaluate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ board, player: currentPlayer }),
-    });
+  const data = computeHeatmap(board, currentPlayer);
 
-    if (!resp.ok) {
-      console.warn('Evaluate API error:', resp.status);
-      updateApiResponse(`HTTP ${resp.status}`, 'error');
-      clearPipelineHighlights();
-      return;
-    }
-
-    const data = await resp.json();
-    highlightPipelineStage('stage-heatmap');
-    updateApiResponse(data, 'ok');
-    renderHeatmap(data.values || {}, data.optimal);
-  } catch (err) {
-    console.warn('Evaluate API unavailable:', err.message);
-    updateApiResponse(err.message, 'error');
-    clearPipelineHighlights();
-  }
+  highlightPipelineStage('stage-heatmap');
+  updateApiResponse(data, 'ok');
+  renderHeatmap(data.values, data.optimal);
 }
 
 // Render heatmap overlay on empty cells
