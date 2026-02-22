@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS "zkheatmap_state" (
     "win_x" INTEGER DEFAULT 0,
     "win_o" INTEGER DEFAULT 0,
     "game_active" INTEGER DEFAULT 0,
+    "move_tokens" INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS "zkheatmap_places" (
 -- OWinCol2ed
 -- OWinDiaged
 -- OWinAntied
+-- Drawed
 
 -- Place constants for reference:
 -- p00: Cell (0,0) empty — corner
@@ -150,6 +152,7 @@ CREATE TABLE IF NOT EXISTS "zkheatmap_places" (
 -- win_x: X wins
 -- win_o: O wins
 -- game_active: Game active
+-- move_tokens: Accumulates tokens as moves are played (for draw detection)
 
 -- Transition constants for reference:
 -- x_play_00: X plays corner (0,0) k=3
@@ -186,3 +189,4 @@ CREATE TABLE IF NOT EXISTS "zkheatmap_places" (
 -- o_win_col2: O wins col 2
 -- o_win_diag: O wins diag
 -- o_win_anti: O wins anti-diag
+-- draw: Game ends in draw (all 9 moves played, no winner)

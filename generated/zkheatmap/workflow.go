@@ -36,6 +36,7 @@ const (
 	PlaceWinX = "win_x"
 	PlaceWinO = "win_o"
 	PlaceGameActive = "game_active"
+	PlaceMoveTokens = "move_tokens"
 )
 
 // Transition constants
@@ -74,6 +75,7 @@ const (
 	TransitionOWinCol2 = "o_win_col2"
 	TransitionOWinDiag = "o_win_diag"
 	TransitionOWinAnti = "o_win_anti"
+	TransitionDraw = "draw"
 )
 
 // Event type constants
@@ -112,6 +114,7 @@ const (
 	EventTypeOWinCol2 = "OWinCol2ed"
 	EventTypeOWinDiag = "OWinDiaged"
 	EventTypeOWinAnti = "OWinAntied"
+	EventTypeDraw = "Drawed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
@@ -166,6 +169,7 @@ func AllPlaces() []string {
 		PlaceWinX,
 		PlaceWinO,
 		PlaceGameActive,
+		PlaceMoveTokens,
 	}
 }
 
@@ -206,5 +210,6 @@ func AllTransitions() []string {
 		TransitionOWinCol2,
 		TransitionOWinDiag,
 		TransitionOWinAnti,
+		TransitionDraw,
 	}
 }

@@ -106,18 +106,22 @@ func NativeTTTStep(
 }
 
 // ApplyDiscreteMove applies a transition to a discrete marking using the
-// stoichiometry matrix. For each place where S[p][t]==-1, subtracts 1.0;
-// where S[p][t]==+1, adds 1.0. Returns a new marking with clean integer values.
+// stoichiometry matrix. For each place, adds S[p][t] units (fixed-point).
+// Returns a new marking with clean integer values.
 func ApplyDiscreteMove(marking [TTTNumPlaces]*big.Int, transition int) [TTTNumPlaces]*big.Int {
 	one := FixFromFloat(1.0)
 	var result [TTTNumPlaces]*big.Int
 	for p := 0; p < TTTNumPlaces; p++ {
 		result[p] = new(big.Int).Set(marking[p])
 		s := TTTStoichiometry[p][transition]
-		if s == -1 {
-			result[p] = NativeFixSub(result[p], one)
-		} else if s == 1 {
-			result[p] = NativeFixAdd(result[p], one)
+		if s > 0 {
+			for i := 0; i < s; i++ {
+				result[p] = NativeFixAdd(result[p], one)
+			}
+		} else if s < 0 {
+			for i := 0; i < -s; i++ {
+				result[p] = NativeFixSub(result[p], one)
+			}
 		}
 	}
 	return result
@@ -164,6 +168,17 @@ func BoardToTTTODEState(board Board, currentPlayer string) *TTTODEState {
 	marking[WinX] = new(big.Int).Set(zero)
 	marking[WinO] = new(big.Int).Set(zero)
 	marking[GameActive] = new(big.Int).Set(one)
+
+	// Count pieces placed to set move_tokens
+	moveCount := 0
+	for r := 0; r < 3; r++ {
+		for c := 0; c < 3; c++ {
+			if board[r][c] == "X" || board[r][c] == "O" {
+				moveCount++
+			}
+		}
+	}
+	marking[MoveTokens] = FixFromFloat(float64(moveCount))
 
 	return NewTTTODEState(marking)
 }

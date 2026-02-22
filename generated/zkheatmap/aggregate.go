@@ -45,6 +45,7 @@ type State struct {
 	WinX int `json:"win_x"`
 	WinO int `json:"win_o"`
 	GameActive int `json:"game_active"`
+	MoveTokens int `json:"move_tokens"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -76,6 +77,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX00: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -88,6 +90,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX01: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -98,8 +101,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX02: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
+			PlaceX02: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -112,18 +116,20 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX10: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXPlay11,
 		EventType: EventTypeXPlay11,
 		Inputs: map[string]int{
-			PlaceXTurn: 1,
 			PlaceP11: 1,
+			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceX11: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -134,8 +140,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceOTurn: 1,
 			PlaceX12: 1,
+			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -148,6 +155,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX20: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -160,6 +168,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX21: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -172,6 +181,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceX22: 1,
 			PlaceOTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -184,6 +194,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO00: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -196,18 +207,20 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO01: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOPlay02,
 		EventType: EventTypeOPlay02,
 		Inputs: map[string]int{
-			PlaceP02: 1,
 			PlaceOTurn: 1,
+			PlaceP02: 1,
 		},
 		Outputs: map[string]int{
 			PlaceO02: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -220,6 +233,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO10: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -230,8 +244,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 			PlaceO11: 1,
+			PlaceXTurn: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -242,8 +257,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO12: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
+			PlaceO12: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -256,6 +272,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO20: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -268,6 +285,7 @@ func NewAggregate(id string) *Aggregate {
 		Outputs: map[string]int{
 			PlaceO21: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -278,25 +296,26 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO22: 1,
 			PlaceXTurn: 1,
+			PlaceMoveTokens: 1,
+			PlaceO22: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinRow0,
 		EventType: EventTypeXWinRow0,
 		Inputs: map[string]int{
-			PlaceX00: 1,
-			PlaceX01: 1,
 			PlaceX02: 1,
 			PlaceOTurn: 1,
 			PlaceGameActive: 1,
+			PlaceX00: 1,
+			PlaceX01: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX01: 1,
-			PlaceX02: 1,
 			PlaceWinX: 1,
 			PlaceX00: 1,
+			PlaceX01: 1,
+			PlaceX02: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -310,21 +329,21 @@ func NewAggregate(id string) *Aggregate {
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
+			PlaceX12: 1,
 			PlaceWinX: 1,
 			PlaceX10: 1,
 			PlaceX11: 1,
-			PlaceX12: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinRow2,
 		EventType: EventTypeXWinRow2,
 		Inputs: map[string]int{
+			PlaceX20: 1,
 			PlaceX21: 1,
 			PlaceX22: 1,
 			PlaceOTurn: 1,
 			PlaceGameActive: 1,
-			PlaceX20: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -337,79 +356,79 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinCol0,
 		EventType: EventTypeXWinCol0,
 		Inputs: map[string]int{
-			PlaceX00: 1,
-			PlaceX10: 1,
-			PlaceX20: 1,
 			PlaceOTurn: 1,
 			PlaceGameActive: 1,
-		},
-		Outputs: map[string]int{
-			PlaceWinX: 1,
 			PlaceX00: 1,
 			PlaceX10: 1,
 			PlaceX20: 1,
+		},
+		Outputs: map[string]int{
+			PlaceX00: 1,
+			PlaceX10: 1,
+			PlaceX20: 1,
+			PlaceWinX: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinCol1,
 		EventType: EventTypeXWinCol1,
 		Inputs: map[string]int{
+			PlaceX01: 1,
+			PlaceX11: 1,
 			PlaceX21: 1,
 			PlaceOTurn: 1,
 			PlaceGameActive: 1,
-			PlaceX01: 1,
-			PlaceX11: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinX: 1,
 			PlaceX01: 1,
 			PlaceX11: 1,
 			PlaceX21: 1,
+			PlaceWinX: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinCol2,
 		EventType: EventTypeXWinCol2,
 		Inputs: map[string]int{
+			PlaceOTurn: 1,
+			PlaceGameActive: 1,
 			PlaceX02: 1,
 			PlaceX12: 1,
 			PlaceX22: 1,
-			PlaceOTurn: 1,
-			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX22: 1,
 			PlaceWinX: 1,
 			PlaceX02: 1,
 			PlaceX12: 1,
+			PlaceX22: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinDiag,
 		EventType: EventTypeXWinDiag,
 		Inputs: map[string]int{
+			PlaceOTurn: 1,
+			PlaceGameActive: 1,
 			PlaceX00: 1,
 			PlaceX11: 1,
 			PlaceX22: 1,
-			PlaceOTurn: 1,
-			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX22: 1,
 			PlaceWinX: 1,
 			PlaceX00: 1,
 			PlaceX11: 1,
+			PlaceX22: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinAnti,
 		EventType: EventTypeXWinAnti,
 		Inputs: map[string]int{
+			PlaceX11: 1,
+			PlaceX20: 1,
 			PlaceOTurn: 1,
 			PlaceGameActive: 1,
 			PlaceX02: 1,
-			PlaceX11: 1,
-			PlaceX20: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -429,10 +448,10 @@ func NewAggregate(id string) *Aggregate {
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO01: 1,
 			PlaceO02: 1,
 			PlaceWinO: 1,
 			PlaceO00: 1,
+			PlaceO01: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -446,27 +465,27 @@ func NewAggregate(id string) *Aggregate {
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO11: 1,
-			PlaceO12: 1,
 			PlaceWinO: 1,
 			PlaceO10: 1,
+			PlaceO11: 1,
+			PlaceO12: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinRow2,
 		EventType: EventTypeOWinRow2,
 		Inputs: map[string]int{
-			PlaceO21: 1,
-			PlaceO22: 1,
 			PlaceXTurn: 1,
 			PlaceGameActive: 1,
 			PlaceO20: 1,
+			PlaceO21: 1,
+			PlaceO22: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
 			PlaceO20: 1,
 			PlaceO21: 1,
 			PlaceO22: 1,
+			PlaceWinO: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -480,38 +499,38 @@ func NewAggregate(id string) *Aggregate {
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO10: 1,
 			PlaceO20: 1,
 			PlaceWinO: 1,
 			PlaceO00: 1,
+			PlaceO10: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinCol1,
 		EventType: EventTypeOWinCol1,
 		Inputs: map[string]int{
+			PlaceGameActive: 1,
 			PlaceO01: 1,
 			PlaceO11: 1,
 			PlaceO21: 1,
 			PlaceXTurn: 1,
-			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
 			PlaceO01: 1,
 			PlaceO11: 1,
 			PlaceO21: 1,
+			PlaceWinO: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinCol2,
 		EventType: EventTypeOWinCol2,
 		Inputs: map[string]int{
+			PlaceXTurn: 1,
 			PlaceGameActive: 1,
 			PlaceO02: 1,
 			PlaceO12: 1,
 			PlaceO22: 1,
-			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -531,10 +550,10 @@ func NewAggregate(id string) *Aggregate {
 			PlaceO11: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
 			PlaceO00: 1,
 			PlaceO11: 1,
 			PlaceO22: 1,
+			PlaceWinO: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -548,10 +567,21 @@ func NewAggregate(id string) *Aggregate {
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
-			PlaceO02: 1,
 			PlaceO11: 1,
 			PlaceO20: 1,
+			PlaceWinO: 1,
+			PlaceO02: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionDraw,
+		EventType: EventTypeDraw,
+		Inputs: map[string]int{
+			PlaceGameActive: 1,
+			PlaceMoveTokens: 9,
+		},
+		Outputs: map[string]int{
+			PlaceWinO: 1,
 		},
 	})
 
@@ -657,6 +687,9 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeOWinAnti, func(state *State, event *eventsource.Event) error {
 		return applyOWinAnti(state, event)
+	})
+	sm.RegisterHandler(EventTypeDraw, func(state *State, event *eventsource.Event) error {
+		return applyDraw(state, event)
 	})
 	return &Aggregate{sm: sm}
 }
@@ -940,6 +973,13 @@ func applyOWinDiag(state *State, event *eventsource.Event) error {
 }
 
 func applyOWinAnti(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyDraw(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

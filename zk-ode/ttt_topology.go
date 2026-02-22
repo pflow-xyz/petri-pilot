@@ -3,11 +3,11 @@ package zkode
 import "math/big"
 
 // TTT topology constants for the full tic-tac-toe Petri net.
-// 32 places: 9 empty cells, 9 X pieces, 9 O pieces, x_turn, o_turn, win_x, win_o, game_active
-// 34 transitions: 9 x_play, 9 o_play, 8 x_win, 8 o_win
+// 33 places: 9 empty cells, 9 X pieces, 9 O pieces, x_turn, o_turn, win_x, win_o, game_active, move_tokens
+// 35 transitions: 9 x_play, 9 o_play, 8 x_win, 8 o_win, 1 draw
 
-const TTTNumPlaces = 32
-const TTTNumTransitions = 34
+const TTTNumPlaces = 33
+const TTTNumTransitions = 35
 const TTTMaxInputsPerTransition = 5
 
 // Place indices: empty cells (0-8)
@@ -49,13 +49,14 @@ const (
 	O22
 )
 
-// Place indices: control places (27-31)
+// Place indices: control places (27-32)
 const (
 	XTurn      = 27
 	OTurn      = 28
 	WinX       = 29
 	WinO       = 30
 	GameActive = 31
+	MoveTokens = 32
 )
 
 // TTTPlaceNames maps indices to human-readable names.
@@ -63,7 +64,7 @@ var TTTPlaceNames = [TTTNumPlaces]string{
 	"p00", "p01", "p02", "p10", "p11", "p12", "p20", "p21", "p22",
 	"x00", "x01", "x02", "x10", "x11", "x12", "x20", "x21", "x22",
 	"o00", "o01", "o02", "o10", "o11", "o12", "o20", "o21", "o22",
-	"x_turn", "o_turn", "win_x", "win_o", "game_active",
+	"x_turn", "o_turn", "win_x", "win_o", "game_active", "move_tokens",
 }
 
 // Transition indices: X play (0-8)
@@ -116,12 +117,16 @@ const (
 	TOWinAnti
 )
 
+// Transition index: draw (34)
+const TDraw = 34
+
 // TTTTransitionNames maps transition indices to human-readable names.
 var TTTTransitionNames = [TTTNumTransitions]string{
 	"x_play_00", "x_play_01", "x_play_02", "x_play_10", "x_play_11", "x_play_12", "x_play_20", "x_play_21", "x_play_22",
 	"o_play_00", "o_play_01", "o_play_02", "o_play_10", "o_play_11", "o_play_12", "o_play_20", "o_play_21", "o_play_22",
 	"x_win_row0", "x_win_row1", "x_win_row2", "x_win_col0", "x_win_col1", "x_win_col2", "x_win_diag", "x_win_anti",
 	"o_win_row0", "o_win_row1", "o_win_row2", "o_win_col0", "o_win_col1", "o_win_col2", "o_win_diag", "o_win_anti",
+	"draw",
 }
 
 // TTTRateConstants holds the rate constant k[t] for each transition.
@@ -186,7 +191,7 @@ func initTTTCellWinLines() {
 }
 
 func initTTTStoichiometry() {
-	// X play transitions: consume cell + x_turn, produce piece + o_turn
+	// X play transitions: consume cell + x_turn, produce piece + o_turn + move_token
 	for i := 0; i < 9; i++ {
 		t := TXPlay00 + i
 		cell := P00 + i
@@ -195,9 +200,10 @@ func initTTTStoichiometry() {
 		TTTStoichiometry[XTurn][t] = -1
 		TTTStoichiometry[piece][t] = +1
 		TTTStoichiometry[OTurn][t] = +1
+		TTTStoichiometry[MoveTokens][t] = +1
 	}
 
-	// O play transitions: consume cell + o_turn, produce piece + x_turn
+	// O play transitions: consume cell + o_turn, produce piece + x_turn + move_token
 	for i := 0; i < 9; i++ {
 		t := TOPlay00 + i
 		cell := P00 + i
@@ -206,6 +212,7 @@ func initTTTStoichiometry() {
 		TTTStoichiometry[OTurn][t] = -1
 		TTTStoichiometry[piece][t] = +1
 		TTTStoichiometry[XTurn][t] = +1
+		TTTStoichiometry[MoveTokens][t] = +1
 	}
 
 	// Win pattern piece indices (3 pieces per pattern)
@@ -237,6 +244,11 @@ func initTTTStoichiometry() {
 		TTTStoichiometry[GameActive][t] = -1
 		TTTStoichiometry[WinO][t] = +1
 	}
+
+	// Draw transition: consume 9 move_tokens + game_active, produce win_o
+	TTTStoichiometry[MoveTokens][TDraw] = -9
+	TTTStoichiometry[GameActive][TDraw] = -1
+	TTTStoichiometry[WinO][TDraw] = +1
 }
 
 func initTTTTransitionInputs() {
@@ -283,6 +295,10 @@ func initTTTTransitionInputs() {
 		TTTTransitionInputs[t] = []int{O00 + p[0], O00 + p[1], O00 + p[2], XTurn, GameActive}
 		TTTNumInputs[t] = 5
 	}
+
+	// Draw: inputs are [move_tokens, game_active]
+	TTTTransitionInputs[TDraw] = []int{MoveTokens, GameActive}
+	TTTNumInputs[TDraw] = 2
 }
 
 func initTTTRateConstants() {
@@ -311,6 +327,9 @@ func initTTTRateConstants() {
 	for i := 0; i < 8; i++ {
 		TTTRateConstants[TOWinRow0+i] = FixFromFloat(1.0)
 	}
+
+	// Draw transition (34): k=1
+	TTTRateConstants[TDraw] = FixFromFloat(1.0)
 }
 
 // TTTDefaultInitialMarking returns the empty board with X's turn as fixed-point elements.
@@ -338,6 +357,7 @@ func TTTDefaultInitialMarking() [TTTNumPlaces]*big.Int {
 	m[WinX] = new(big.Int).Set(zero)
 	m[WinO] = new(big.Int).Set(zero)
 	m[GameActive] = new(big.Int).Set(one)
+	m[MoveTokens] = new(big.Int).Set(zero)
 
 	return m
 }

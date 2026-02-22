@@ -5,8 +5,8 @@ import (
 )
 
 func TestTTTPlaceCount(t *testing.T) {
-	if TTTNumPlaces != 32 {
-		t.Fatalf("expected 32 places, got %d", TTTNumPlaces)
+	if TTTNumPlaces != 33 {
+		t.Fatalf("expected 33 places, got %d", TTTNumPlaces)
 	}
 	if len(TTTPlaceNames) != TTTNumPlaces {
 		t.Fatalf("place names array size mismatch: %d vs %d", len(TTTPlaceNames), TTTNumPlaces)
@@ -14,8 +14,8 @@ func TestTTTPlaceCount(t *testing.T) {
 }
 
 func TestTTTTransitionCount(t *testing.T) {
-	if TTTNumTransitions != 34 {
-		t.Fatalf("expected 34 transitions, got %d", TTTNumTransitions)
+	if TTTNumTransitions != 35 {
+		t.Fatalf("expected 35 transitions, got %d", TTTNumTransitions)
 	}
 	if len(TTTTransitionNames) != TTTNumTransitions {
 		t.Fatalf("transition names array size mismatch: %d vs %d", len(TTTTransitionNames), TTTNumTransitions)
@@ -31,19 +31,19 @@ func TestTTTStoichiometryNonZeroCount(t *testing.T) {
 			}
 		}
 	}
-	// x_play: 9 * 4 = 36, o_play: 9 * 4 = 36, x_win: 8 * 3 = 24, o_win: 8 * 3 = 24
-	expected := 120
+	// x_play: 9 * 5 = 45, o_play: 9 * 5 = 45, x_win: 8 * 3 = 24, o_win: 8 * 3 = 24, draw: 3
+	expected := 141
 	if count != expected {
 		t.Fatalf("expected %d non-zero stoichiometry entries, got %d", expected, count)
 	}
 }
 
 func TestTTTStoichiometryValues(t *testing.T) {
-	// All stoichiometry values should be -1, 0, or +1
+	// All stoichiometry values should be -9, -1, 0, or +1
 	for p := 0; p < TTTNumPlaces; p++ {
 		for tr := 0; tr < TTTNumTransitions; tr++ {
 			s := TTTStoichiometry[p][tr]
-			if s != -1 && s != 0 && s != 1 {
+			if s != -9 && s != -1 && s != 0 && s != 1 {
 				t.Fatalf("unexpected stoichiometry value %d at [%s][%s]",
 					s, TTTPlaceNames[p], TTTTransitionNames[tr])
 			}
@@ -71,10 +71,15 @@ func TestTTTTransitionInputs(t *testing.T) {
 			t.Errorf("o_win_%d: expected 5 inputs, got %d", i, TTTNumInputs[TOWinRow0+i])
 		}
 	}
+
+	// Draw transition: 2 inputs (move_tokens, game_active)
+	if TTTNumInputs[TDraw] != 2 {
+		t.Errorf("draw: expected 2 inputs, got %d", TTTNumInputs[TDraw])
+	}
 }
 
 func TestTTTXPlayStoichiometry(t *testing.T) {
-	// x_play_00: p00 -1, x_turn -1, x00 +1, o_turn +1
+	// x_play_00: p00 -1, x_turn -1, x00 +1, o_turn +1, move_tokens +1
 	if TTTStoichiometry[P00][TXPlay00] != -1 {
 		t.Error("x_play_00: p00 should be -1")
 	}
@@ -86,6 +91,9 @@ func TestTTTXPlayStoichiometry(t *testing.T) {
 	}
 	if TTTStoichiometry[OTurn][TXPlay00] != +1 {
 		t.Error("x_play_00: o_turn should be +1")
+	}
+	if TTTStoichiometry[MoveTokens][TXPlay00] != +1 {
+		t.Error("x_play_00: move_tokens should be +1")
 	}
 }
 
@@ -162,6 +170,9 @@ func TestTTTDefaultInitialMarking(t *testing.T) {
 	}
 	if m[GameActive].Cmp(one) != 0 {
 		t.Error("game_active should be 1")
+	}
+	if m[MoveTokens].Cmp(zero) != 0 {
+		t.Error("move_tokens should be 0")
 	}
 }
 

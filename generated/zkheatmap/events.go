@@ -415,3 +415,15 @@ func (e OWinAntiedEvent) EventType() string {
 }
 
 
+// DrawedEvent is emitted when the draw transition fires.
+type DrawedEvent struct {
+	AggregateId string `json:"aggregate_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e DrawedEvent) EventType() string {
+	return "Drawed"
+}
+
+

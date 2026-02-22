@@ -1,7 +1,7 @@
 {
   "name": "zk-heatmap",
   "version": "1.0.0",
-  "description": "ZK heatmap circuit: 32-place, 34-transition Petri net for provably optimal tic-tac-toe. Scores emerge from mass-action kinetics over graph topology (center k=4, corners k=3, edges k=2) plus tactical win/block adjustments proven in a 177k-constraint Groth16 circuit.",
+  "description": "ZK heatmap circuit: 33-place, 35-transition Petri net for tic-tac-toe. Scores emerge from mass-action kinetics over graph topology (center k=4, corners k=3, edges k=2) plus tactical win/block adjustments proven in a 177k-constraint Groth16 circuit.",
   "debug": {
     "enabled": true,
     "eval": true
@@ -41,7 +41,8 @@
     {"id": "o_turn", "initial": 0, "description": "O's turn", "x": 860, "y": 120},
     {"id": "win_x", "initial": 0, "description": "X wins", "x": 1110, "y": 1200},
     {"id": "win_o", "initial": 0, "description": "O wins", "x": 610, "y": 1180},
-    {"id": "game_active", "initial": 1, "description": "Game active", "x": 850, "y": 800}
+    {"id": "game_active", "initial": 1, "description": "Game active", "x": 850, "y": 800},
+    {"id": "move_tokens", "initial": 0, "description": "Accumulates tokens as moves are played (for draw detection)", "x": 850, "y": 900}
   ],
   "transitions": [
     {"id": "x_play_00", "role": "x", "description": "X plays corner (0,0) k=3", "x": 1030, "y": 250},
@@ -80,28 +81,30 @@
     {"id": "o_win_col1", "role": "o", "description": "O wins col 1", "x": 600, "y": 970},
     {"id": "o_win_col2", "role": "o", "description": "O wins col 2", "x": 600, "y": 1050},
     {"id": "o_win_diag", "role": "o", "description": "O wins diag", "x": 520, "y": 890},
-    {"id": "o_win_anti", "role": "o", "description": "O wins anti-diag", "x": 520, "y": 1050}
+    {"id": "o_win_anti", "role": "o", "description": "O wins anti-diag", "x": 520, "y": 1050},
+
+    {"id": "draw", "description": "Game ends in draw (all 9 moves played, no winner)", "x": 850, "y": 1000}
   ],
   "arcs": [
-    {"from": "p00", "to": "x_play_00"}, {"from": "x_turn", "to": "x_play_00"}, {"from": "x_play_00", "to": "x00"}, {"from": "x_play_00", "to": "o_turn"},
-    {"from": "p01", "to": "x_play_01"}, {"from": "x_turn", "to": "x_play_01"}, {"from": "x_play_01", "to": "x01"}, {"from": "x_play_01", "to": "o_turn"},
-    {"from": "p02", "to": "x_play_02"}, {"from": "x_turn", "to": "x_play_02"}, {"from": "x_play_02", "to": "x02"}, {"from": "x_play_02", "to": "o_turn"},
-    {"from": "p10", "to": "x_play_10"}, {"from": "x_turn", "to": "x_play_10"}, {"from": "x_play_10", "to": "x10"}, {"from": "x_play_10", "to": "o_turn"},
-    {"from": "p11", "to": "x_play_11"}, {"from": "x_turn", "to": "x_play_11"}, {"from": "x_play_11", "to": "x11"}, {"from": "x_play_11", "to": "o_turn"},
-    {"from": "p12", "to": "x_play_12"}, {"from": "x_turn", "to": "x_play_12"}, {"from": "x_play_12", "to": "x12"}, {"from": "x_play_12", "to": "o_turn"},
-    {"from": "p20", "to": "x_play_20"}, {"from": "x_turn", "to": "x_play_20"}, {"from": "x_play_20", "to": "x20"}, {"from": "x_play_20", "to": "o_turn"},
-    {"from": "p21", "to": "x_play_21"}, {"from": "x_turn", "to": "x_play_21"}, {"from": "x_play_21", "to": "x21"}, {"from": "x_play_21", "to": "o_turn"},
-    {"from": "p22", "to": "x_play_22"}, {"from": "x_turn", "to": "x_play_22"}, {"from": "x_play_22", "to": "x22"}, {"from": "x_play_22", "to": "o_turn"},
+    {"from": "p00", "to": "x_play_00"}, {"from": "x_turn", "to": "x_play_00"}, {"from": "x_play_00", "to": "x00"}, {"from": "x_play_00", "to": "o_turn"}, {"from": "x_play_00", "to": "move_tokens"},
+    {"from": "p01", "to": "x_play_01"}, {"from": "x_turn", "to": "x_play_01"}, {"from": "x_play_01", "to": "x01"}, {"from": "x_play_01", "to": "o_turn"}, {"from": "x_play_01", "to": "move_tokens"},
+    {"from": "p02", "to": "x_play_02"}, {"from": "x_turn", "to": "x_play_02"}, {"from": "x_play_02", "to": "x02"}, {"from": "x_play_02", "to": "o_turn"}, {"from": "x_play_02", "to": "move_tokens"},
+    {"from": "p10", "to": "x_play_10"}, {"from": "x_turn", "to": "x_play_10"}, {"from": "x_play_10", "to": "x10"}, {"from": "x_play_10", "to": "o_turn"}, {"from": "x_play_10", "to": "move_tokens"},
+    {"from": "p11", "to": "x_play_11"}, {"from": "x_turn", "to": "x_play_11"}, {"from": "x_play_11", "to": "x11"}, {"from": "x_play_11", "to": "o_turn"}, {"from": "x_play_11", "to": "move_tokens"},
+    {"from": "p12", "to": "x_play_12"}, {"from": "x_turn", "to": "x_play_12"}, {"from": "x_play_12", "to": "x12"}, {"from": "x_play_12", "to": "o_turn"}, {"from": "x_play_12", "to": "move_tokens"},
+    {"from": "p20", "to": "x_play_20"}, {"from": "x_turn", "to": "x_play_20"}, {"from": "x_play_20", "to": "x20"}, {"from": "x_play_20", "to": "o_turn"}, {"from": "x_play_20", "to": "move_tokens"},
+    {"from": "p21", "to": "x_play_21"}, {"from": "x_turn", "to": "x_play_21"}, {"from": "x_play_21", "to": "x21"}, {"from": "x_play_21", "to": "o_turn"}, {"from": "x_play_21", "to": "move_tokens"},
+    {"from": "p22", "to": "x_play_22"}, {"from": "x_turn", "to": "x_play_22"}, {"from": "x_play_22", "to": "x22"}, {"from": "x_play_22", "to": "o_turn"}, {"from": "x_play_22", "to": "move_tokens"},
 
-    {"from": "p00", "to": "o_play_00"}, {"from": "o_turn", "to": "o_play_00"}, {"from": "o_play_00", "to": "o00"}, {"from": "o_play_00", "to": "x_turn"},
-    {"from": "p01", "to": "o_play_01"}, {"from": "o_turn", "to": "o_play_01"}, {"from": "o_play_01", "to": "o01"}, {"from": "o_play_01", "to": "x_turn"},
-    {"from": "p02", "to": "o_play_02"}, {"from": "o_turn", "to": "o_play_02"}, {"from": "o_play_02", "to": "o02"}, {"from": "o_play_02", "to": "x_turn"},
-    {"from": "p10", "to": "o_play_10"}, {"from": "o_turn", "to": "o_play_10"}, {"from": "o_play_10", "to": "o10"}, {"from": "o_play_10", "to": "x_turn"},
-    {"from": "p11", "to": "o_play_11"}, {"from": "o_turn", "to": "o_play_11"}, {"from": "o_play_11", "to": "o11"}, {"from": "o_play_11", "to": "x_turn"},
-    {"from": "p12", "to": "o_play_12"}, {"from": "o_turn", "to": "o_play_12"}, {"from": "o_play_12", "to": "o12"}, {"from": "o_play_12", "to": "x_turn"},
-    {"from": "p20", "to": "o_play_20"}, {"from": "o_turn", "to": "o_play_20"}, {"from": "o_play_20", "to": "o20"}, {"from": "o_play_20", "to": "x_turn"},
-    {"from": "p21", "to": "o_play_21"}, {"from": "o_turn", "to": "o_play_21"}, {"from": "o_play_21", "to": "o21"}, {"from": "o_play_21", "to": "x_turn"},
-    {"from": "p22", "to": "o_play_22"}, {"from": "o_turn", "to": "o_play_22"}, {"from": "o_play_22", "to": "o22"}, {"from": "o_play_22", "to": "x_turn"},
+    {"from": "p00", "to": "o_play_00"}, {"from": "o_turn", "to": "o_play_00"}, {"from": "o_play_00", "to": "o00"}, {"from": "o_play_00", "to": "x_turn"}, {"from": "o_play_00", "to": "move_tokens"},
+    {"from": "p01", "to": "o_play_01"}, {"from": "o_turn", "to": "o_play_01"}, {"from": "o_play_01", "to": "o01"}, {"from": "o_play_01", "to": "x_turn"}, {"from": "o_play_01", "to": "move_tokens"},
+    {"from": "p02", "to": "o_play_02"}, {"from": "o_turn", "to": "o_play_02"}, {"from": "o_play_02", "to": "o02"}, {"from": "o_play_02", "to": "x_turn"}, {"from": "o_play_02", "to": "move_tokens"},
+    {"from": "p10", "to": "o_play_10"}, {"from": "o_turn", "to": "o_play_10"}, {"from": "o_play_10", "to": "o10"}, {"from": "o_play_10", "to": "x_turn"}, {"from": "o_play_10", "to": "move_tokens"},
+    {"from": "p11", "to": "o_play_11"}, {"from": "o_turn", "to": "o_play_11"}, {"from": "o_play_11", "to": "o11"}, {"from": "o_play_11", "to": "x_turn"}, {"from": "o_play_11", "to": "move_tokens"},
+    {"from": "p12", "to": "o_play_12"}, {"from": "o_turn", "to": "o_play_12"}, {"from": "o_play_12", "to": "o12"}, {"from": "o_play_12", "to": "x_turn"}, {"from": "o_play_12", "to": "move_tokens"},
+    {"from": "p20", "to": "o_play_20"}, {"from": "o_turn", "to": "o_play_20"}, {"from": "o_play_20", "to": "o20"}, {"from": "o_play_20", "to": "x_turn"}, {"from": "o_play_20", "to": "move_tokens"},
+    {"from": "p21", "to": "o_play_21"}, {"from": "o_turn", "to": "o_play_21"}, {"from": "o_play_21", "to": "o21"}, {"from": "o_play_21", "to": "x_turn"}, {"from": "o_play_21", "to": "move_tokens"},
+    {"from": "p22", "to": "o_play_22"}, {"from": "o_turn", "to": "o_play_22"}, {"from": "o_play_22", "to": "o22"}, {"from": "o_play_22", "to": "x_turn"}, {"from": "o_play_22", "to": "move_tokens"},
 
     {"from": "x00", "to": "x_win_row0"}, {"from": "x01", "to": "x_win_row0"}, {"from": "x02", "to": "x_win_row0"}, {"from": "o_turn", "to": "x_win_row0"}, {"from": "game_active", "to": "x_win_row0"}, {"from": "x_win_row0", "to": "win_x"}, {"from": "x_win_row0", "to": "x00"}, {"from": "x_win_row0", "to": "x01"}, {"from": "x_win_row0", "to": "x02"},
     {"from": "x10", "to": "x_win_row1"}, {"from": "x11", "to": "x_win_row1"}, {"from": "x12", "to": "x_win_row1"}, {"from": "o_turn", "to": "x_win_row1"}, {"from": "game_active", "to": "x_win_row1"}, {"from": "x_win_row1", "to": "win_x"}, {"from": "x_win_row1", "to": "x10"}, {"from": "x_win_row1", "to": "x11"}, {"from": "x_win_row1", "to": "x12"},
@@ -119,7 +122,11 @@
     {"from": "o01", "to": "o_win_col1"}, {"from": "o11", "to": "o_win_col1"}, {"from": "o21", "to": "o_win_col1"}, {"from": "x_turn", "to": "o_win_col1"}, {"from": "game_active", "to": "o_win_col1"}, {"from": "o_win_col1", "to": "win_o"}, {"from": "o_win_col1", "to": "o01"}, {"from": "o_win_col1", "to": "o11"}, {"from": "o_win_col1", "to": "o21"},
     {"from": "o02", "to": "o_win_col2"}, {"from": "o12", "to": "o_win_col2"}, {"from": "o22", "to": "o_win_col2"}, {"from": "x_turn", "to": "o_win_col2"}, {"from": "game_active", "to": "o_win_col2"}, {"from": "o_win_col2", "to": "win_o"}, {"from": "o_win_col2", "to": "o02"}, {"from": "o_win_col2", "to": "o12"}, {"from": "o_win_col2", "to": "o22"},
     {"from": "o00", "to": "o_win_diag"}, {"from": "o11", "to": "o_win_diag"}, {"from": "o22", "to": "o_win_diag"}, {"from": "x_turn", "to": "o_win_diag"}, {"from": "game_active", "to": "o_win_diag"}, {"from": "o_win_diag", "to": "win_o"}, {"from": "o_win_diag", "to": "o00"}, {"from": "o_win_diag", "to": "o11"}, {"from": "o_win_diag", "to": "o22"},
-    {"from": "o02", "to": "o_win_anti"}, {"from": "o11", "to": "o_win_anti"}, {"from": "o20", "to": "o_win_anti"}, {"from": "x_turn", "to": "o_win_anti"}, {"from": "game_active", "to": "o_win_anti"}, {"from": "o_win_anti", "to": "win_o"}, {"from": "o_win_anti", "to": "o02"}, {"from": "o_win_anti", "to": "o11"}, {"from": "o_win_anti", "to": "o20"}
+    {"from": "o02", "to": "o_win_anti"}, {"from": "o11", "to": "o_win_anti"}, {"from": "o20", "to": "o_win_anti"}, {"from": "x_turn", "to": "o_win_anti"}, {"from": "game_active", "to": "o_win_anti"}, {"from": "o_win_anti", "to": "win_o"}, {"from": "o_win_anti", "to": "o02"}, {"from": "o_win_anti", "to": "o11"}, {"from": "o_win_anti", "to": "o20"},
+
+    {"from": "move_tokens", "to": "draw", "weight": 9},
+    {"from": "game_active", "to": "draw"},
+    {"from": "draw", "to": "win_o"}
   ],
   "simulation": {
     "objective": "win_x - win_o",

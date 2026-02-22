@@ -54,6 +54,7 @@ func BuildTicTacToeNet() *petri.PetriNet {
 	net.AddPlace("win_x", 0.0, nil, 0, 0, nil)
 	net.AddPlace("win_o", 0.0, nil, 0, 0, nil)
 	net.AddPlace("game_active", 1.0, nil, 0, 0, nil)
+	net.AddPlace("move_tokens", 0.0, nil, 0, 0, nil)
 
 	// X play transitions
 	xPlayTransitions := []struct{ trans, cell, piece string }{
@@ -67,6 +68,7 @@ func BuildTicTacToeNet() *petri.PetriNet {
 		net.AddArc("x_turn", t.trans, 1.0, false)
 		net.AddArc(t.trans, t.piece, 1.0, false)
 		net.AddArc(t.trans, "o_turn", 1.0, false)
+		net.AddArc(t.trans, "move_tokens", 1.0, false)
 	}
 
 	// O play transitions
@@ -81,6 +83,7 @@ func BuildTicTacToeNet() *petri.PetriNet {
 		net.AddArc("o_turn", t.trans, 1.0, false)
 		net.AddArc(t.trans, t.piece, 1.0, false)
 		net.AddArc(t.trans, "x_turn", 1.0, false)
+		net.AddArc(t.trans, "move_tokens", 1.0, false)
 	}
 
 	// X win transitions
@@ -133,6 +136,12 @@ func BuildTicTacToeNet() *petri.PetriNet {
 		net.AddArc(w.trans, "win_o", 1.0, false)
 	}
 
+	// Draw transition: consumes 9 move_tokens + game_active, produces win_o
+	net.AddTransition("draw", "", 0, 0, nil)
+	net.AddArc("move_tokens", "draw", 9.0, false)
+	net.AddArc("game_active", "draw", 1.0, false)
+	net.AddArc("draw", "win_o", 1.0, false)
+
 	return net
 }
 
@@ -171,6 +180,17 @@ func BoardToState(board Board, currentPlayer string) map[string]float64 {
 	state["game_active"] = 1.0
 	state["win_x"] = 0.0
 	state["win_o"] = 0.0
+
+	// Count pieces placed to set move_tokens
+	moveCount := 0.0
+	for r := 0; r < 3; r++ {
+		for c := 0; c < 3; c++ {
+			if board[r][c] == "X" || board[r][c] == "O" {
+				moveCount++
+			}
+		}
+	}
+	state["move_tokens"] = moveCount
 
 	return state
 }
