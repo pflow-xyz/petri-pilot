@@ -7,7 +7,7 @@ import {Groth16VerifierAdapter} from "../src/Groth16VerifierAdapter.sol";
 import {ZkOde} from "../src/ZkOde.sol";
 
 /// @title DeployTTT
-/// @notice Deploys TTT Groth16Verifier, Adapter (37 inputs), and ZkOde (34 transitions).
+/// @notice Deploys TTT Groth16Verifier, Adapter (37 inputs), and ZkOde (35 transitions).
 /// @dev Usage:
 ///   GENESIS_ROOT=0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c \
 ///   NUM_TRANSITIONS=34 NUM_PUBLIC_INPUTS=37 \
