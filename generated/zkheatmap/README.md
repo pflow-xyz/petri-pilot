@@ -198,13 +198,13 @@ stateDiagram-v2
     t_TransitionXPlay10 --> PlaceX10
     t_TransitionXPlay10 --> PlaceOTurn
 
-    PlaceP11 --> t_TransitionXPlay11
     PlaceXTurn --> t_TransitionXPlay11
-    t_TransitionXPlay11 --> PlaceOTurn
+    PlaceP11 --> t_TransitionXPlay11
     t_TransitionXPlay11 --> PlaceX11
+    t_TransitionXPlay11 --> PlaceOTurn
 
-    PlaceXTurn --> t_TransitionXPlay12
     PlaceP12 --> t_TransitionXPlay12
+    PlaceXTurn --> t_TransitionXPlay12
     t_TransitionXPlay12 --> PlaceOTurn
     t_TransitionXPlay12 --> PlaceX12
 
@@ -245,134 +245,134 @@ stateDiagram-v2
 
     PlaceP11 --> t_TransitionOPlay11
     PlaceOTurn --> t_TransitionOPlay11
-    t_TransitionOPlay11 --> PlaceO11
     t_TransitionOPlay11 --> PlaceXTurn
+    t_TransitionOPlay11 --> PlaceO11
 
     PlaceP12 --> t_TransitionOPlay12
     PlaceOTurn --> t_TransitionOPlay12
-    t_TransitionOPlay12 --> PlaceXTurn
     t_TransitionOPlay12 --> PlaceO12
+    t_TransitionOPlay12 --> PlaceXTurn
 
     PlaceOTurn --> t_TransitionOPlay20
     PlaceP20 --> t_TransitionOPlay20
-    t_TransitionOPlay20 --> PlaceXTurn
     t_TransitionOPlay20 --> PlaceO20
+    t_TransitionOPlay20 --> PlaceXTurn
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
-    t_TransitionOPlay21 --> PlaceXTurn
     t_TransitionOPlay21 --> PlaceO21
+    t_TransitionOPlay21 --> PlaceXTurn
 
     PlaceP22 --> t_TransitionOPlay22
     PlaceOTurn --> t_TransitionOPlay22
     t_TransitionOPlay22 --> PlaceO22
     t_TransitionOPlay22 --> PlaceXTurn
 
-    PlaceOTurn --> t_TransitionXWinRow0
-    PlaceGameActive --> t_TransitionXWinRow0
     PlaceX00 --> t_TransitionXWinRow0
     PlaceX01 --> t_TransitionXWinRow0
     PlaceX02 --> t_TransitionXWinRow0
-    t_TransitionXWinRow0 --> PlaceWinX
-    t_TransitionXWinRow0 --> PlaceX00
+    PlaceOTurn --> t_TransitionXWinRow0
+    PlaceGameActive --> t_TransitionXWinRow0
     t_TransitionXWinRow0 --> PlaceX01
     t_TransitionXWinRow0 --> PlaceX02
+    t_TransitionXWinRow0 --> PlaceWinX
+    t_TransitionXWinRow0 --> PlaceX00
 
     PlaceX10 --> t_TransitionXWinRow1
     PlaceX11 --> t_TransitionXWinRow1
     PlaceX12 --> t_TransitionXWinRow1
     PlaceOTurn --> t_TransitionXWinRow1
     PlaceGameActive --> t_TransitionXWinRow1
-    t_TransitionXWinRow1 --> PlaceX12
     t_TransitionXWinRow1 --> PlaceWinX
     t_TransitionXWinRow1 --> PlaceX10
     t_TransitionXWinRow1 --> PlaceX11
+    t_TransitionXWinRow1 --> PlaceX12
 
+    PlaceX21 --> t_TransitionXWinRow2
+    PlaceX22 --> t_TransitionXWinRow2
     PlaceOTurn --> t_TransitionXWinRow2
     PlaceGameActive --> t_TransitionXWinRow2
     PlaceX20 --> t_TransitionXWinRow2
-    PlaceX21 --> t_TransitionXWinRow2
-    PlaceX22 --> t_TransitionXWinRow2
     t_TransitionXWinRow2 --> PlaceWinX
     t_TransitionXWinRow2 --> PlaceX20
     t_TransitionXWinRow2 --> PlaceX21
     t_TransitionXWinRow2 --> PlaceX22
 
+    PlaceX00 --> t_TransitionXWinCol0
     PlaceX10 --> t_TransitionXWinCol0
     PlaceX20 --> t_TransitionXWinCol0
     PlaceOTurn --> t_TransitionXWinCol0
     PlaceGameActive --> t_TransitionXWinCol0
-    PlaceX00 --> t_TransitionXWinCol0
     t_TransitionXWinCol0 --> PlaceWinX
     t_TransitionXWinCol0 --> PlaceX00
     t_TransitionXWinCol0 --> PlaceX10
     t_TransitionXWinCol0 --> PlaceX20
 
+    PlaceX21 --> t_TransitionXWinCol1
     PlaceOTurn --> t_TransitionXWinCol1
     PlaceGameActive --> t_TransitionXWinCol1
     PlaceX01 --> t_TransitionXWinCol1
     PlaceX11 --> t_TransitionXWinCol1
-    PlaceX21 --> t_TransitionXWinCol1
-    t_TransitionXWinCol1 --> PlaceX11
-    t_TransitionXWinCol1 --> PlaceX21
     t_TransitionXWinCol1 --> PlaceWinX
     t_TransitionXWinCol1 --> PlaceX01
+    t_TransitionXWinCol1 --> PlaceX11
+    t_TransitionXWinCol1 --> PlaceX21
 
-    PlaceOTurn --> t_TransitionXWinCol2
-    PlaceGameActive --> t_TransitionXWinCol2
     PlaceX02 --> t_TransitionXWinCol2
     PlaceX12 --> t_TransitionXWinCol2
     PlaceX22 --> t_TransitionXWinCol2
+    PlaceOTurn --> t_TransitionXWinCol2
+    PlaceGameActive --> t_TransitionXWinCol2
+    t_TransitionXWinCol2 --> PlaceX22
     t_TransitionXWinCol2 --> PlaceWinX
     t_TransitionXWinCol2 --> PlaceX02
     t_TransitionXWinCol2 --> PlaceX12
-    t_TransitionXWinCol2 --> PlaceX22
 
     PlaceX00 --> t_TransitionXWinDiag
     PlaceX11 --> t_TransitionXWinDiag
     PlaceX22 --> t_TransitionXWinDiag
     PlaceOTurn --> t_TransitionXWinDiag
     PlaceGameActive --> t_TransitionXWinDiag
-    t_TransitionXWinDiag --> PlaceX00
-    t_TransitionXWinDiag --> PlaceX11
     t_TransitionXWinDiag --> PlaceX22
     t_TransitionXWinDiag --> PlaceWinX
+    t_TransitionXWinDiag --> PlaceX00
+    t_TransitionXWinDiag --> PlaceX11
 
     PlaceOTurn --> t_TransitionXWinAnti
     PlaceGameActive --> t_TransitionXWinAnti
     PlaceX02 --> t_TransitionXWinAnti
     PlaceX11 --> t_TransitionXWinAnti
     PlaceX20 --> t_TransitionXWinAnti
-    t_TransitionXWinAnti --> PlaceX20
     t_TransitionXWinAnti --> PlaceWinX
     t_TransitionXWinAnti --> PlaceX02
     t_TransitionXWinAnti --> PlaceX11
+    t_TransitionXWinAnti --> PlaceX20
 
+    PlaceO00 --> t_TransitionOWinRow0
+    PlaceO01 --> t_TransitionOWinRow0
     PlaceO02 --> t_TransitionOWinRow0
     PlaceXTurn --> t_TransitionOWinRow0
     PlaceGameActive --> t_TransitionOWinRow0
-    PlaceO00 --> t_TransitionOWinRow0
-    PlaceO01 --> t_TransitionOWinRow0
+    t_TransitionOWinRow0 --> PlaceO01
     t_TransitionOWinRow0 --> PlaceO02
     t_TransitionOWinRow0 --> PlaceWinO
     t_TransitionOWinRow0 --> PlaceO00
-    t_TransitionOWinRow0 --> PlaceO01
 
-    PlaceGameActive --> t_TransitionOWinRow1
     PlaceO10 --> t_TransitionOWinRow1
     PlaceO11 --> t_TransitionOWinRow1
     PlaceO12 --> t_TransitionOWinRow1
     PlaceXTurn --> t_TransitionOWinRow1
-    t_TransitionOWinRow1 --> PlaceWinO
-    t_TransitionOWinRow1 --> PlaceO10
+    PlaceGameActive --> t_TransitionOWinRow1
     t_TransitionOWinRow1 --> PlaceO11
     t_TransitionOWinRow1 --> PlaceO12
+    t_TransitionOWinRow1 --> PlaceWinO
+    t_TransitionOWinRow1 --> PlaceO10
 
-    PlaceO20 --> t_TransitionOWinRow2
     PlaceO21 --> t_TransitionOWinRow2
     PlaceO22 --> t_TransitionOWinRow2
     PlaceXTurn --> t_TransitionOWinRow2
     PlaceGameActive --> t_TransitionOWinRow2
+    PlaceO20 --> t_TransitionOWinRow2
     t_TransitionOWinRow2 --> PlaceWinO
     t_TransitionOWinRow2 --> PlaceO20
     t_TransitionOWinRow2 --> PlaceO21
@@ -383,46 +383,46 @@ stateDiagram-v2
     PlaceO20 --> t_TransitionOWinCol0
     PlaceXTurn --> t_TransitionOWinCol0
     PlaceGameActive --> t_TransitionOWinCol0
-    t_TransitionOWinCol0 --> PlaceO00
     t_TransitionOWinCol0 --> PlaceO10
     t_TransitionOWinCol0 --> PlaceO20
     t_TransitionOWinCol0 --> PlaceWinO
+    t_TransitionOWinCol0 --> PlaceO00
 
+    PlaceO01 --> t_TransitionOWinCol1
+    PlaceO11 --> t_TransitionOWinCol1
     PlaceO21 --> t_TransitionOWinCol1
     PlaceXTurn --> t_TransitionOWinCol1
     PlaceGameActive --> t_TransitionOWinCol1
-    PlaceO01 --> t_TransitionOWinCol1
-    PlaceO11 --> t_TransitionOWinCol1
-    t_TransitionOWinCol1 --> PlaceO11
-    t_TransitionOWinCol1 --> PlaceO21
     t_TransitionOWinCol1 --> PlaceWinO
     t_TransitionOWinCol1 --> PlaceO01
+    t_TransitionOWinCol1 --> PlaceO11
+    t_TransitionOWinCol1 --> PlaceO21
 
+    PlaceGameActive --> t_TransitionOWinCol2
     PlaceO02 --> t_TransitionOWinCol2
     PlaceO12 --> t_TransitionOWinCol2
     PlaceO22 --> t_TransitionOWinCol2
     PlaceXTurn --> t_TransitionOWinCol2
-    PlaceGameActive --> t_TransitionOWinCol2
     t_TransitionOWinCol2 --> PlaceWinO
     t_TransitionOWinCol2 --> PlaceO02
     t_TransitionOWinCol2 --> PlaceO12
     t_TransitionOWinCol2 --> PlaceO22
 
-    PlaceO00 --> t_TransitionOWinDiag
-    PlaceO11 --> t_TransitionOWinDiag
     PlaceO22 --> t_TransitionOWinDiag
     PlaceXTurn --> t_TransitionOWinDiag
     PlaceGameActive --> t_TransitionOWinDiag
+    PlaceO00 --> t_TransitionOWinDiag
+    PlaceO11 --> t_TransitionOWinDiag
     t_TransitionOWinDiag --> PlaceWinO
     t_TransitionOWinDiag --> PlaceO00
     t_TransitionOWinDiag --> PlaceO11
     t_TransitionOWinDiag --> PlaceO22
 
-    PlaceXTurn --> t_TransitionOWinAnti
-    PlaceGameActive --> t_TransitionOWinAnti
     PlaceO02 --> t_TransitionOWinAnti
     PlaceO11 --> t_TransitionOWinAnti
     PlaceO20 --> t_TransitionOWinAnti
+    PlaceXTurn --> t_TransitionOWinAnti
+    PlaceGameActive --> t_TransitionOWinAnti
     t_TransitionOWinAnti --> PlaceWinO
     t_TransitionOWinAnti --> PlaceO02
     t_TransitionOWinAnti --> PlaceO11
@@ -527,13 +527,13 @@ flowchart TD
     t_TransitionXPlay10 --> PlaceX10
     t_TransitionXPlay10 --> PlaceOTurn
 
-    PlaceP11 --> t_TransitionXPlay11
     PlaceXTurn --> t_TransitionXPlay11
-    t_TransitionXPlay11 --> PlaceOTurn
+    PlaceP11 --> t_TransitionXPlay11
     t_TransitionXPlay11 --> PlaceX11
+    t_TransitionXPlay11 --> PlaceOTurn
 
-    PlaceXTurn --> t_TransitionXPlay12
     PlaceP12 --> t_TransitionXPlay12
+    PlaceXTurn --> t_TransitionXPlay12
     t_TransitionXPlay12 --> PlaceOTurn
     t_TransitionXPlay12 --> PlaceX12
 
@@ -574,134 +574,134 @@ flowchart TD
 
     PlaceP11 --> t_TransitionOPlay11
     PlaceOTurn --> t_TransitionOPlay11
-    t_TransitionOPlay11 --> PlaceO11
     t_TransitionOPlay11 --> PlaceXTurn
+    t_TransitionOPlay11 --> PlaceO11
 
     PlaceP12 --> t_TransitionOPlay12
     PlaceOTurn --> t_TransitionOPlay12
-    t_TransitionOPlay12 --> PlaceXTurn
     t_TransitionOPlay12 --> PlaceO12
+    t_TransitionOPlay12 --> PlaceXTurn
 
     PlaceOTurn --> t_TransitionOPlay20
     PlaceP20 --> t_TransitionOPlay20
-    t_TransitionOPlay20 --> PlaceXTurn
     t_TransitionOPlay20 --> PlaceO20
+    t_TransitionOPlay20 --> PlaceXTurn
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
-    t_TransitionOPlay21 --> PlaceXTurn
     t_TransitionOPlay21 --> PlaceO21
+    t_TransitionOPlay21 --> PlaceXTurn
 
     PlaceP22 --> t_TransitionOPlay22
     PlaceOTurn --> t_TransitionOPlay22
     t_TransitionOPlay22 --> PlaceO22
     t_TransitionOPlay22 --> PlaceXTurn
 
-    PlaceOTurn --> t_TransitionXWinRow0
-    PlaceGameActive --> t_TransitionXWinRow0
     PlaceX00 --> t_TransitionXWinRow0
     PlaceX01 --> t_TransitionXWinRow0
     PlaceX02 --> t_TransitionXWinRow0
-    t_TransitionXWinRow0 --> PlaceWinX
-    t_TransitionXWinRow0 --> PlaceX00
+    PlaceOTurn --> t_TransitionXWinRow0
+    PlaceGameActive --> t_TransitionXWinRow0
     t_TransitionXWinRow0 --> PlaceX01
     t_TransitionXWinRow0 --> PlaceX02
+    t_TransitionXWinRow0 --> PlaceWinX
+    t_TransitionXWinRow0 --> PlaceX00
 
     PlaceX10 --> t_TransitionXWinRow1
     PlaceX11 --> t_TransitionXWinRow1
     PlaceX12 --> t_TransitionXWinRow1
     PlaceOTurn --> t_TransitionXWinRow1
     PlaceGameActive --> t_TransitionXWinRow1
-    t_TransitionXWinRow1 --> PlaceX12
     t_TransitionXWinRow1 --> PlaceWinX
     t_TransitionXWinRow1 --> PlaceX10
     t_TransitionXWinRow1 --> PlaceX11
+    t_TransitionXWinRow1 --> PlaceX12
 
+    PlaceX21 --> t_TransitionXWinRow2
+    PlaceX22 --> t_TransitionXWinRow2
     PlaceOTurn --> t_TransitionXWinRow2
     PlaceGameActive --> t_TransitionXWinRow2
     PlaceX20 --> t_TransitionXWinRow2
-    PlaceX21 --> t_TransitionXWinRow2
-    PlaceX22 --> t_TransitionXWinRow2
     t_TransitionXWinRow2 --> PlaceWinX
     t_TransitionXWinRow2 --> PlaceX20
     t_TransitionXWinRow2 --> PlaceX21
     t_TransitionXWinRow2 --> PlaceX22
 
+    PlaceX00 --> t_TransitionXWinCol0
     PlaceX10 --> t_TransitionXWinCol0
     PlaceX20 --> t_TransitionXWinCol0
     PlaceOTurn --> t_TransitionXWinCol0
     PlaceGameActive --> t_TransitionXWinCol0
-    PlaceX00 --> t_TransitionXWinCol0
     t_TransitionXWinCol0 --> PlaceWinX
     t_TransitionXWinCol0 --> PlaceX00
     t_TransitionXWinCol0 --> PlaceX10
     t_TransitionXWinCol0 --> PlaceX20
 
+    PlaceX21 --> t_TransitionXWinCol1
     PlaceOTurn --> t_TransitionXWinCol1
     PlaceGameActive --> t_TransitionXWinCol1
     PlaceX01 --> t_TransitionXWinCol1
     PlaceX11 --> t_TransitionXWinCol1
-    PlaceX21 --> t_TransitionXWinCol1
-    t_TransitionXWinCol1 --> PlaceX11
-    t_TransitionXWinCol1 --> PlaceX21
     t_TransitionXWinCol1 --> PlaceWinX
     t_TransitionXWinCol1 --> PlaceX01
+    t_TransitionXWinCol1 --> PlaceX11
+    t_TransitionXWinCol1 --> PlaceX21
 
-    PlaceOTurn --> t_TransitionXWinCol2
-    PlaceGameActive --> t_TransitionXWinCol2
     PlaceX02 --> t_TransitionXWinCol2
     PlaceX12 --> t_TransitionXWinCol2
     PlaceX22 --> t_TransitionXWinCol2
+    PlaceOTurn --> t_TransitionXWinCol2
+    PlaceGameActive --> t_TransitionXWinCol2
+    t_TransitionXWinCol2 --> PlaceX22
     t_TransitionXWinCol2 --> PlaceWinX
     t_TransitionXWinCol2 --> PlaceX02
     t_TransitionXWinCol2 --> PlaceX12
-    t_TransitionXWinCol2 --> PlaceX22
 
     PlaceX00 --> t_TransitionXWinDiag
     PlaceX11 --> t_TransitionXWinDiag
     PlaceX22 --> t_TransitionXWinDiag
     PlaceOTurn --> t_TransitionXWinDiag
     PlaceGameActive --> t_TransitionXWinDiag
-    t_TransitionXWinDiag --> PlaceX00
-    t_TransitionXWinDiag --> PlaceX11
     t_TransitionXWinDiag --> PlaceX22
     t_TransitionXWinDiag --> PlaceWinX
+    t_TransitionXWinDiag --> PlaceX00
+    t_TransitionXWinDiag --> PlaceX11
 
     PlaceOTurn --> t_TransitionXWinAnti
     PlaceGameActive --> t_TransitionXWinAnti
     PlaceX02 --> t_TransitionXWinAnti
     PlaceX11 --> t_TransitionXWinAnti
     PlaceX20 --> t_TransitionXWinAnti
-    t_TransitionXWinAnti --> PlaceX20
     t_TransitionXWinAnti --> PlaceWinX
     t_TransitionXWinAnti --> PlaceX02
     t_TransitionXWinAnti --> PlaceX11
+    t_TransitionXWinAnti --> PlaceX20
 
+    PlaceO00 --> t_TransitionOWinRow0
+    PlaceO01 --> t_TransitionOWinRow0
     PlaceO02 --> t_TransitionOWinRow0
     PlaceXTurn --> t_TransitionOWinRow0
     PlaceGameActive --> t_TransitionOWinRow0
-    PlaceO00 --> t_TransitionOWinRow0
-    PlaceO01 --> t_TransitionOWinRow0
+    t_TransitionOWinRow0 --> PlaceO01
     t_TransitionOWinRow0 --> PlaceO02
     t_TransitionOWinRow0 --> PlaceWinO
     t_TransitionOWinRow0 --> PlaceO00
-    t_TransitionOWinRow0 --> PlaceO01
 
-    PlaceGameActive --> t_TransitionOWinRow1
     PlaceO10 --> t_TransitionOWinRow1
     PlaceO11 --> t_TransitionOWinRow1
     PlaceO12 --> t_TransitionOWinRow1
     PlaceXTurn --> t_TransitionOWinRow1
-    t_TransitionOWinRow1 --> PlaceWinO
-    t_TransitionOWinRow1 --> PlaceO10
+    PlaceGameActive --> t_TransitionOWinRow1
     t_TransitionOWinRow1 --> PlaceO11
     t_TransitionOWinRow1 --> PlaceO12
+    t_TransitionOWinRow1 --> PlaceWinO
+    t_TransitionOWinRow1 --> PlaceO10
 
-    PlaceO20 --> t_TransitionOWinRow2
     PlaceO21 --> t_TransitionOWinRow2
     PlaceO22 --> t_TransitionOWinRow2
     PlaceXTurn --> t_TransitionOWinRow2
     PlaceGameActive --> t_TransitionOWinRow2
+    PlaceO20 --> t_TransitionOWinRow2
     t_TransitionOWinRow2 --> PlaceWinO
     t_TransitionOWinRow2 --> PlaceO20
     t_TransitionOWinRow2 --> PlaceO21
@@ -712,46 +712,46 @@ flowchart TD
     PlaceO20 --> t_TransitionOWinCol0
     PlaceXTurn --> t_TransitionOWinCol0
     PlaceGameActive --> t_TransitionOWinCol0
-    t_TransitionOWinCol0 --> PlaceO00
     t_TransitionOWinCol0 --> PlaceO10
     t_TransitionOWinCol0 --> PlaceO20
     t_TransitionOWinCol0 --> PlaceWinO
+    t_TransitionOWinCol0 --> PlaceO00
 
+    PlaceO01 --> t_TransitionOWinCol1
+    PlaceO11 --> t_TransitionOWinCol1
     PlaceO21 --> t_TransitionOWinCol1
     PlaceXTurn --> t_TransitionOWinCol1
     PlaceGameActive --> t_TransitionOWinCol1
-    PlaceO01 --> t_TransitionOWinCol1
-    PlaceO11 --> t_TransitionOWinCol1
-    t_TransitionOWinCol1 --> PlaceO11
-    t_TransitionOWinCol1 --> PlaceO21
     t_TransitionOWinCol1 --> PlaceWinO
     t_TransitionOWinCol1 --> PlaceO01
+    t_TransitionOWinCol1 --> PlaceO11
+    t_TransitionOWinCol1 --> PlaceO21
 
+    PlaceGameActive --> t_TransitionOWinCol2
     PlaceO02 --> t_TransitionOWinCol2
     PlaceO12 --> t_TransitionOWinCol2
     PlaceO22 --> t_TransitionOWinCol2
     PlaceXTurn --> t_TransitionOWinCol2
-    PlaceGameActive --> t_TransitionOWinCol2
     t_TransitionOWinCol2 --> PlaceWinO
     t_TransitionOWinCol2 --> PlaceO02
     t_TransitionOWinCol2 --> PlaceO12
     t_TransitionOWinCol2 --> PlaceO22
 
-    PlaceO00 --> t_TransitionOWinDiag
-    PlaceO11 --> t_TransitionOWinDiag
     PlaceO22 --> t_TransitionOWinDiag
     PlaceXTurn --> t_TransitionOWinDiag
     PlaceGameActive --> t_TransitionOWinDiag
+    PlaceO00 --> t_TransitionOWinDiag
+    PlaceO11 --> t_TransitionOWinDiag
     t_TransitionOWinDiag --> PlaceWinO
     t_TransitionOWinDiag --> PlaceO00
     t_TransitionOWinDiag --> PlaceO11
     t_TransitionOWinDiag --> PlaceO22
 
-    PlaceXTurn --> t_TransitionOWinAnti
-    PlaceGameActive --> t_TransitionOWinAnti
     PlaceO02 --> t_TransitionOWinAnti
     PlaceO11 --> t_TransitionOWinAnti
     PlaceO20 --> t_TransitionOWinAnti
+    PlaceXTurn --> t_TransitionOWinAnti
+    PlaceGameActive --> t_TransitionOWinAnti
     t_TransitionOWinAnti --> PlaceWinO
     t_TransitionOWinAnti --> PlaceO02
     t_TransitionOWinAnti --> PlaceO11
