@@ -59,7 +59,6 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `o_turn` | Token | 0 | O's turn to play |
 | `win_x` | Token | 0 | X has won |
 | `win_o` | Token | 0 | O has won |
-| `can_reset` | Token | 1 | Token enabling reset action |
 | `game_active` | Token | 1 | Game is active (consumed on win/draw to end game) |
 | `move_tokens` | Token | 0 | Accumulates tokens as moves are played (for draw detection) |
 
@@ -86,7 +85,6 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `o_play_20` | `OPlayed20` | - | O plays at (2,0) |
 | `o_play_21` | `OPlayed21` | - | O plays at (2,1) |
 | `o_play_22` | `OPlayed22` | - | O plays at (2,2) |
-| `reset` | `GameReset` | - | Reset game to initial state |
 | `x_win_row0` | `XWon0` | - | X wins top row (0,0)-(0,1)-(0,2) |
 | `x_win_row1` | `XWon1` | - | X wins middle row (1,0)-(1,1)-(1,2) |
 | `x_win_row2` | `XWon2` | - | X wins bottom row (2,0)-(2,1)-(2,2) |
@@ -143,7 +141,6 @@ stateDiagram-v2
     state "o_turn" as PlaceOTurn
     state "win_x" as PlaceWinX
     state "win_o" as PlaceWinO
-    state "can_reset (1)" as PlaceCanReset
     state "game_active (1)" as PlaceGameActive
     state "move_tokens" as PlaceMoveTokens
 
@@ -166,7 +163,6 @@ stateDiagram-v2
     state "o_play_20" as t_TransitionOPlay20
     state "o_play_21" as t_TransitionOPlay21
     state "o_play_22" as t_TransitionOPlay22
-    state "reset" as t_TransitionReset
     state "x_win_row0" as t_TransitionXWinRow0
     state "x_win_row1" as t_TransitionXWinRow1
     state "x_win_row2" as t_TransitionXWinRow2
@@ -198,11 +194,11 @@ stateDiagram-v2
     t_TransitionXPlay01 --> PlaceOTurn
     t_TransitionXPlay01 --> PlaceMoveTokens
 
-    PlaceP02 --> t_TransitionXPlay02
     PlaceXTurn --> t_TransitionXPlay02
+    PlaceP02 --> t_TransitionXPlay02
+    t_TransitionXPlay02 --> PlaceMoveTokens
     t_TransitionXPlay02 --> PlaceX02
     t_TransitionXPlay02 --> PlaceOTurn
-    t_TransitionXPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionXPlay10
     PlaceXTurn --> t_TransitionXPlay10
@@ -224,9 +220,9 @@ stateDiagram-v2
 
     PlaceP20 --> t_TransitionXPlay20
     PlaceXTurn --> t_TransitionXPlay20
-    t_TransitionXPlay20 --> PlaceX20
     t_TransitionXPlay20 --> PlaceOTurn
     t_TransitionXPlay20 --> PlaceMoveTokens
+    t_TransitionXPlay20 --> PlaceX20
 
     PlaceP21 --> t_TransitionXPlay21
     PlaceXTurn --> t_TransitionXPlay21
@@ -278,9 +274,9 @@ stateDiagram-v2
 
     PlaceP20 --> t_TransitionOPlay20
     PlaceOTurn --> t_TransitionOPlay20
+    t_TransitionOPlay20 --> PlaceMoveTokens
     t_TransitionOPlay20 --> PlaceO20
     t_TransitionOPlay20 --> PlaceXTurn
-    t_TransitionOPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
@@ -294,9 +290,6 @@ stateDiagram-v2
     t_TransitionOPlay22 --> PlaceXTurn
     t_TransitionOPlay22 --> PlaceMoveTokens
 
-    PlaceCanReset --> t_TransitionReset
-    t_TransitionReset --> PlaceCanReset
-
     PlaceX00 --> t_TransitionXWinRow0
     PlaceX01 --> t_TransitionXWinRow0
     PlaceX02 --> t_TransitionXWinRow0
@@ -307,11 +300,11 @@ stateDiagram-v2
     t_TransitionXWinRow0 --> PlaceX01
     t_TransitionXWinRow0 --> PlaceX02
 
+    PlaceGameActive --> t_TransitionXWinRow1
+    PlaceOTurn --> t_TransitionXWinRow1
     PlaceX10 --> t_TransitionXWinRow1
     PlaceX11 --> t_TransitionXWinRow1
     PlaceX12 --> t_TransitionXWinRow1
-    PlaceGameActive --> t_TransitionXWinRow1
-    PlaceOTurn --> t_TransitionXWinRow1
     t_TransitionXWinRow1 --> PlaceWinX
     t_TransitionXWinRow1 --> PlaceX10
     t_TransitionXWinRow1 --> PlaceX11
@@ -322,66 +315,66 @@ stateDiagram-v2
     PlaceX22 --> t_TransitionXWinRow2
     PlaceGameActive --> t_TransitionXWinRow2
     PlaceOTurn --> t_TransitionXWinRow2
-    t_TransitionXWinRow2 --> PlaceWinX
     t_TransitionXWinRow2 --> PlaceX20
     t_TransitionXWinRow2 --> PlaceX21
     t_TransitionXWinRow2 --> PlaceX22
+    t_TransitionXWinRow2 --> PlaceWinX
 
     PlaceX00 --> t_TransitionXWinCol0
     PlaceX10 --> t_TransitionXWinCol0
     PlaceX20 --> t_TransitionXWinCol0
     PlaceGameActive --> t_TransitionXWinCol0
     PlaceOTurn --> t_TransitionXWinCol0
-    t_TransitionXWinCol0 --> PlaceWinX
     t_TransitionXWinCol0 --> PlaceX00
     t_TransitionXWinCol0 --> PlaceX10
     t_TransitionXWinCol0 --> PlaceX20
+    t_TransitionXWinCol0 --> PlaceWinX
 
+    PlaceOTurn --> t_TransitionXWinCol1
     PlaceX01 --> t_TransitionXWinCol1
     PlaceX11 --> t_TransitionXWinCol1
     PlaceX21 --> t_TransitionXWinCol1
     PlaceGameActive --> t_TransitionXWinCol1
-    PlaceOTurn --> t_TransitionXWinCol1
     t_TransitionXWinCol1 --> PlaceWinX
     t_TransitionXWinCol1 --> PlaceX01
     t_TransitionXWinCol1 --> PlaceX11
     t_TransitionXWinCol1 --> PlaceX21
 
+    PlaceOTurn --> t_TransitionXWinCol2
     PlaceX02 --> t_TransitionXWinCol2
     PlaceX12 --> t_TransitionXWinCol2
     PlaceX22 --> t_TransitionXWinCol2
     PlaceGameActive --> t_TransitionXWinCol2
-    PlaceOTurn --> t_TransitionXWinCol2
     t_TransitionXWinCol2 --> PlaceWinX
     t_TransitionXWinCol2 --> PlaceX02
     t_TransitionXWinCol2 --> PlaceX12
     t_TransitionXWinCol2 --> PlaceX22
 
+    PlaceOTurn --> t_TransitionXWinDiag
     PlaceX00 --> t_TransitionXWinDiag
     PlaceX11 --> t_TransitionXWinDiag
     PlaceX22 --> t_TransitionXWinDiag
     PlaceGameActive --> t_TransitionXWinDiag
-    PlaceOTurn --> t_TransitionXWinDiag
-    t_TransitionXWinDiag --> PlaceWinX
-    t_TransitionXWinDiag --> PlaceX00
     t_TransitionXWinDiag --> PlaceX11
     t_TransitionXWinDiag --> PlaceX22
+    t_TransitionXWinDiag --> PlaceWinX
+    t_TransitionXWinDiag --> PlaceX00
 
     PlaceX02 --> t_TransitionXWinAnti
     PlaceX11 --> t_TransitionXWinAnti
     PlaceX20 --> t_TransitionXWinAnti
     PlaceGameActive --> t_TransitionXWinAnti
     PlaceOTurn --> t_TransitionXWinAnti
+    t_TransitionXWinAnti --> PlaceX20
     t_TransitionXWinAnti --> PlaceWinX
     t_TransitionXWinAnti --> PlaceX02
     t_TransitionXWinAnti --> PlaceX11
-    t_TransitionXWinAnti --> PlaceX20
 
+    PlaceXTurn --> t_TransitionOWinRow0
     PlaceO00 --> t_TransitionOWinRow0
     PlaceO01 --> t_TransitionOWinRow0
     PlaceO02 --> t_TransitionOWinRow0
     PlaceGameActive --> t_TransitionOWinRow0
-    PlaceXTurn --> t_TransitionOWinRow0
     t_TransitionOWinRow0 --> PlaceWinO
     t_TransitionOWinRow0 --> PlaceO00
     t_TransitionOWinRow0 --> PlaceO01
@@ -392,20 +385,20 @@ stateDiagram-v2
     PlaceO12 --> t_TransitionOWinRow1
     PlaceGameActive --> t_TransitionOWinRow1
     PlaceXTurn --> t_TransitionOWinRow1
-    t_TransitionOWinRow1 --> PlaceWinO
     t_TransitionOWinRow1 --> PlaceO10
     t_TransitionOWinRow1 --> PlaceO11
     t_TransitionOWinRow1 --> PlaceO12
+    t_TransitionOWinRow1 --> PlaceWinO
 
     PlaceO20 --> t_TransitionOWinRow2
     PlaceO21 --> t_TransitionOWinRow2
     PlaceO22 --> t_TransitionOWinRow2
     PlaceGameActive --> t_TransitionOWinRow2
     PlaceXTurn --> t_TransitionOWinRow2
-    t_TransitionOWinRow2 --> PlaceWinO
-    t_TransitionOWinRow2 --> PlaceO20
     t_TransitionOWinRow2 --> PlaceO21
     t_TransitionOWinRow2 --> PlaceO22
+    t_TransitionOWinRow2 --> PlaceWinO
+    t_TransitionOWinRow2 --> PlaceO20
 
     PlaceO00 --> t_TransitionOWinCol0
     PlaceO10 --> t_TransitionOWinCol0
@@ -437,21 +430,21 @@ stateDiagram-v2
     t_TransitionOWinCol2 --> PlaceO12
     t_TransitionOWinCol2 --> PlaceO22
 
-    PlaceO00 --> t_TransitionOWinDiag
     PlaceO11 --> t_TransitionOWinDiag
     PlaceO22 --> t_TransitionOWinDiag
     PlaceGameActive --> t_TransitionOWinDiag
     PlaceXTurn --> t_TransitionOWinDiag
+    PlaceO00 --> t_TransitionOWinDiag
     t_TransitionOWinDiag --> PlaceWinO
     t_TransitionOWinDiag --> PlaceO00
     t_TransitionOWinDiag --> PlaceO11
     t_TransitionOWinDiag --> PlaceO22
 
+    PlaceXTurn --> t_TransitionOWinAnti
     PlaceO02 --> t_TransitionOWinAnti
     PlaceO11 --> t_TransitionOWinAnti
     PlaceO20 --> t_TransitionOWinAnti
     PlaceGameActive --> t_TransitionOWinAnti
-    PlaceXTurn --> t_TransitionOWinAnti
     t_TransitionOWinAnti --> PlaceWinO
     t_TransitionOWinAnti --> PlaceO02
     t_TransitionOWinAnti --> PlaceO11
@@ -499,7 +492,6 @@ flowchart TD
         PlaceOTurn[("o_turn")]
         PlaceWinX[("win_x")]
         PlaceWinO[("win_o")]
-        PlaceCanReset[("can_reset<br/>initial: 1")]
         PlaceGameActive[("game_active<br/>initial: 1")]
         PlaceMoveTokens[("move_tokens")]
     end
@@ -523,7 +515,6 @@ flowchart TD
         t_TransitionOPlay20["o_play_20"]
         t_TransitionOPlay21["o_play_21"]
         t_TransitionOPlay22["o_play_22"]
-        t_TransitionReset["reset"]
         t_TransitionXWinRow0["x_win_row0"]
         t_TransitionXWinRow1["x_win_row1"]
         t_TransitionXWinRow2["x_win_row2"]
@@ -556,11 +547,11 @@ flowchart TD
     t_TransitionXPlay01 --> PlaceOTurn
     t_TransitionXPlay01 --> PlaceMoveTokens
 
-    PlaceP02 --> t_TransitionXPlay02
     PlaceXTurn --> t_TransitionXPlay02
+    PlaceP02 --> t_TransitionXPlay02
+    t_TransitionXPlay02 --> PlaceMoveTokens
     t_TransitionXPlay02 --> PlaceX02
     t_TransitionXPlay02 --> PlaceOTurn
-    t_TransitionXPlay02 --> PlaceMoveTokens
 
     PlaceP10 --> t_TransitionXPlay10
     PlaceXTurn --> t_TransitionXPlay10
@@ -582,9 +573,9 @@ flowchart TD
 
     PlaceP20 --> t_TransitionXPlay20
     PlaceXTurn --> t_TransitionXPlay20
-    t_TransitionXPlay20 --> PlaceX20
     t_TransitionXPlay20 --> PlaceOTurn
     t_TransitionXPlay20 --> PlaceMoveTokens
+    t_TransitionXPlay20 --> PlaceX20
 
     PlaceP21 --> t_TransitionXPlay21
     PlaceXTurn --> t_TransitionXPlay21
@@ -636,9 +627,9 @@ flowchart TD
 
     PlaceP20 --> t_TransitionOPlay20
     PlaceOTurn --> t_TransitionOPlay20
+    t_TransitionOPlay20 --> PlaceMoveTokens
     t_TransitionOPlay20 --> PlaceO20
     t_TransitionOPlay20 --> PlaceXTurn
-    t_TransitionOPlay20 --> PlaceMoveTokens
 
     PlaceP21 --> t_TransitionOPlay21
     PlaceOTurn --> t_TransitionOPlay21
@@ -652,9 +643,6 @@ flowchart TD
     t_TransitionOPlay22 --> PlaceXTurn
     t_TransitionOPlay22 --> PlaceMoveTokens
 
-    PlaceCanReset --> t_TransitionReset
-    t_TransitionReset --> PlaceCanReset
-
     PlaceX00 --> t_TransitionXWinRow0
     PlaceX01 --> t_TransitionXWinRow0
     PlaceX02 --> t_TransitionXWinRow0
@@ -665,11 +653,11 @@ flowchart TD
     t_TransitionXWinRow0 --> PlaceX01
     t_TransitionXWinRow0 --> PlaceX02
 
+    PlaceGameActive --> t_TransitionXWinRow1
+    PlaceOTurn --> t_TransitionXWinRow1
     PlaceX10 --> t_TransitionXWinRow1
     PlaceX11 --> t_TransitionXWinRow1
     PlaceX12 --> t_TransitionXWinRow1
-    PlaceGameActive --> t_TransitionXWinRow1
-    PlaceOTurn --> t_TransitionXWinRow1
     t_TransitionXWinRow1 --> PlaceWinX
     t_TransitionXWinRow1 --> PlaceX10
     t_TransitionXWinRow1 --> PlaceX11
@@ -680,66 +668,66 @@ flowchart TD
     PlaceX22 --> t_TransitionXWinRow2
     PlaceGameActive --> t_TransitionXWinRow2
     PlaceOTurn --> t_TransitionXWinRow2
-    t_TransitionXWinRow2 --> PlaceWinX
     t_TransitionXWinRow2 --> PlaceX20
     t_TransitionXWinRow2 --> PlaceX21
     t_TransitionXWinRow2 --> PlaceX22
+    t_TransitionXWinRow2 --> PlaceWinX
 
     PlaceX00 --> t_TransitionXWinCol0
     PlaceX10 --> t_TransitionXWinCol0
     PlaceX20 --> t_TransitionXWinCol0
     PlaceGameActive --> t_TransitionXWinCol0
     PlaceOTurn --> t_TransitionXWinCol0
-    t_TransitionXWinCol0 --> PlaceWinX
     t_TransitionXWinCol0 --> PlaceX00
     t_TransitionXWinCol0 --> PlaceX10
     t_TransitionXWinCol0 --> PlaceX20
+    t_TransitionXWinCol0 --> PlaceWinX
 
+    PlaceOTurn --> t_TransitionXWinCol1
     PlaceX01 --> t_TransitionXWinCol1
     PlaceX11 --> t_TransitionXWinCol1
     PlaceX21 --> t_TransitionXWinCol1
     PlaceGameActive --> t_TransitionXWinCol1
-    PlaceOTurn --> t_TransitionXWinCol1
     t_TransitionXWinCol1 --> PlaceWinX
     t_TransitionXWinCol1 --> PlaceX01
     t_TransitionXWinCol1 --> PlaceX11
     t_TransitionXWinCol1 --> PlaceX21
 
+    PlaceOTurn --> t_TransitionXWinCol2
     PlaceX02 --> t_TransitionXWinCol2
     PlaceX12 --> t_TransitionXWinCol2
     PlaceX22 --> t_TransitionXWinCol2
     PlaceGameActive --> t_TransitionXWinCol2
-    PlaceOTurn --> t_TransitionXWinCol2
     t_TransitionXWinCol2 --> PlaceWinX
     t_TransitionXWinCol2 --> PlaceX02
     t_TransitionXWinCol2 --> PlaceX12
     t_TransitionXWinCol2 --> PlaceX22
 
+    PlaceOTurn --> t_TransitionXWinDiag
     PlaceX00 --> t_TransitionXWinDiag
     PlaceX11 --> t_TransitionXWinDiag
     PlaceX22 --> t_TransitionXWinDiag
     PlaceGameActive --> t_TransitionXWinDiag
-    PlaceOTurn --> t_TransitionXWinDiag
-    t_TransitionXWinDiag --> PlaceWinX
-    t_TransitionXWinDiag --> PlaceX00
     t_TransitionXWinDiag --> PlaceX11
     t_TransitionXWinDiag --> PlaceX22
+    t_TransitionXWinDiag --> PlaceWinX
+    t_TransitionXWinDiag --> PlaceX00
 
     PlaceX02 --> t_TransitionXWinAnti
     PlaceX11 --> t_TransitionXWinAnti
     PlaceX20 --> t_TransitionXWinAnti
     PlaceGameActive --> t_TransitionXWinAnti
     PlaceOTurn --> t_TransitionXWinAnti
+    t_TransitionXWinAnti --> PlaceX20
     t_TransitionXWinAnti --> PlaceWinX
     t_TransitionXWinAnti --> PlaceX02
     t_TransitionXWinAnti --> PlaceX11
-    t_TransitionXWinAnti --> PlaceX20
 
+    PlaceXTurn --> t_TransitionOWinRow0
     PlaceO00 --> t_TransitionOWinRow0
     PlaceO01 --> t_TransitionOWinRow0
     PlaceO02 --> t_TransitionOWinRow0
     PlaceGameActive --> t_TransitionOWinRow0
-    PlaceXTurn --> t_TransitionOWinRow0
     t_TransitionOWinRow0 --> PlaceWinO
     t_TransitionOWinRow0 --> PlaceO00
     t_TransitionOWinRow0 --> PlaceO01
@@ -750,20 +738,20 @@ flowchart TD
     PlaceO12 --> t_TransitionOWinRow1
     PlaceGameActive --> t_TransitionOWinRow1
     PlaceXTurn --> t_TransitionOWinRow1
-    t_TransitionOWinRow1 --> PlaceWinO
     t_TransitionOWinRow1 --> PlaceO10
     t_TransitionOWinRow1 --> PlaceO11
     t_TransitionOWinRow1 --> PlaceO12
+    t_TransitionOWinRow1 --> PlaceWinO
 
     PlaceO20 --> t_TransitionOWinRow2
     PlaceO21 --> t_TransitionOWinRow2
     PlaceO22 --> t_TransitionOWinRow2
     PlaceGameActive --> t_TransitionOWinRow2
     PlaceXTurn --> t_TransitionOWinRow2
-    t_TransitionOWinRow2 --> PlaceWinO
-    t_TransitionOWinRow2 --> PlaceO20
     t_TransitionOWinRow2 --> PlaceO21
     t_TransitionOWinRow2 --> PlaceO22
+    t_TransitionOWinRow2 --> PlaceWinO
+    t_TransitionOWinRow2 --> PlaceO20
 
     PlaceO00 --> t_TransitionOWinCol0
     PlaceO10 --> t_TransitionOWinCol0
@@ -795,21 +783,21 @@ flowchart TD
     t_TransitionOWinCol2 --> PlaceO12
     t_TransitionOWinCol2 --> PlaceO22
 
-    PlaceO00 --> t_TransitionOWinDiag
     PlaceO11 --> t_TransitionOWinDiag
     PlaceO22 --> t_TransitionOWinDiag
     PlaceGameActive --> t_TransitionOWinDiag
     PlaceXTurn --> t_TransitionOWinDiag
+    PlaceO00 --> t_TransitionOWinDiag
     t_TransitionOWinDiag --> PlaceWinO
     t_TransitionOWinDiag --> PlaceO00
     t_TransitionOWinDiag --> PlaceO11
     t_TransitionOWinDiag --> PlaceO22
 
+    PlaceXTurn --> t_TransitionOWinAnti
     PlaceO02 --> t_TransitionOWinAnti
     PlaceO11 --> t_TransitionOWinAnti
     PlaceO20 --> t_TransitionOWinAnti
     PlaceGameActive --> t_TransitionOWinAnti
-    PlaceXTurn --> t_TransitionOWinAnti
     t_TransitionOWinAnti --> PlaceWinO
     t_TransitionOWinAnti --> PlaceO02
     t_TransitionOWinAnti --> PlaceO11
@@ -833,7 +821,6 @@ Events are immutable records of state transitions. Each event captures the trans
 |------------|------------|--------|
 | `XPlayed` | `x_play_00` | `aggregate_id`, `timestamp`, `row`, `col` |
 | `OPlayed` | `o_play_00` | `aggregate_id`, `timestamp`, `row`, `col` |
-| `GameReset` | `reset` | `aggregate_id`, `timestamp` |
 | `XWinRow0ed` | `x_win_row0` | `aggregate_id`, `timestamp` |
 | `XWinRow1ed` | `x_win_row1` | `aggregate_id`, `timestamp` |
 | `XWinRow2ed` | `x_win_row2` | `aggregate_id`, `timestamp` |
@@ -880,12 +867,6 @@ classDiagram
         +int Col
     }
     Event <|-- OPlayedEvent
-
-    class GameResetEvent {
-        +string AggregateId
-        +time.Time Timestamp
-    }
-    Event <|-- GameResetEvent
 
     class XWinRow0edEvent {
         +string AggregateId
@@ -1031,7 +1012,6 @@ classDiagram
 | POST | `/api/o_play_20` | `o_play_20` | O plays at (2,0) |
 | POST | `/api/o_play_21` | `o_play_21` | O plays at (2,1) |
 | POST | `/api/o_play_22` | `o_play_22` | O plays at (2,2) |
-| POST | `/api/reset` | `reset` | Reset game to initial state |
 | POST | `/api/x_win_row0` | `x_win_row0` | X wins top row (0,0)-(0,1)-(0,2) |
 | POST | `/api/x_win_row1` | `x_win_row1` | X wins middle row (1,0)-(1,1)-(1,2) |
 | POST | `/api/x_win_row2` | `x_win_row2` | X wins bottom row (2,0)-(2,1)-(2,2) |

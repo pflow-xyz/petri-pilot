@@ -87,7 +87,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay00Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -121,7 +121,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay01Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -155,7 +155,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay02Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -189,7 +189,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay10Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -223,7 +223,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay11Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -257,7 +257,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay12Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -291,7 +291,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay20Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -325,7 +325,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay21Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -359,7 +359,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XPlay22Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -393,7 +393,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay00Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -427,7 +427,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay01Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -461,7 +461,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay02Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -495,7 +495,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay10Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -529,7 +529,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay11Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -563,7 +563,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay12Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -597,7 +597,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay20Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -631,7 +631,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay21Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -665,41 +665,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
-      responses:
-        "200":
-          description: Transition fired successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransitionResult"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Transition failed (guard rejected or invalid state)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-
-  /api/reset:
-    post:
-      summary: "Reset game to initial state"
-      operationId: reset
-      tags:
-        - transitions
-      x-transition-id: reset
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OPlay22Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -733,7 +699,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinRow0Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -767,7 +733,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinRow1Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -801,7 +767,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinRow2Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -835,7 +801,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinCol0Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -869,7 +835,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinCol1Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -903,7 +869,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinCol2Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -937,7 +903,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinDiagRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -971,7 +937,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/XWinAntiRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -1005,7 +971,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinRow0Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1039,7 +1005,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinRow1Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1073,7 +1039,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinRow2Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1107,7 +1073,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinCol0Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1141,7 +1107,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinCol1Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1175,7 +1141,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinCol2Request"
       responses:
         "200":
           description: Transition fired successfully
@@ -1209,7 +1175,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinDiagRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -1243,7 +1209,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/OWinAntiRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -1277,7 +1243,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitionRequest"
+              $ref: "#/components/schemas/DrawRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -1415,12 +1381,465 @@ components:
           type: integer
         win_o:
           type: integer
-        can_reset:
-          type: integer
         game_active:
           type: integer
         move_tokens:
           type: integer
+
+    XPlay00Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay01Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay02Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay10Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay11Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay12Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay20Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay21Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XPlay22Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay00Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay01Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay02Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay10Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay11Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay12Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay20Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay21Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OPlay22Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinRow0Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinRow1Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinRow2Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinCol0Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinCol1Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinCol2Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinDiagRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    XWinAntiRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinRow0Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinRow1Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinRow2Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinCol0Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinCol1Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinCol2Request:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinDiagRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OWinAntiRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    DrawRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
 
     ErrorResponse:
       type: object

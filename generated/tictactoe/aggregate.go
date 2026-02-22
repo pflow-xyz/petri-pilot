@@ -44,7 +44,6 @@ type State struct {
 	OTurn int `json:"o_turn"`
 	WinX int `json:"win_x"`
 	WinO int `json:"win_o"`
-	CanReset int `json:"can_reset"`
 	GameActive int `json:"game_active"`
 	MoveTokens int `json:"move_tokens"`
 }
@@ -98,13 +97,13 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay02,
 		EventType: EventTypeXPlay02,
 		Inputs: map[string]int{
-			PlaceP02: 1,
 			PlaceXTurn: 1,
+			PlaceP02: 1,
 		},
 		Outputs: map[string]int{
+			PlaceMoveTokens: 1,
 			PlaceX02: 1,
 			PlaceOTurn: 1,
-			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -154,9 +153,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX20: 1,
 			PlaceOTurn: 1,
 			PlaceMoveTokens: 1,
+			PlaceX20: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -271,9 +270,9 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
+			PlaceMoveTokens: 1,
 			PlaceO20: 1,
 			PlaceXTurn: 1,
-			PlaceMoveTokens: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -303,16 +302,6 @@ func NewAggregate(id string) *Aggregate {
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionReset,
-		EventType: EventTypeReset,
-		Inputs: map[string]int{
-			PlaceCanReset: 1,
-		},
-		Outputs: map[string]int{
-			PlaceCanReset: 1,
-		},
-	})
-	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinRow0,
 		EventType: EventTypeXWinRow0,
 		Inputs: map[string]int{
@@ -333,11 +322,11 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinRow1,
 		EventType: EventTypeXWinRow1,
 		Inputs: map[string]int{
+			PlaceGameActive: 1,
+			PlaceOTurn: 1,
 			PlaceX10: 1,
 			PlaceX11: 1,
 			PlaceX12: 1,
-			PlaceGameActive: 1,
-			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -357,10 +346,10 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinX: 1,
 			PlaceX20: 1,
 			PlaceX21: 1,
 			PlaceX22: 1,
+			PlaceWinX: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -374,21 +363,21 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinX: 1,
 			PlaceX00: 1,
 			PlaceX10: 1,
 			PlaceX20: 1,
+			PlaceWinX: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinCol1,
 		EventType: EventTypeXWinCol1,
 		Inputs: map[string]int{
+			PlaceOTurn: 1,
 			PlaceX01: 1,
 			PlaceX11: 1,
 			PlaceX21: 1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -401,11 +390,11 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinCol2,
 		EventType: EventTypeXWinCol2,
 		Inputs: map[string]int{
+			PlaceOTurn: 1,
 			PlaceX02: 1,
 			PlaceX12: 1,
 			PlaceX22: 1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
@@ -418,17 +407,17 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinDiag,
 		EventType: EventTypeXWinDiag,
 		Inputs: map[string]int{
+			PlaceOTurn: 1,
 			PlaceX00: 1,
 			PlaceX11: 1,
 			PlaceX22: 1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinX: 1,
-			PlaceX00: 1,
 			PlaceX11: 1,
 			PlaceX22: 1,
+			PlaceWinX: 1,
+			PlaceX00: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -442,21 +431,21 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
+			PlaceX20: 1,
 			PlaceWinX: 1,
 			PlaceX02: 1,
 			PlaceX11: 1,
-			PlaceX20: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinRow0,
 		EventType: EventTypeOWinRow0,
 		Inputs: map[string]int{
+			PlaceXTurn: 1,
 			PlaceO00: 1,
 			PlaceO01: 1,
 			PlaceO02: 1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -476,10 +465,10 @@ func NewAggregate(id string) *Aggregate {
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
 			PlaceO10: 1,
 			PlaceO11: 1,
 			PlaceO12: 1,
+			PlaceWinO: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -493,10 +482,10 @@ func NewAggregate(id string) *Aggregate {
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceWinO: 1,
-			PlaceO20: 1,
 			PlaceO21: 1,
 			PlaceO22: 1,
+			PlaceWinO: 1,
+			PlaceO20: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -554,11 +543,11 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOWinDiag,
 		EventType: EventTypeOWinDiag,
 		Inputs: map[string]int{
-			PlaceO00: 1,
 			PlaceO11: 1,
 			PlaceO22: 1,
 			PlaceGameActive: 1,
 			PlaceXTurn: 1,
+			PlaceO00: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -571,11 +560,11 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOWinAnti,
 		EventType: EventTypeOWinAnti,
 		Inputs: map[string]int{
+			PlaceXTurn: 1,
 			PlaceO02: 1,
 			PlaceO11: 1,
 			PlaceO20: 1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
@@ -650,9 +639,6 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeOPlay22, func(state *State, event *eventsource.Event) error {
 		return applyOPlay22(state, event)
-	})
-	sm.RegisterHandler(EventTypeReset, func(state *State, event *eventsource.Event) error {
-		return applyReset(state, event)
 	})
 	sm.RegisterHandler(EventTypeXWinRow0, func(state *State, event *eventsource.Event) error {
 		return applyXWinRow0(state, event)
@@ -881,13 +867,6 @@ func applyOPlay22(state *State, event *eventsource.Event) error {
 	return nil
 }
 
-func applyReset(state *State, event *eventsource.Event) error {
-	// No data transformations for this transition
-	_ = state
-	_ = event
-	return nil
-}
-
 func applyXWinRow0(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
@@ -1077,15 +1056,6 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 // GetState returns the current state of an aggregate.
 func (app *Application) GetState(ctx context.Context, id string) (*Aggregate, error) {
 	return app.Load(ctx, id)
-}
-
-// ResetStream deletes all events for an aggregate, returning it to its initial state.
-// This is used by transitions marked with clearsHistory: true.
-func (app *Application) ResetStream(ctx context.Context, id string) (*Aggregate, error) {
-	if err := app.store.DeleteStream(ctx, id); err != nil {
-		return nil, fmt.Errorf("deleting stream: %w", err)
-	}
-	return NewAggregate(id), nil
 }
 
 // TruncateTo truncates an aggregate's event stream to a specific version.

@@ -12,14 +12,14 @@ import (
 func TestWorkflowConstants(t *testing.T) {
 	// Verify place constants
 	places := AllPlaces()
-	if len(places) != 34 {
-		t.Errorf("expected 34 places, got %d", len(places))
+	if len(places) != 33 {
+		t.Errorf("expected 33 places, got %d", len(places))
 	}
 
 	// Verify transition constants
 	transitions := AllTransitions()
-	if len(transitions) != 36 {
-		t.Errorf("expected 36 transitions, got %d", len(transitions))
+	if len(transitions) != 35 {
+		t.Errorf("expected 35 transitions, got %d", len(transitions))
 	}
 }
 
@@ -55,9 +55,6 @@ func TestInitialPlaces(t *testing.T) {
 	}
 	if initial[PlaceXTurn] != 1 {
 		t.Errorf("expected PlaceXTurn initial = 1, got %d", initial[PlaceXTurn])
-	}
-	if initial[PlaceCanReset] != 1 {
-		t.Errorf("expected PlaceCanReset initial = 1, got %d", initial[PlaceCanReset])
 	}
 	if initial[PlaceGameActive] != 1 {
 		t.Errorf("expected PlaceGameActive initial = 1, got %d", initial[PlaceGameActive])
@@ -115,9 +112,6 @@ func TestInitialState(t *testing.T) {
 	}
 	if places[PlaceXTurn] != 1 {
 		t.Errorf("expected PlaceXTurn = 1, got %d", places[PlaceXTurn])
-	}
-	if places[PlaceCanReset] != 1 {
-		t.Errorf("expected PlaceCanReset = 1, got %d", places[PlaceCanReset])
 	}
 	if places[PlaceGameActive] != 1 {
 		t.Errorf("expected PlaceGameActive = 1, got %d", places[PlaceGameActive])

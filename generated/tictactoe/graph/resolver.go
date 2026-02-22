@@ -701,34 +701,6 @@ func (r *Resolver) OPlay22(ctx context.Context, input OPlay22Input) (*Transition
 }
 
 
-// Reset executes the reset transition.
-func (r *Resolver) Reset(ctx context.Context, input ResetInput) (*TransitionResult, error) {
-	data := make(map[string]any)
-
-	agg, err := r.App.Execute(ctx, input.AggregateID, "reset", data)
-	if err != nil {
-		errMsg := err.Error()
-		return &TransitionResult{
-			Success: false,
-			Error:   &errMsg,
-		}, nil
-	}
-
-	places := agg.Places()
-	enabled := agg.EnabledTransitions()
-	id := agg.ID()
-	version := agg.Version()
-
-	return &TransitionResult{
-		Success:            true,
-		AggregateID:        &id,
-		Version:            &version,
-		State:              placesToModel(places),
-		EnabledTransitions: enabled,
-	}, nil
-}
-
-
 // XWinRow0 executes the x_win_row0 transition.
 func (r *Resolver) XWinRow0(ctx context.Context, input XWinRow0Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1316,9 +1288,6 @@ func stateToModel(state any) *State {
 	if v, ok := m["win_o"]; ok {
 		s.WinO = v
 	}
-	if v, ok := m["can_reset"]; ok {
-		s.CanReset = v
-	}
 	if v, ok := m["game_active"]; ok {
 		s.GameActive = v
 	}
@@ -1440,9 +1409,6 @@ func placesToModel(places map[string]int) *Places {
 	if v, ok := places["win_o"]; ok {
 		p.WinO = v
 	}
-	if v, ok := places["can_reset"]; ok {
-		p.CanReset = v
-	}
 	if v, ok := places["game_active"]; ok {
 		p.GameActive = v
 	}
@@ -1494,7 +1460,6 @@ type State struct {
 	OTurn any `json:"oTurn"`
 	WinX any `json:"winX"`
 	WinO any `json:"winO"`
-	CanReset any `json:"canReset"`
 	GameActive any `json:"gameActive"`
 	MoveTokens any `json:"moveTokens"`
 }
@@ -1531,7 +1496,6 @@ type Places struct {
 	OTurn int `json:"oTurn"`
 	WinX int `json:"winX"`
 	WinO int `json:"winO"`
-	CanReset int `json:"canReset"`
 	GameActive int `json:"gameActive"`
 	MoveTokens int `json:"moveTokens"`
 }
@@ -1661,11 +1625,6 @@ type OPlay21Input struct {
 
 
 type OPlay22Input struct {
-	AggregateID string
-}
-
-
-type ResetInput struct {
 	AggregateID string
 }
 

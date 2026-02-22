@@ -35,18 +35,6 @@ func (e OPlayedEvent) EventType() string {
 }
 
 
-// GameResetEvent is emitted when the reset transition fires.
-type GameResetEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// EventType returns the event type identifier.
-func (e GameResetEvent) EventType() string {
-	return "GameReset"
-}
-
-
 // XWinRow0edEvent is emitted when the x_win_row0 transition fires.
 type XWinRow0edEvent struct {
 	AggregateId string `json:"aggregate_id"`

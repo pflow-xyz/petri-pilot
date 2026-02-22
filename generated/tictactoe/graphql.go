@@ -511,26 +511,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-	if isMutation && (containsString(query, "tictactoe_reset") || containsString(query, "reset")) {
-		input := graph.ResetInput{}
-		if vars, ok := variables["input"].(map[string]interface{}); ok {
-			if id, ok := vars["aggregateId"].(string); ok {
-				input.AggregateID = id
-			}
-		}
-		res, err := h.resolver.Reset(ctx, input)
-		if err != nil {
-			errors = append(errors, map[string]interface{}{"message": err.Error()})
-		} else {
-			// Return under whichever key the query used
-			if containsString(query, "tictactoe_reset") {
-				data["tictactoe_reset"] = res
-			} else {
-				data["reset"] = res
-			}
-		}
-	}
-
 	if isMutation && (containsString(query, "tictactoe_x_win_row0") || containsString(query, "xWinRow0")) {
 		input := graph.XWinRow0Input{}
 		if vars, ok := variables["input"].(map[string]interface{}); ok {
@@ -1069,9 +1049,6 @@ type Mutation {
   # O plays at (2,2)
   oPlay22(input: OPlay22Input!): TransitionResult!
 
-  # Reset game to initial state
-  reset(input: ResetInput!): TransitionResult!
-
   # X wins top row (0,0)-(0,1)-(0,2)
   xWinRow0(input: XWinRow0Input!): TransitionResult!
 
@@ -1166,7 +1143,6 @@ type State {
   oTurn: Int!
   winX: Int!
   winO: Int!
-  canReset: Int!
   gameActive: Int!
   moveTokens: Int!
 }
@@ -1204,7 +1180,6 @@ type Places {
   oTurn: Int!
   winX: Int!
   winO: Int!
-  canReset: Int!
   gameActive: Int!
   moveTokens: Int!
 }
@@ -1338,11 +1313,6 @@ input OPlay21Input {
 
 
 input OPlay22Input {
-  aggregateId: ID!
-}
-
-
-input ResetInput {
   aggregateId: ID!
 }
 
@@ -1684,18 +1654,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.OPlay22(ctx, input)
 	}
 	resolvers["oPlay22"] = resolvers["tictactoe_o_play_22"]
-
-
-	resolvers["tictactoe_reset"] = func(ctx context.Context, variables map[string]any) (any, error) {
-		input := graph.ResetInput{}
-		if vars, ok := variables["input"].(map[string]any); ok {
-			if id, ok := vars["aggregateId"].(string); ok {
-				input.AggregateID = id
-			}
-		}
-		return resolver.Reset(ctx, input)
-	}
-	resolvers["reset"] = resolvers["tictactoe_reset"]
 
 
 	resolvers["tictactoe_x_win_row0"] = func(ctx context.Context, variables map[string]any) (any, error) {

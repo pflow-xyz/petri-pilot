@@ -78,9 +78,6 @@ type Mutation {
   # O plays at (2,2)
   oPlay22(input: OPlay22Input!): TransitionResult!
 
-  # Reset game to initial state
-  reset(input: ResetInput!): TransitionResult!
-
   # X wins top row (0,0)-(0,1)-(0,2)
   xWinRow0(input: XWinRow0Input!): TransitionResult!
 
@@ -175,7 +172,6 @@ type State {
   oTurn: Int!
   winX: Int!
   winO: Int!
-  canReset: Int!
   gameActive: Int!
   moveTokens: Int!
 }
@@ -213,7 +209,6 @@ type Places {
   oTurn: Int!
   winX: Int!
   winO: Int!
-  canReset: Int!
   gameActive: Int!
   moveTokens: Int!
 }
@@ -347,11 +342,6 @@ input OPlay21Input {
 
 
 input OPlay22Input {
-  aggregateId: ID!
-}
-
-
-input ResetInput {
   aggregateId: ID!
 }
 

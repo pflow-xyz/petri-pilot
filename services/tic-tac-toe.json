@@ -56,7 +56,6 @@
     {"id": "o_turn", "initial": 0, "description": "O's turn to play", "x": 860, "y": 120},
     {"id": "win_x", "initial": 0, "description": "X has won", "x": 1110, "y": 1200},
     {"id": "win_o", "initial": 0, "description": "O has won", "x": 610, "y": 1180},
-    {"id": "can_reset", "initial": 1, "description": "Token enabling reset action", "x": 400, "y": 40},
     {"id": "game_active", "initial": 1, "description": "Game is active (consumed on win/draw to end game)", "x": 850, "y": 800},
     {"id": "move_tokens", "initial": 0, "description": "Accumulates tokens as moves are played (for draw detection)", "x": 850, "y": 900}
   ],
@@ -79,7 +78,6 @@
     {"id": "o_play_20", "role": "o", "description": "O plays at (2,0)", "event": "OPlayed", "x": 510, "y": 410},
     {"id": "o_play_21", "role": "o", "description": "O plays at (2,1)", "event": "OPlayed", "x": 590, "y": 410},
     {"id": "o_play_22", "role": "o", "description": "O plays at (2,2)", "event": "OPlayed", "x": 670, "y": 410},
-    {"id": "reset", "description": "Reset game to initial state", "event": "GameReset", "clearsHistory": true, "x": 400, "y": 120},
     {"id": "x_win_row0", "role": "x", "description": "X wins top row (0,0)-(0,1)-(0,2)", "event": "XWon", "x": 1030, "y": 910},
     {"id": "x_win_row1", "role": "x", "description": "X wins middle row (1,0)-(1,1)-(1,2)", "event": "XWon", "x": 1030, "y": 990},
     {"id": "x_win_row2", "role": "x", "description": "X wins bottom row (2,0)-(2,1)-(2,2)", "event": "XWon", "x": 1030, "y": 1070},
@@ -369,10 +367,7 @@
 
     {"from": "move_tokens", "to": "draw", "weight": 9},
     {"from": "game_active", "to": "draw"},
-    {"from": "draw", "to": "win_o"},
-
-    {"from": "can_reset", "to": "reset"},
-    {"from": "reset", "to": "can_reset"}
+    {"from": "draw", "to": "win_o"}
   ],
   "events": [
     {
@@ -392,11 +387,6 @@
         {"name": "row", "type": "integer", "required": true},
         {"name": "col", "type": "integer", "required": true}
       ]
-    },
-    {
-      "id": "GameReset",
-      "name": "GameReset",
-      "description": "Game was reset to initial state"
     },
     {
       "id": "GameDraw",

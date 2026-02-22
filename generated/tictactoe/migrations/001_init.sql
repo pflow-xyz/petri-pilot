@@ -65,7 +65,6 @@ CREATE TABLE IF NOT EXISTS "tictactoe_state" (
     "o_turn" INTEGER DEFAULT 0,
     "win_x" INTEGER DEFAULT 0,
     "win_o" INTEGER DEFAULT 0,
-    "can_reset" INTEGER DEFAULT 0,
     "game_active" INTEGER DEFAULT 0,
     "move_tokens" INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -86,7 +85,6 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- Event type constants for reference:
 -- XPlayed
 -- OPlayed
--- GameReset
 -- XWinRow0ed
 -- XWinRow1ed
 -- XWinRow2ed
@@ -137,7 +135,6 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- o_turn: O's turn to play
 -- win_x: X has won
 -- win_o: O has won
--- can_reset: Token enabling reset action
 -- game_active: Game is active (consumed on win/draw to end game)
 -- move_tokens: Accumulates tokens as moves are played (for draw detection)
 
@@ -160,7 +157,6 @@ CREATE TABLE IF NOT EXISTS "tictactoe_places" (
 -- o_play_20: O plays at (2,0)
 -- o_play_21: O plays at (2,1)
 -- o_play_22: O plays at (2,2)
--- reset: Reset game to initial state
 -- x_win_row0: X wins top row (0,0)-(0,1)-(0,2)
 -- x_win_row1: X wins middle row (1,0)-(1,1)-(1,2)
 -- x_win_row2: X wins bottom row (2,0)-(2,1)-(2,2)

@@ -35,7 +35,6 @@ const (
 	PlaceOTurn = "o_turn"
 	PlaceWinX = "win_x"
 	PlaceWinO = "win_o"
-	PlaceCanReset = "can_reset"
 	PlaceGameActive = "game_active"
 	PlaceMoveTokens = "move_tokens"
 )
@@ -60,7 +59,6 @@ const (
 	TransitionOPlay20 = "o_play_20"
 	TransitionOPlay21 = "o_play_21"
 	TransitionOPlay22 = "o_play_22"
-	TransitionReset = "reset"
 	TransitionXWinRow0 = "x_win_row0"
 	TransitionXWinRow1 = "x_win_row1"
 	TransitionXWinRow2 = "x_win_row2"
@@ -100,7 +98,6 @@ const (
 	EventTypeOPlay20 = "OPlayed20"
 	EventTypeOPlay21 = "OPlayed21"
 	EventTypeOPlay22 = "OPlayed22"
-	EventTypeReset = "GameReset"
 	EventTypeXWinRow0 = "XWon0"
 	EventTypeXWinRow1 = "XWon1"
 	EventTypeXWinRow2 = "XWon2"
@@ -133,7 +130,6 @@ func InitialPlaces() map[string]int {
 		PlaceP21: 1,
 		PlaceP22: 1,
 		PlaceXTurn: 1,
-		PlaceCanReset: 1,
 		PlaceGameActive: 1,
 	}
 }
@@ -172,7 +168,6 @@ func AllPlaces() []string {
 		PlaceOTurn,
 		PlaceWinX,
 		PlaceWinO,
-		PlaceCanReset,
 		PlaceGameActive,
 		PlaceMoveTokens,
 	}
@@ -199,7 +194,6 @@ func AllTransitions() []string {
 		TransitionOPlay20,
 		TransitionOPlay21,
 		TransitionOPlay22,
-		TransitionReset,
 		TransitionXWinRow0,
 		TransitionXWinRow1,
 		TransitionXWinRow2,
