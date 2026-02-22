@@ -15,4 +15,5 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/texasholdem"
 	_ "github.com/pflow-xyz/petri-pilot/generated/thermostat"
 	_ "github.com/pflow-xyz/petri-pilot/generated/tictactoe"
+	_ "github.com/pflow-xyz/petri-pilot/generated/zkheatmap"
 )
