@@ -410,22 +410,7 @@
     },
     "solver": {
       "tspan": [0, 10],
-      "dt": 0.01,
-      "rates": {
-        "x_play_00": 3, "x_play_01": 2, "x_play_02": 3,
-        "x_play_10": 2, "x_play_11": 4, "x_play_12": 2,
-        "x_play_20": 3, "x_play_21": 2, "x_play_22": 3,
-        "o_play_00": 3, "o_play_01": 2, "o_play_02": 3,
-        "o_play_10": 2, "o_play_11": 4, "o_play_12": 2,
-        "o_play_20": 3, "o_play_21": 2, "o_play_22": 3,
-        "x_win_row0": 1, "x_win_row1": 1, "x_win_row2": 1,
-        "x_win_col0": 1, "x_win_col1": 1, "x_win_col2": 1,
-        "x_win_diag": 1, "x_win_anti": 1,
-        "o_win_row0": 1, "o_win_row1": 1, "o_win_row2": 1,
-        "o_win_col0": 1, "o_win_col1": 1, "o_win_col2": 1,
-        "o_win_diag": 1, "o_win_anti": 1,
-        "draw": 1
-      }
+      "dt": 0.01
     }
   },
   "metadata": {

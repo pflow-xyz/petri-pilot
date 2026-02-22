@@ -191,9 +191,73 @@ func NewContext(model *metamodel.Model, pkg string, scoring *ScoringConfig) (*Co
 			NumCandidates: len(candidates),
 			NumTargets:    len(targets),
 		}
+
+		// Auto-derive rate constants for candidates from target connectivity.
+		// For each candidate, count how many targets it connects to through
+		// its unique output places (places not shared by ALL candidates).
+		ctx.deriveRatesFromTopology(candidates, targets)
 	}
 
 	return ctx, nil
+}
+
+// deriveRatesFromTopology computes rate constants for candidate transitions
+// based on their connectivity to target transitions through the stoichiometry
+// matrix. Each candidate's rate = number of targets reachable through its
+// unique output places (places not produced by any other candidate).
+// Explicit model rates (non-default) are preserved.
+func (ctx *Context) deriveRatesFromTopology(candidates, targets []int) {
+	// Find output places for each candidate: places where S[p][c] > 0
+	candidateOutputs := make(map[int]map[int]bool)
+	for _, cIdx := range candidates {
+		candidateOutputs[cIdx] = make(map[int]bool)
+		for p := 0; p < ctx.NumPlaces; p++ {
+			if ctx.Stoichiometry[p][cIdx] > 0 {
+				candidateOutputs[cIdx][p] = true
+			}
+		}
+	}
+
+	// For each candidate, find outputs unique to it (not produced by any
+	// other candidate). This filters control-flow places like turn tokens
+	// that are shared across same-player transitions.
+	for _, cIdx := range candidates {
+		// Skip if model specified an explicit rate
+		if ctx.Transitions[cIdx].Rate != 1.0 {
+			continue
+		}
+
+		uniqueOutputs := make(map[int]bool)
+		for p := range candidateOutputs[cIdx] {
+			unique := true
+			for _, otherIdx := range candidates {
+				if otherIdx == cIdx {
+					continue
+				}
+				if candidateOutputs[otherIdx][p] {
+					unique = false
+					break
+				}
+			}
+			if unique {
+				uniqueOutputs[p] = true
+			}
+		}
+
+		count := 0
+		for _, tIdx := range targets {
+			for _, inp := range ctx.Transitions[tIdx].Inputs {
+				if uniqueOutputs[inp] {
+					count++
+					break // count each target once
+				}
+			}
+		}
+
+		if count > 1 {
+			ctx.Transitions[cIdx].Rate = float64(count)
+		}
+	}
 }
 
 // toConstName converts a prefix and ID like "Place" + "x_play_00" to "PlaceXPlay00".

@@ -14,7 +14,7 @@ import (
 // data identical to the hand-coded ttt_topology.go values.
 func TestCrossValidate_TTTTopology(t *testing.T) {
 	model := loadTTTModel(t)
-	ctx, err := NewContext(model, "ttt", nil)
+	ctx, err := NewContext(model, "ttt", tttScoringConfig())
 	if err != nil {
 		t.Fatalf("NewContext: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestCrossValidate_TTTTopology(t *testing.T) {
 // function produces identical output to the hand-coded NativeTTTStep.
 func TestCrossValidate_TTTNativeStep(t *testing.T) {
 	model := loadTTTModel(t)
-	ctx, err := NewContext(model, "ttt", nil)
+	ctx, err := NewContext(model, "ttt", tttScoringConfig())
 	if err != nil {
 		t.Fatalf("NewContext: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestCrossValidate_TTTNativeStep(t *testing.T) {
 // generated topology matches the hand-coded genesis root.
 func TestCrossValidate_TTTStateRoot(t *testing.T) {
 	model := loadTTTModel(t)
-	ctx, err := NewContext(model, "ttt", nil)
+	ctx, err := NewContext(model, "ttt", tttScoringConfig())
 	if err != nil {
 		t.Fatalf("NewContext: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestCrossValidate_CascadeNativeStep(t *testing.T) {
 // identical results between hand-coded and generated topology.
 func TestCrossValidate_MultiStep(t *testing.T) {
 	model := loadTTTModel(t)
-	ctx, err := NewContext(model, "ttt", nil)
+	ctx, err := NewContext(model, "ttt", tttScoringConfig())
 	if err != nil {
 		t.Fatalf("NewContext: %v", err)
 	}
@@ -270,6 +270,17 @@ func TestCrossValidate_MultiStep(t *testing.T) {
 }
 
 // --- helpers ---
+
+// tttScoringConfig returns a scoring config that covers both players,
+// enabling auto-derivation of position-weighted rate constants from topology.
+func tttScoringConfig() *ScoringConfig {
+	return &ScoringConfig{
+		Candidates: []string{"x_play_*", "o_play_*"},
+		Targets:    []string{"x_win_*", "o_win_*"},
+		Bonus:      10.0,
+		Penalty:    1.5,
+	}
+}
 
 func loadTTTModel(t *testing.T) *metamodel.Model {
 	t.Helper()
