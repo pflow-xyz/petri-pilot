@@ -117,6 +117,48 @@
       <div id="proof-details"></div>
     </section>
 
+    <!-- API Explorer -->
+    <section class="card api-card">
+      <div class="board-header">
+        <h2>API Explorer</h2>
+        <div class="btn-row">
+          <button id="btn-eval" class="btn btn-primary">Evaluate</button>
+          <button id="btn-copy-curl" class="btn btn-secondary">Copy curl</button>
+        </div>
+      </div>
+      <p class="card-desc">Call <code>POST /zk-ode/api/evaluate</code> with the current board state. Response includes per-cell ODE scores with tactical adjustments.</p>
+
+      <div class="api-panels">
+        <div class="api-panel">
+          <div class="api-panel-header">Request</div>
+          <pre class="api-json" id="api-request">{ "board": [["","",""],["","",""],["","",""]], "player": "X" }</pre>
+        </div>
+        <div class="api-panel">
+          <div class="api-panel-header">Response <span class="api-status" id="api-status"></span></div>
+          <pre class="api-json" id="api-response">Click "Evaluate" or play a move to see the response.</pre>
+        </div>
+      </div>
+
+      <div class="api-detail-grid" id="api-details" style="display: none;">
+        <div class="api-detail-item">
+          <span class="api-detail-label">Optimal Move</span>
+          <span class="api-detail-value" id="api-optimal">--</span>
+        </div>
+        <div class="api-detail-item">
+          <span class="api-detail-label">Optimal Score</span>
+          <span class="api-detail-value" id="api-optimal-score">--</span>
+        </div>
+        <div class="api-detail-item">
+          <span class="api-detail-label">Empty Cells</span>
+          <span class="api-detail-value" id="api-empty-count">--</span>
+        </div>
+        <div class="api-detail-item">
+          <span class="api-detail-label">Score Range</span>
+          <span class="api-detail-value" id="api-score-range">--</span>
+        </div>
+      </div>
+    </section>
+
     <!-- How Scores Work -->
     <section class="card">
       <h2>How Scores Work</h2>

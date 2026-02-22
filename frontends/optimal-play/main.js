@@ -139,14 +139,83 @@ function scoreColor(t) {
   }
 }
 
+// --- API Explorer ---
+const $apiRequest = document.getElementById('api-request');
+const $apiResponse = document.getElementById('api-response');
+const $apiStatus = document.getElementById('api-status');
+const $apiDetails = document.getElementById('api-details');
+
+function updateApiRequest() {
+  const payload = { board, player: currentPlayer };
+  $apiRequest.textContent = JSON.stringify(payload, null, 2);
+}
+
+function updateApiResponse(data, status) {
+  if (status === 'ok') {
+    $apiStatus.textContent = '200 OK';
+    $apiStatus.className = 'api-status ok';
+    $apiResponse.textContent = JSON.stringify(data, null, 2);
+
+    // Show details
+    $apiDetails.style.display = '';
+    const optKey = data.optimal;
+    const optScore = optKey ? data.values[optKey] : null;
+    document.getElementById('api-optimal').textContent = optKey ? `(${optKey[0]},${optKey[1]})` : '--';
+    document.getElementById('api-optimal').className = 'api-detail-value' + (optKey ? ' optimal' : '');
+    document.getElementById('api-optimal-score').textContent = optScore != null ? optScore.toFixed(4) : '--';
+
+    const scores = Object.values(data.values || {});
+    document.getElementById('api-empty-count').textContent = scores.length;
+    if (scores.length > 0) {
+      const min = Math.min(...scores).toFixed(2);
+      const max = Math.max(...scores).toFixed(2);
+      document.getElementById('api-score-range').textContent = `${min} .. ${max}`;
+    } else {
+      document.getElementById('api-score-range').textContent = '--';
+    }
+  } else if (status === 'error') {
+    $apiStatus.textContent = 'Error';
+    $apiStatus.className = 'api-status error';
+    $apiResponse.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $apiDetails.style.display = 'none';
+  } else {
+    $apiStatus.textContent = 'Loading...';
+    $apiStatus.className = 'api-status loading';
+  }
+}
+
+function buildCurlCommand() {
+  const payload = JSON.stringify({ board, player: currentPlayer });
+  return `curl -s -X POST https://pilot.pflow.xyz/zk-ode/api/evaluate \\
+  -H "Content-Type: application/json" \\
+  -d '${payload}' | jq .`;
+}
+
+document.getElementById('btn-copy-curl').addEventListener('click', () => {
+  navigator.clipboard.writeText(buildCurlCommand()).then(() => {
+    const btn = document.getElementById('btn-copy-curl');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy curl'; }, 1500);
+  });
+});
+
+document.getElementById('btn-eval').addEventListener('click', () => {
+  evaluate();
+});
+
 // Call /zk-ode/api/evaluate and render heatmap
 async function evaluate() {
   clearHeatmap();
 
   const hasEmpty = board.some(row => row.some(c => c === EMPTY));
-  if (!hasEmpty || gameOver) return;
+  if (!hasEmpty || gameOver) {
+    updateApiRequest();
+    return;
+  }
 
   highlightPipelineStage('stage-ode');
+  updateApiRequest();
+  updateApiResponse(null, 'loading');
 
   try {
     const resp = await fetch('/zk-ode/api/evaluate', {
@@ -157,15 +226,18 @@ async function evaluate() {
 
     if (!resp.ok) {
       console.warn('Evaluate API error:', resp.status);
+      updateApiResponse(`HTTP ${resp.status}`, 'error');
       clearPipelineHighlights();
       return;
     }
 
     const data = await resp.json();
     highlightPipelineStage('stage-heatmap');
+    updateApiResponse(data, 'ok');
     renderHeatmap(data.values || {}, data.optimal);
   } catch (err) {
     console.warn('Evaluate API unavailable:', err.message);
+    updateApiResponse(err.message, 'error');
     clearPipelineHighlights();
   }
 }
