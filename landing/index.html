@@ -538,36 +538,14 @@
         </div>
       </a>
 
-      <a href="/zk-ode/" class="demo-card">
-        <span class="demo-icon">&#128256;</span>
-        <h3 class="demo-name">ZK-ODE Solver</h3>
-        <p class="demo-desc"><strong>Private computation, public proof.</strong> A Tsit5 ODE solver runs inside a Groth16 circuit over encrypted Petri net state. Only hash commitments are revealed &mdash; the marking stays secret.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">Tsit5</span>
-          <span class="demo-tag">ZK proofs</span>
-          <span class="demo-tag">Base L2</span>
-        </div>
-      </a>
-
       <a href="/optimal-play/" class="demo-card">
         <span class="demo-icon">&#9812;</span>
         <h3 class="demo-name">Verifiable Computation</h3>
-        <p class="demo-desc"><strong>Petri net &rarr; ODE &rarr; ZK &rarr; on-chain.</strong> A Petri net defines the state machine, an ODE solver derives scores, a Groth16 proof verifies the computation, and a contract checks consistency at ~450k gas.</p>
+        <p class="demo-desc"><strong>Petri net &rarr; ODE &rarr; ZK &rarr; on-chain.</strong> A 33-place, 35-transition Petri net defines the state machine, an ODE solver derives scores, a Groth16 proof verifies the computation, and a contract checks consistency at ~450k gas.</p>
         <div class="demo-meta">
           <span class="demo-tag">Groth16</span>
-          <span class="demo-tag">heatmap</span>
-          <span class="demo-tag">~450k gas</span>
-        </div>
-      </a>
-
-      <a href="/pflow?model=tic-tac-toe" class="demo-card">
-        <span class="demo-icon">&#9618;</span>
-        <h3 class="demo-name">TTT Petri Net</h3>
-        <p class="demo-desc"><strong>The circuit as a Petri net.</strong> 33 places, 35 transitions &mdash; the exact topology compiled into a 177k-constraint Groth16 circuit. Both are models of computation at different abstraction levels.</p>
-        <div class="demo-meta">
-          <span class="demo-tag">33 places</span>
-          <span class="demo-tag">35 transitions</span>
           <span class="demo-tag">177k constraints</span>
+          <span class="demo-tag">~450k gas</span>
         </div>
       </a>
     </div>
