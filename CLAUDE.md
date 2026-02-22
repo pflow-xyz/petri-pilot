@@ -499,9 +499,121 @@ Requires `GITHUB_TOKEN` environment variable for status commands.
 export GITHUB_TOKEN=$(gh auth token)
 ```
 
+## Verifiable Computation via Petri Net ODE
+
+The `zk-ode/` package implements a general pattern for turning any Petri net into a verifiable computation. The technique is domain-agnostic — tic-tac-toe is one application, but the same pipeline applies to any system expressible as a Petri net.
+
+### Pipeline
+
+```
+1. Define Topology     →  places, transitions, stoichiometry matrix, rate constants
+2. Native ODE Step     →  Tsit5 (7-stage Runge-Kutta) over mass-action kinetics
+3. ZK Circuit          →  gnark circuit proving the ODE step was computed correctly
+4. On-Chain Contract   →  ZkOde.sol verifies proofs and chains state roots
+```
+
+### How to Add a New Verifiable Computation
+
+To apply this pattern to a new domain (e.g., supply chain, auctions, resource allocation):
+
+#### Step 1: Define the Topology
+
+Create a `*_topology.go` file with:
+- `NumPlaces`, `NumTransitions` constants
+- `Stoichiometry[NumPlaces][NumTransitions]` matrix (net change per firing)
+- `TransitionInputs[NumTransitions][]int` (which places feed each transition)
+- `RateConstants[NumTransitions]*big.Int` (fixed-point rate for mass-action kinetics)
+- `DefaultInitialMarking()` function
+
+The stoichiometry matrix encodes the Petri net structure. For each (place, transition) pair, the value is the net token change when that transition fires. Rate constants control relative transition speeds — they encode domain-specific priorities (e.g., position weights in TTT).
+
+See `zk-ode/topology.go` (3-place cascade) and `zk-ode/ttt_topology.go` (33-place TTT) as examples.
+
+#### Step 2: Implement Native Witness Computation
+
+Create a `*_witness.go` file with:
+- A state struct holding marking + MiMC root
+- A native ODE step function using `NativeFixMul/Add/Sub` (big.Int arithmetic)
+- A `ComputeStep()` that runs the ODE and returns a witness struct
+- A `ToCircuitAssignment()` that maps the witness to circuit variables
+
+The native computation must exactly mirror what the circuit will verify. Both use the same Tsit5 tableau (`tsit5A`, `tsit5B`, `tsit5C` from `topology.go`) and the same fixed-point scale (10^18).
+
+Mass-action rate formula: `rate[t] = k[t] * product(marking[inputs[t]])`
+
+#### Step 3: Build the ZK Circuit
+
+Create a `*_circuit.go` file defining a gnark circuit struct with:
+- **Public inputs**: `PreStateRoot`, `PostStateRoot`, `StepSize`, plus any domain-specific outputs (e.g., scores)
+- **Private inputs**: `PreMarking[N]`, `PostMarking[N]`
+
+The circuit must:
+1. Verify `PreStateRoot == MiMC(PreMarking)`
+2. Compute the Tsit5 ODE step using `FixMul` (circuit-constraint arithmetic)
+3. Verify `PostMarking` matches the computed result
+4. Verify `PostStateRoot == MiMC(PostMarking)`
+5. Compute any domain-specific outputs from the marking
+
+Use `FixMul(api, a, b)` for circuit multiplication — it generates constraints that verify `a*b/Scale` via hint + range check.
+
+#### Step 4: Export Verifier and Deploy
+
+```bash
+# Compile circuit and export Solidity verifier
+# See zk-ode/cmd/export-ttt-verifier/main.go as template
+go run ./zk-ode/cmd/export-my-verifier/main.go > solidity/src/MyVerifier.sol
+
+# Deploy: Verifier → Adapter → ZkOde
+cd solidity && forge script script/DeployMy.s.sol --rpc-url $RPC --broadcast --verify
+```
+
+The `ZkOde.sol` contract is reusable — it tracks `currentStateRoot` and calls any `IVerifier` to check proofs. Configure with `numTransitions` and `enforceOptimal` (whether to require the highest-scoring action).
+
+### Key Files (zk-ode/)
+
+| File | Purpose |
+|------|---------|
+| `topology.go` | Cascade example (3 places, 2 transitions) + Tsit5 Butcher tableau |
+| `ttt_topology.go` | TTT topology (33 places, 35 transitions) with position-weighted rates |
+| `fixedpoint.go` | Fixed-point arithmetic for both native (big.Int) and circuit (gnark) |
+| `state.go` | State struct with MiMC root computation |
+| `circuits.go` | Cascade ZK circuit (Tsit5 step verification) |
+| `ttt_heatmap_circuit.go` | TTT circuit with tactical win/block scoring (177k constraints) |
+| `witness.go` | Cascade witness generation |
+| `ttt_witness.go` | TTT native ODE step and board-to-state conversion |
+| `ttt_heatmap_witness.go` | TTT heatmap witness with tactical scoring |
+| `evaluate.go` | TTT move evaluation using go-pflow ODE solver |
+| `service.go` | Prover service integration |
+| `httpservice.go` | HTTP API for proving and evaluation |
+
+### Fixed-Point Arithmetic
+
+All values use 10^18 scale over the BN254 scalar field. Key functions:
+
+| Function | Context | Purpose |
+|----------|---------|---------|
+| `FixFromFloat(f)` | Native | Convert float64 to fixed-point big.Int |
+| `FixToFloat(x)` | Native | Convert fixed-point big.Int to float64 |
+| `NativeFixMul(a, b)` | Native | `(a * b) / Scale` with field reduction |
+| `NativeFixAdd(a, b)` | Native | `(a + b) mod P` |
+| `NativeFixSub(a, b)` | Native | `(a - b + P) mod P` |
+| `FixMul(api, a, b)` | Circuit | Constrained multiplication via hint |
+
+### State Root Chaining
+
+Each proof advances the on-chain `currentStateRoot`:
+```
+Genesis: MiMC(initialMarking)
+Step 1:  proof.PreStateRoot == currentStateRoot → verify → currentStateRoot = proof.PostStateRoot
+Step 2:  proof.PreStateRoot == currentStateRoot → verify → currentStateRoot = proof.PostStateRoot
+...
+```
+
+For discrete systems (like TTT), the post-state root is the MiMC hash of the discrete post-move marking, not the raw ODE output. This enables multi-step proof chains where each step starts from a clean integer state.
+
 ## ZkOde Contracts (Base Sepolia)
 
-ZK-proven ODE state machine contracts deployed on Base Sepolia.
+Deployed instances of the verifiable computation pattern.
 
 ### Cascade Contracts (3 places, 2 transitions)
 
