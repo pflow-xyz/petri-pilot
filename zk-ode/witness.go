@@ -40,8 +40,8 @@ func NativeTsit5Step(
 			yStage[p] = new(big.Int).Set(marking[p])
 		}
 
-		for j := 0; j < len(tsit5A[stage]); j++ {
-			hA := NativeFixMul(h, tsit5A[stage][j])
+		for j := 0; j < len(Tsit5A[stage]); j++ {
+			hA := NativeFixMul(h, Tsit5A[stage][j])
 			for p := 0; p < NumPlaces; p++ {
 				contrib := NativeFixMul(hA, k[j][p])
 				yStage[p] = NativeFixAdd(yStage[p], contrib)
@@ -78,10 +78,10 @@ func NativeTsit5Step(
 	}
 
 	for j := 0; j < 7; j++ {
-		if tsit5B[j].Sign() == 0 {
+		if Tsit5B[j].Sign() == 0 {
 			continue
 		}
-		hB := NativeFixMul(h, tsit5B[j])
+		hB := NativeFixMul(h, Tsit5B[j])
 		for p := 0; p < NumPlaces; p++ {
 			contrib := NativeFixMul(hB, k[j][p])
 			post[p] = NativeFixAdd(post[p], contrib)

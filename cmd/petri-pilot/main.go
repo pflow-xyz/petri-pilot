@@ -45,6 +45,8 @@ func main() {
 		cmdRefine(os.Args[2:])
 	case "codegen":
 		cmdCodegen(os.Args[2:])
+	case "zkgen":
+		cmdZkgen(os.Args[2:])
 	case "frontend":
 		cmdFrontend(os.Args[2:])
 	case "delegate":
@@ -81,6 +83,7 @@ Commands:
   validate    Validate an existing Petri net model
   refine      Refine a model based on validation feedback
   codegen     Generate backend application code from a validated model
+  zkgen       Generate ZK ODE circuit package from a Petri net model
   frontend    Generate vanilla JavaScript ES modules frontend from a validated model
   serve       Run a registered service by name
   service     Manage running services (list, stop, logs, stats, health)

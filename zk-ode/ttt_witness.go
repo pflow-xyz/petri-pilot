@@ -54,8 +54,8 @@ func NativeTTTStep(
 			yStage[p] = new(big.Int).Set(marking[p])
 		}
 
-		for j := 0; j < len(tsit5A[stage]); j++ {
-			hA := NativeFixMul(h, tsit5A[stage][j])
+		for j := 0; j < len(Tsit5A[stage]); j++ {
+			hA := NativeFixMul(h, Tsit5A[stage][j])
 			for p := 0; p < TTTNumPlaces; p++ {
 				contrib := NativeFixMul(hA, k[j][p])
 				yStage[p] = NativeFixAdd(yStage[p], contrib)
@@ -76,10 +76,19 @@ func NativeTTTStep(
 				if s == 0 {
 					continue
 				}
-				if s == 1 {
+				switch {
+				case s == 1:
 					k[stage][p] = NativeFixAdd(k[stage][p], rates[t])
-				} else if s == -1 {
+				case s == -1:
 					k[stage][p] = NativeFixSub(k[stage][p], rates[t])
+				case s > 1:
+					for i := 0; i < s; i++ {
+						k[stage][p] = NativeFixAdd(k[stage][p], rates[t])
+					}
+				case s < -1:
+					for i := 0; i < -s; i++ {
+						k[stage][p] = NativeFixSub(k[stage][p], rates[t])
+					}
 				}
 			}
 		}
@@ -92,10 +101,10 @@ func NativeTTTStep(
 	}
 
 	for j := 0; j < 7; j++ {
-		if tsit5B[j].Sign() == 0 {
+		if Tsit5B[j].Sign() == 0 {
 			continue
 		}
-		hB := NativeFixMul(h, tsit5B[j])
+		hB := NativeFixMul(h, Tsit5B[j])
 		for p := 0; p < TTTNumPlaces; p++ {
 			contrib := NativeFixMul(hB, k[j][p])
 			post[p] = NativeFixAdd(post[p], contrib)

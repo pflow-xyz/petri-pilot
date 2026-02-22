@@ -35,7 +35,7 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 	// === 2. Compute initial rates and run ODE step ===
 	var initialRates [TTTNumTransitions]frontend.Variable
 	for t := 0; t < TTTNumTransitions; t++ {
-		initialRates[t] = computeMultiInputRate(api, c.PreMarking[:], t)
+		initialRates[t] = ComputeMultiInputRate(api, c.PreMarking[:], t)
 	}
 
 	// 7-stage Tsit5 ODE integration (reuses existing logic)
@@ -47,8 +47,8 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 			yStage[p] = c.PreMarking[p]
 		}
 
-		for j := 0; j < len(tsit5A[stage]); j++ {
-			hA := FixMul(api, c.StepSize, tsit5A[stage][j])
+		for j := 0; j < len(Tsit5A[stage]); j++ {
+			hA := FixMul(api, c.StepSize, Tsit5A[stage][j])
 			for p := 0; p < TTTNumPlaces; p++ {
 				contrib := FixMul(api, hA, k[j][p])
 				yStage[p] = api.Add(yStage[p], contrib)
@@ -57,7 +57,7 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 
 		var rates [TTTNumTransitions]frontend.Variable
 		for t := 0; t < TTTNumTransitions; t++ {
-			rates[t] = computeMultiInputRate(api, yStage[:], t)
+			rates[t] = ComputeMultiInputRate(api, yStage[:], t)
 		}
 
 		for p := 0; p < TTTNumPlaces; p++ {
@@ -67,10 +67,15 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 				if s == 0 {
 					continue
 				}
-				if s == 1 {
+				switch {
+				case s == 1:
 					k[stage][p] = api.Add(k[stage][p], rates[t])
-				} else if s == -1 {
+				case s == -1:
 					k[stage][p] = api.Sub(k[stage][p], rates[t])
+				case s > 1:
+					k[stage][p] = api.Add(k[stage][p], api.Mul(rates[t], s))
+				case s < -1:
+					k[stage][p] = api.Sub(k[stage][p], api.Mul(rates[t], -s))
 				}
 			}
 		}
@@ -82,10 +87,10 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 		postExpected[p] = c.PreMarking[p]
 	}
 	for j := 0; j < 7; j++ {
-		if tsit5B[j].Sign() == 0 {
+		if Tsit5B[j].Sign() == 0 {
 			continue
 		}
-		hB := FixMul(api, c.StepSize, tsit5B[j])
+		hB := FixMul(api, c.StepSize, Tsit5B[j])
 		for p := 0; p < TTTNumPlaces; p++ {
 			contrib := FixMul(api, hB, k[j][p])
 			postExpected[p] = api.Add(postExpected[p], contrib)
@@ -107,7 +112,7 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 
 	// Determine current player from XTurn marking.
 	// isXTurn = 1 (raw) if PreMarking[XTurn] != 0, else 0 — for api.Select
-	xTurnNonZero := isNonZeroBool(api, c.PreMarking[XTurn])
+	xTurnNonZero := IsNonZeroBool(api, c.PreMarking[XTurn])
 
 	// Select current/opponent pieces and base rates per cell
 	var currentPiece [9]frontend.Variable
@@ -138,7 +143,7 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 		score = api.Sub(score, penaltyTerm)
 
 		// Mask occupied cells: score = cellEmpty[i] > 0 ? score : 0
-		cellNonZero := isNonZeroFP(api, cellEmpty[i])
+		cellNonZero := IsNonZeroFP(api, cellEmpty[i])
 		score = FixMul(api, score, cellNonZero)
 
 		api.AssertIsEqual(score, c.HeatmapScores[i])
@@ -147,9 +152,9 @@ func (c *TTTHeatmapCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// computeMultiInputRate computes the mass-action rate for transition t:
+// ComputeMultiInputRate computes the mass-action rate for transition t:
 // rate = k[t] * product(marking[input]) for all input places.
-func computeMultiInputRate(api frontend.API, marking []frontend.Variable, t int) frontend.Variable {
+func ComputeMultiInputRate(api frontend.API, marking []frontend.Variable, t int) frontend.Variable {
 	inputs := TTTTransitionInputs[t]
 	rate := marking[inputs[0]]
 	for i := 1; i < len(inputs); i++ {
@@ -159,14 +164,14 @@ func computeMultiInputRate(api frontend.API, marking []frontend.Variable, t int)
 	return rate
 }
 
-// isNonZeroBool returns raw 0 or 1 (for api.Select which requires boolean 0/1).
-func isNonZeroBool(api frontend.API, v frontend.Variable) frontend.Variable {
+// IsNonZeroBool returns raw 0 or 1 (for api.Select which requires boolean 0/1).
+func IsNonZeroBool(api frontend.API, v frontend.Variable) frontend.Variable {
 	iz := api.IsZero(v) // raw 1 if v==0, raw 0 if v!=0
 	return api.Sub(1, iz)
 }
 
-// isNonZeroFP returns fixed-point 0 or 1.0 (Scale) for use in FixMul arithmetic.
-func isNonZeroFP(api frontend.API, v frontend.Variable) frontend.Variable {
+// IsNonZeroFP returns fixed-point 0 or 1.0 (Scale) for use in FixMul arithmetic.
+func IsNonZeroFP(api frontend.API, v frontend.Variable) frontend.Variable {
 	iz := api.IsZero(v) // raw 0 or 1
 	izFP := api.Mul(iz, Scale)
 	return api.Sub(FixFromFloat(1.0), izFP)
@@ -191,7 +196,7 @@ func circuitWinFlag(api frontend.API, cell int, currentPiece []frontend.Variable
 		winSum = api.Add(winSum, lineWin)
 	}
 	// win_flag = isNonZero(winSum) → 1.0 if any line completes
-	return isNonZeroFP(api, winSum)
+	return IsNonZeroFP(api, winSum)
 }
 
 // circuitBlockFlag computes a fixed-point flag (0 or 1.0) indicating if after
@@ -230,5 +235,5 @@ func circuitBlockFlag(api frontend.API, cell int, opponentPiece []frontend.Varia
 		}
 	}
 
-	return isNonZeroFP(api, threatSum)
+	return IsNonZeroFP(api, threatSum)
 }

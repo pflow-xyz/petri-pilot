@@ -42,9 +42,9 @@ func (c *Tsit5StepCircuit) Define(api frontend.API) error {
 		}
 
 		// Add contributions from previous stages
-		for j := 0; j < len(tsit5A[stage]); j++ {
+		for j := 0; j < len(Tsit5A[stage]); j++ {
 			// hA = h * A[stage][j] (step size times RK coefficient)
-			hA := FixMul(api, c.StepSize, tsit5A[stage][j])
+			hA := FixMul(api, c.StepSize, Tsit5A[stage][j])
 			for p := 0; p < NumPlaces; p++ {
 				// yStage[p] += hA * k[j][p]
 				contrib := FixMul(api, hA, k[j][p])
@@ -83,10 +83,10 @@ func (c *Tsit5StepCircuit) Define(api frontend.API) error {
 	}
 
 	for j := 0; j < 7; j++ {
-		if tsit5B[j].Sign() == 0 {
+		if Tsit5B[j].Sign() == 0 {
 			continue // B[6] = 0
 		}
-		hB := FixMul(api, c.StepSize, tsit5B[j])
+		hB := FixMul(api, c.StepSize, Tsit5B[j])
 		for p := 0; p < NumPlaces; p++ {
 			contrib := FixMul(api, hB, k[j][p])
 			postExpected[p] = api.Add(postExpected[p], contrib)
