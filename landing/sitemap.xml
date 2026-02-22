@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://pilot.pflow.xyz/</loc><priority>1.0</priority></url>
+  <url><loc>https://pilot.pflow.xyz/tic-tac-toe</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/zk-tic-tac-toe</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/coffeeshop</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/texas-holdem</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/knapsack</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/enzyme-kinetics</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/predator-prey</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/dining-philosophers</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/loan-approval</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/tcp-handshake</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/thermostat</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/producer-consumer</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/hiring-pipeline</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/stoplight</loc><priority>0.8</priority></url>
+  <url><loc>https://pilot.pflow.xyz/learn</loc><priority>0.7</priority></url>
+  <url><loc>https://pilot.pflow.xyz/patterns</loc><priority>0.7</priority></url>
+  <url><loc>https://pilot.pflow.xyz/advanced</loc><priority>0.7</priority></url>
+  <url><loc>https://pilot.pflow.xyz/optimal-play</loc><priority>0.7</priority></url>
+  <url><loc>https://pilot.pflow.xyz/zk-intro</loc><priority>0.7</priority></url>
+</urlset>
