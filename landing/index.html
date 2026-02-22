@@ -551,19 +551,19 @@
 
       <a href="/optimal-play/" class="demo-card">
         <span class="demo-icon">&#9812;</span>
-        <h3 class="demo-name">Provably Optimal Play</h3>
-        <p class="demo-desc"><strong>ODE heatmap + on-chain enforcement.</strong> The ODE solver evaluates every legal move, a Groth16 proof attests to the computation, and a Solidity contract rejects suboptimal play.</p>
+        <h3 class="demo-name">Verifiable Computation</h3>
+        <p class="demo-desc"><strong>Petri net &rarr; ODE &rarr; ZK &rarr; on-chain.</strong> A Petri net defines the state machine, an ODE solver derives scores, a Groth16 proof verifies the computation, and a contract checks consistency at ~450k gas.</p>
         <div class="demo-meta">
-          <span class="demo-tag">enforceOptimal</span>
+          <span class="demo-tag">Groth16</span>
           <span class="demo-tag">heatmap</span>
-          <span class="demo-tag">game AI</span>
+          <span class="demo-tag">~450k gas</span>
         </div>
       </a>
 
       <a href="/pflow?model=zk-heatmap" class="demo-card">
         <span class="demo-icon">&#9618;</span>
         <h3 class="demo-name">ZK Heatmap Net</h3>
-        <p class="demo-desc"><strong>The circuit as a Petri net.</strong> 32 places, 34 transitions &mdash; the exact topology inside the 177k-constraint Groth16 circuit. Rate constants emerge from win-line connectivity.</p>
+        <p class="demo-desc"><strong>The circuit as a Petri net.</strong> 32 places, 34 transitions &mdash; the exact topology compiled into a 177k-constraint Groth16 circuit. Both are models of computation at different abstraction levels.</p>
         <div class="demo-meta">
           <span class="demo-tag">32 places</span>
           <span class="demo-tag">34 transitions</span>

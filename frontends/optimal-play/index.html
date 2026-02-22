@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Provably Optimal Play</title>
+  <title>Verifiable Computation from Petri Nets</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,8 +11,8 @@
   <div class="page">
     <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
 
-    <h1>Provably Optimal Play</h1>
-    <p class="subtitle">ODE heatmap scores every legal move. A ZK proof attests to the computation. A Solidity contract rejects suboptimal play.</p>
+    <h1>Verifiable Computation from Petri Nets</h1>
+    <p class="subtitle">A Petri net defines the computation. An ODE solver runs it. A ZK circuit proves it was run correctly. A smart contract verifies the proof at ~450k gas. Tic-tac-toe is the demo &mdash; the pattern is general.</p>
 
     <!-- Interactive Board + Heatmap -->
     <section class="card board-card">
@@ -48,31 +48,31 @@
     <!-- Pipeline Explainer -->
     <section class="card pipeline-card">
       <h2>The Pipeline</h2>
-      <p class="card-desc">Four stages connect ODE simulation to on-chain enforcement.</p>
+      <p class="card-desc">Petri nets and ZK circuits are both models of computation. This pipeline connects them: a Petri net defines the state machine, an ODE solver derives transition rates, a ZK circuit proves the computation, and a smart contract verifies it on-chain.</p>
 
       <div class="pipeline">
         <div class="pipeline-stage" id="stage-ode">
           <div class="stage-icon">&#9881;</div>
-          <div class="stage-name">ODE Solver</div>
-          <div class="stage-desc">Tsit5 evaluates every legal move using mass-action kinetics on the Petri net</div>
+          <div class="stage-name">Petri Net</div>
+          <div class="stage-desc">32 places, 34 transitions define the state machine. Mass-action kinetics derive rates from topology.</div>
         </div>
         <div class="pipeline-arrow">&rarr;</div>
         <div class="pipeline-stage" id="stage-heatmap">
           <div class="stage-icon">&#9608;</div>
-          <div class="stage-name">Heatmap</div>
-          <div class="stage-desc">Transition rates become per-cell scores: green = good, red = bad</div>
+          <div class="stage-name">ODE Heatmap</div>
+          <div class="stage-desc">Tsit5 solver integrates the rates. Tactical scoring adds win/block detection.</div>
         </div>
         <div class="pipeline-arrow">&rarr;</div>
         <div class="pipeline-stage" id="stage-zk">
           <div class="stage-icon">&#128274;</div>
-          <div class="stage-name">ZK Prover</div>
-          <div class="stage-desc">Groth16 proof attests that the ODE step was computed correctly</div>
+          <div class="stage-name">ZK Circuit</div>
+          <div class="stage-desc">177k-constraint Groth16 proof. Verifies ODE step + scores without re-running them.</div>
         </div>
         <div class="pipeline-arrow">&rarr;</div>
         <div class="pipeline-stage" id="stage-contract">
           <div class="stage-icon">&#9878;</div>
-          <div class="stage-name">Contract</div>
-          <div class="stage-desc">Solidity verifies the proof and reverts if the chosen move isn't optimal</div>
+          <div class="stage-name">On-Chain</div>
+          <div class="stage-desc">~450k gas to verify. The contract checks the proof and enforces the highest-scoring move.</div>
         </div>
       </div>
     </section>
@@ -80,7 +80,7 @@
     <!-- On-Chain Status -->
     <section class="card onchain-card">
       <h2>On-Chain Status</h2>
-      <p class="card-desc">TTT ZK-ODE contract on Base Sepolia. All 34 transition rates verified on-chain.</p>
+      <p class="card-desc">Live contract on Base Sepolia. Verifies Groth16 proofs of ODE computation and enforces highest-scoring moves.</p>
 
       <div class="onchain-grid" id="onchain-status">
         <div class="onchain-item">
@@ -162,19 +162,19 @@
     <!-- How Scores Work -->
     <section class="card">
       <h2>How Scores Work</h2>
-      <p class="card-desc">Strategic values emerge from network topology, not hand-coded heuristics.</p>
+      <p class="card-desc">Base rates come from graph topology. Tactical adjustments are hand-tuned heuristics bolted on top. This is an ODE-derived heuristic, not game-theoretic optimality &mdash; tic-tac-toe was solved by minimax in the 1950s.</p>
       <ol class="info-list">
-        <li>The tic-tac-toe board is modeled as a <strong>Petri net</strong> with <strong>32 places</strong> and <strong>34 transitions</strong>. Each cell has three places (empty, X, O) plus five control places for turns, wins, and game state.</li>
-        <li>The ODE solver applies <strong>mass-action kinetics</strong> &mdash; each transition's firing rate equals its rate constant <em>k</em> multiplied by the product of tokens in its input places: <code>rate = k * &prod; inputs</code>.</li>
-        <li>Rate constants come directly from <strong>graph topology</strong>: center <em>k</em>=4 (4 win lines), corners <em>k</em>=3 (3 win lines), edges <em>k</em>=2 (2 win lines). No tuning, no training data.</li>
-        <li>On top of base rates, the circuit applies <strong>tactical adjustments</strong>: +10.0 for winning moves and &minus;1.5 for moves that leave the opponent an unblocked threat.</li>
+        <li>The board is a <strong>Petri net</strong> with <strong>32 places</strong> and <strong>34 transitions</strong>. Each cell has three places (empty, X, O) plus five control places for turns, wins, and game state.</li>
+        <li><strong>Mass-action kinetics</strong> derive base rates from topology: <code>rate = k * &prod; inputs</code>. Rate constants are the number of win lines through each position &mdash; center <em>k</em>=4, corners <em>k</em>=3, edges <em>k</em>=2.</li>
+        <li>The base rates alone don't detect immediate wins or threats. <strong>Tactical patches</strong> are added: +10.0 for completing 3-in-a-row, &minus;1.5 for leaving the opponent an unblocked threat. These are hand-tuned constants, not emergent properties.</li>
+        <li>What the ZK proof guarantees: <strong>the computation was performed correctly</strong>. Not that the strategy is optimal in the game-theoretic sense &mdash; only that the ODE + heuristic scores were computed honestly.</li>
       </ol>
     </section>
 
     <!-- Building the Circuit -->
     <section class="card">
       <h2>Building the Heatmap Circuit</h2>
-      <p class="card-desc">A <strong>176,891-constraint</strong> Groth16 circuit (gnark/BN254) that proves ODE integration + tactical evaluation in zero knowledge.</p>
+      <p class="card-desc">A <strong>176,891-constraint</strong> Groth16 circuit (gnark/BN254) that proves one ODE integration step + tactical scoring. The circuit is a direct translation of the Petri net topology &mdash; both are computational models, just at different abstraction levels.</p>
 
       <h3 class="section-subhead">Board Representation: 32 Places</h3>
       <p class="card-desc">The Petri net encodes the full game state as a marking vector:</p>
@@ -231,7 +231,7 @@ score[i] = base_rate[i]
       <pre class="code-block"><code>ZkOde.sol
   &boxur; currentStateRoot: tracks the chain of board states
   &boxur; stepCount: number of verified moves
-  &boxur; enforceOptimal: rejects suboptimal moves
+  &boxur; enforceOptimal: requires highest-scoring move
 
 Architecture:
   ZkOde &rarr; IVerifier(Adapter) &rarr; Groth16Verifier (gnark BN254)
@@ -262,9 +262,9 @@ Architecture:
     <!-- Contract Enforcement -->
     <section class="card">
       <h2>Contract Enforcement</h2>
-      <p class="card-desc">The <code>enforceOptimal</code> modifier in <code>ZkOde.sol</code> iterates over all 9 heatmap scores and reverts if a higher-scored move exists.</p>
+      <p class="card-desc">The contract checks that the submitted move has the highest ODE-derived score. "Optimal" here means "consistent with the heuristic" &mdash; not game-theoretically optimal.</p>
 
-      <pre class="code-block"><code>// Enforce optimal play: chosen transition must have the highest rate
+      <pre class="code-block"><code>// Enforce highest-scoring move per ODE heuristic
 if (enforceOptimal) {
     uint256 chosenRate = publicInputs[3 + chosenTransition];
     for (uint256 t = 0; t &lt; numTransitions; t++) {
@@ -277,17 +277,17 @@ if (enforceOptimal) {
     }
 }</code></pre>
 
-      <p class="card-desc" style="margin-top: 1rem;">The contract never re-runs the ODE or the heatmap evaluation. It trusts the Groth16 proof that the scores were computed correctly, then simply checks that the player picked the highest-scoring cell. Verification costs ~275k gas regardless of circuit complexity.</p>
+      <p class="card-desc" style="margin-top: 1rem;">The contract never re-runs the ODE or the heatmap evaluation. It trusts the Groth16 proof that the scores were computed correctly, then checks that the player picked the highest-scoring cell. The enforcement is sound relative to the heuristic &mdash; it guarantees consistency, not game-theoretic optimality. Verification costs ~275k gas regardless of circuit complexity.</p>
     </section>
 
     <!-- Why This Matters -->
     <section class="card info-card">
-      <h2>Why This Matters</h2>
+      <h2>What This Demonstrates</h2>
       <ol class="info-list">
-        <li><strong>No AI black box:</strong> The strategy comes from differential equations over graph topology. Every score is deterministic and reproducible &mdash; the 176,891-constraint circuit is the specification.</li>
-        <li><strong>Verifiable computation:</strong> The ZK proof guarantees the ODE integration and tactical evaluation were computed correctly. The 32-place board state stays private; only the 12 public inputs are revealed.</li>
-        <li><strong>On-chain enforcement:</strong> Smart contracts enforce "play optimally or forfeit" at ~450k gas per move, without running any AI on-chain.</li>
-        <li><strong>General pattern:</strong> Any Petri net model &mdash; not just tic-tac-toe &mdash; can be evaluated with mass-action kinetics, proved with Groth16, and enforced on-chain. The circuit generator is parametric over the Petri net topology.</li>
+        <li><strong>Petri nets as computation:</strong> The strategy comes from differential equations over graph topology &mdash; deterministic and reproducible. Not a neural network, but also not game-theoretically optimal. The heuristic is hand-tuned; the computation is verifiable.</li>
+        <li><strong>ZK proves computation, not correctness:</strong> The proof guarantees the ODE integration and scoring were performed honestly. It does not prove the strategy is good &mdash; only that the claimed scores match the actual computation.</li>
+        <li><strong>Practical on-chain cost:</strong> ~450k gas per verified move on Base Sepolia. Comparable to a Uniswap swap. The contract checks consistency with the heuristic without re-running any computation on-chain.</li>
+        <li><strong>General pattern:</strong> Any Petri net can be evaluated with mass-action kinetics, proved with Groth16, and verified on-chain. The circuit generator is parametric over net topology. Tic-tac-toe is the smallest interesting example &mdash; the pipeline works the same way for larger nets.</li>
       </ol>
     </section>
   </div>
