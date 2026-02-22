@@ -515,7 +515,7 @@ ZK-proven ODE state machine contracts deployed on Base Sepolia.
 - **Config:** numTransitions=2, enforceOptimal=true, 5 public inputs
 - **First on-chain proof:** [tx `0xeaa4bae9...`](https://sepolia.basescan.org/tx/0xeaa4bae92172acb2e4c024142b279eb5fb0417631c698a6e16a39e306a41ba0e)
 
-### TTT Heatmap Contracts (32 places, 9 cell positions)
+### TTT Heatmap Contracts (33 places, 35 transitions)
 
 | Contract | Address | Purpose |
 |----------|---------|---------|

@@ -502,7 +502,7 @@ function ensureODEValues(board = null) {
 }
 
 // Build Petri net for ODE with hypothetical move applied
-// Matches go-pflow structure: 30 places, 34 transitions
+// Matches go-pflow structure: 33 places, 35 transitions
 function buildODEPetriNet(board, currentPlayer, hypRow, hypCol) {
   const places = {}
   const transitions = {}

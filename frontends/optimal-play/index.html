@@ -54,7 +54,7 @@
         <div class="pipeline-stage" id="stage-ode">
           <div class="stage-icon">&#9881;</div>
           <div class="stage-name">Petri Net</div>
-          <div class="stage-desc">32 places, 34 transitions define the state machine. Mass-action kinetics derive rates from topology.</div>
+          <div class="stage-desc">33 places, 35 transitions define the state machine. Mass-action kinetics derive rates from topology.</div>
         </div>
         <div class="pipeline-arrow">&rarr;</div>
         <div class="pipeline-stage" id="stage-heatmap">
@@ -164,7 +164,7 @@
       <h2>How Scores Work</h2>
       <p class="card-desc">Base rates come from graph topology. Tactical adjustments are hand-tuned heuristics bolted on top. This is an ODE-derived heuristic, not game-theoretic optimality &mdash; tic-tac-toe was solved by minimax in the 1950s.</p>
       <ol class="info-list">
-        <li>The board is a <strong>Petri net</strong> with <strong>32 places</strong> and <strong>34 transitions</strong>. Each cell has three places (empty, X, O) plus five control places for turns, wins, and game state.</li>
+        <li>The board is a <strong>Petri net</strong> with <strong>33 places</strong> and <strong>35 transitions</strong>. Each cell has three places (empty, X, O) plus six control places for turns, wins, game state, and move counting.</li>
         <li><strong>Mass-action kinetics</strong> derive base rates from topology: <code>rate = k * &prod; inputs</code>. Rate constants are the number of win lines through each position &mdash; center <em>k</em>=4, corners <em>k</em>=3, edges <em>k</em>=2.</li>
         <li>The base rates alone don't detect immediate wins or threats. <strong>Tactical patches</strong> are added: +10.0 for completing 3-in-a-row, &minus;1.5 for leaving the opponent an unblocked threat. These are hand-tuned constants, not emergent properties.</li>
         <li>What the ZK proof guarantees: <strong>the computation was performed correctly</strong>. Not that the strategy is optimal in the game-theoretic sense &mdash; only that the ODE + heuristic scores were computed honestly.</li>
