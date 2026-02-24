@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galton Board</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%94%BB%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="galton-board"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Galton Board</h1>
+      <p>Topology produces Pascal's triangle &mdash; the binomial distribution emerges from Petri net structure alone</p>
+    </div>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="board-section">
+          <canvas id="board" width="460" height="580"></canvas>
+          <div class="board-status">
+            <span id="ball-count">Balls remaining: 256</span>
+          </div>
+        </div>
+
+        <div class="controls-section">
+          <h3>Controls</h3>
+          <div class="control-buttons">
+            <button class="btn btn-primary" id="btn-drop" onclick="dropBall()">Drop Ball</button>
+            <button class="btn btn-primary" id="btn-drop-all" onclick="dropAll()">Drop All 256</button>
+            <button class="btn btn-secondary" onclick="resetBoard()">Reset</button>
+          </div>
+          <label class="auto-label">
+            <input type="checkbox" id="auto-toggle" onchange="toggleAuto()">
+            Auto-drop
+            <input type="range" id="speed-slider" min="1" max="6" step="0.5" value="3" oninput="updateSpeed()">
+            <span id="speed-label">3.0x</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="distribution-section">
+          <h3>Distribution</h3>
+          <div class="dist-chart">
+            <div class="dist-column" id="dist-0">
+              <div class="dist-expected" id="exp-0"></div>
+              <div class="dist-observed" id="obs-0"></div>
+              <span class="dist-label">Bin 0</span>
+              <span class="dist-count" id="count-0">0</span>
+            </div>
+            <div class="dist-column" id="dist-1">
+              <div class="dist-expected" id="exp-1"></div>
+              <div class="dist-observed" id="obs-1"></div>
+              <span class="dist-label">Bin 1</span>
+              <span class="dist-count" id="count-1">0</span>
+            </div>
+            <div class="dist-column" id="dist-2">
+              <div class="dist-expected" id="exp-2"></div>
+              <div class="dist-observed" id="obs-2"></div>
+              <span class="dist-label">Bin 2</span>
+              <span class="dist-count" id="count-2">0</span>
+            </div>
+            <div class="dist-column" id="dist-3">
+              <div class="dist-expected" id="exp-3"></div>
+              <div class="dist-observed" id="obs-3"></div>
+              <span class="dist-label">Bin 3</span>
+              <span class="dist-count" id="count-3">0</span>
+            </div>
+            <div class="dist-column" id="dist-4">
+              <div class="dist-expected" id="exp-4"></div>
+              <div class="dist-observed" id="obs-4"></div>
+              <span class="dist-label">Bin 4</span>
+              <span class="dist-count" id="count-4">0</span>
+            </div>
+            <div class="dist-column" id="dist-5">
+              <div class="dist-expected" id="exp-5"></div>
+              <div class="dist-observed" id="obs-5"></div>
+              <span class="dist-label">Bin 5</span>
+              <span class="dist-count" id="count-5">0</span>
+            </div>
+            <div class="dist-column" id="dist-6">
+              <div class="dist-expected" id="exp-6"></div>
+              <div class="dist-observed" id="obs-6"></div>
+              <span class="dist-label">Bin 6</span>
+              <span class="dist-count" id="count-6">0</span>
+            </div>
+            <div class="dist-column" id="dist-7">
+              <div class="dist-expected" id="exp-7"></div>
+              <div class="dist-observed" id="obs-7"></div>
+              <span class="dist-label">Bin 7</span>
+              <span class="dist-count" id="count-7">0</span>
+            </div>
+            <div class="dist-column" id="dist-8">
+              <div class="dist-expected" id="exp-8"></div>
+              <div class="dist-observed" id="obs-8"></div>
+              <span class="dist-label">Bin 8</span>
+              <span class="dist-count" id="count-8">0</span>
+            </div>
+          </div>
+          <div class="dist-legend">
+            <span class="legend-item"><span class="legend-swatch observed"></span> Observed</span>
+            <span class="legend-item"><span class="legend-swatch expected"></span> Pascal's row: 1, 8, 28, 56, 70, 56, 28, 8, 1</span>
+          </div>
+        </div>
+
+        <div class="pascal-section">
+          <h3>Pascal's Triangle</h3>
+          <div class="pascal-triangle">
+            <div class="pascal-row"><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>2</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>3</span><span>3</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>4</span><span>6</span><span>4</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>5</span><span>10</span><span>10</span><span>5</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>6</span><span>15</span><span>20</span><span>15</span><span>6</span><span>1</span></div>
+            <div class="pascal-row"><span>1</span><span>7</span><span>21</span><span>35</span><span>35</span><span>21</span><span>7</span><span>1</span></div>
+            <div class="pascal-row highlight"><span>1</span><span>8</span><span>28</span><span>56</span><span>70</span><span>56</span><span>28</span><span>8</span><span>1</span></div>
+          </div>
+          <p class="pascal-note">Row 8 = C(8,k) for k=0..8. Each number counts the paths from top to that bin.</p>
+        </div>
+
+        <div class="explainer-section">
+          <h3>How It Works</h3>
+          <div class="explainer-content">
+            <p>Each <strong>peg</strong> is modeled as two competing Petri net transitions (left/right) sharing one input place. With equal rate constants, mass-action kinetics splits flow equally at each peg.</p>
+            <p>The <strong>bin counts</strong> are determined entirely by topology: bin <em>k</em> has C(8,k) paths leading to it. More paths = more flow = higher count. That's the binomial distribution.</p>
+            <p><strong>45 places</strong> (1 entry + 36 peg positions + 8 intermediate + 9 bins), <strong>72 transitions</strong> (2 per peg), <strong>256 balls</strong> (2<sup>8</sup>).</p>
+            <div style="margin-top: 1rem; text-align: center;">
+              <pflow-model-link model="galton-board" label="Explore the Petri Net Model"></pflow-model-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      const match = path.match(/^(\/(app\/)?([^\/]+))\//);
+      if (match) {
+        window.API_BASE = '/' + match[3];
+      } else {
+        window.API_BASE = '';
+      }
+    })();
+  </script>
+  <script type="module" src="/shared/nav.js?v=3"></script>
+  <script type="module" src="/shared/explainer.js"></script>
+  <script type="module" src="main.js"></script>
+  <site-footer></site-footer>
+</body>
+</html>

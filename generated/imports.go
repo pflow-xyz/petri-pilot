@@ -5,6 +5,7 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/coffeeshop"
 	_ "github.com/pflow-xyz/petri-pilot/generated/diningphilosophers"
 	_ "github.com/pflow-xyz/petri-pilot/generated/enzymekinetics"
+	_ "github.com/pflow-xyz/petri-pilot/generated/galtonboard"
 	_ "github.com/pflow-xyz/petri-pilot/generated/hiringpipeline"
 	_ "github.com/pflow-xyz/petri-pilot/generated/knapsack"
 	_ "github.com/pflow-xyz/petri-pilot/generated/loanapproval"
