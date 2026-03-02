@@ -55,9 +55,11 @@ func NewServer() *server.MCPServer {
 		s.AddTool(delegateTasksTool(), handleDelegateTasks)
 	}
 
-	// Service management tools for controlling generated services
-	for _, st := range ServiceTools() {
-		s.AddTool(st.Tool, st.Handler)
+	// Service management tools (only when explicitly enabled — local use only)
+	if os.Getenv("ENABLE_DELEGATE_TOOLS") != "" {
+		for _, st := range ServiceTools() {
+			s.AddTool(st.Tool, st.Handler)
+		}
 	}
 
 	// Register prompts for guided workflows
