@@ -48,10 +48,12 @@ func NewServer() *server.MCPServer {
 	s.AddTool(docsTool(), handleDocs)
 	s.AddTool(migrateTool(), handleMigrate)
 
-	// Delegate tools for GitHub Copilot integration
-	s.AddTool(delegateAppTool(), handleDelegateApp)
-	s.AddTool(delegateStatusTool(), handleDelegateStatus)
-	s.AddTool(delegateTasksTool(), handleDelegateTasks)
+	// Delegate tools for GitHub Copilot integration (only when GITHUB_TOKEN is set)
+	if os.Getenv("GITHUB_TOKEN") != "" {
+		s.AddTool(delegateAppTool(), handleDelegateApp)
+		s.AddTool(delegateStatusTool(), handleDelegateStatus)
+		s.AddTool(delegateTasksTool(), handleDelegateTasks)
+	}
 
 	// Service management tools for controlling generated services
 	for _, st := range ServiceTools() {
