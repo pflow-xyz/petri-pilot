@@ -50,6 +50,22 @@ petri-pilot mcp
 
 Petri-pilot runs as an MCP server. An LLM can design, validate, simulate, and generate without leaving the conversation.
 
+### Connect via Smithery
+
+Send this prompt to your agent:
+
+```
+curl https://smithery.ai/skill.md and connect to stackdump/pflow-pilot using smithery mcp add stackdump/pflow-pilot
+```
+
+Or install directly:
+
+```bash
+npx @smithery/cli install stackdump/pflow-pilot --client claude
+```
+
+### Run locally
+
 ```bash
 petri-pilot mcp
 ```
