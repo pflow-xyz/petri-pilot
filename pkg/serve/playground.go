@@ -1253,11 +1253,20 @@ func PflowHandler() http.HandlerFunc {
       return svg;
     }
 
-    // Handle base64-encoded JSON import (used by code-to-flow)
+    // Handle model import (used by code-to-flow)
     var importData = params.get('import');
     if (importData) {
       try {
-        var jsonStr = decodeURIComponent(escape(atob(importData)));
+        var jsonStr;
+        if (importData === 'local') {
+          // Read from localStorage (same-origin transfer, avoids long URLs)
+          jsonStr = localStorage.getItem('pflow-import-model');
+          localStorage.removeItem('pflow-import-model');
+          if (!jsonStr) throw new Error('No model found in localStorage');
+        } else {
+          // Fallback: base64-encoded JSON in URL
+          jsonStr = decodeURIComponent(escape(atob(importData)));
+        }
         var importModel = JSON.parse(jsonStr);
         document.getElementById('pflow-loading').style.display = 'none';
         document.title = (importModel.name || 'Imported') + ' - Petri Net Viewer';

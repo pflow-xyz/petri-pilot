@@ -474,9 +474,8 @@ Examples of what works well:
     function openInViewer() {
       if (!lastResult) return;
       const model = typeof lastResult.model === 'string' ? JSON.parse(lastResult.model) : lastResult.model;
-      // Encode the model as a URI-safe base64 string in the hash
-      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(model))));
-      window.open(`/pflow?import=${encoded}`, '_blank');
+      localStorage.setItem('pflow-import-model', JSON.stringify(model));
+      window.open('/pflow?import=local', '_blank');
     }
 
     function copyJSON() {
