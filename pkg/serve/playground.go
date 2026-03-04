@@ -1253,6 +1253,29 @@ func PflowHandler() http.HandlerFunc {
       return svg;
     }
 
+    // Handle base64-encoded JSON import (used by code-to-flow)
+    var importData = params.get('import');
+    if (importData) {
+      try {
+        var jsonStr = decodeURIComponent(escape(atob(importData)));
+        var importModel = JSON.parse(jsonStr);
+        document.getElementById('pflow-loading').style.display = 'none';
+        document.title = (importModel.name || 'Imported') + ' - Petri Net Viewer';
+        var jsonLd = convertToPflowFormat(importModel);
+        var pv = document.createElement('petri-view');
+        var script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.textContent = JSON.stringify(jsonLd, null, 2);
+        pv.appendChild(script);
+        document.body.appendChild(pv);
+      } catch(e) {
+        document.getElementById('pflow-loading').style.display = 'none';
+        document.getElementById('pflow-error').style.display = 'flex';
+        document.getElementById('pflow-error-msg').textContent = 'Failed to import model: ' + e.message;
+      }
+      return;
+    }
+
     if (!modelName) {
       // Show home link only on list view
       document.getElementById('pflow-home').style.display = 'block';
@@ -1369,29 +1392,6 @@ func PflowHandler() http.HandlerFunc {
       });
       pv.appendChild(script);
       document.body.appendChild(pv);
-      return;
-    }
-
-    // Handle base64-encoded JSON import (used by code-to-flow)
-    var importData = params.get('import');
-    if (importData) {
-      try {
-        var jsonStr = decodeURIComponent(escape(atob(importData)));
-        var importModel = JSON.parse(jsonStr);
-        document.getElementById('pflow-loading').style.display = 'none';
-        document.title = (importModel.name || 'Imported') + ' - Petri Net Viewer';
-        var jsonLd = convertToPflowFormat(importModel);
-        var pv = document.createElement('petri-view');
-        var script = document.createElement('script');
-        script.type = 'application/ld+json';
-        script.textContent = JSON.stringify(jsonLd, null, 2);
-        pv.appendChild(script);
-        document.body.appendChild(pv);
-      } catch(e) {
-        document.getElementById('pflow-loading').style.display = 'none';
-        document.getElementById('pflow-error').style.display = 'flex';
-        document.getElementById('pflow-error-msg').textContent = 'Failed to import model: ' + e.message;
-      }
       return;
     }
 
