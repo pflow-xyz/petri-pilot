@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code to Flow | Petri-Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 1.5rem;
+      color: #818cf8;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.4rem;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+
+    /* Layout: two-column on desktop, stacked on mobile */
+    .converter {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      min-height: 500px;
+    }
+
+    @media (max-width: 768px) {
+      .converter { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .panel-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Code input */
+    textarea {
+      flex: 1;
+      min-height: 400px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      padding: 1rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      border-color: #818cf8;
+    }
+    textarea::placeholder {
+      color: #555;
+    }
+
+    /* Controls row */
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    select {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus { border-color: #818cf8; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #5558e6; }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #2a2a4a;
+      color: #e0e0e0;
+    }
+    .btn-secondary:hover { background: #3a3a5a; }
+
+    .btn-open {
+      background: #059669;
+      color: #fff;
+    }
+    .btn-open:hover { background: #047857; }
+
+    /* Result panel */
+    .result-area {
+      flex: 1;
+      min-height: 400px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow: auto;
+      position: relative;
+    }
+
+    .result-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #555;
+      text-align: center;
+      gap: 0.75rem;
+    }
+
+    .result-placeholder .icon {
+      font-size: 2.5rem;
+      opacity: 0.4;
+    }
+
+    /* Loading spinner */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a2a4a;
+      border-top-color: #818cf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    /* Model result */
+    .model-result {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .model-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-valid {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+    }
+
+    .badge-invalid {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .badge-pattern {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+    }
+
+    .badge-stat {
+      background: rgba(255, 255, 255, 0.08);
+      color: #aaa;
+    }
+
+    .model-json {
+      flex: 1;
+      overflow: auto;
+      background: #12121f;
+      border-radius: 6px;
+      padding: 0.75rem;
+    }
+
+    .model-json pre {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: #c0c0d0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* Error display */
+    .error-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      padding: 1rem;
+      color: #fca5a5;
+      font-size: 0.85rem;
+    }
+
+    .error-box strong {
+      color: #ef4444;
+    }
+
+    /* Validation warnings */
+    .warnings {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.2);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="/" class="back-link">&larr; Back to Petri-Pilot</a>
+
+    <h1>Code to Flow</h1>
+    <p class="subtitle">Paste source code and convert it into a formal Petri net model. Supports any language.</p>
+
+    <div class="converter">
+      <!-- Input panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label">Source Code</span>
+        </div>
+        <textarea id="code-input" placeholder="Paste your code here...
+
+Examples of what works well:
+  - State machines and enums
+  - Workflow / pipeline logic
+  - Producer-consumer patterns
+  - Resource pool management
+  - Concurrent goroutines / threads
+  - API request handlers with state"></textarea>
+        <div class="controls">
+          <select id="language-select">
+            <option value="">Auto-detect language</option>
+            <option value="go">Go</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="java">Java</option>
+            <option value="rust">Rust</option>
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+            <option value="ruby">Ruby</option>
+            <option value="solidity">Solidity</option>
+          </select>
+          <select id="focus-select">
+            <option value="">Auto-detect focus</option>
+            <option value="control-flow">Control Flow</option>
+            <option value="state-machine">State Machine</option>
+            <option value="resources">Resources</option>
+            <option value="concurrency">Concurrency</option>
+          </select>
+          <button id="convert-btn" class="btn btn-primary" onclick="convert()">
+            Convert
+          </button>
+        </div>
+      </div>
+
+      <!-- Result panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label">Petri Net Model</span>
+        </div>
+        <div id="result-area" class="result-area">
+          <div class="result-placeholder">
+            <span class="icon">&#8644;</span>
+            <p>Your Petri net model will appear here</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const codeInput = document.getElementById('code-input');
+    const languageSelect = document.getElementById('language-select');
+    const focusSelect = document.getElementById('focus-select');
+    const convertBtn = document.getElementById('convert-btn');
+    const resultArea = document.getElementById('result-area');
+
+    let lastResult = null;
+
+    async function convert() {
+      const code = codeInput.value.trim();
+      if (!code) return;
+
+      // Show loading
+      convertBtn.disabled = true;
+      convertBtn.textContent = 'Converting...';
+      resultArea.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <span class="loading-text">Analyzing code structure...</span>
+        </div>
+      `;
+
+      try {
+        const body = { code };
+        const lang = languageSelect.value;
+        const focus = focusSelect.value;
+        if (lang) body.language = lang;
+        if (focus) body.focus = focus;
+
+        const resp = await fetch('/api/code-to-flow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ error: resp.statusText }));
+          throw new Error(err.error || `HTTP ${resp.status}`);
+        }
+
+        lastResult = await resp.json();
+        renderResult(lastResult);
+      } catch (err) {
+        resultArea.innerHTML = `
+          <div class="error-box">
+            <strong>Error:</strong> ${escapeHtml(err.message)}
+          </div>
+        `;
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.textContent = 'Convert';
+      }
+    }
+
+    function renderResult(result) {
+      const model = typeof result.model === 'string' ? JSON.parse(result.model) : result.model;
+      const modelName = model.name || 'untitled';
+      const prettyJSON = JSON.stringify(model, null, 2);
+
+      let html = '<div class="model-result">';
+
+      // Badges
+      html += '<div class="model-meta">';
+      html += result.valid
+        ? '<span class="badge badge-valid">&#10003; Valid</span>'
+        : '<span class="badge badge-invalid">&#10007; Invalid</span>';
+      if (result.pattern) {
+        html += `<span class="badge badge-pattern">${escapeHtml(result.pattern)}</span>`;
+      }
+      html += `<span class="badge badge-stat">${escapeHtml(result.summary)}</span>`;
+      html += '</div>';
+
+      // Warnings
+      if (result.warnings && result.warnings.length > 0) {
+        html += '<div class="warnings">';
+        result.warnings.forEach(w => {
+          html += `<div>${escapeHtml(w.message || w.Message || JSON.stringify(w))}</div>`;
+        });
+        html += '</div>';
+      }
+
+      // Errors
+      if (result.errors && result.errors.length > 0) {
+        html += '<div class="error-box" style="margin-bottom:0.5rem">';
+        result.errors.forEach(e => {
+          html += `<div>${escapeHtml(e.message || e.Message || JSON.stringify(e))}</div>`;
+        });
+        html += '</div>';
+      }
+
+      // JSON
+      html += `<div class="model-json"><pre>${escapeHtml(prettyJSON)}</pre></div>`;
+
+      // Actions
+      html += '<div class="result-actions">';
+      html += `<button class="btn btn-open" onclick="openInViewer()">Open in Viewer</button>`;
+      html += `<button class="btn btn-secondary" onclick="copyJSON()">Copy JSON</button>`;
+      html += '</div>';
+
+      html += '</div>';
+      resultArea.innerHTML = html;
+    }
+
+    function openInViewer() {
+      if (!lastResult) return;
+      const model = typeof lastResult.model === 'string' ? JSON.parse(lastResult.model) : lastResult.model;
+      // Encode the model as a URI-safe base64 string in the hash
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(model))));
+      window.open(`/pflow?import=${encoded}`, '_blank');
+    }
+
+    function copyJSON() {
+      if (!lastResult) return;
+      const model = typeof lastResult.model === 'string' ? JSON.parse(lastResult.model) : lastResult.model;
+      navigator.clipboard.writeText(JSON.stringify(model, null, 2));
+      // Brief visual feedback
+      const btn = resultArea.querySelector('.btn-secondary');
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // Allow Ctrl+Enter to trigger convert
+    codeInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        convert();
+      }
+    });
+  </script>
+</body>
+</html>

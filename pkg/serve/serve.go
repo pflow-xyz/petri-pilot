@@ -223,6 +223,9 @@ func RunMultiple(names []string, opts Options) error {
 	// Register deploy webhook/admin routes
 	RegisterDeployRoutes(mux)
 
+	// Register code-to-flow API (requires ANTHROPIC_API_KEY)
+	RegisterCodeToFlowAPI(mux)
+
 	// Register custom routes if provided
 	if opts.CustomRoutes != nil {
 		opts.CustomRoutes(mux)
