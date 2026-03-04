@@ -471,11 +471,14 @@ Examples of what works well:
       resultArea.innerHTML = html;
     }
 
-    function openInViewer() {
+    async function openInViewer() {
       if (!lastResult) return;
       const model = typeof lastResult.model === 'string' ? JSON.parse(lastResult.model) : lastResult.model;
-      localStorage.setItem('pflow-import-model', JSON.stringify(model));
-      window.open('/pflow?import=local', '_blank');
+      const json = JSON.stringify(model);
+      const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(json))))
+        .slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('pflow-model-' + hash, json);
+      window.open('/pflow?import=' + hash, '_blank');
     }
 
     function copyJSON() {

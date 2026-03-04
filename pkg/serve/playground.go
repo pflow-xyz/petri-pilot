@@ -1258,12 +1258,16 @@ func PflowHandler() http.HandlerFunc {
     if (importData) {
       try {
         var jsonStr;
-        if (importData === 'local') {
-          // Read from localStorage (same-origin transfer, avoids long URLs)
+        // Try content-addressed localStorage key first
+        jsonStr = localStorage.getItem('pflow-model-' + importData);
+        if (jsonStr) {
+          localStorage.removeItem('pflow-model-' + importData);
+        } else if (importData === 'local') {
+          // Legacy: unkeyed localStorage transfer
           jsonStr = localStorage.getItem('pflow-import-model');
           localStorage.removeItem('pflow-import-model');
-          if (!jsonStr) throw new Error('No model found in localStorage');
-        } else {
+        }
+        if (!jsonStr) {
           // Fallback: base64-encoded JSON in URL
           jsonStr = decodeURIComponent(escape(atob(importData)));
         }
