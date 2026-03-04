@@ -75,6 +75,7 @@ petri-pilot mcp
 | `petri_validate` | Structural correctness |
 | `petri_analyze` | Reachability, deadlocks, liveness |
 | `petri_simulate` | Fire transitions, trace state |
+| `petri_code_to_flow` | Convert source code into a Petri net model |
 | `petri_codegen` | Generate Go backend |
 | `petri_frontend` | Generate ES modules frontend |
 | `petri_application` | Full-stack from high-level spec |

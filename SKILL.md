@@ -9,6 +9,7 @@ petri-pilot is an MCP server that lets LLMs design, validate, simulate, and gene
 ## Capabilities
 
 - **Model design**: Validate and analyze Petri net models for correctness, deadlocks, and liveness
+- **Code to flow**: Convert source code into formal Petri net models (requires ANTHROPIC_API_KEY)
 - **Simulation**: Fire transitions and trace state changes before generating code
 - **Code generation**: Produce Go backends with SQLite, event sourcing, and REST APIs
 - **Frontend generation**: Generate vanilla ES modules frontends (no React/npm bloat)

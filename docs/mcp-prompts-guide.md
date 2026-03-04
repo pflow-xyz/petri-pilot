@@ -17,6 +17,7 @@ MCP (Model Context Protocol) prompts are interactive guides that help LLMs desig
 | `design-workflow` | Design a new Petri net model from requirements | Starting a new workflow |
 | `add-access-control` | Add roles and permissions to a model | Implementing security |
 | `add-views` | Design UI views and forms | Creating user interfaces |
+| `code-to-flow` | Convert source code into a Petri net model | Reverse-engineering existing code |
 
 ## Using Prompts
 
@@ -464,6 +465,48 @@ Complete model with views:
   ]
 }
 ```
+
+## Prompt: code-to-flow
+
+**Purpose**: Guide through converting source code into a formal Petri net model.
+
+### When to Use
+
+- Reverse-engineering existing code into a workflow model
+- Extracting state machines from source code
+- Modeling resource allocation patterns from code
+- Understanding concurrency patterns in existing systems
+
+### Input Parameters
+
+- `language` (optional): Programming language of the source code (e.g., go, python, javascript)
+
+### What You Get
+
+Step-by-step guidance for:
+
+1. **Choosing an analysis focus** — control flow, state machine, resources, or concurrency
+2. **Using the `petri_code_to_flow` tool** — automatically converts code to a validated Petri net model
+3. **Refining the result** — validate, analyze, simulate, and extend the generated model
+4. **Generating code** — compile the model into a running application
+
+### Example Usage
+
+```
+# Use the tool directly
+petri_code_to_flow(
+  code: "func processOrder(o Order) error { ... }",
+  language: "go",
+  focus: "state-machine",
+  name: "order-processing"
+)
+
+# Returns: validated model + pattern detection + preview URL
+```
+
+### Requirements
+
+The `petri_code_to_flow` tool requires `ANTHROPIC_API_KEY` to be set (it uses Claude to analyze code).
 
 ## Combining Prompts
 

@@ -44,6 +44,7 @@
     "petri_application",
     "petri_docs",
     "petri_migrate",
+    "petri_code_to_flow",
     "delegate_app",
     "delegate_status",
     "delegate_tasks",
