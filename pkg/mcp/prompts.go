@@ -492,3 +492,75 @@ What data fields do you want to display, and which transitions should be availab
 		messages,
 	), nil
 }
+
+// handleCodeToFlowPrompt guides through converting source code into a Petri net model.
+func handleCodeToFlowPrompt(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	language := request.Params.Arguments["language"]
+	if language == "" {
+		language = "any language"
+	}
+
+	messages := []mcp.PromptMessage{
+		mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent(fmt.Sprintf(`I want to convert %s source code into a Petri net model. Guide me through the process.`, language))),
+		mcp.NewPromptMessage(mcp.RoleAssistant, mcp.NewTextContent(`I'll help you convert source code into a formal Petri net model. Here's the step-by-step process:
+
+## Step 1: Identify the Analysis Focus
+
+What aspect of your code do you want to model?
+
+- **Control flow**: Function call sequences, branching, loops
+- **State machine**: State variables, enum transitions, FSM patterns
+- **Resources**: Connection pools, inventory, bounded buffers
+- **Concurrency**: Goroutines/threads, channels, mutexes, producer-consumer
+
+## Step 2: Provide Your Code
+
+Paste your source code. I'll analyze it to extract:
+- **Places** (states, conditions, resources)
+- **Transitions** (actions, events, operations)
+- **Arcs** (flow between places and transitions)
+
+## Step 3: Generate the Model
+
+Use the `+"`petri_code_to_flow`"+` tool to automatically convert your code:
+
+`+"```"+`
+petri_code_to_flow(
+  code: "your source code here",
+  language: "go",           // optional: auto-detected
+  focus: "state-machine",   // optional: control-flow | state-machine | resources | concurrency
+  name: "my-model"          // optional: model name
+)
+`+"```"+`
+
+The tool will:
+1. Analyze your code structure
+2. Generate a valid Petri net model
+3. Validate the model for structural correctness
+4. Detect the model pattern (workflow, state machine, resource pool)
+5. Provide a preview URL for visualization
+
+## Step 4: Refine
+
+After generation, you can:
+- **Validate**: `+"`petri_validate(model)`"+` to check structure
+- **Analyze**: `+"`petri_analyze(model)`"+` for reachability and deadlock analysis
+- **Simulate**: `+"`petri_simulate(model, transitions)`"+` to test behavior
+- **Extend**: `+"`petri_extend(model, operations)`"+` to add/remove elements
+- **Generate code**: `+"`petri_codegen(model)`"+` to produce a working application
+
+## Tips
+
+- Start with the **simplest representation** — you can always add detail later
+- Focus on **states and transitions**, not implementation details
+- Each place should represent a meaningful condition or resource
+- Each transition should represent a discrete action or event
+
+Please paste your source code, and optionally tell me which analysis focus you'd like.`)),
+	}
+
+	return mcp.NewGetPromptResult(
+		"Guide through converting source code into a Petri net model",
+		messages,
+	), nil
+}

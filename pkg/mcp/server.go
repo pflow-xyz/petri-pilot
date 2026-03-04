@@ -48,6 +48,11 @@ func NewServer() *server.MCPServer {
 	s.AddTool(docsTool(), handleDocs)
 	s.AddTool(migrateTool(), handleMigrate)
 
+	// Code-to-flow tool (requires ANTHROPIC_API_KEY for LLM calls)
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		s.AddTool(codeToFlowTool(), handleCodeToFlow)
+	}
+
 	// Delegate tools for GitHub Copilot integration (only when explicitly enabled)
 	if os.Getenv("ENABLE_DELEGATE_TOOLS") != "" {
 		s.AddTool(delegateAppTool(), handleDelegateApp)
@@ -85,6 +90,14 @@ func NewServer() *server.MCPServer {
 			mcp.WithArgument("model", mcp.ArgumentDescription("Optional: The Petri net model JSON to add views to")),
 		),
 		handleAddViewsPrompt,
+	)
+
+	s.AddPrompt(
+		mcp.NewPrompt("code-to-flow",
+			mcp.WithPromptDescription("Guide through converting source code into a Petri net model"),
+			mcp.WithArgument("language", mcp.ArgumentDescription("Programming language of the code (e.g., go, python, javascript)")),
+		),
+		handleCodeToFlowPrompt,
 	)
 
 	// Register resources
