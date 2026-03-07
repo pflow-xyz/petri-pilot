@@ -457,11 +457,13 @@
       <p>
         Petri nets are a mathematical formalism for modeling systems with state and flow &mdash;
         from business workflows and game mechanics to biochemical reactions and network protocols.
+        <a href="https://pflow.xyz">Draw</a> models visually, <strong>generate</strong> full-stack
+        applications here, and <a href="https://blog.stackdump.com/posts/zk-petri-nets/">prove</a>
+        execution with zero-knowledge proofs.
         Define <code>places</code> (state), <code>transitions</code> (actions), and
         <code>arcs</code> (connections). Petri-Pilot supports several
         <a href="https://pflow.xyz/schema">model types</a>, each suited to a different class
-        of problem. The runtime handles state management, access control, event sourcing,
-        and ODE simulation.
+        of problem.
       </p>
       <div class="type-list">
         <a href="#games" class="type-pill"><span>&#9823;</span> GameNet</a>
@@ -486,7 +488,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 110" style="width:2.5rem;height:2.5rem;fill:rgba(255,255,255,0.8);vertical-align:middle;"><path d="M100.88 28.02H78.46v5.61h-5.6v5.6h-5.6v-5.6h5.6v-5.61h5.6V5.6h-5.6V0H61.65v5.6h-5.6v28.02h-5.6V5.6h-5.6V0H33.64v5.6h-5.6v22.42h5.6v5.61h5.6v5.6h-5.6v-5.6h-5.6v-5.61H5.6v5.61H0v11.21h5.6v5.6h28.02v5.6H5.6v5.61H0v11.21h5.6v5.6h22.42v-5.6h5.6v-5.61h5.6v5.61h-5.6v5.6h-5.6v22.42h5.6v5.6h11.21v-5.6h5.6V72.86h5.6v28.02h5.6v5.6h11.21v-5.6h5.6V78.46h-5.6v-5.6h-5.6v-5.61h5.6v5.61h5.6v5.6h22.42v-5.6h5.6V61.65h-5.6v-5.61H72.84v-5.6h28.02v-5.6h5.6V33.63h-5.6v-5.61zM67.25 56.04v5.61h-5.6v5.6H44.84v-5.6h-5.6V44.84h5.6v-5.6h16.81v5.6h5.6v11.21z"/></svg>
         </span>
         <h3 class="demo-name">Petri Net Viewer</h3>
-        <p class="demo-desc">Browse all models, visualize their structure, run ODE simulations, and design new nets from scratch. Export JSON for use with any pflow runtime.</p>
+        <p class="demo-desc">Browse all models, visualize their structure, and run ODE simulations. Design new nets from scratch with <a href="https://pflow.xyz" style="color:#ffcc00;text-decoration:none;" onclick="event.stopPropagation()">pflow.xyz</a>, then generate code here.</p>
         <div class="demo-meta">
           <span class="demo-tag">editor</span>
           <span class="demo-tag">visualization</span>
@@ -818,13 +820,13 @@
 
   <footer class="footer">
     <p>
-      <a href="https://github.com/pflow-xyz/petri-pilot">petri-pilot</a>
-      &nbsp;&middot;&nbsp;
-      <a href="https://github.com/pflow-xyz/go-pflow">go-pflow</a>
-      &nbsp;&middot;&nbsp;
       <a href="https://pflow.xyz">pflow.xyz</a>
       &nbsp;&middot;&nbsp;
+      <a href="https://book.pflow.xyz">book</a>
+      &nbsp;&middot;&nbsp;
       <a href="https://blog.stackdump.com">blog</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://github.com/pflow-xyz/petri-pilot">github</a>
     </p>
   </footer>
 
