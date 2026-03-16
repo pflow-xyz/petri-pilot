@@ -85,7 +85,7 @@
     <line x1="350" y1="0" x2="350" y2="50" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
     <line x1="570" y1="0" x2="400" y2="50" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
 
-    <rect x="240" y="55" width="220" height="60" rx="10" fill="#333" stroke="none"/>
+    <rect x="150" y="55" width="400" height="60" rx="10" fill="#333" stroke="none"/>
     <text x="350" y="78" style="font-size:14px; fill:#fff; text-anchor:middle; font-weight:700">Same Answer</text>
     <text x="350" y="96" style="font-size:11px; fill:rgba(255,255,255,0.8); text-anchor:middle">Duke 28.8% · Arizona 18.1% · Michigan 11.2%</text>
   </g>
