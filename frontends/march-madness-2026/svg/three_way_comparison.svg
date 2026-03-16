@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" font-family="system-ui, -apple-system, sans-serif">
+  <style>
+    .title { font-size: 15px; font-weight: 700; fill: #222; text-anchor: middle; }
+    .subtitle { font-size: 11px; fill: #666; text-anchor: middle; }
+    .team { font-size: 11px; fill: #333; text-anchor: end; }
+    .pct { font-size: 9px; fill: #555; text-anchor: start; }
+    .legend-text { font-size: 11px; fill: #333; }
+    .axis { stroke: #ccc; stroke-width: 1; }
+    .grid { stroke: #eee; stroke-width: 0.5; }
+    .tick { font-size: 9px; fill: #999; text-anchor: middle; }
+  </style>
+
+  <text x="360" y="24" class="title">Championship Probability: Three Methods Converge</text>
+  <text x="360" y="42" class="subtitle">Analytical (from C) vs ODE (t=500) vs Monte Carlo (10k sims)</text>
+
+  <!-- Legend -->
+  <g transform="translate(220, 52)">
+    <rect x="0" y="0" width="14" height="10" rx="2" fill="#1a5276"/>
+    <text x="20" y="9" class="legend-text">Analytical (C + rates)</text>
+    <rect x="160" y="0" width="14" height="10" rx="2" fill="#2e86c1"/>
+    <text x="180" y="9" class="legend-text">ODE (Model 6)</text>
+    <rect x="300" y="0" width="14" height="10" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+    <text x="320" y="9" class="legend-text">MC (10k sims)</text>
+  </g>
+
+  <g transform="translate(110, 75)">
+    <!-- Axis -->
+    <line x1="0" y1="0" x2="0" y2="330" class="axis"/>
+    <line x1="0" y1="330" x2="570" y2="330" class="axis"/>
+
+    <!-- Grid lines and tick labels -->
+    <line x1="0" y1="0" x2="570" y2="0" class="grid"/>
+    <text x="-8" y="4" class="tick" text-anchor="end">30%</text>
+    <line x1="0" y1="55" x2="570" y2="55" class="grid"/>
+    <text x="-8" y="59" class="tick" text-anchor="end">25%</text>
+    <line x1="0" y1="110" x2="570" y2="110" class="grid"/>
+    <text x="-8" y="114" class="tick" text-anchor="end">20%</text>
+    <line x1="0" y1="165" x2="570" y2="165" class="grid"/>
+    <text x="-8" y="169" class="tick" text-anchor="end">15%</text>
+    <line x1="0" y1="220" x2="570" y2="220" class="grid"/>
+    <text x="-8" y="224" class="tick" text-anchor="end">10%</text>
+    <line x1="0" y1="275" x2="570" y2="275" class="grid"/>
+    <text x="-8" y="279" class="tick" text-anchor="end">5%</text>
+
+    <!-- Duke: 28.76, 28.32, 29.4 -->
+    <g transform="translate(15, 0)">
+      <rect x="0" y="{14.8}" width="16" height="{315.2}" rx="2" fill="#1a5276"/>
+      <rect x="18" y="{19.6}" width="16" height="{310.4}" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="{8.6}" width="16" height="{321.4}" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+
+      <rect x="0"  y="14"  width="16" height="316" rx="2" fill="#1a5276"/>
+      <rect x="18" y="19"  width="16" height="311" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="7"   width="16" height="323" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Duke</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">28.8%</text>
+    </g>
+
+    <!-- Arizona: 18.13, 17.86, 17.9 -->
+    <g transform="translate(80, 0)">
+      <rect x="0"  y="131" width="16" height="199" rx="2" fill="#1a5276"/>
+      <rect x="18" y="134" width="16" height="196" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="134" width="16" height="196" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Arizona</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">18.1%</text>
+    </g>
+
+    <!-- Michigan: 11.21, 11.04, 11.1 -->
+    <g transform="translate(145, 0)">
+      <rect x="0"  y="207" width="16" height="123" rx="2" fill="#1a5276"/>
+      <rect x="18" y="209" width="16" height="121" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="208" width="16" height="122" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Michigan</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">11.2%</text>
+    </g>
+
+    <!-- Houston: 10.25, 10.09, 9.8 -->
+    <g transform="translate(210, 0)">
+      <rect x="0"  y="217" width="16" height="113" rx="2" fill="#1a5276"/>
+      <rect x="18" y="219" width="16" height="111" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="222" width="16" height="108" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Houston</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">10.3%</text>
+    </g>
+
+    <!-- Florida: 8.86, 8.73, 8.9 -->
+    <g transform="translate(275, 0)">
+      <rect x="0"  y="233" width="16" height="97" rx="2" fill="#1a5276"/>
+      <rect x="18" y="234" width="16" height="96" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="232" width="16" height="98" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Florida</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">8.9%</text>
+    </g>
+
+    <!-- Purdue: 5.39, 5.31, 5.3 -->
+    <g transform="translate(340, 0)">
+      <rect x="0"  y="271" width="16" height="59" rx="2" fill="#1a5276"/>
+      <rect x="18" y="272" width="16" height="58" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="272" width="16" height="58" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Purdue</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">5.4%</text>
+    </g>
+
+    <!-- Iowa St: 3.56, 3.50, 3.5 -->
+    <g transform="translate(405, 0)">
+      <rect x="0"  y="291" width="16" height="39" rx="2" fill="#1a5276"/>
+      <rect x="18" y="292" width="16" height="38" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="292" width="16" height="38" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">Iowa St</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">3.5%</text>
+    </g>
+
+    <!-- UConn: 3.33, 3.28, 3.3 -->
+    <g transform="translate(470, 0)">
+      <rect x="0"  y="293" width="16" height="37" rx="2" fill="#1a5276"/>
+      <rect x="18" y="294" width="16" height="36" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="294" width="16" height="36" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">UConn</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">3.3%</text>
+    </g>
+
+    <!-- Others: remaining 8 teams as tiny bars -->
+    <g transform="translate(535, 0)">
+      <rect x="0"  y="300" width="16" height="30" rx="2" fill="#1a5276"/>
+      <rect x="18" y="301" width="16" height="29" rx="2" fill="#2e86c1"/>
+      <rect x="36" y="301" width="16" height="29" rx="2" fill="#85c1e9" stroke="#5dade2" stroke-width="0.5"/>
+      <text x="26" y="346" class="team" text-anchor="middle" font-size="10px">+8 more</text>
+      <text x="26" y="358" class="pct" text-anchor="middle" style="font-size:8px">&lt;3%</text>
+    </g>
+  </g>
+
+  <!-- Annotation -->
+  <g transform="translate(360, 422)">
+    <text x="0" y="0" class="subtitle" text-anchor="middle">All three methods compute the same function of the incidence matrix C and rate vector r</text>
+  </g>
+</svg>

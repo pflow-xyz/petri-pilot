@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>March Madness 2026</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8F%80%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <site-header current="march-madness-2026"></site-header>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>March Madness 2026</h1>
+      <p>NCAA bracket as a Petri net &mdash; ODE, Monte Carlo, and analytical methods converge on the same answer</p>
+    </div>
+
+    <div class="main-content">
+
+      <section class="section">
+        <h2>Championship Probabilities</h2>
+        <p>16 teams, 4 rounds, 240 transitions. Three independent methods &mdash; ODE simulation, Monte Carlo sampling, and closed-form analytical propagation &mdash; all compute the same probabilities from the incidence matrix C.</p>
+        <div class="results-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Seed</th>
+                <th>Analytical</th>
+                <th>ODE</th>
+                <th>MC (10k)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="highlight"><td>Duke</td><td>1</td><td>28.76%</td><td>28.32%</td><td>29.4%</td></tr>
+              <tr><td>Arizona</td><td>1</td><td>18.13%</td><td>17.86%</td><td>17.9%</td></tr>
+              <tr><td>Michigan</td><td>1</td><td>11.21%</td><td>11.04%</td><td>11.1%</td></tr>
+              <tr><td>Houston</td><td>2</td><td>10.25%</td><td>10.09%</td><td>9.8%</td></tr>
+              <tr><td>Florida</td><td>1</td><td>8.86%</td><td>8.73%</td><td>8.9%</td></tr>
+              <tr><td>Purdue</td><td>2</td><td>5.39%</td><td>5.31%</td><td>5.3%</td></tr>
+              <tr><td>Iowa State</td><td>2</td><td>3.56%</td><td>3.50%</td><td>3.5%</td></tr>
+              <tr><td>UConn</td><td>2</td><td>3.33%</td><td>3.28%</td><td>3.3%</td></tr>
+              <tr><td>Illinois</td><td>3</td><td>2.57%</td><td>2.53%</td><td>2.5%</td></tr>
+              <tr><td>Gonzaga</td><td>3</td><td>2.16%</td><td>2.13%</td><td>2.2%</td></tr>
+              <tr><td>Michigan St</td><td>3</td><td>1.52%</td><td>1.50%</td><td>1.5%</td></tr>
+              <tr><td>St John's</td><td>5</td><td>1.36%</td><td>1.34%</td><td>1.3%</td></tr>
+              <tr><td>Virginia</td><td>3</td><td>1.13%</td><td>1.11%</td><td>1.1%</td></tr>
+              <tr><td>Alabama</td><td>4</td><td>0.95%</td><td>0.93%</td><td>0.9%</td></tr>
+              <tr><td>Kansas</td><td>4</td><td>0.49%</td><td>0.48%</td><td>0.5%</td></tr>
+              <tr><td>Nebraska</td><td>4</td><td>0.33%</td><td>0.33%</td><td>0.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Three Nets, Two Methods</h2>
+        <p>We built three Petri net models with different topologies. The surprise: coupled transitions don't cause ODE/MC disagreement. Binary tokens do.</p>
+        <div class="svg-container">
+          <img src="svg/net_topologies.svg" alt="Three test case net structures">
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>When Do ODE and Monte Carlo Agree?</h2>
+        <p>Two axes determine agreement: coupling (how many inputs per transition) and token count (binary vs multi-token). Only the bottom-right cell disagrees.</p>
+        <div class="svg-container">
+          <img src="svg/agreement_matrix.svg" alt="Agreement characterization matrix">
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>The Incidence Matrix as Bridge</h2>
+        <p>The incidence matrix C defines all three methods. ODE flows probability mass through C continuously. MC routes tokens through C discretely. The analytical formula reads the answer directly from C.</p>
+        <div class="svg-container">
+          <img src="svg/incidence_bridge.svg" alt="Incidence matrix as universal bridge">
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Three Methods Converge</h2>
+        <p>Championship probabilities from analytical (exact), ODE (asymptotic), and Monte Carlo (sampled) methods. All agree because they compute the same function of C.</p>
+        <div class="svg-container">
+          <img src="svg/three_way_comparison.svg" alt="Three-way comparison bar chart">
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Data Sources</h2>
+        <p>Team strength metrics normalized to 0&ndash;100 scale from three sources:</p>
+        <ul>
+          <li><strong>Barttorvik</strong> &mdash; Adjusted offensive/defensive efficiency, Barthag, SOS, WAB</li>
+          <li><strong>NCAA API</strong> &mdash; Win-loss records, conference records</li>
+          <li><strong>Sports-Reference</strong> &mdash; Minutes distribution, bench scoring, roster depth</li>
+        </ul>
+        <p>Five facets: Offense (20%), Defense (25%), Record (20%), Momentum (20%), Depth (15%). Win probability via logistic function: P(A beats B) = 1 / (1 + exp(-0.15 * (str_A - str_B))).</p>
+      </section>
+
+      <section class="section links-section">
+        <h2>Further Reading</h2>
+        <ul>
+          <li><a href="https://blog.stackdump.com/posts/incidence-bridge">March Madness Without Monte Carlo</a> &mdash; blog post with full analysis</li>
+          <li><a href="https://blog.stackdump.com/posts/integer-reduction">The Incidence Reduction</a> &mdash; ODE equilibrium recovers integers from topology</li>
+          <li><a href="https://blog.stackdump.com/posts/earned-compression">Earned Compression</a> &mdash; three formalisms discover the same structural boundary</li>
+          <li><a href="/pflow">Petri Net Viewer</a> &mdash; browse the bracket net model</li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+
+  <script type="module" src="/shared/nav.js"></script>
+</body>
+</html>

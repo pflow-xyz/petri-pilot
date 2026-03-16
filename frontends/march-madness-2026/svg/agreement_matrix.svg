@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 380" font-family="system-ui, -apple-system, sans-serif">
+  <style>
+    .title { font-size: 16px; font-weight: 700; fill: #222; text-anchor: middle; }
+    .axis-label { font-size: 13px; font-weight: 600; fill: #444; text-anchor: middle; }
+    .cell-label { font-size: 12px; fill: #333; text-anchor: middle; }
+    .cell-sub { font-size: 10px; fill: #666; text-anchor: middle; }
+    .model-tag { font-size: 10px; font-weight: 600; text-anchor: middle; }
+    .agree { fill: #d4edda; stroke: #28a745; }
+    .disagree { fill: #f8d7da; stroke: #dc3545; }
+    .header { fill: #e9ecef; stroke: #adb5bd; }
+  </style>
+
+  <text x="310" y="28" class="title">When Do ODE and Monte Carlo Agree?</text>
+
+  <!-- Column headers -->
+  <g transform="translate(200, 45)">
+    <rect x="0" y="0" width="190" height="40" rx="4" class="header" stroke-width="1"/>
+    <text x="95" y="18" class="axis-label">Tokens ∈ {0, 1}</text>
+    <text x="95" y="33" class="cell-sub">binary / single molecule</text>
+  </g>
+  <g transform="translate(400, 45)">
+    <rect x="0" y="0" width="190" height="40" rx="4" class="header" stroke-width="1"/>
+    <text x="95" y="18" class="axis-label">Tokens &gt;&gt; 1</text>
+    <text x="95" y="33" class="cell-sub">multi-token pools</text>
+  </g>
+
+  <!-- Row headers -->
+  <g transform="translate(10, 95)">
+    <rect x="0" y="0" width="180" height="60" rx="4" class="header" stroke-width="1"/>
+    <text x="90" y="22" class="axis-label">≤ 1 variable input</text>
+    <text x="90" y="38" class="cell-sub">per transition</text>
+    <text x="90" y="52" class="cell-sub">(linear kinetics)</text>
+  </g>
+  <g transform="translate(10, 165)">
+    <rect x="0" y="0" width="180" height="60" rx="4" class="header" stroke-width="1"/>
+    <text x="90" y="22" class="axis-label">≥ 2 variable inputs</text>
+    <text x="90" y="38" class="cell-sub">per transition</text>
+    <text x="90" y="52" class="cell-sub">(nonlinear kinetics)</text>
+  </g>
+
+  <!-- Cell: Linear + Binary → AGREE -->
+  <g transform="translate(200, 95)">
+    <rect x="0" y="0" width="190" height="60" rx="4" class="agree" stroke-width="1.5"/>
+    <text x="95" y="22" class="cell-label" fill="#155724" font-weight="700">AGREE</text>
+    <text x="95" y="38" class="cell-sub" fill="#155724">trivially linear</text>
+    <text x="95" y="52" class="model-tag" fill="#155724">(Model 4 with 1 token)</text>
+  </g>
+
+  <!-- Cell: Linear + Multi → AGREE -->
+  <g transform="translate(400, 95)">
+    <rect x="0" y="0" width="190" height="60" rx="4" class="agree" stroke-width="1.5"/>
+    <text x="95" y="22" class="cell-label" fill="#155724" font-weight="700">AGREE</text>
+    <text x="95" y="38" class="cell-sub" fill="#155724">CME closes at 1st moment</text>
+    <text x="95" y="52" class="model-tag" fill="#155724">Model 4 · 100 tokens</text>
+  </g>
+
+  <!-- Cell: Nonlinear + Binary → AGREE -->
+  <g transform="translate(200, 165)">
+    <rect x="0" y="0" width="190" height="60" rx="4" class="agree" stroke-width="1.5"/>
+    <text x="95" y="22" class="cell-label" fill="#155724" font-weight="700">AGREE</text>
+    <text x="95" y="38" class="cell-sub" fill="#155724">A×B collapses to indicator</text>
+    <text x="95" y="52" class="model-tag" fill="#155724">Model 6 · bracket net</text>
+  </g>
+
+  <!-- Cell: Nonlinear + Multi → DISAGREE -->
+  <g transform="translate(400, 165)">
+    <rect x="0" y="0" width="190" height="60" rx="4" class="disagree" stroke-width="1.5"/>
+    <text x="95" y="22" class="cell-label" fill="#721c24" font-weight="700">DISAGREE</text>
+    <text x="95" y="38" class="cell-sub" fill="#721c24">rich-get-richer feedback</text>
+    <text x="95" y="52" class="model-tag" fill="#721c24">Model 2 · 15/16 flip</text>
+  </g>
+
+  <!-- Bottom annotation -->
+  <g transform="translate(30, 260)">
+    <rect x="0" y="0" width="560" height="105" rx="8" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+    <text x="280" y="22" class="cell-label" font-weight="600">Both conditions required for disagreement:</text>
+    <g transform="translate(40, 35)">
+      <circle cx="8" cy="8" r="6" fill="#dc3545"/>
+      <text x="22" y="12" class="cell-sub" text-anchor="start" fill="#333" font-size="11px">Nonlinear coupling — transitions with ≥2 variable-token input arcs</text>
+    </g>
+    <g transform="translate(40, 58)">
+      <circle cx="8" cy="8" r="6" fill="#dc3545"/>
+      <text x="22" y="12" class="cell-sub" text-anchor="start" fill="#333" font-size="11px">Multi-token pools — enough tokens for mass-action product to create dynamics</text>
+    </g>
+    <g transform="translate(40, 81)">
+      <circle cx="8" cy="8" r="6" fill="#28a745"/>
+      <text x="22" y="12" class="cell-sub" text-anchor="start" fill="#333" font-size="11px">Either condition alone is insufficient — the nonlinearity must be active</text>
+    </g>
+  </g>
+</svg>
