@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 480" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="8" markerHeight="5" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#555"/>
+    </marker>
+    <marker id="arr-blue" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="8" markerHeight="5" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#2e86c1"/>
+    </marker>
+    <linearGradient id="cGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a5276"/>
+      <stop offset="100%" stop-color="#2e86c1"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .title { font-size: 16px; font-weight: 700; fill: #222; text-anchor: middle; }
+    .box-title { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; }
+    .box-sub { font-size: 10px; fill: rgba(255,255,255,0.85); text-anchor: middle; }
+    .eq { font-size: 12px; fill: #333; text-anchor: middle; font-family: 'Courier New', monospace; }
+    .eq-em { font-size: 13px; fill: #1a5276; text-anchor: middle; font-family: 'Courier New', monospace; font-weight: 700; }
+    .note { font-size: 10px; fill: #666; text-anchor: middle; }
+    .note-left { font-size: 10px; fill: #666; text-anchor: start; }
+    .arrow-label { font-size: 10px; fill: #2e86c1; text-anchor: middle; font-weight: 600; }
+  </style>
+
+  <text x="350" y="28" class="title">The Incidence Matrix as Universal Bridge</text>
+
+  <!-- Central C matrix -->
+  <g transform="translate(250, 60)">
+    <rect x="0" y="0" width="200" height="100" rx="12" fill="url(#cGrad)"/>
+    <text x="100" y="32" class="box-title" style="font-size:20px">C</text>
+    <text x="100" y="52" class="box-title" style="font-size:11px; font-weight:400">Incidence Matrix</text>
+    <text x="100" y="68" class="box-sub">96 places × 240 transitions</text>
+    <text x="100" y="84" class="box-sub">C[p][t] = output − input weight</text>
+  </g>
+
+  <!-- Rate vector -->
+  <g transform="translate(60, 80)">
+    <rect x="0" y="0" width="130" height="50" rx="8" fill="#f0f4ff" stroke="#4466aa" stroke-width="1.5"/>
+    <text x="65" y="20" style="font-size:12px; fill:#334; text-anchor:middle; font-weight:600">r = rate vector</text>
+    <text x="65" y="36" style="font-size:10px; fill:#668; text-anchor:middle">team strengths →</text>
+    <text x="65" y="48" style="font-size:10px; fill:#668; text-anchor:middle">win probabilities</text>
+  </g>
+  <line x1="190" y1="105" x2="250" y2="110" stroke="#4466aa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Three output methods -->
+
+  <!-- ODE -->
+  <g transform="translate(40, 230)">
+    <rect x="0" y="0" width="180" height="90" rx="10" fill="#e8f4ea" stroke="#2a7744" stroke-width="1.5"/>
+    <text x="90" y="22" style="font-size:13px; fill:#1a5c2e; text-anchor:middle; font-weight:700">ODE</text>
+    <text x="90" y="40" class="eq">dm/dt = C · v(m, r)</text>
+    <text x="90" y="58" class="note">continuous flow</text>
+    <text x="90" y="73" class="note">mass-action kinetics</text>
+  </g>
+  <line x1="300" y1="160" x2="150" y2="230" stroke="#2a7744" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="200" y="195" class="arrow-label" fill="#2a7744">relaxation</text>
+
+  <!-- Monte Carlo -->
+  <g transform="translate(260, 230)">
+    <rect x="0" y="0" width="180" height="90" rx="10" fill="#fff3e0" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="90" y="22" style="font-size:13px; fill:#a05a00; text-anchor:middle; font-weight:700">Monte Carlo</text>
+    <text x="90" y="40" class="eq">Δm = C · eₜ</text>
+    <text x="90" y="58" class="note">discrete firings</text>
+    <text x="90" y="73" class="note">coin flip per matchup</text>
+  </g>
+  <line x1="350" y1="160" x2="350" y2="230" stroke="#e67e22" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="380" y="200" class="arrow-label" fill="#e67e22">sampling</text>
+
+  <!-- Analytical -->
+  <g transform="translate(480, 230)">
+    <rect x="0" y="0" width="180" height="90" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5"/>
+    <text x="90" y="22" style="font-size:13px; fill:#283593; text-anchor:middle; font-weight:700">Analytical</text>
+    <text x="90" y="40" class="eq">Π [Σ P(opp)·P(win)]</text>
+    <text x="90" y="58" class="note">forward propagation</text>
+    <text x="90" y="73" class="note">exact, no simulation</text>
+  </g>
+  <line x1="400" y1="160" x2="550" y2="230" stroke="#3f51b5" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="510" y="195" class="arrow-label" fill="#3f51b5">reduction</text>
+
+  <!-- Convergence arrows -->
+  <g transform="translate(0, 340)">
+    <!-- All three converge to same answer -->
+    <line x1="130" y1="0" x2="300" y2="50" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+    <line x1="350" y1="0" x2="350" y2="50" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+    <line x1="570" y1="0" x2="400" y2="50" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+    <rect x="240" y="55" width="220" height="60" rx="10" fill="#333" stroke="none"/>
+    <text x="350" y="78" style="font-size:14px; fill:#fff; text-anchor:middle; font-weight:700">Same Answer</text>
+    <text x="350" y="96" style="font-size:11px; fill:rgba(255,255,255,0.8); text-anchor:middle">Duke 28.8% · Arizona 18.1% · Michigan 11.2%</text>
+  </g>
+
+  <!-- Bottom explanation -->
+  <rect x="40" y="440" width="620" height="30" rx="6" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+  <text x="350" y="460" class="note">All three methods are different traversals of the same algebraic structure: C and r</text>
+</svg>

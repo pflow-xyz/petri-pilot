@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 320" font-family="system-ui, -apple-system, sans-serif">
+  <style>
+    .title { font-size: 15px; font-weight: 700; fill: #222; text-anchor: middle; }
+    .subtitle { font-size: 11px; fill: #666; text-anchor: middle; }
+    .label { font-size: 11px; fill: #333; text-anchor: middle; }
+    .label-sm { font-size: 10px; fill: #555; text-anchor: middle; }
+    .count { font-size: 18px; font-weight: 700; fill: #fff; text-anchor: middle; }
+    .round-label { font-size: 12px; font-weight: 600; fill: #444; text-anchor: middle; }
+    .note { font-size: 10px; fill: #777; text-anchor: middle; }
+    .formula { font-size: 12px; fill: #1a5276; text-anchor: middle; font-family: 'Courier New', monospace; }
+  </style>
+
+  <text x="330" y="24" class="title">Drain Counts from Incidence Matrix</text>
+  <text x="330" y="42" class="subtitle">Number of transitions consuming from each team's round place — the bracket's topological signature</text>
+
+  <!-- Round labels -->
+  <text x="130" y="80" class="round-label">Round 1</text>
+  <text x="270" y="80" class="round-label">Round 2</text>
+  <text x="410" y="80" class="round-label">Final Four</text>
+  <text x="550" y="80" class="round-label">Championship</text>
+
+  <!-- Drain count boxes with scaling -->
+  <!-- R1: 2 drains -->
+  <g transform="translate(90, 90)">
+    <rect x="0" y="0" width="80" height="60" rx="8" fill="#2e86c1"/>
+    <text x="40" y="30" class="count">2</text>
+    <text x="40" y="48" style="font-size:9px; fill:rgba(255,255,255,0.7); text-anchor:middle">drains</text>
+  </g>
+
+  <!-- R2: 4 drains -->
+  <g transform="translate(230, 90)">
+    <rect x="0" y="0" width="80" height="80" rx="8" fill="#2874a6"/>
+    <text x="40" y="36" class="count">4</text>
+    <text x="40" y="54" style="font-size:9px; fill:rgba(255,255,255,0.7); text-anchor:middle">drains</text>
+  </g>
+
+  <!-- F4: 8 drains -->
+  <g transform="translate(370, 90)">
+    <rect x="0" y="0" width="80" height="100" rx="8" fill="#1f618d"/>
+    <text x="40" y="42" class="count">8</text>
+    <text x="40" y="60" style="font-size:9px; fill:rgba(255,255,255,0.7); text-anchor:middle">drains</text>
+  </g>
+
+  <!-- Final: 16 drains -->
+  <g transform="translate(510, 90)">
+    <rect x="0" y="0" width="80" height="130" rx="8" fill="#1a5276"/>
+    <text x="40" y="55" class="count">16</text>
+    <text x="40" y="73" style="font-size:9px; fill:rgba(255,255,255,0.7); text-anchor:middle">drains</text>
+  </g>
+
+  <!-- Doubling arrows -->
+  <g transform="translate(0, 115)">
+    <line x1="175" y1="0" x2="225" y2="0" stroke="#e67e22" stroke-width="2" marker-end="url(#darr)"/>
+    <text x="200" y="-6" style="font-size:10px; fill:#e67e22; text-anchor:middle; font-weight:600">×2</text>
+    <line x1="315" y1="0" x2="365" y2="0" stroke="#e67e22" stroke-width="2" marker-end="url(#darr)"/>
+    <text x="340" y="-6" style="font-size:10px; fill:#e67e22; text-anchor:middle; font-weight:600">×2</text>
+    <line x1="455" y1="0" x2="505" y2="0" stroke="#e67e22" stroke-width="2" marker-end="url(#darr)"/>
+    <text x="480" y="-6" style="font-size:10px; fill:#e67e22; text-anchor:middle; font-weight:600">×2</text>
+  </g>
+
+  <defs>
+    <marker id="darr" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="8" markerHeight="5" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#e67e22"/>
+    </marker>
+  </defs>
+
+  <!-- Explanation -->
+  <g transform="translate(30, 240)">
+    <rect x="0" y="0" width="600" height="70" rx="8" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+
+    <text x="300" y="20" class="label" font-weight="600">Why the doubling pattern?</text>
+    <text x="300" y="38" class="label-sm">R1: 1 opponent (fixed matchup) × 2 outcomes = 2 transitions</text>
+    <text x="300" y="52" class="label-sm">R2: 2 possible opponents × 2 outcomes = 4  |  F4: 4 possible × 2 = 8  |  Final: 8 × 2 = 16</text>
+    <text x="300" y="64" class="note">All 16 teams have identical drain structure — the bracket topology is symmetric</text>
+  </g>
+</svg>

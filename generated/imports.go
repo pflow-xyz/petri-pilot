@@ -8,6 +8,7 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/generated/galtonboard"
 	_ "github.com/pflow-xyz/petri-pilot/generated/hiringpipeline"
 	_ "github.com/pflow-xyz/petri-pilot/generated/knapsack"
+	_ "github.com/pflow-xyz/petri-pilot/generated/marchmadness2026"
 	_ "github.com/pflow-xyz/petri-pilot/generated/loanapproval"
 	_ "github.com/pflow-xyz/petri-pilot/generated/predatorprey"
 	_ "github.com/pflow-xyz/petri-pilot/generated/producerconsumer"
