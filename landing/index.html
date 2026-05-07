@@ -3,8 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Petri-Pilot | pflow.xyz</title>
+  <title>Petri-Pilot — Model, simulate, and generate apps from Petri nets</title>
+  <meta name="description" content="Design Petri net models in your browser, simulate them with ODE kinetics, and generate Go backends and ES module frontends from a single specification. Includes ZK-proof workflows, AI-agent tooling (MCP), and a live catalog of game, resource, workflow, and computation nets.">
+  <meta name="keywords" content="Petri net, ODE simulation, code generation, zero-knowledge proofs, gnark, Groth16, MCP, model-driven development, state machine, workflow, formal methods">
+  <meta name="author" content="pflow-xyz">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0f0f1a">
+  <link rel="canonical" href="https://pilot.pflow.xyz/">
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" type="image/png" href="/logo-square.png">
+  <link rel="apple-touch-icon" href="/logo-square.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Petri-Pilot">
+  <meta property="og:title" content="Petri-Pilot — Model, simulate, and generate apps from Petri nets">
+  <meta property="og:description" content="Design Petri net models, simulate with ODE kinetics, and generate Go backends + ES module frontends from a single specification. Live demos, ZK proofs, and MCP tools for AI agents.">
+  <meta property="og:url" content="https://pilot.pflow.xyz/">
+  <meta property="og:image" content="https://pilot.pflow.xyz/logo-square.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="256">
+  <meta property="og:image:height" content="256">
+  <meta property="og:image:alt" content="Petri-Pilot logo — a Petri net place with a token">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Petri-Pilot — Model, simulate, and generate apps from Petri nets">
+  <meta name="twitter:description" content="Design Petri net models, simulate with ODE kinetics, and generate Go backends + ES module frontends from a single specification.">
+  <meta name="twitter:image" content="https://pilot.pflow.xyz/logo-square.png">
+  <meta name="twitter:image:alt" content="Petri-Pilot logo">
+
+  <!-- JSON-LD structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://pilot.pflow.xyz/#website",
+        "url": "https://pilot.pflow.xyz/",
+        "name": "Petri-Pilot",
+        "description": "Model, simulate, and generate applications from Petri nets.",
+        "publisher": { "@id": "https://pilot.pflow.xyz/#org" },
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://pilot.pflow.xyz/#org",
+        "name": "pflow-xyz",
+        "url": "https://pflow.xyz",
+        "logo": "https://pilot.pflow.xyz/logo-square.png",
+        "sameAs": [
+          "https://github.com/pflow-xyz/petri-pilot",
+          "https://blog.stackdump.com",
+          "https://book.pflow.xyz"
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Petri-Pilot",
+        "url": "https://pilot.pflow.xyz/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "description": "Petri-Pilot generates complete applications from Petri net models. An LLM designs the model via MCP tools, then deterministic code generation produces Go backends and ES module frontends.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    ]
+  }
+  </script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
