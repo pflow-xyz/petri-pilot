@@ -1030,7 +1030,23 @@ func PflowHandler() http.HandlerFunc {
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport"/>
-  <title>Petri Net Viewer</title>
+  <title>Petri Net Viewer — Petri-Pilot</title>
+  <meta name="description" content="Browse Petri net models, visualize their structure, and run ODE simulations directly in the browser. A read-only viewer powered by petri-view.js.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://pilot.pflow.xyz/pflow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Petri-Pilot">
+  <meta property="og:title" content="Petri Net Viewer — Petri-Pilot">
+  <meta property="og:description" content="Browse Petri net models, visualize their structure, and run ODE simulations directly in the browser.">
+  <meta property="og:url" content="https://pilot.pflow.xyz/pflow">
+  <meta property="og:image" content="https://pilot.pflow.xyz/logo-square.png">
+  <meta property="og:image:width" content="256">
+  <meta property="og:image:height" content="256">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Petri Net Viewer — Petri-Pilot">
+  <meta name="twitter:description" content="Browse Petri net models, visualize their structure, and run ODE simulations directly in the browser.">
+  <meta name="twitter:image" content="https://pilot.pflow.xyz/logo-square.png">
   <link href="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-view.css" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/gh/pflow-xyz/pflow-xyz@latest/public/petri-view.js" type="module"></script>
   <style>
