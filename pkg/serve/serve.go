@@ -358,6 +358,10 @@ func RunMultiple(names []string, opts Options) error {
 		http.NotFound(w, r)
 	})
 
+	// Dynamic sitemap derived from frontendMeta + sitemapExtras. Registered
+	// before the landing handler so it shadows any static landing/sitemap.xml.
+	mux.Handle("/sitemap.xml", SitemapHandler())
+
 	// Root handler - serve landing page if it exists, otherwise list services
 	if _, err := os.Stat("landing"); err == nil {
 		// Serve landing page directory
@@ -582,19 +586,23 @@ func createGeneratedFrontendHandler(spaHandler, serviceHandler http.Handler) htt
 
 // createSPAHandler creates an HTTP handler for serving a single-page application.
 // It serves static files and falls back to index.html for SPA routing.
-// serveHTMLWithGA reads an HTML file, injects GA script, and serves it
-func serveHTMLWithGA(w http.ResponseWriter, filePath string) {
+// serveHTMLWithGA reads an HTML file, injects GA + per-page SEO, and serves it.
+// frontendName is the frontend directory name (e.g. "tic-tac-toe") used to
+// look up curated SEO metadata; pass "" to skip SEO injection.
+func serveHTMLWithGA(w http.ResponseWriter, filePath, frontendName string) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
+	data = injectSEO(data, frontendName)
 	data = injectAnalytics(data)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
 }
 
 func createSPAHandler(frontendPath string) http.Handler {
+	frontendName := frontendNameFromPath(frontendPath)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the path
 		path := filepath.Clean(r.URL.Path)
@@ -605,9 +613,9 @@ func createSPAHandler(frontendPath string) http.Handler {
 		// Try to serve the file
 		fullPath := filepath.Join(frontendPath, path)
 		if _, err := os.Stat(fullPath); err == nil {
-			// For HTML files, inject GA
+			// For HTML files, inject GA + SEO
 			if strings.HasSuffix(path, ".html") {
-				serveHTMLWithGA(w, fullPath)
+				serveHTMLWithGA(w, fullPath, frontendName)
 				return
 			}
 			http.ServeFile(w, r, fullPath)
@@ -626,7 +634,7 @@ func createSPAHandler(frontendPath string) http.Handler {
 		// (but not for paths that look like static assets)
 		ext := filepath.Ext(path)
 		if ext == "" || ext == ".html" {
-			serveHTMLWithGA(w, filepath.Join(frontendPath, "index.html"))
+			serveHTMLWithGA(w, filepath.Join(frontendPath, "index.html"), frontendName)
 			return
 		}
 
