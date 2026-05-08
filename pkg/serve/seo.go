@@ -3,8 +3,10 @@ package serve
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -17,6 +19,24 @@ const (
 type pageMeta struct {
 	Title       string
 	Description string
+	// Priority and Changefreq feed the dynamic sitemap. Zero values default to
+	// 0.7 / monthly so new entries get sensible defaults without ceremony.
+	Priority   string
+	Changefreq string
+}
+
+// sitemapExtra is a sitemap entry that doesn't have a curated frontendMeta
+// page — landing, the viewer, etc. These are still served from Go but live
+// outside the per-frontend SEO flow.
+type sitemapExtra struct {
+	Path       string // e.g. "/" or "/pflow"
+	Priority   string
+	Changefreq string
+}
+
+var sitemapExtras = []sitemapExtra{
+	{Path: "/", Priority: "1.0", Changefreq: "weekly"},
+	{Path: "/pflow", Priority: "0.9", Changefreq: "weekly"},
 }
 
 // frontendMeta maps a frontend directory name to per-page SEO metadata used
@@ -27,12 +47,14 @@ var frontendMeta = map[string]pageMeta{
 	"code-to-flow": {
 		Title:       "Code to Flow — Source Code as a Petri Net",
 		Description: "Paste source code from any language and get a formal, executable Petri net. Detects state machines, control flow, concurrency, and resource pools.",
+		Priority:    "0.8",
 	},
 
 	// Concepts
 	"learn": {
 		Title:       "What is a Petri Net? — A Visual Primer",
 		Description: "Places, transitions, arcs, and tokens — the four concepts behind every Petri net model. Interactive examples, no math required.",
+		Priority:    "0.8",
 	},
 	"patterns": {
 		Title:       "Thinking in Petri Nets — Patterns and Properties",
@@ -214,4 +236,52 @@ func htmlBodyEscape(s string) string {
 		"<", "&lt;",
 		">", "&gt;",
 	).Replace(s)
+}
+
+// generateSitemap builds sitemap.xml from sitemapExtras + frontendMeta. This
+// keeps the sitemap and the per-page SEO injector in lockstep — adding a new
+// frontend entry to frontendMeta automatically grows the sitemap.
+func generateSitemap() []byte {
+	var buf bytes.Buffer
+	buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+	buf.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+
+	for _, e := range sitemapExtras {
+		writeSitemapURL(&buf, seoBaseURL+e.Path, e.Priority, e.Changefreq)
+	}
+
+	names := make([]string, 0, len(frontendMeta))
+	for name := range frontendMeta {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		m := frontendMeta[name]
+		priority := m.Priority
+		if priority == "" {
+			priority = "0.7"
+		}
+		changefreq := m.Changefreq
+		if changefreq == "" {
+			changefreq = "monthly"
+		}
+		writeSitemapURL(&buf, seoBaseURL+"/"+name+"/", priority, changefreq)
+	}
+
+	buf.WriteString(`</urlset>` + "\n")
+	return buf.Bytes()
+}
+
+func writeSitemapURL(buf *bytes.Buffer, loc, priority, changefreq string) {
+	fmt.Fprintf(buf, "  <url><loc>%s</loc><changefreq>%s</changefreq><priority>%s</priority></url>\n",
+		loc, changefreq, priority)
+}
+
+// SitemapHandler serves the dynamic sitemap.xml. Mount before the landing
+// SPA handler so it shadows landing/sitemap.xml.
+func SitemapHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.Write(generateSitemap())
+	}
 }

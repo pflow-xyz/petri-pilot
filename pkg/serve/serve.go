@@ -358,6 +358,10 @@ func RunMultiple(names []string, opts Options) error {
 		http.NotFound(w, r)
 	})
 
+	// Dynamic sitemap derived from frontendMeta + sitemapExtras. Registered
+	// before the landing handler so it shadows any static landing/sitemap.xml.
+	mux.Handle("/sitemap.xml", SitemapHandler())
+
 	// Root handler - serve landing page if it exists, otherwise list services
 	if _, err := os.Stat("landing"); err == nil {
 		// Serve landing page directory

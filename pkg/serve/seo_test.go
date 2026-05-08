@@ -73,6 +73,37 @@ func TestFrontendNameFromPath(t *testing.T) {
 	}
 }
 
+func TestGenerateSitemap(t *testing.T) {
+	xml := string(generateSitemap())
+
+	wants := []string{
+		`<?xml version="1.0" encoding="UTF-8"?>`,
+		`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+		`<loc>https://pilot.pflow.xyz/</loc>`,
+		`<loc>https://pilot.pflow.xyz/pflow</loc>`,
+		`<loc>https://pilot.pflow.xyz/tic-tac-toe/</loc>`,
+		`<loc>https://pilot.pflow.xyz/code-to-flow/</loc>`,
+		`<priority>1.0</priority>`,
+		`<priority>0.8</priority>`,
+		`<priority>0.7</priority>`,
+		`</urlset>`,
+	}
+	for _, w := range wants {
+		if !strings.Contains(xml, w) {
+			t.Errorf("expected sitemap to contain %q", w)
+		}
+	}
+
+	// Every curated frontend must appear in the sitemap — that's the whole
+	// point of generating it from frontendMeta.
+	for name := range frontendMeta {
+		want := "<loc>https://pilot.pflow.xyz/" + name + "/</loc>"
+		if !strings.Contains(xml, want) {
+			t.Errorf("sitemap missing entry for %q", name)
+		}
+	}
+}
+
 func TestEveryCuratedRouteHasFrontendDir(t *testing.T) {
 	// Catch typos: every key in frontendMeta must correspond to a real directory
 	// under frontends/. Skip if frontends/ isn't reachable from the test cwd.
