@@ -238,6 +238,9 @@ func RunMultiple(names []string, opts Options) error {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// Prometheus metrics endpoint scraped by the Datadog agent on pflow.dev.
+	mux.HandleFunc("/metrics", handleMetrics)
+
 	// Collect GraphQL-enabled services and create unified endpoint
 	var graphqlServices []GraphQLService
 	for _, svc := range services {
