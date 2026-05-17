@@ -200,11 +200,38 @@ func LandingPageHandler(s *server.MCPServer) http.HandlerFunc {
 </head>
 <body>
 <h1>petri-pilot MCP Server</h1>
-<p>This endpoint serves the <a href="https://modelcontextprotocol.io">Model Context Protocol</a> (MCP) over Streamable HTTP.</p>
+<p>This endpoint serves the <a href="https://modelcontextprotocol.io">Model Context Protocol</a> (MCP) over Streamable HTTP at <code>https://pilot.pflow.xyz/mcp</code>.</p>
 <div class="links">
   <a href="/mcp/openapi.json">OpenAPI Spec (JSON)</a>
   <a href="https://github.com/pflow-xyz/petri-pilot">GitHub</a>
 </div>
+
+<h2>Add to Claude Code</h2>
+<p>One command in your terminal:</p>
+<pre><code>claude mcp add --transport http petri-pilot https://pilot.pflow.xyz/mcp</code></pre>
+<p>Verify it registered:</p>
+<pre><code>claude mcp list</code></pre>
+<p>Or add it manually by editing <code>~/.claude.json</code> (user scope) or <code>.mcp.json</code> in your project root:</p>
+<pre><code>{
+  "mcpServers": {
+    "petri-pilot": {
+      "type": "http",
+      "url": "https://pilot.pflow.xyz/mcp"
+    }
+  }
+}</code></pre>
+<p>Once added, restart Claude Code and the tools below will be available.</p>
+
+<h2>Add to Other MCP Clients</h2>
+<p>For Claude Desktop, Cursor, or any MCP-compatible client, use this config snippet:</p>
+<pre><code>{
+  "mcpServers": {
+    "petri-pilot": {
+      "url": "https://pilot.pflow.xyz/mcp"
+    }
+  }
+}</code></pre>
+
 <h2>Available Tools</h2>
 `)
 
