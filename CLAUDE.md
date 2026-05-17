@@ -787,13 +787,19 @@ All services run on pflow.dev behind nginx. Manage with the `~/services` command
 
 ### Service Ports
 
-| Service | Port | URL |
-|---------|------|-----|
-| pflow-pilot | 8083 | pilot.pflow.xyz |
-| pflow-xyz | 8081 | pflow.xyz |
-| blog-stackdump | 8082 | blog.stackdump.com |
-| modeldao-org | 8084 | modeldao.org |
-| stackdump-com | 8085 | console.stackdump.com |
+| Service | Port | URL | Service name on pflow.dev |
+|---------|------|-----|---------------------------|
+| petri-pilot | 8083 | pilot.pflow.xyz | `pilot-xyz` |
+| pflow-xyz | 8081 | pflow.xyz | `pflow-xyz` |
+| blog-stackdump | 8082 | blog.stackdump.com | `blog-stackdump` |
+| modeldao-org | 8084 | modeldao.org | `modeldao-org` |
+| stackdump-com | 8085 | console.stackdump.com | `stackdump-com` |
+
+petri-pilot exposes MCP two ways:
+- **stdio** via `petri-pilot mcp` (for Claude Desktop / Cursor local connections)
+- **HTTP** at `pilot.pflow.xyz/mcp` (Streamable HTTP transport for remote clients; OpenAPI at `/mcp/openapi.json`)
+
+The HTTP path replaces the retired `pilot.pflow.dev` (formerly `stackdump/pflow-pilot`, now archived). The Smithery listing is being migrated from `stackdump/pflow-pilot` to `pflow-xyz/petri-pilot` via the `smithery.yaml` in this repo.
 
 ### This Service
 
@@ -802,7 +808,7 @@ All services run on pflow.dev behind nginx. Manage with the `~/services` command
 ssh pflow.dev "~/services list"
 
 # View logs
-ssh pflow.dev "tmux capture-pane -t servers:pflow-pilot -p | tail -50"
+ssh pflow.dev "tmux capture-pane -t servers:pilot-xyz -p | tail -50"
 
 # Restart
 ssh pflow.dev "~/services restart"
