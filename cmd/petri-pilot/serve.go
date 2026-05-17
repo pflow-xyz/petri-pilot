@@ -3,8 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
+	mcpgoserver "github.com/mark3labs/mcp-go/server"
+	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -76,6 +80,23 @@ Examples:
 	opts := serve.DefaultOptions()
 	if *port > 0 {
 		opts.Port = *port
+	}
+
+	// Register MCP HTTP endpoint (Streamable HTTP transport for remote Claude clients).
+	opts.CustomRoutes = func(mux *http.ServeMux) {
+		mcpServer := mcp.NewServer()
+		mcpHTTP := mcpgoserver.NewStreamableHTTPServer(mcpServer)
+		mux.HandleFunc("/mcp/openapi.json", mcp.OpenAPIHandler(mcpServer))
+		landingPage := mcp.LandingPageHandler(mcpServer)
+		mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet && r.Header.Get("Accept") != "text/event-stream" {
+				landingPage(w, r)
+				return
+			}
+			mcpHTTP.ServeHTTP(w, r)
+		})
+		mux.Handle("/mcp/", mcpHTTP)
+		log.Printf("  MCP HTTP endpoint at /mcp (+ /mcp/openapi.json)")
 	}
 
 	if err := serve.RunMultiple(serviceNames, opts); err != nil {
