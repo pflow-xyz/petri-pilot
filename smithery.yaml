@@ -1,0 +1,14 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |-
+    () => ({
+      command: "petri-pilot",
+      args: ["mcp"]
+    })
+
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .
