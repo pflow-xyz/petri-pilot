@@ -336,7 +336,10 @@ func placeValueLabel(opts *RenderOpts, p goflowmetamodel.Place) string {
 }
 
 func formatMarkingValue(v float64) string {
-	if v == 0 {
+	// Solver noise (3e-8, 4e-7, etc.) shouldn't read as "still active" — round
+	// anything below 1e-3 to a flat "0". Real concentrations in our models are
+	// O(1), so 1e-3 is comfortably below the signal floor.
+	if math.Abs(v) < 1e-3 {
 		return "0"
 	}
 	if math.Abs(v) >= 100 || v == math.Trunc(v) {
@@ -345,10 +348,7 @@ func formatMarkingValue(v float64) string {
 	if math.Abs(v) >= 10 {
 		return fmt.Sprintf("%.1f", v)
 	}
-	if math.Abs(v) >= 0.01 {
-		return fmt.Sprintf("%.2f", v)
-	}
-	return fmt.Sprintf("%.2g", v)
+	return fmt.Sprintf("%.2f", v)
 }
 
 // sensitivityFill is a gray → red gradient. v=0 is light gray, v=1 is red.
