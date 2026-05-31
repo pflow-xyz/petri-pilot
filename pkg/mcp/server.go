@@ -38,6 +38,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
+	s.AddTool(odeTool(), handleOde)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)
