@@ -1232,6 +1232,11 @@ func handleVisualize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	// Generate simple SVG visualization
 	svg := generateSVG(model)
 
+	// Also rasterize to PNG so chat clients can render the diagram inline.
+	// Falls back to text-only if the rasterizer fails for any reason.
+	if pngB64, err := renderPNGBase64(model); err == nil {
+		return mcp.NewToolResultImage(svg, pngB64, "image/png"), nil
+	}
 	return mcp.NewToolResultText(svg), nil
 }
 
@@ -1961,23 +1966,28 @@ func generateSVG(model *goflowmetamodel.Model) string {
 `, x-5, y-20, x, y+40, t.ID)
 	}
 
-	// Draw arcs
+	// Draw arcs. Endpoints are pulled in to the node boundary (+ small gap)
+	// so the arrowhead reads as separate from the shape rather than vanishing
+	// under it. See edgePoint in render_png.go for the geometry.
 	for _, arc := range model.Arcs {
 		var x1, y1, x2, y2 int
+		var fromIsPlace, toIsPlace bool
 		if pos, ok := placePos[arc.From]; ok {
-			x1, y1 = pos[0], pos[1]
+			x1, y1, fromIsPlace = pos[0], pos[1], true
 			if pos2, ok := transPos[arc.To]; ok {
 				x2, y2 = pos2[0], pos2[1]
 			}
 		} else if pos, ok := transPos[arc.From]; ok {
 			x1, y1 = pos[0], pos[1]
 			if pos2, ok := placePos[arc.To]; ok {
-				x2, y2 = pos2[0], pos2[1]
+				x2, y2, toIsPlace = pos2[0], pos2[1], true
 			}
 		}
 		if x1 != 0 && x2 != 0 {
-			svg += fmt.Sprintf(`  <path d="M%d,%d L%d,%d" class="arc"/>
-`, x1, y1, x2, y2)
+			sx, sy := edgePoint(float64(x1), float64(y1), float64(x2), float64(y2), fromIsPlace)
+			ex, ey := edgePoint(float64(x2), float64(y2), float64(x1), float64(y1), toIsPlace)
+			svg += fmt.Sprintf(`  <path d="M%.1f,%.1f L%.1f,%.1f" class="arc"/>
+`, sx, sy, ex, ey)
 		}
 	}
 
