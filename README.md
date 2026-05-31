@@ -50,18 +50,12 @@ petri-pilot mcp
 
 Petri-pilot runs as an MCP server. An LLM can design, validate, simulate, and generate without leaving the conversation.
 
-### Connect via Smithery
+### Connect to the hosted server (no install)
 
-Send this prompt to your agent:
-
-```
-curl https://smithery.ai/skill.md and connect to stackdump/pflow-pilot using smithery mcp add stackdump/pflow-pilot
-```
-
-Or install directly:
+The server is hosted at `https://pilot.pflow.xyz/mcp` over Streamable HTTP. In Claude Code:
 
 ```bash
-npx @smithery/cli install stackdump/pflow-pilot --client claude
+claude mcp add --transport http petri-pilot https://pilot.pflow.xyz/mcp
 ```
 
 ### Run locally
@@ -84,7 +78,20 @@ petri-pilot mcp
 
 ### Claude Desktop / Cursor
 
-Add to your MCP config:
+For clients that take JSON config, point at the hosted HTTP server:
+
+```json
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "type": "http",
+      "url": "https://pilot.pflow.xyz/mcp"
+    }
+  }
+}
+```
+
+Or run the server locally:
 
 ```json
 {

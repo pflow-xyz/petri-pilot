@@ -14,6 +14,14 @@
     "binary": "https://github.com/pflow-xyz/petri-pilot/releases"
   },
   "config_examples": {
+    "claude_desktop_http": {
+      "mcpServers": {
+        "petri-pilot": {
+          "type": "http",
+          "url": "https://pilot.pflow.xyz/mcp"
+        }
+      }
+    },
     "claude_desktop": {
       "mcpServers": {
         "petri-pilot": {

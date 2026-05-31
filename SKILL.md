@@ -29,6 +29,27 @@ docker run -i ghcr.io/pflow-xyz/petri-pilot mcp
 
 ## MCP Configuration
 
+Connect to the hosted server (no install) — in Claude Code:
+
+```bash
+claude mcp add --transport http petri-pilot https://pilot.pflow.xyz/mcp
+```
+
+Or for clients that take JSON config:
+
+```json
+{
+  "mcpServers": {
+    "petri-pilot": {
+      "type": "http",
+      "url": "https://pilot.pflow.xyz/mcp"
+    }
+  }
+}
+```
+
+Or run the server locally:
+
 ```json
 {
   "mcpServers": {
