@@ -20,31 +20,49 @@ var plotColors = []string{
 	"#ff7f00", "#dbb500", "#a65628", "#f781bf",
 }
 
+// odePlotSize returns the natural dimensions used by renderODEPlot. Reusable
+// when callers (e.g. combined views) need to lay out the plot alongside
+// another diagram.
+func odePlotSize() (int, int) { return 720, 420 }
+
 func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]byte, error) {
 	if sol == nil || len(sol.T) == 0 {
 		return nil, fmt.Errorf("empty solution")
 	}
+	w, h := odePlotSize()
+	dc := gg.NewContext(w, h)
+	dc.SetHexColor("#ffffff")
+	dc.Clear()
+	drawODEPlot(dc, sol, variables, title, 0, 0, float64(w), float64(h))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, dc.Image()); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// drawODEPlot renders the time-series plot into an existing gg.Context at
+// the given offset and dimensions. Used both standalone and inside composite
+// views.
+func drawODEPlot(dc *gg.Context, sol *solver.Solution, variables []string, title string, originX, originY, W, H float64) {
+	if sol == nil || len(sol.T) == 0 {
+		return
+	}
 
 	const (
-		W       = 720
-		H       = 420
 		marginT = 40.0
 		marginR = 140.0 // wide for legend
 		marginB = 50.0
 		marginL = 70.0
 	)
-	plotW := float64(W) - marginL - marginR
-	plotH := float64(H) - marginT - marginB
-
-	dc := gg.NewContext(W, H)
-	dc.SetHexColor("#ffffff")
-	dc.Clear()
+	plotW := W - marginL - marginR
+	plotH := H - marginT - marginB
 
 	if title != "" {
 		if f, err := pngFace(true, 16); err == nil {
 			dc.SetFontFace(f)
 			dc.SetHexColor("#000000")
-			dc.DrawStringAnchored(title, float64(W)/2, 22, 0.5, 0.5)
+			dc.DrawStringAnchored(title, originX+W/2, originY+22, 0.5, 0.5)
 		}
 	}
 
@@ -81,11 +99,16 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 	ymin -= yrange * 0.1
 	ymax += yrange * 0.1
 
+	left := originX + marginL
+	top := originY + marginT
+	right := left + plotW
+	bottom := top + plotH
+
 	sx := func(x float64) float64 {
-		return marginL + (x-xmin)/(xmax-xmin)*plotW
+		return left + (x-xmin)/(xmax-xmin)*plotW
 	}
 	sy := func(y float64) float64 {
-		return marginT + plotH - (y-ymin)/(ymax-ymin)*plotH
+		return bottom - (y-ymin)/(ymax-ymin)*plotH
 	}
 
 	const nTicks = 5
@@ -96,22 +119,22 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 	for i := 0; i <= nTicks; i++ {
 		x := xmin + (xmax-xmin)*float64(i)/nTicks
 		px := sx(x)
-		dc.DrawLine(px, marginT, px, marginT+plotH)
+		dc.DrawLine(px, top, px, bottom)
 		dc.Stroke()
 	}
 	for i := 0; i <= nTicks; i++ {
 		y := ymin + (ymax-ymin)*float64(i)/nTicks
 		py := sy(y)
-		dc.DrawLine(marginL, py, marginL+plotW, py)
+		dc.DrawLine(left, py, right, py)
 		dc.Stroke()
 	}
 
 	// Axes
 	dc.SetHexColor("#333333")
 	dc.SetLineWidth(2)
-	dc.DrawLine(marginL, marginT, marginL, marginT+plotH)
+	dc.DrawLine(left, top, left, bottom)
 	dc.Stroke()
-	dc.DrawLine(marginL, marginT+plotH, marginL+plotW, marginT+plotH)
+	dc.DrawLine(left, bottom, right, bottom)
 	dc.Stroke()
 
 	// Tick labels
@@ -120,11 +143,11 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 		dc.SetHexColor("#000000")
 		for i := 0; i <= nTicks; i++ {
 			x := xmin + (xmax-xmin)*float64(i)/nTicks
-			dc.DrawStringAnchored(formatTick(x), sx(x), marginT+plotH+14, 0.5, 0.5)
+			dc.DrawStringAnchored(formatTick(x), sx(x), bottom+14, 0.5, 0.5)
 		}
 		for i := 0; i <= nTicks; i++ {
 			y := ymin + (ymax-ymin)*float64(i)/nTicks
-			dc.DrawStringAnchored(formatTick(y), marginL-8, sy(y), 1.0, 0.5)
+			dc.DrawStringAnchored(formatTick(y), left-8, sy(y), 1.0, 0.5)
 		}
 	}
 
@@ -132,10 +155,11 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 	if f, err := pngFace(false, 12); err == nil {
 		dc.SetFontFace(f)
 		dc.SetHexColor("#000000")
-		dc.DrawStringAnchored("Time", marginL+plotW/2, float64(H)-15, 0.5, 0.5)
+		dc.DrawStringAnchored("Time", (left+right)/2, originY+H-15, 0.5, 0.5)
 		dc.Push()
-		dc.RotateAbout(-math.Pi/2, 18, marginT+plotH/2)
-		dc.DrawStringAnchored("Value", 18, marginT+plotH/2, 0.5, 0.5)
+		yAxisX := originX + 18
+		dc.RotateAbout(-math.Pi/2, yAxisX, (top+bottom)/2)
+		dc.DrawStringAnchored("Value", yAxisX, (top+bottom)/2, 0.5, 0.5)
 		dc.Pop()
 	}
 
@@ -155,8 +179,8 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 	}
 
 	// Legend (top-right column, outside the plot area).
-	legendX := marginL + plotW + 14
-	legendY := marginT + 6
+	legendX := right + 14
+	legendY := top + 6
 	if f, err := pngFace(false, 11); err == nil {
 		dc.SetFontFace(f)
 		for i, v := range variables {
@@ -169,12 +193,6 @@ func renderODEPlot(sol *solver.Solution, variables []string, title string) ([]by
 			legendY += 18
 		}
 	}
-
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, dc.Image()); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // formatTick prints axis tick values compactly: integers without trailing

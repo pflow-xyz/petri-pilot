@@ -46,7 +46,10 @@ func odeTool() mcp.Tool {
 			mcp.Description("Max trajectory samples returned (default 200, downsampled if needed)"),
 		),
 		mcp.WithBoolean("plot",
-			mcp.Description("Include inline PNG plot (default true)"),
+			mcp.Description("Include inline PNG plot (default true). Ignored when layout is set."),
+		),
+		mcp.WithString("layout",
+			mcp.Description("Output layout: 'plot' (default, trajectory only), 'combined' (net snapshot at final marking + plot side-by-side), or 'net' (net snapshot only, no plot)"),
 		),
 	)
 }
@@ -209,14 +212,40 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(fmt.Sprintf("marshal response: %v", err)), nil
 	}
 
-	if includePlot {
-		title := "ODE Simulation"
-		if mode == "equilibrium" {
-			title = "ODE → Equilibrium"
+	layout := strings.ToLower(request.GetString("layout", ""))
+	title := "ODE Simulation"
+	if mode == "equilibrium" {
+		title = "ODE → Equilibrium"
+	}
+
+	if layout == "" {
+		if includePlot {
+			layout = "plot"
 		}
-		if pngBytes, perr := renderODEPlot(sol, variables, title); perr == nil {
-			return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+	}
+
+	var pngBytes []byte
+	switch layout {
+	case "":
+		// no image
+	case "plot":
+		pngBytes, _ = renderODEPlot(sol, variables, title)
+	case "combined":
+		pngBytes, _ = renderCombinedNetAndPlot(parsed.Model, sol, variables, sol.GetFinalState(), title)
+	case "net":
+		opts := &RenderOpts{
+			Title:     title,
+			Marking:   sol.GetFinalState(),
+			ShadeKind: "marking",
 		}
+		opts.Shading = normalizeShading(opts.Marking)
+		pngBytes, _ = renderPNGWithOpts(parsed.Model, opts)
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("unknown layout %q (use plot, combined, or net)", layout)), nil
+	}
+
+	if pngBytes != nil {
+		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
 	return mcp.NewToolResultText(string(text)), nil
 }

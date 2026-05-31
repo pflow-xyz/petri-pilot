@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -87,6 +88,41 @@ func TestHandleOde_Equilibrium(t *testing.T) {
 	}
 	if resp.Final["delivered"] < 1.9 {
 		t.Errorf("at equilibrium delivered should be ~2, got %v", resp.Final["delivered"])
+	}
+}
+
+func TestHandleOde_Layouts(t *testing.T) {
+	modelJSON := mustJSON(t, coffeeShopModel())
+	cases := []struct {
+		layout string
+		envVar string
+	}{
+		{"plot", "ODE_LAYOUT_PLOT_OUT"},
+		{"combined", "ODE_LAYOUT_COMBINED_OUT"},
+		{"net", "ODE_LAYOUT_NET_OUT"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.layout, func(t *testing.T) {
+			res := callOde(t, map[string]any{
+				"model":   modelJSON,
+				"tspan":   "[0, 20]",
+				"samples": 40,
+				"layout":  tc.layout,
+			})
+			if res.IsError {
+				t.Fatalf("error: %s", textBlock(t, res))
+			}
+			img := extractImageBytes(t, res)
+			if len(img) < 1000 {
+				t.Fatalf("image too small for layout %s: %d", tc.layout, len(img))
+			}
+			if path := os.Getenv(tc.envVar); path != "" {
+				if err := os.WriteFile(path, img, 0644); err != nil {
+					t.Fatalf("write: %v", err)
+				}
+				t.Logf("wrote %d bytes to %s", len(img), path)
+			}
+		})
 	}
 }
 

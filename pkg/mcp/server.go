@@ -3,6 +3,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,6 +40,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
+	s.AddTool(heatmapTool(), handleHeatmap)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)
@@ -327,10 +329,19 @@ func frontendTool() mcp.Tool {
 
 func visualizeTool() mcp.Tool {
 	return mcp.NewTool("petri_visualize",
-		mcp.WithDescription("Generate an SVG visualization of a Petri net model showing places, transitions, and arcs."),
+		mcp.WithDescription("Generate an SVG visualization of a Petri net model showing places, transitions, and arcs. Returns both SVG text and an inline PNG. Supports shading: 'sensitivity' (run analyzer and tint by element importance) or 'marking' (color places by user-supplied values)."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
+		),
+		mcp.WithString("shade",
+			mcp.Description("'none' (default), 'sensitivity' (color by analyzer importance), or 'marking' (color places by marking values)"),
+		),
+		mcp.WithString("marking",
+			mcp.Description("Optional JSON object {place_id: value} overriding the initial marking. Used as both label values and (with shade=marking) fill saturation"),
+		),
+		mcp.WithString("title",
+			mcp.Description("Optional title shown above the diagram"),
 		),
 	)
 }
@@ -1230,13 +1241,56 @@ func handleVisualize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	}
 	model := parsed.Model
 
-	// Generate simple SVG visualization
-	svg := generateSVG(model)
+	shade := strings.ToLower(request.GetString("shade", "none"))
+	title := request.GetString("title", "")
 
-	// Also rasterize to PNG so chat clients can render the diagram inline.
-	// Falls back to text-only if the rasterizer fails for any reason.
-	if pngB64, err := renderPNGBase64(model); err == nil {
-		return mcp.NewToolResultImage(svg, pngB64, "image/png"), nil
+	// Optional marking override.
+	var marking map[string]float64
+	if s := request.GetString("marking", ""); s != "" {
+		if err := json.Unmarshal([]byte(s), &marking); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid marking JSON: %v", err)), nil
+		}
+	}
+
+	opts := &RenderOpts{Title: title, Marking: marking}
+
+	switch shade {
+	case "", "none":
+		// no shading
+	case "sensitivity":
+		vopts := validator.DefaultOptions()
+		vopts.EnableSensitivity = true
+		v := validator.New(vopts)
+		result, vErr := v.Validate(model)
+		if vErr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("analysis error: %v", vErr)), nil
+		}
+		if result.Analysis != nil && len(result.Analysis.Importance) > 0 {
+			raw := map[string]float64{}
+			for _, e := range result.Analysis.Importance {
+				raw[e.ID] = e.Importance
+			}
+			opts.Shading = normalizeShading(raw)
+			opts.ShadeKind = "sensitivity"
+		}
+	case "marking":
+		if marking == nil {
+			return mcp.NewToolResultError("shade=marking requires the 'marking' parameter"), nil
+		}
+		raw := map[string]float64{}
+		for k, v := range marking {
+			raw[k] = v
+		}
+		opts.Shading = normalizeShading(raw)
+		opts.ShadeKind = "marking"
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("unknown shade %q (use none, sensitivity, or marking)", shade)), nil
+	}
+
+	// SVG (no shading support yet — that lives in the PNG path) and PNG.
+	svg := generateSVG(model)
+	if pngBytes, err := renderPNGWithOpts(model, opts); err == nil {
+		return mcp.NewToolResultImage(svg, base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
 	return mcp.NewToolResultText(svg), nil
 }
@@ -1985,8 +2039,8 @@ func generateSVG(model *goflowmetamodel.Model) string {
 			}
 		}
 		if x1 != 0 && x2 != 0 {
-			sx, sy := edgePoint(float64(x1), float64(y1), float64(x2), float64(y2), fromIsPlace)
-			ex, ey := edgePoint(float64(x2), float64(y2), float64(x1), float64(y1), toIsPlace)
+			sx, sy := edgePoint(float64(x1), float64(y1), float64(x2), float64(y2), fromIsPlace, 1.0)
+			ex, ey := edgePoint(float64(x2), float64(y2), float64(x1), float64(y1), toIsPlace, 1.0)
 			svg += fmt.Sprintf(`  <path d="M%.1f,%.1f L%.1f,%.1f" class="arc"/>
 `, sx, sy, ex, ey)
 		}
