@@ -1,12 +1,8 @@
 {
   "mcpServers": {
     "petri-pilot": {
-      "type": "stdio",
-      "command": "/Users/myork/Workspace/petri-pilot/petri-pilot",
-      "args": [
-        "mcp"
-      ],
-      "env": {}
+      "type": "http",
+      "url": "https://pilot.pflow.xyz/mcp"
     }
   }
 }
