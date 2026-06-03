@@ -126,6 +126,32 @@ func TestHandleOde_Layouts(t *testing.T) {
 	}
 }
 
+func TestHandleOde_EquilibriumEffectiveReached(t *testing.T) {
+	// Short tspan: system reaches steady-state values well before the
+	// consecutive-steps gate fires. Expect Reached=true with the
+	// EffectiveReached signal so the response doesn't lie.
+	modelJSON := mustJSON(t, coffeeShopModel())
+	res := callOde(t, map[string]any{
+		"model": modelJSON,
+		"tspan": "[0, 20]",
+		"mode":  "equilibrium",
+		"plot":  false,
+	})
+	if res.IsError {
+		t.Fatalf("unexpected error: %s", textBlock(t, res))
+	}
+	var resp odeResponse
+	if err := json.Unmarshal([]byte(textBlock(t, res)), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Equilibrium == nil {
+		t.Fatalf("expected equilibrium result")
+	}
+	if !resp.Equilibrium.Reached {
+		t.Errorf("Reached should be true (either gate-fired or effective); reason=%q maxChange=%v", resp.Equilibrium.Reason, resp.Equilibrium.MaxChange)
+	}
+}
+
 func TestHandleOde_RejectsBadMethod(t *testing.T) {
 	modelJSON := mustJSON(t, coffeeShopModel())
 	res := callOde(t, map[string]any{

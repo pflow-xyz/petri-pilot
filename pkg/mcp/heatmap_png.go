@@ -103,10 +103,23 @@ func renderHeatmapPNG(model *goflowmetamodel.Model, opts *HeatmapOpts) ([]byte, 
 	originX := margin
 	originY := titleH + margin
 
-	// Cells
+	// Decide grid placement. If every place has a natural X/Y, bin into
+	// (row, col) based on the model's bounding box. Otherwise fall back to
+	// iteration order. Collisions (two places landing in the same cell)
+	// drift to the next free cell — the user can pass rows/cols to force
+	// a different binning if the autopick is too coarse.
+	cellOf := flatGridPlacement(n, rows, cols)
+	if placement := positionBinPlacement(model, rows, cols); placement != nil {
+		cellOf = placement
+	}
+
 	for i := 0; i < n; i++ {
-		r := i / cols
-		c := i % cols
+		rc := cellOf[i]
+		if rc[0] < 0 {
+			continue
+		}
+		r := rc[0]
+		c := rc[1]
 		x := originX + float64(c)*cell
 		y := originY + float64(r)*cell
 		v := values[i]
@@ -163,6 +176,107 @@ func renderHeatmapPNG(model *goflowmetamodel.Model, opts *HeatmapOpts) ([]byte, 
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// flatGridPlacement assigns each place to (row, col) by iteration order.
+func flatGridPlacement(n, rows, cols int) [][2]int {
+	out := make([][2]int, n)
+	for i := 0; i < n; i++ {
+		if i >= rows*cols {
+			out[i] = [2]int{-1, -1}
+			continue
+		}
+		out[i] = [2]int{i / cols, i % cols}
+	}
+	return out
+}
+
+// positionBinPlacement returns a placement that bins places into the grid by
+// their explicit X/Y coordinates. Returns nil if any place lacks a position
+// (in which case the caller falls back to flat iteration order). When two
+// places bin to the same cell, the second drifts to the nearest empty cell
+// (BFS over neighbours).
+func positionBinPlacement(model *goflowmetamodel.Model, rows, cols int) [][2]int {
+	n := len(model.Places)
+	for _, p := range model.Places {
+		if p.X == 0 && p.Y == 0 {
+			return nil
+		}
+	}
+	minX, maxX := math.Inf(1), math.Inf(-1)
+	minY, maxY := math.Inf(1), math.Inf(-1)
+	for _, p := range model.Places {
+		x, y := float64(p.X), float64(p.Y)
+		if x < minX {
+			minX = x
+		}
+		if x > maxX {
+			maxX = x
+		}
+		if y < minY {
+			minY = y
+		}
+		if y > maxY {
+			maxY = y
+		}
+	}
+	// Pad the bounding box so the max value doesn't snap to cell N.
+	xRange := maxX - minX
+	yRange := maxY - minY
+	if xRange == 0 {
+		xRange = 1
+	}
+	if yRange == 0 {
+		yRange = 1
+	}
+
+	occupied := make(map[[2]int]bool, n)
+	out := make([][2]int, n)
+	for i, p := range model.Places {
+		col := int(float64(cols) * (float64(p.X) - minX) / xRange)
+		if col >= cols {
+			col = cols - 1
+		}
+		row := int(float64(rows) * (float64(p.Y) - minY) / yRange)
+		if row >= rows {
+			row = rows - 1
+		}
+		// Drift to nearest empty cell on collision.
+		rc := [2]int{row, col}
+		if occupied[rc] {
+			rc = nearestFreeCell(rc, rows, cols, occupied)
+		}
+		occupied[rc] = true
+		out[i] = rc
+	}
+	return out
+}
+
+// nearestFreeCell BFS-walks neighbours of `start` to find the closest unoccupied
+// cell within (rows, cols). Returns start if nothing is free (shouldn't happen
+// when rows*cols >= n).
+func nearestFreeCell(start [2]int, rows, cols int, occupied map[[2]int]bool) [2]int {
+	visited := map[[2]int]bool{start: true}
+	queue := [][2]int{start}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, d := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}} {
+			n := [2]int{cur[0] + d[0], cur[1] + d[1]}
+			if n[0] < 0 || n[0] >= rows || n[1] < 0 || n[1] >= cols {
+				continue
+			}
+			if visited[n] {
+				continue
+			}
+			visited[n] = true
+			if !occupied[n] {
+				return n
+			}
+			queue = append(queue, n)
+		}
+	}
+	return start
 }
 
 // autoGrid picks rows and cols whose product is >= n, preferring near-square

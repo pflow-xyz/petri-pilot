@@ -70,11 +70,12 @@ type odeSample struct {
 }
 
 type odeEquilibrium struct {
-	Reached   bool    `json:"reached"`
-	Time      float64 `json:"time"`
-	MaxChange float64 `json:"maxChange"`
-	Steps     int     `json:"steps"`
-	Reason    string  `json:"reason"`
+	Reached          bool    `json:"reached"`
+	EffectiveReached bool    `json:"effectiveReached,omitempty"`
+	Time             float64 `json:"time"`
+	MaxChange        float64 `json:"maxChange"`
+	Steps            int     `json:"steps"`
+	Reason           string  `json:"reason"`
 }
 
 func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -184,13 +185,25 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		Final:       sol.GetFinalState(),
 	}
 	if eqResult != nil {
-		resp.Equilibrium = &odeEquilibrium{
+		eq := &odeEquilibrium{
 			Reached:   eqResult.Reached,
 			Time:      eqResult.Time,
 			MaxChange: eqResult.MaxChange,
 			Steps:     eqResult.Steps,
 			Reason:    eqResult.Reason,
 		}
+		// The detector only marks Reached=true after N consecutive steps
+		// below tolerance. On asymptotic systems that condition can be slow
+		// to fire even though the system is sitting still. If maxChange is
+		// well below the tolerance, treat the result as effectively at
+		// equilibrium so the response doesn't lie to the caller.
+		const fastEqTolerance = 1e-4
+		if !eq.Reached && eq.MaxChange < fastEqTolerance {
+			eq.Reached = true
+			eq.EffectiveReached = true
+			eq.Reason = "effective_equilibrium_below_tolerance"
+		}
+		resp.Equilibrium = eq
 	}
 
 	// Downsample uniformly. Always keep the first and last samples so the

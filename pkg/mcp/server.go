@@ -1287,8 +1287,8 @@ func handleVisualize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("unknown shade %q (use none, sensitivity, or marking)", shade)), nil
 	}
 
-	// SVG (no shading support yet — that lives in the PNG path) and PNG.
-	svg := generateSVG(model)
+	// Both SVG and PNG honor the shading/marking/title opts.
+	svg := generateSVGWithOpts(model, opts)
 	if pngBytes, err := renderPNGWithOpts(model, opts); err == nil {
 		return mcp.NewToolResultImage(svg, base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
@@ -1924,7 +1924,15 @@ func parseV2Extensions(app *extensions.ApplicationSpec, exts map[string]json.Raw
 }
 
 func generateSVG(model *goflowmetamodel.Model) string {
-	// Check if model has explicit positions
+	return generateSVGWithOpts(model, nil)
+}
+
+// generateSVGWithOpts emits the SVG diagram with optional shading/marking
+// overrides. When opts is nil, the look matches the original default style
+// (.place/.transition/.arc CSS classes). When shading is active, per-element
+// inline styles are emitted instead so the SVG output stays at parity with
+// the PNG renderer.
+func generateSVGWithOpts(model *goflowmetamodel.Model, opts *RenderOpts) string {
 	hasPositions := false
 	maxX, maxY := 0, 0
 	for _, p := range model.Places {
@@ -1950,7 +1958,6 @@ func generateSVG(model *goflowmetamodel.Model) string {
 		}
 	}
 
-	// Calculate dimensions
 	var width, height int
 	if hasPositions {
 		width = maxX + 100
@@ -1961,69 +1968,81 @@ func generateSVG(model *goflowmetamodel.Model) string {
 		height = 250
 	}
 
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d">
-  <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-    </marker>
-  </defs>
-  <style>
-    .place { fill: #e3f2fd; stroke: #1976d2; stroke-width: 2; }
-    .transition { fill: #333; stroke: #333; }
-    .label { font-family: system-ui, sans-serif; font-size: 12px; text-anchor: middle; }
-    .arc { stroke: #333; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
-  </style>
-`, width, height)
+	// First pass over arcs to collect the unique colors that need their own
+	// arrowhead markers in <defs>. SVG markers can't easily inherit stroke
+	// without context-stroke support, so we emit one marker per color.
+	arcColors := map[string]string{} // arc-from-to → color
+	usedColors := map[string]bool{"#333333": true}
+	for _, arc := range model.Arcs {
+		c := arcShadeColor(opts, arcID(arc.From, arc.To))
+		arcColors[arcID(arc.From, arc.To)] = c
+		usedColors[c] = true
+	}
 
-	// Default layout values for auto-positioning
+	titleH := 0
+	if opts != nil && opts.Title != "" {
+		titleH = 28
+	}
+	svgHeight := height + titleH
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d">
+  <defs>
+`, width, svgHeight)
+	for c := range usedColors {
+		fmt.Fprintf(&sb, `    <marker id="ah-%s" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="%s"/></marker>
+`, colorSlug(c), c)
+	}
+	sb.WriteString(`  </defs>
+  <style>
+    .label { font-family: system-ui, sans-serif; font-size: 12px; text-anchor: middle; }
+  </style>
+`)
+	if titleH > 0 {
+		fmt.Fprintf(&sb, `  <text x="%d" y="18" class="label" style="font-size:16px;font-weight:bold">%s</text>
+`, width/2, escapeXML(opts.Title))
+	}
+	yOffset := titleH
+
 	defaultPlaceY := 50
 	defaultTransY := 150
 	spacing := 120
 
-	// Place positions
 	placePos := make(map[string][2]int)
 	for i, p := range model.Places {
 		var x, y int
 		if p.X != 0 || p.Y != 0 {
-			// Use explicit position
 			x, y = p.X, p.Y
 		} else {
-			// Auto-layout
 			x = 50 + i*spacing
 			y = defaultPlaceY
 		}
 		placePos[p.ID] = [2]int{x, y}
-		svg += fmt.Sprintf(`  <circle cx="%d" cy="%d" r="25" class="place"/>
+		fill, stroke := placeColors(opts, p.ID)
+		fmt.Fprintf(&sb, `  <circle cx="%d" cy="%d" r="25" style="fill:%s;stroke:%s;stroke-width:2"/>
   <text x="%d" y="%d" class="label">%s</text>
-`, x, y, x, y+45, p.ID)
-		// Show initial tokens
-		if p.Initial > 0 {
-			svg += fmt.Sprintf(`  <text x="%d" y="%d" class="label" style="font-weight:bold">%d</text>
-`, x, y+5, p.Initial)
+`, x, y+yOffset, fill, stroke, x, y+45+yOffset, escapeXML(p.ID))
+		if label := placeValueLabel(opts, p); label != "" {
+			fmt.Fprintf(&sb, `  <text x="%d" y="%d" class="label" style="font-weight:bold">%s</text>
+`, x, y+5+yOffset, label)
 		}
 	}
 
-	// Transition positions
 	transPos := make(map[string][2]int)
 	for i, t := range model.Transitions {
 		var x, y int
 		if t.X != 0 || t.Y != 0 {
-			// Use explicit position
 			x, y = t.X, t.Y
 		} else {
-			// Auto-layout
 			x = 50 + i*spacing
 			y = defaultTransY
 		}
 		transPos[t.ID] = [2]int{x, y}
-		svg += fmt.Sprintf(`  <rect x="%d" y="%d" width="10" height="40" class="transition"/>
+		fmt.Fprintf(&sb, `  <rect x="%d" y="%d" width="10" height="40" style="fill:%s"/>
   <text x="%d" y="%d" class="label">%s</text>
-`, x-5, y-20, x, y+40, t.ID)
+`, x-5, y-20+yOffset, transitionFillColor(opts, t.ID), x, y+40+yOffset, escapeXML(t.ID))
 	}
 
-	// Draw arcs. Endpoints are pulled in to the node boundary (+ small gap)
-	// so the arrowhead reads as separate from the shape rather than vanishing
-	// under it. See edgePoint in render_png.go for the geometry.
 	for _, arc := range model.Arcs {
 		var x1, y1, x2, y2 int
 		var fromIsPlace, toIsPlace bool
@@ -2039,15 +2058,31 @@ func generateSVG(model *goflowmetamodel.Model) string {
 			}
 		}
 		if x1 != 0 && x2 != 0 {
-			sx, sy := edgePoint(float64(x1), float64(y1), float64(x2), float64(y2), fromIsPlace, 1.0)
-			ex, ey := edgePoint(float64(x2), float64(y2), float64(x1), float64(y1), toIsPlace, 1.0)
-			svg += fmt.Sprintf(`  <path d="M%.1f,%.1f L%.1f,%.1f" class="arc"/>
-`, sx, sy, ex, ey)
+			sx, sy := edgePoint(float64(x1), float64(y1+yOffset), float64(x2), float64(y2+yOffset), fromIsPlace, 1.0)
+			ex, ey := edgePoint(float64(x2), float64(y2+yOffset), float64(x1), float64(y1+yOffset), toIsPlace, 1.0)
+			color := arcColors[arcID(arc.From, arc.To)]
+			fmt.Fprintf(&sb, `  <path d="M%.1f,%.1f L%.1f,%.1f" style="stroke:%s;stroke-width:1.5;fill:none;marker-end:url(#ah-%s)"/>
+`, sx, sy, ex, ey, color, colorSlug(color))
 		}
 	}
 
-	svg += "</svg>"
-	return svg
+	sb.WriteString(`</svg>`)
+	return sb.String()
+}
+
+// colorSlug converts "#aabbcc" → "aabbcc" for use in marker IDs.
+func colorSlug(hex string) string {
+	if strings.HasPrefix(hex, "#") {
+		return hex[1:]
+	}
+	return hex
+}
+
+// escapeXML escapes the five XML special characters in text node content
+// and attribute values.
+func escapeXML(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;")
+	return r.Replace(s)
 }
 
 func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
