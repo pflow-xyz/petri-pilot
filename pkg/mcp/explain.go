@@ -219,6 +219,93 @@ func handleExplain(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	return mcp.NewToolResultText(string(text)), nil
 }
 
+// verboseAnnotation returns short formula/algorithm text suitable for
+// inclusion in a tool's response when verbose=true. The text is meant to
+// run alongside numeric output, not replace it: 5-10 lines, plain Unicode
+// math, terminated with a pointer at the petri_explain topic for deeper
+// reading. Each annotation pairs with a topic name that exists in
+// defiConcepts(), so the user can drill in.
+//
+// kind is the tool family: "ode", "ssa", "sde", "fit", "optimize",
+// "sensitivity". Unknown kinds return the empty string so callers can
+// safely treat the result as optional.
+func verboseAnnotation(kind string, runSummary string) string {
+	header := func(algorithm, formula, topic string) string {
+		out := algorithm + "\n\nFormula:\n" + indent(formula, "  ")
+		if runSummary != "" {
+			out += "\n\nThis run:\n" + indent(runSummary, "  ")
+		}
+		if topic != "" {
+			out += "\n\nDeeper reading: call petri_explain topic=" + topic
+		}
+		return out
+	}
+
+	switch kind {
+	case "ode":
+		return header(
+			"Algorithm: Tsit5 (Tsitouras 5/4) adaptive Runge-Kutta integration of mass-action ODE.",
+			"For each transition t:   rate(t) = k_t · ∏_(p ∈ •t) m(p)\nDerivatives:            du_p/dt = Σ_(t input p) rate(t) − Σ_(t output p) rate(t)\nIntegrator step error:   adaptive, abstol=1e-6, reltol=1e-3 (JSParityOptions matches pflow.xyz).",
+			"mass_action_kinetics",
+		)
+	case "equilibrium":
+		return header(
+			"Equilibrium detection on top of ODE solve: stop when max derivative stays below tolerance.",
+			"At each check:   maxChange = max_i |du_i/dt|\nIf maxChange < tol for N consecutive checks → reached.\nFastEquilibriumOptions: tol=1e-4, N=3, minTime=0.01.\nIf maxChange falls below tolerance but the consecutive gate hasn't\nfired by tspan end, the response sets effectiveReached=true so the\nstate is reported honestly.",
+			"equilibrium_detection",
+		)
+	case "ssa":
+		return header(
+			"Algorithm: Gillespie Stochastic Simulation Algorithm — exact discrete-event Markov chain simulation.",
+			"Per step:\n  a_i = k_i · ∏ C(m(p), w(p,t_i))    propensities\n  A   = Σ a_i                          total rate\n  τ   = −ln(u) / A,  u ~ U(0,1)        wait time ~ Exp(A)\n  P(t_i) = a_i / A                     which transition fires\nFire t_i: subtract input weights, add output weights, advance t by τ.",
+			"gillespie_ssa",
+		)
+	case "sde":
+		return header(
+			"Algorithm: Euler-Maruyama integration of SDE with geometric Brownian motion on volatile places.",
+			"dx_i = drift_i(x, t) dt + σ_i · x_i · dW_i\n\nDiscretized per step (dt = T/N):\n  drift  = mass-action derivative (same as petri_ode)\n  noise  = σ_i · x_i · √dt · W_i,  W ~ N(0, R)\nMulti-asset noise W = L · Z where Z is iid N(0, I_N) and R = L · L^T\n(R is the user-supplied correlation matrix, Cholesky-factored once).",
+			"euler_maruyama",
+		)
+	case "fit":
+		return header(
+			"Algorithm: Nelder-Mead simplex — gradient-free minimization of squared residual loss.",
+			"Simplex: N+1 points in N-dim parameter space.\nPer iteration:\n  1. Sort by loss\n  2. Reflect worst through centroid of others (α=1)\n  3. If reflection beats best: expand further (γ=2)\n  4. Else if reflection beats second-worst: replace worst\n  5. Else: contract (ρ=0.5) or shrink (σ=0.5)\nLoss: Σ (model(t_i) − observed_i)² over observation points.",
+			"nelder_mead",
+		)
+	case "optimize":
+		return header(
+			"Algorithm: Monte Carlo sampling + O(N²) Pareto frontier filter.",
+			"Sample N rate combos uniformly in parameter bounds.\nFor each combo: run ODE to equilibrium, record observable values.\nDominance: A dominates B iff ∀ obj: A.obj ≥ B.obj (≤ for min),\nand strictly better on at least one. Pareto-optimal: no other\nsample dominates this one.",
+			"pareto_optimization",
+		)
+	case "sensitivity":
+		return header(
+			"Algorithm: finite-difference dimensionless elasticities of an observable vs each rate.",
+			"E_i = (Δy / y) / (Δk_i / k_i)\n\nFor each transition i:\n  Bump k_i → k_i · (1 + δ)\n  Re-run ODE to equilibrium\n  Δy = y_perturbed − y_base\n  E_i = (Δy / y_base) / δ",
+			"sensitivity_elasticity",
+		)
+	case "rate_scan":
+		return header(
+			"Algorithm: parameter sweep — one rate varies over a range, each value run to equilibrium.",
+			"For each rate value k in values:\n  prob = NewProblem(net, initial, tspan, rates ∪ {tid: k})\n  sol  = SolveUntilEquilibrium(prob, Tsit5, FastEquilibriumOptions)\n  record sol.GetFinalState()\nUseful for finding regime boundaries, computing dose-response.",
+			"mass_action_kinetics",
+		)
+	}
+	return ""
+}
+
+// indent prefixes each non-empty line with the given prefix.
+func indent(s, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		if l == "" {
+			continue
+		}
+		lines[i] = prefix + l
+	}
+	return strings.Join(lines, "\n")
+}
+
 func listConcepts(concepts map[string]concept) (*mcp.CallToolResult, error) {
 	names := make([]string, 0, len(concepts))
 	for k := range concepts {

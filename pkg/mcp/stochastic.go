@@ -58,6 +58,9 @@ func stochasticTool() mcp.Tool {
 		mcp.WithNumber("seed",
 			mcp.Description("Random seed for reproducibility (default 42)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the Gillespie SSA algorithm description in the response. Default false"),
+		),
 	)
 }
 
@@ -70,6 +73,7 @@ type stochasticResponse struct {
 	Mean         map[string][]float64 `json:"mean"`
 	Stdev        map[string][]float64 `json:"stdev,omitempty"`
 	FinalMean    map[string]float64   `json:"finalMean"`
+	Explanation  string               `json:"explanation,omitempty"`
 }
 
 // transitionEntry holds the pre-indexed input/output arcs for one
@@ -224,6 +228,11 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		Mean:         mean,
 		Stdev:        stdev,
 		FinalMean:    finalMean,
+	}
+
+	if request.GetBool("verbose", false) {
+		resp.Explanation = verboseAnnotation("ssa",
+			fmt.Sprintf("realizations=%d, tspan=[%v, %v], %d transitions", realizations, tspan[0], tspan[1], len(model.Transitions)))
 	}
 
 	text, err := json.MarshalIndent(resp, "", "  ")

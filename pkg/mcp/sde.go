@@ -67,6 +67,9 @@ func sdeTool() mcp.Tool {
 		mcp.WithNumber("seed",
 			mcp.Description("Random seed for reproducibility (default 42)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the Euler-Maruyama algorithm description in the response. Default false"),
+		),
 	)
 }
 
@@ -81,6 +84,7 @@ type sdeResponse struct {
 	Stdev       map[string][]float64 `json:"stdev"`
 	FinalMean   map[string]float64   `json:"finalMean"`
 	FinalStdev  map[string]float64   `json:"finalStdev"`
+	Explanation string               `json:"explanation,omitempty"`
 }
 
 func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -305,6 +309,16 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		Stdev:       stdev,
 		FinalMean:   finalMean,
 		FinalStdev:  finalStdev,
+	}
+
+	if request.GetBool("verbose", false) {
+		corrNote := ""
+		if request.GetString("correlations", "") != "" {
+			corrNote = ", correlations applied via Cholesky factor"
+		}
+		resp.Explanation = verboseAnnotation("sde",
+			fmt.Sprintf("paths=%d, steps=%d, tspan=[%v, %v], %d volatile places%s",
+				paths, steps, tspan[0], tspan[1], len(volatility), corrNote))
 	}
 
 	text, err := json.MarshalIndent(resp, "", "  ")

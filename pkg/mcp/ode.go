@@ -51,6 +51,9 @@ func odeTool() mcp.Tool {
 		mcp.WithString("layout",
 			mcp.Description("Output layout: 'plot' (default, trajectory only), 'combined' (net snapshot at final marking + plot side-by-side), or 'net' (net snapshot only, no plot)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the algorithm description and formula in the response. Default false. Use to teach a user what the solver actually computed"),
+		),
 	)
 }
 
@@ -62,6 +65,7 @@ type odeResponse struct {
 	Samples     []odeSample        `json:"samples"`
 	Final       map[string]float64 `json:"final"`
 	Equilibrium *odeEquilibrium    `json:"equilibrium,omitempty"`
+	Explanation string             `json:"explanation,omitempty"`
 }
 
 type odeSample struct {
@@ -218,6 +222,19 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	}
 	if n > 0 && (n-1)%stride != 0 {
 		resp.Samples = append(resp.Samples, odeSample{T: sol.T[n-1], U: sol.U[n-1]})
+	}
+
+	if request.GetBool("verbose", false) {
+		kind := "ode"
+		summary := fmt.Sprintf("method=%s, tspan=[%v, %v], %d transitions, %d places", methodName, tspan[0], tspan[1], len(model.Transitions), len(model.Places))
+		if mode == "equilibrium" {
+			kind = "equilibrium"
+			if resp.Equilibrium != nil {
+				summary += fmt.Sprintf("\nreached=%v, effectiveReached=%v, time=%v, maxChange=%v",
+					resp.Equilibrium.Reached, resp.Equilibrium.EffectiveReached, resp.Equilibrium.Time, resp.Equilibrium.MaxChange)
+			}
+		}
+		resp.Explanation = verboseAnnotation(kind, summary)
 	}
 
 	text, err := json.MarshalIndent(resp, "", "  ")

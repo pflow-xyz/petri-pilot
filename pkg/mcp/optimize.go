@@ -53,6 +53,9 @@ func optimizeTool() mcp.Tool {
 		mcp.WithNumber("seed",
 			mcp.Description("Random seed for reproducibility (default 42)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the Monte Carlo / Pareto algorithm description in the response. Default false"),
+		),
 	)
 }
 
@@ -73,6 +76,7 @@ type optimizeResponse struct {
 	Seed        int64                 `json:"seed"`
 	Samples     []optimizeSample      `json:"samples"`
 	ParetoCount int                   `json:"paretoCount"`
+	Explanation string                `json:"explanation,omitempty"`
 }
 
 func handleOptimize(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -226,6 +230,12 @@ func handleOptimize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		Seed:        seed,
 		Samples:     samples,
 		ParetoCount: paretoCount,
+	}
+
+	if request.GetBool("verbose", false) {
+		resp.Explanation = verboseAnnotation("optimize",
+			fmt.Sprintf("%d samples, %d parameters, %d objectives, %d Pareto-optimal (%.1f%%)",
+				len(samples), len(params), len(objectives), paretoCount, 100*float64(paretoCount)/float64(len(samples))))
 	}
 
 	text, err := json.MarshalIndent(resp, "", "  ")

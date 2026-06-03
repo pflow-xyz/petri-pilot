@@ -54,6 +54,9 @@ func fitTool() mcp.Tool {
 		mcp.WithNumber("tol",
 			mcp.Description("Convergence tolerance on simplex spread (default 1e-6)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the Nelder-Mead algorithm description in the response. Default false"),
+		),
 	)
 }
 
@@ -70,6 +73,7 @@ type fitResponse struct {
 	Converged    bool               `json:"converged"`
 	ParamOrder   []string           `json:"paramOrder"`
 	Observations map[string][][2]float64 `json:"observations"`
+	Explanation  string             `json:"explanation,omitempty"`
 }
 
 func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -260,6 +264,16 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		Converged:    converged,
 		ParamOrder:   paramOrder,
 		Observations: rawObs,
+	}
+
+	if request.GetBool("verbose", false) {
+		obsCount := 0
+		for _, pts := range rawObs {
+			obsCount += len(pts)
+		}
+		resp.Explanation = verboseAnnotation("fit",
+			fmt.Sprintf("%d parameters, %d observation points, iters=%d, final loss=%g, converged=%v",
+				len(paramOrder), obsCount, iters, bestLoss, converged))
 	}
 
 	text, err := json.MarshalIndent(resp, "", "  ")
