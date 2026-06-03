@@ -52,6 +52,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(ammQuoteTool(), handleAmmQuote)
 	s.AddTool(ammILTool(), handleAmmIL)
 	s.AddTool(ammDepthTool(), handleAmmDepth)
+	s.AddTool(explainTool(), handleExplain)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)

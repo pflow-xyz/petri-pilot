@@ -48,6 +48,9 @@ func ammQuoteTool() mcp.Tool {
 		mcp.WithNumber("fee_bps",
 			mcp.Description("Pool fee in basis points (default 30 = 0.3%, Uniswap V2 standard)"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the math derivation (formula + substitution) alongside the numeric result. Default false. Use when explaining to a user how the swap was priced"),
+		),
 	)
 }
 
@@ -64,6 +67,7 @@ type ammQuoteResponse struct {
 	PriceImpactPct  float64 `json:"priceImpactPct"`
 	NewReserveX     float64 `json:"newReserveX"`
 	NewReserveY     float64 `json:"newReserveY"`
+	Derivation      string  `json:"derivation,omitempty"`
 }
 
 func handleAmmQuote(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -109,6 +113,28 @@ func handleAmmQuote(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		NewReserveX:     rx + dx,
 		NewReserveY:     ry - dy,
 	}
+	if request.GetBool("verbose", false) {
+		resp.Derivation = fmt.Sprintf(
+			"Constant-product invariant:  x · y = k\n"+
+				"After trade:                (x + Δx)·(y − Δy) = k\n"+
+				"Solving for Δy:             Δy = y · Δx_after_fee / (x + Δx_after_fee)\n"+
+				"\n"+
+				"Substitution:\n"+
+				"  fee_rate = %.4f                                 (%v bps)\n"+
+				"  Δx_after_fee = %g · (1 − %.4f) = %g\n"+
+				"  Δy = %g · %g / (%g + %g) = %g\n"+
+				"\n"+
+				"Spot price        = y / x        = %g / %g       = %g\n"+
+				"Effective price   = Δy / Δx      = %g / %g       = %g\n"+
+				"Price impact      = 1 − eff/spot = 1 − %.6f/%.6f = %.4f%%",
+			feeRate, feeBps,
+			dx, feeRate, dxAfterFee,
+			ry, dxAfterFee, rx, dxAfterFee, dy,
+			ry, rx, spotPrice,
+			dy, dx, effectivePrice,
+			effectivePrice, spotPrice, priceImpact*100,
+		)
+	}
 	text, _ := json.MarshalIndent(resp, "", "  ")
 	return mcp.NewToolResultText(string(text)), nil
 }
@@ -130,6 +156,9 @@ func ammILTool() mcp.Tool {
 		mcp.WithNumber("holding_period_days",
 			mcp.Description("Holding period in days (default 365). Used with fee_apy to compute realized fee return"),
 		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include the IL derivation alongside the numeric curve. Default false"),
+		),
 	)
 }
 
@@ -139,6 +168,7 @@ type ammILResponse struct {
 	FeeAPY          float64   `json:"feeApy,omitempty"`
 	FeeYieldPct     float64   `json:"feeYieldPct,omitempty"`
 	BreakevenRatios []float64 `json:"breakevenRatios,omitempty"`
+	Derivation      string    `json:"derivation,omitempty"`
 }
 
 func handleAmmIL(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -202,6 +232,38 @@ func handleAmmIL(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToo
 				resp.BreakevenRatios = append(resp.BreakevenRatios, math.Exp(lr))
 			}
 		}
+	}
+
+	if request.GetBool("verbose", false) {
+		// Pick two reference points (r=1 and the max in the range) for the
+		// worked example so users see how the formula collapses to known
+		// values at the anchor.
+		rmax := ratios[len(ratios)-1]
+		ilmax := 100 * (2*math.Sqrt(rmax)/(1+rmax) - 1)
+		extra := ""
+		if feeAPY > 0 {
+			extra = fmt.Sprintf(
+				"\n\nFee-yield comparison:\n"+
+					"  Realized fees   = fee_APY × days/365 = %.3g × %v/365 = %.3g%%\n"+
+					"  Breakeven r     = solve IL(r) = −%.3g%%\n",
+				feeAPY, days, resp.FeeYieldPct, resp.FeeYieldPct)
+			if len(resp.BreakevenRatios) > 0 {
+				extra += fmt.Sprintf("  Numerical roots = %v\n", resp.BreakevenRatios)
+			}
+		}
+		resp.Derivation = fmt.Sprintf(
+			"Impermanent Loss formula:\n"+
+				"  IL(r) = 2·√r / (1 + r) − 1,   where r = P_new / P_old\n"+
+				"\n"+
+				"Derivation:\n"+
+				"  Pool reserves satisfy x·y = k → LP holds √(k · P) of each in value terms.\n"+
+				"  HODL value = arithmetic mean of new portfolio.\n"+
+				"  LP/HODL ratio = 2·√r / (1 + r), strictly ≤ 1 with equality only at r=1.\n"+
+				"\n"+
+				"Anchor points from this run:\n"+
+				"  r = 1.00 → IL = 0.00%%   (no price change, no loss)\n"+
+				"  r = %.3g → IL = %.3f%%",
+			rmax, ilmax) + extra
 	}
 
 	text, _ := json.MarshalIndent(resp, "", "  ")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -124,6 +125,63 @@ func TestAmmIL_BreakevenPlot(t *testing.T) {
 			}
 			t.Logf("wrote %d bytes to %s", len(img), path)
 		}
+	}
+}
+
+func TestAmm_VerboseDerivations(t *testing.T) {
+	// petri_amm_quote with verbose=true should include a derivation field
+	// that walks through the formula and the substitution.
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_amm_quote"
+	req.Params.Arguments = map[string]any{
+		"reserve_x": 100.0,
+		"reserve_y": 200000.0,
+		"amount_in": 1.0,
+		"verbose":   true,
+	}
+	res, err := handleAmmQuote(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handleAmmQuote: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("error: %s", textBlock(t, res))
+	}
+	var resp ammQuoteResponse
+	if err := json.Unmarshal([]byte(textBlock(t, res)), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Derivation == "" {
+		t.Fatalf("verbose=true should populate Derivation, got empty")
+	}
+	for _, want := range []string{"x · y", "Δx_after_fee", "Spot price", "Price impact"} {
+		if !strings.Contains(resp.Derivation, want) {
+			t.Errorf("derivation missing %q", want)
+		}
+	}
+
+	// petri_amm_il with verbose=true should include the IL formula.
+	req2 := mcp.CallToolRequest{}
+	req2.Params.Name = "petri_amm_il"
+	req2.Params.Arguments = map[string]any{
+		"price_ratios": `[0.5, 1, 2]`,
+		"verbose":      true,
+	}
+	res, err = handleAmmIL(context.Background(), req2)
+	if err != nil {
+		t.Fatalf("handleAmmIL: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("error: %s", textBlock(t, res))
+	}
+	var ilResp ammILResponse
+	if err := json.Unmarshal([]byte(textBlock(t, res)), &ilResp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if ilResp.Derivation == "" {
+		t.Fatalf("verbose=true should populate Derivation, got empty")
+	}
+	if !strings.Contains(ilResp.Derivation, "2·√r") {
+		t.Errorf("IL derivation missing the canonical 2·√r formula")
 	}
 }
 
