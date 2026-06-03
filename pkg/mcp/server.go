@@ -45,6 +45,8 @@ func NewServer() *server.MCPServer {
 	s.AddTool(odeSweepTool(), handleOdeSweep)
 	s.AddTool(odeSensitivityTool(), handleOdeSensitivity)
 	s.AddTool(optimizeTool(), handleOptimize)
+	s.AddTool(stochasticTool(), handleStochastic)
+	s.AddTool(fitTool(), handleFit)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)
