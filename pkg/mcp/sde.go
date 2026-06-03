@@ -9,6 +9,8 @@ import (
 	"image/png"
 	"math"
 	"math/rand"
+	"sort"
+	"strings"
 
 	"github.com/fogleman/gg"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -40,6 +42,9 @@ func sdeTool() mcp.Tool {
 		mcp.WithString("volatility",
 			mcp.Required(),
 			mcp.Description(`JSON object mapping place_id → sigma (annualized vol). Places not in this map evolve deterministically. e.g. {"price_token_a": 0.6, "price_token_b": 0.4}`),
+		),
+		mcp.WithString("correlations",
+			mcp.Description(`Optional JSON object of pairwise correlation coefficients in [-1, 1], keyed by "placeA-placeB" (sorted alphabetically). e.g. {"btc-eth": 0.7, "btc-sol": 0.6, "eth-sol": 0.5}. Missing pairs default to 0 (independent). Matrix must be positive semi-definite or the call errors.`),
 		),
 		mcp.WithString("rates",
 			mcp.Description("JSON object of mass-action rate constants (default 1.0 per transition)"),
@@ -108,6 +113,52 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		if v < 0 {
 			return mcp.NewToolResultError(fmt.Sprintf("volatility for %q is negative", k)), nil
 		}
+	}
+
+	// Stable ordering of volatile places — Cholesky factor uses this index.
+	volatilePlaces := make([]string, 0, len(volatility))
+	for k := range volatility {
+		volatilePlaces = append(volatilePlaces, k)
+	}
+	sort.Strings(volatilePlaces)
+	volIdx := map[string]int{}
+	for i, k := range volatilePlaces {
+		volIdx[k] = i
+	}
+
+	// Build correlation matrix (defaults to identity).
+	nv := len(volatilePlaces)
+	corr := make([][]float64, nv)
+	for i := range corr {
+		corr[i] = make([]float64, nv)
+		corr[i][i] = 1
+	}
+	if s := request.GetString("correlations", ""); s != "" {
+		var userCorr map[string]float64
+		if err := json.Unmarshal([]byte(s), &userCorr); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid correlations JSON: %v", err)), nil
+		}
+		for key, rho := range userCorr {
+			a, b, ok := splitCorrKey(key)
+			if !ok {
+				return mcp.NewToolResultError(fmt.Sprintf("correlation key %q must be \"placeA-placeB\"", key)), nil
+			}
+			ia, ok1 := volIdx[a]
+			ib, ok2 := volIdx[b]
+			if !ok1 || !ok2 {
+				return mcp.NewToolResultError(fmt.Sprintf("correlation %q references place not in volatility map", key)), nil
+			}
+			if rho < -1 || rho > 1 {
+				return mcp.NewToolResultError(fmt.Sprintf("correlation %q = %v out of [-1, 1]", key, rho)), nil
+			}
+			corr[ia][ib] = rho
+			corr[ib][ia] = rho
+		}
+	}
+	// Cholesky factor — fails if matrix isn't positive semi-definite.
+	chol, err := cholesky(corr)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("correlation matrix not positive semi-definite: %v", err)), nil
 	}
 
 	rates := map[string]float64{}
@@ -204,7 +255,7 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	rng := rand.New(rand.NewSource(seed))
 	for p := 0; p < paths; p++ {
 		subSeed := rng.Int63()
-		trajectories[p] = []map[string][]float64{runSDEPath(prob, initial, volatility, tspan, steps, sampleStep, subSeed)}
+		trajectories[p] = []map[string][]float64{runSDEPath(prob, initial, volatility, volatilePlaces, chol, tspan, steps, sampleStep, subSeed)}
 	}
 
 	// Aggregate mean / stdev per place per sample.
@@ -267,13 +318,19 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	return mcp.NewToolResultText(string(text)), nil
 }
 
-// runSDEPath runs one Euler-Maruyama path. Returns sampled trajectories per
-// place. Maintains non-negativity by clamping (negative values are unphysical
-// for token counts and would explode the GBM term in subsequent steps).
-func runSDEPath(prob *solver.Problem, initial map[string]float64, volatility map[string]float64, tspan [2]float64, steps int, sampleStep []int, seed int64) map[string][]float64 {
+// runSDEPath runs one Euler-Maruyama path with optional correlated noise.
+// volatilePlaces is the stable ordering whose index aligns with rows of
+// chol (the lower-triangular Cholesky factor of the correlation matrix).
+// On each step, we draw nv iid standard normals z, then correlated noise
+// w = chol · z; w[i] is N(0,1) marginally and Cov(w[i], w[j]) = corr[i][j].
+//
+// Non-negativity is enforced by clamping (negative GBM values are
+// unphysical for prices/balances and would explode subsequent steps).
+func runSDEPath(prob *solver.Problem, initial map[string]float64, volatility map[string]float64, volatilePlaces []string, chol [][]float64, tspan [2]float64, steps int, sampleStep []int, seed int64) map[string][]float64 {
 	rng := rand.New(rand.NewSource(seed))
 	dt := (tspan[1] - tspan[0]) / float64(steps)
 	sqrtDt := math.Sqrt(dt)
+	nv := len(volatilePlaces)
 
 	u := make(map[string]float64, len(initial))
 	for k, v := range initial {
@@ -286,7 +343,6 @@ func runSDEPath(prob *solver.Problem, initial map[string]float64, volatility map
 	}
 
 	sampleIdx := 0
-	// Record t=0 sample.
 	for sampleIdx < len(sampleStep) && sampleStep[sampleIdx] == 0 {
 		for k, v := range u {
 			out[k][sampleIdx] = v
@@ -294,23 +350,41 @@ func runSDEPath(prob *solver.Problem, initial map[string]float64, volatility map
 		sampleIdx++
 	}
 
+	z := make([]float64, nv) // iid standard normals
+	w := make([]float64, nv) // correlated normals
+
 	t := tspan[0]
 	for step := 1; step <= steps; step++ {
 		du := prob.F(t, u)
+
+		// Draw iid normals, then apply the Cholesky factor.
+		for i := 0; i < nv; i++ {
+			z[i] = rng.NormFloat64()
+		}
+		for i := 0; i < nv; i++ {
+			s := 0.0
+			for j := 0; j <= i; j++ {
+				s += chol[i][j] * z[j]
+			}
+			w[i] = s
+		}
+
 		next := make(map[string]float64, len(u))
 		for k, v := range u {
 			next[k] = v + du[k]*dt
-			if sigma, ok := volatility[k]; ok {
-				next[k] += sigma * v * sqrtDt * rng.NormFloat64()
-			}
-			if next[k] < 0 {
+		}
+		for i, k := range volatilePlaces {
+			sigma := volatility[k]
+			next[k] += sigma * u[k] * sqrtDt * w[i]
+		}
+		for k, v := range next {
+			if v < 0 {
 				next[k] = 0
 			}
 		}
 		u = next
 		t += dt
 
-		// Record any sample(s) due at this step.
 		for sampleIdx < len(sampleStep) && sampleStep[sampleIdx] == step {
 			for k, v := range u {
 				out[k][sampleIdx] = v
@@ -318,14 +392,57 @@ func runSDEPath(prob *solver.Problem, initial map[string]float64, volatility map
 			sampleIdx++
 		}
 	}
-	// Fill any trailing sample slots with the final value (shouldn't happen
-	// in normal use but defensive against off-by-one).
 	for ; sampleIdx < len(sampleStep); sampleIdx++ {
 		for k, v := range u {
 			out[k][sampleIdx] = v
 		}
 	}
 	return out
+}
+
+// cholesky returns the lower-triangular Cholesky factor L such that
+// M = L · L^T. Errors if M is not positive semi-definite.
+func cholesky(M [][]float64) ([][]float64, error) {
+	n := len(M)
+	L := make([][]float64, n)
+	for i := range L {
+		L[i] = make([]float64, n)
+	}
+	for i := 0; i < n; i++ {
+		for j := 0; j <= i; j++ {
+			sum := 0.0
+			for k := 0; k < j; k++ {
+				sum += L[i][k] * L[j][k]
+			}
+			if i == j {
+				d := M[i][i] - sum
+				if d < -1e-12 {
+					return nil, fmt.Errorf("non-positive diagonal at row %d (value %v)", i, d)
+				}
+				if d < 0 {
+					d = 0
+				}
+				L[i][j] = math.Sqrt(d)
+			} else {
+				if L[j][j] == 0 {
+					L[i][j] = 0
+				} else {
+					L[i][j] = (M[i][j] - sum) / L[j][j]
+				}
+			}
+		}
+	}
+	return L, nil
+}
+
+// splitCorrKey parses "placeA-placeB" → (placeA, placeB). Returns the keys
+// in input order; the matrix builder symmetrizes either way.
+func splitCorrKey(key string) (string, string, bool) {
+	idx := strings.Index(key, "-")
+	if idx < 1 || idx >= len(key)-1 {
+		return "", "", false
+	}
+	return key[:idx], key[idx+1:], true
 }
 
 // renderSDEPNG draws mean ± stdev bands per variable across paths. Same
