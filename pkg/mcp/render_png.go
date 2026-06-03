@@ -72,47 +72,64 @@ func pngFace(bold bool, size float64) (font.Face, error) {
 	return opentype.NewFace(tt, &opentype.FaceOptions{Size: size, DPI: 72, Hinting: font.HintingFull})
 }
 
+// resolvedPositions returns positions for every place and transition in the
+// model. Explicit Place.X / Transition.X are honored; if every node lacks a
+// position, the force-directed auto-layout fills in; otherwise the legacy
+// row layout fills missing slots so partial-position models still render.
+func resolvedPositions(model *goflowmetamodel.Model) (placePos, transPos map[string][2]int) {
+	if shouldAutoLayout(model) {
+		return computeAutoLayout(model)
+	}
+	const (
+		spacing       = 120
+		defaultPlaceY = 50
+		defaultTransY = 150
+	)
+	placePos = make(map[string][2]int, len(model.Places))
+	for i, p := range model.Places {
+		x, y := p.X, p.Y
+		if x == 0 && y == 0 {
+			x = 50 + i*spacing
+			y = defaultPlaceY
+		}
+		placePos[p.ID] = [2]int{x, y}
+	}
+	transPos = make(map[string][2]int, len(model.Transitions))
+	for i, t := range model.Transitions {
+		x, y := t.X, t.Y
+		if x == 0 && y == 0 {
+			x = 50 + i*spacing
+			y = defaultTransY
+		}
+		transPos[t.ID] = [2]int{x, y}
+	}
+	return placePos, transPos
+}
+
 // netNaturalSize returns the (width, height) the net would prefer when
-// rendered with no scaling — derived from explicit positions if any, else
-// the auto-layout grid.
+// rendered with no scaling — derived from whatever resolvedPositions
+// returned.
 func netNaturalSize(model *goflowmetamodel.Model) (int, int) {
-	hasPositions := false
+	placePos, transPos := resolvedPositions(model)
 	maxX, maxY := 0, 0
-	for _, p := range model.Places {
-		if p.X != 0 || p.Y != 0 {
-			hasPositions = true
-			if p.X > maxX {
-				maxX = p.X
-			}
-			if p.Y > maxY {
-				maxY = p.Y
-			}
+	for _, p := range placePos {
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
 		}
 	}
-	for _, t := range model.Transitions {
-		if t.X != 0 || t.Y != 0 {
-			hasPositions = true
-			if t.X > maxX {
-				maxX = t.X
-			}
-			if t.Y > maxY {
-				maxY = t.Y
-			}
+	for _, p := range transPos {
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
 		}
 	}
-	const spacing = 120
-	var w, h int
-	if hasPositions {
-		w = maxX + 100
-		h = maxY + 100
-	} else {
-		n := len(model.Places)
-		if len(model.Transitions) > n {
-			n = len(model.Transitions)
-		}
-		w = n*spacing + 100
-		h = 250
-	}
+	w := maxX + 100
+	h := maxY + 100
 	if w < 200 {
 		w = 200
 	}
@@ -175,30 +192,7 @@ func drawNet(dc *gg.Context, model *goflowmetamodel.Model, opts *RenderOpts, ori
 	tx := func(x int) float64 { return offX + float64(x)*scale }
 	ty := func(y int) float64 { return offY + float64(y)*scale }
 
-	const spacing = 120
-	const (
-		defaultPlaceY = 50
-		defaultTransY = 150
-	)
-
-	placePos := make(map[string][2]int, len(model.Places))
-	for i, p := range model.Places {
-		x, y := p.X, p.Y
-		if x == 0 && y == 0 {
-			x = 50 + i*spacing
-			y = defaultPlaceY
-		}
-		placePos[p.ID] = [2]int{x, y}
-	}
-	transPos := make(map[string][2]int, len(model.Transitions))
-	for i, t := range model.Transitions {
-		x, y := t.X, t.Y
-		if x == 0 && y == 0 {
-			x = 50 + i*spacing
-			y = defaultTransY
-		}
-		transPos[t.ID] = [2]int{x, y}
-	}
+	placePos, transPos := resolvedPositions(model)
 
 	pr := placeR * scale
 
@@ -231,23 +225,55 @@ func drawNet(dc *gg.Context, model *goflowmetamodel.Model, opts *RenderOpts, ori
 		drawArrow(dc, sx, sy, ex, ey, arcShadeColor(opts, arcKey), scale)
 	}
 
-	// Places.
+	// Places. Shape differs by Place.Kind: token-counting places (the
+	// default) render as circles; data places render as rounded squares so
+	// typed-token / data models read at a glance.
 	labelSize := math.Max(8, 12*scale)
 	for _, p := range model.Places {
 		pos := placePos[p.ID]
 		x, y := tx(pos[0]), ty(pos[1])
 		fill, stroke := placeColors(opts, p.ID)
-		dc.SetHexColor(fill)
-		dc.DrawCircle(x, y, pr)
-		dc.Fill()
-		dc.SetHexColor(stroke)
-		dc.SetLineWidth(2 * scale)
-		dc.DrawCircle(x, y, pr)
-		dc.Stroke()
+		isData := p.IsData()
+		if isData {
+			s := pr * 1.6
+			dc.SetHexColor(fill)
+			dc.DrawRoundedRectangle(x-s/2, y-s/2, s, s, s*0.18)
+			dc.Fill()
+			dc.SetHexColor(stroke)
+			dc.SetLineWidth(2 * scale)
+			dc.DrawRoundedRectangle(x-s/2, y-s/2, s, s, s*0.18)
+			dc.Stroke()
+		} else {
+			dc.SetHexColor(fill)
+			dc.DrawCircle(x, y, pr)
+			dc.Fill()
+			dc.SetHexColor(stroke)
+			dc.SetLineWidth(2 * scale)
+			dc.DrawCircle(x, y, pr)
+			dc.Stroke()
+		}
+		// Resource places get an extra concentric ring so they pop out as
+		// "consumable resource" in the diagram. The flag is structural and
+		// always meaningful, regardless of token color.
+		if p.Resource {
+			dc.SetHexColor(stroke)
+			dc.SetLineWidth(1 * scale)
+			dc.DrawCircle(x, y, pr*0.6)
+			dc.Stroke()
+		}
 		if f, err := pngFace(false, labelSize); err == nil {
 			dc.SetFontFace(f)
 			dc.SetHexColor("#000000")
 			dc.DrawStringAnchored(p.ID, x, y+pr+12*scale, 0.5, 0.5)
+		}
+		// Show the data type as a sub-label for data places — it's the
+		// most useful piece of info the user needs to read off the diagram.
+		if isData && p.Type != "" {
+			if f, err := pngFace(false, math.Max(7, 9*scale)); err == nil {
+				dc.SetFontFace(f)
+				dc.SetHexColor("#666666")
+				dc.DrawStringAnchored(p.Type, x, y+pr+24*scale, 0.5, 0.5)
+			}
 		}
 		if label := placeValueLabel(opts, p); label != "" {
 			if f, err := pngFace(true, labelSize); err == nil {

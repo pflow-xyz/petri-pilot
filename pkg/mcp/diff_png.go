@@ -17,8 +17,13 @@ const (
 // renderDiffPNG draws model A and model B side-by-side. Removed elements
 // (present in A, absent in B) are highlighted red on the left; added
 // elements (present in B, absent in A) are highlighted green on the right.
-// Unchanged elements use the default style on both panels.
+// Unchanged elements use the default style on both panels. Title defaults
+// to "petri_diff" when empty.
 func renderDiffPNG(modelA, modelB *goflowmetamodel.Model, diff ModelDiff) ([]byte, error) {
+	return renderDiffPNGTitled(modelA, modelB, diff, "petri_diff")
+}
+
+func renderDiffPNGTitled(modelA, modelB *goflowmetamodel.Model, diff ModelDiff, title string) ([]byte, error) {
 	// Build highlight maps per side.
 	leftHL := map[string]string{}
 	for _, id := range diff.PlacesRemoved {
@@ -69,7 +74,7 @@ func renderDiffPNG(modelA, modelB *goflowmetamodel.Model, diff ModelDiff) ([]byt
 	dc.SetHexColor("#ffffff")
 	dc.Clear()
 
-	drawTitle(dc, "petri_diff", float64(W)/2, float64(titleH)/2+4)
+	drawTitle(dc, title, float64(W)/2, float64(titleH)/2+4)
 
 	// Subtitles for each panel.
 	if f, err := pngFace(true, 13); err == nil {

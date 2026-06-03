@@ -6,14 +6,11 @@ import (
 	"github.com/fogleman/gg"
 )
 
-// drawXYPlot is the generic line-plot renderer that drawODEPlot and the
-// rate-scan plot both delegate to. It accepts shared x values for all series
-// and one y-array per series.
-func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, title, xLabel, yLabel string, originX, originY, W, H float64) {
-	if len(xs) == 0 || len(ys) == 0 {
-		return
-	}
-
+// drawPlotFrame draws the title, axes, grid lines, tick labels, and axis
+// titles for a plot occupying (originX, originY, W, H) with the given data
+// ranges. Used by drawXYPlot and by custom multi-series renderers that
+// can't easily flatten their data into the (xs, ys[][]) shape.
+func drawPlotFrame(dc *gg.Context, xmin, xmax, ymin, ymax float64, title, xLabel, yLabel string, originX, originY, W, H float64) {
 	const (
 		marginT = 40.0
 		marginR = 140.0
@@ -31,43 +28,6 @@ func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, t
 		}
 	}
 
-	xmin := xs[0]
-	xmax := xs[len(xs)-1]
-	for _, x := range xs {
-		if x < xmin {
-			xmin = x
-		}
-		if x > xmax {
-			xmax = x
-		}
-	}
-	if xmax-xmin < 1e-12 {
-		xmax = xmin + 1
-	}
-
-	ymin := math.Inf(1)
-	ymax := math.Inf(-1)
-	for _, series := range ys {
-		for _, y := range series {
-			if y < ymin {
-				ymin = y
-			}
-			if y > ymax {
-				ymax = y
-			}
-		}
-	}
-	if math.IsInf(ymin, 1) {
-		ymin, ymax = 0, 1
-	}
-	yrange := ymax - ymin
-	if yrange < 1e-9 {
-		ymax = ymin + 1
-		yrange = 1
-	}
-	ymin -= yrange * 0.1
-	ymax += yrange * 0.1
-
 	left := originX + marginL
 	top := originY + marginT
 	right := left + plotW
@@ -81,7 +41,6 @@ func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, t
 	}
 
 	const nTicks = 5
-
 	dc.SetHexColor("#dddddd")
 	dc.SetLineWidth(0.5)
 	for i := 0; i <= nTicks; i++ {
@@ -127,13 +86,96 @@ func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, t
 		dc.DrawStringAnchored(yLabel, yAxisX, (top+bottom)/2, 0.5, 0.5)
 		dc.Pop()
 	}
+}
+
+// drawXYPlot is the generic line-plot renderer that drawODEPlot and the
+// rate-scan plot both delegate to. It accepts shared x values for all series
+// and one y-array per series.
+func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, title, xLabel, yLabel string, originX, originY, W, H float64) {
+	drawXYPlotColored(dc, xs, ys, labels, nil, title, xLabel, yLabel, originX, originY, W, H)
+}
+
+// drawXYPlotColored is the underlying implementation with an optional custom
+// color palette. When colors is nil, the default categorical palette is used.
+// When provided, len(colors) should be >= len(ys); shorter palettes wrap.
+func drawXYPlotColored(dc *gg.Context, xs []float64, ys [][]float64, labels, colors []string, title, xLabel, yLabel string, originX, originY, W, H float64) {
+	if len(xs) == 0 || len(ys) == 0 {
+		return
+	}
+
+	const (
+		marginT = 40.0
+		marginR = 140.0
+		marginB = 50.0
+		marginL = 70.0
+	)
+	plotW := W - marginL - marginR
+	plotH := H - marginT - marginB
+
+	xmin := xs[0]
+	xmax := xs[len(xs)-1]
+	for _, x := range xs {
+		if x < xmin {
+			xmin = x
+		}
+		if x > xmax {
+			xmax = x
+		}
+	}
+	if xmax-xmin < 1e-12 {
+		xmax = xmin + 1
+	}
+
+	ymin := math.Inf(1)
+	ymax := math.Inf(-1)
+	for _, series := range ys {
+		for _, y := range series {
+			if y < ymin {
+				ymin = y
+			}
+			if y > ymax {
+				ymax = y
+			}
+		}
+	}
+	if math.IsInf(ymin, 1) {
+		ymin, ymax = 0, 1
+	}
+	yrange := ymax - ymin
+	if yrange < 1e-9 {
+		ymax = ymin + 1
+		yrange = 1
+	}
+	ymin -= yrange * 0.1
+	ymax += yrange * 0.1
+
+	drawPlotFrame(dc, xmin, xmax, ymin, ymax, title, xLabel, yLabel, originX, originY, W, H)
+
+	left := originX + marginL
+	top := originY + marginT
+	right := left + plotW
+	bottom := top + plotH
+
+	sx := func(x float64) float64 {
+		return left + (x-xmin)/(xmax-xmin)*plotW
+	}
+	sy := func(y float64) float64 {
+		return bottom - (y-ymin)/(ymax-ymin)*plotH
+	}
+
+	colorAt := func(i int) string {
+		if len(colors) > 0 {
+			return colors[i%len(colors)]
+		}
+		return plotColors[i%len(plotColors)]
+	}
 
 	dc.SetLineWidth(2)
 	for i, series := range ys {
 		if len(series) == 0 {
 			continue
 		}
-		dc.SetHexColor(plotColors[i%len(plotColors)])
+		dc.SetHexColor(colorAt(i))
 		dc.MoveTo(sx(xs[0]), sy(series[0]))
 		for j := 1; j < len(series); j++ {
 			dc.LineTo(sx(xs[j]), sy(series[j]))
@@ -146,7 +188,7 @@ func drawXYPlot(dc *gg.Context, xs []float64, ys [][]float64, labels []string, t
 	if f, err := pngFace(false, 11); err == nil {
 		dc.SetFontFace(f)
 		for i, label := range labels {
-			dc.SetHexColor(plotColors[i%len(plotColors)])
+			dc.SetHexColor(colorAt(i))
 			dc.SetLineWidth(2)
 			dc.DrawLine(legendX, legendY+6, legendX+20, legendY+6)
 			dc.Stroke()

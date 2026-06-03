@@ -42,6 +42,8 @@ func NewServer() *server.MCPServer {
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)
 	s.AddTool(rateScanTool(), handleRateScan)
+	s.AddTool(odeSweepTool(), handleOdeSweep)
+	s.AddTool(odeSensitivityTool(), handleOdeSensitivity)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)
@@ -663,6 +665,15 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	}
 	model := parsed.Model
 
+	// Snapshot the model before applying operations so we can render a
+	// before/after visual using the diff renderer.
+	beforeJSON, _ := json.Marshal(model)
+	beforeParsed, _ := parseModelV2(string(beforeJSON))
+	var beforeModel *goflowmetamodel.Model
+	if beforeParsed != nil {
+		beforeModel = beforeParsed.Model
+	}
+
 	// Parse operations
 	var operations []map[string]any
 	if err := json.Unmarshal([]byte(opsJSON), &operations); err != nil {
@@ -718,6 +729,15 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 	}
 
+	// Render the before/after diff inline. If beforeModel cloning failed for
+	// any reason, fall back to text-only — the visual is a nice-to-have, not
+	// a correctness requirement.
+	if beforeModel != nil {
+		diff := compareModels(beforeModel, model)
+		if pngBytes, perr := renderDiffPNGTitled(beforeModel, model, diff, "petri_extend"); perr == nil {
+			return mcp.NewToolResultImage(string(outputJSON), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		}
+	}
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 
@@ -1940,39 +1960,30 @@ func generateSVG(model *goflowmetamodel.Model) string {
 // inline styles are emitted instead so the SVG output stays at parity with
 // the PNG renderer.
 func generateSVGWithOpts(model *goflowmetamodel.Model, opts *RenderOpts) string {
-	hasPositions := false
+	placePos, transPos := resolvedPositions(model)
 	maxX, maxY := 0, 0
-	for _, p := range model.Places {
-		if p.X != 0 || p.Y != 0 {
-			hasPositions = true
-			if p.X > maxX {
-				maxX = p.X
-			}
-			if p.Y > maxY {
-				maxY = p.Y
-			}
+	for _, p := range placePos {
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
 		}
 	}
-	for _, t := range model.Transitions {
-		if t.X != 0 || t.Y != 0 {
-			hasPositions = true
-			if t.X > maxX {
-				maxX = t.X
-			}
-			if t.Y > maxY {
-				maxY = t.Y
-			}
+	for _, p := range transPos {
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
 		}
 	}
-
-	var width, height int
-	if hasPositions {
-		width = maxX + 100
-		height = maxY + 100
-	} else {
-		spacing := 120
-		width = max(len(model.Places), len(model.Transitions))*spacing + 100
-		height = 250
+	width, height := maxX+100, maxY+100
+	if width < 200 {
+		width = 200
+	}
+	if height < 200 {
+		height = 200
 	}
 
 	// First pass over arcs to collect the unique colors that need their own
@@ -2011,40 +2022,37 @@ func generateSVGWithOpts(model *goflowmetamodel.Model, opts *RenderOpts) string 
 	}
 	yOffset := titleH
 
-	defaultPlaceY := 50
-	defaultTransY := 150
-	spacing := 120
-
-	placePos := make(map[string][2]int)
-	for i, p := range model.Places {
-		var x, y int
-		if p.X != 0 || p.Y != 0 {
-			x, y = p.X, p.Y
-		} else {
-			x = 50 + i*spacing
-			y = defaultPlaceY
-		}
-		placePos[p.ID] = [2]int{x, y}
+	for _, p := range model.Places {
+		pos := placePos[p.ID]
+		x, y := pos[0], pos[1]
 		fill, stroke := placeColors(opts, p.ID)
-		fmt.Fprintf(&sb, `  <circle cx="%d" cy="%d" r="25" style="fill:%s;stroke:%s;stroke-width:2"/>
+		if p.IsData() {
+			// Data places render as rounded squares.
+			fmt.Fprintf(&sb, `  <rect x="%d" y="%d" width="40" height="40" rx="7" style="fill:%s;stroke:%s;stroke-width:2"/>
+  <text x="%d" y="%d" class="label">%s</text>
+`, x-20, y-20+yOffset, fill, stroke, x, y+45+yOffset, escapeXML(p.ID))
+		} else {
+			fmt.Fprintf(&sb, `  <circle cx="%d" cy="%d" r="25" style="fill:%s;stroke:%s;stroke-width:2"/>
   <text x="%d" y="%d" class="label">%s</text>
 `, x, y+yOffset, fill, stroke, x, y+45+yOffset, escapeXML(p.ID))
+		}
+		if p.Resource {
+			fmt.Fprintf(&sb, `  <circle cx="%d" cy="%d" r="15" style="fill:none;stroke:%s;stroke-width:1"/>
+`, x, y+yOffset, stroke)
+		}
+		if p.IsData() && p.Type != "" {
+			fmt.Fprintf(&sb, `  <text x="%d" y="%d" class="label" style="font-size:9px;fill:#666666">%s</text>
+`, x, y+57+yOffset, escapeXML(p.Type))
+		}
 		if label := placeValueLabel(opts, p); label != "" {
 			fmt.Fprintf(&sb, `  <text x="%d" y="%d" class="label" style="font-weight:bold">%s</text>
 `, x, y+5+yOffset, label)
 		}
 	}
 
-	transPos := make(map[string][2]int)
-	for i, t := range model.Transitions {
-		var x, y int
-		if t.X != 0 || t.Y != 0 {
-			x, y = t.X, t.Y
-		} else {
-			x = 50 + i*spacing
-			y = defaultTransY
-		}
-		transPos[t.ID] = [2]int{x, y}
+	for _, t := range model.Transitions {
+		pos := transPos[t.ID]
+		x, y := pos[0], pos[1]
 		fmt.Fprintf(&sb, `  <rect x="%d" y="%d" width="10" height="40" style="fill:%s"/>
   <text x="%d" y="%d" class="label">%s</text>
 `, x-5, y-20+yOffset, transitionFillColor(opts, t.ID), x, y+40+yOffset, escapeXML(t.ID))
