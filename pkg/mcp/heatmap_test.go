@@ -180,6 +180,35 @@ func TestHeatmap_TTTWithPositions(t *testing.T) {
 	}
 }
 
+func TestHeatmap_LongTitleNotClipped(t *testing.T) {
+	// A deliberately long title that would clip without canvas-widening.
+	model := &goflowmetamodel.Model{
+		Places: []goflowmetamodel.Place{
+			{ID: "a"}, {ID: "b"}, {ID: "c"}, {ID: "d"},
+		},
+	}
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_heatmap"
+	req.Params.Arguments = map[string]any{
+		"model": mustJSON(t, model),
+		"title": "A deliberately long heatmap title that would clip without canvas-widening logic — this should fit",
+	}
+	res, err := handleHeatmap(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handleHeatmap: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("error: %s", textBlock(t, res))
+	}
+	img := extractImageBytes(t, res)
+	if path := os.Getenv("HEATMAP_LONG_TITLE_OUT"); path != "" {
+		if err := os.WriteFile(path, img, 0644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		t.Logf("wrote %d bytes to %s", len(img), path)
+	}
+}
+
 func TestHeatmap_CoffeeShop(t *testing.T) {
 	// Heatmap of the coffee shop with no explicit marking — should use
 	// Place.Initial values. Auto grid is 3x2 (5 places).

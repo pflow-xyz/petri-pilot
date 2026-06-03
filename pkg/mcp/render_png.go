@@ -33,11 +33,16 @@ const placeR = 25.0
 // marking override (replaces Place.Initial labels), and a per-element shading
 // map keyed by ID. ShadeKind selects the color palette (currently only
 // "sensitivity" — a gray → red gradient — or "marking" for blue-saturation).
+//
+// Highlight is a per-element explicit fill color (hex). It takes precedence
+// over Shading and is the path used by the visual diff (added=green,
+// removed=red).
 type RenderOpts struct {
 	Title     string
 	Marking   map[string]float64
 	Shading   map[string]float64
 	ShadeKind string
+	Highlight map[string]string
 }
 
 var (
@@ -271,11 +276,14 @@ func drawNet(dc *gg.Context, model *goflowmetamodel.Model, opts *RenderOpts, ori
 func arcID(from, to string) string { return from + "->" + to }
 
 // placeColors returns the fill and stroke colors for a place, taking
-// shading into account when present.
+// Highlight (explicit color) and shading (palette mapping) into account.
 func placeColors(opts *RenderOpts, id string) (string, string) {
 	defaultFill, defaultStroke := "#e3f2fd", "#1976d2"
 	if opts == nil {
 		return defaultFill, defaultStroke
+	}
+	if c, ok := opts.Highlight[id]; ok {
+		return c, defaultStroke
 	}
 	if v, ok := shade01(opts, id); ok {
 		switch opts.ShadeKind {
@@ -289,10 +297,13 @@ func placeColors(opts *RenderOpts, id string) (string, string) {
 }
 
 // transitionFillColor returns the fill color for a transition bar; tints
-// when shading data is available.
+// when Highlight or shading data is available.
 func transitionFillColor(opts *RenderOpts, id string) string {
 	if opts == nil {
 		return "#333333"
+	}
+	if c, ok := opts.Highlight[id]; ok {
+		return c
 	}
 	if v, ok := shade01(opts, id); ok && opts.ShadeKind == "sensitivity" {
 		return sensitivityFill(v)
@@ -300,11 +311,14 @@ func transitionFillColor(opts *RenderOpts, id string) string {
 	return "#333333"
 }
 
-// arcShadeColor returns the stroke color for an arc; tints when shading is
-// available for the arc by key "from->to".
+// arcShadeColor returns the stroke color for an arc; tints when Highlight
+// or shading is available for the arc by key "from->to".
 func arcShadeColor(opts *RenderOpts, key string) string {
 	if opts == nil {
 		return "#333333"
+	}
+	if c, ok := opts.Highlight[key]; ok {
+		return c
 	}
 	if v, ok := shade01(opts, key); ok && opts.ShadeKind == "sensitivity" {
 		return sensitivityFill(v)

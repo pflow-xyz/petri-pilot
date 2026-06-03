@@ -41,6 +41,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)
+	s.AddTool(rateScanTool(), handleRateScan)
 	s.AddTool(previewTool(), handlePreview)
 	s.AddTool(diffTool(), handleDiff)
 	s.AddTool(extendTool(), handleExtend)
@@ -544,6 +545,12 @@ func handleDiff(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 	}
 
+	// Always include a visual diff alongside the JSON — it's the cheap
+	// win that makes "what changed?" actually readable in chat. Caller
+	// can ignore the image block if they only want the structured data.
+	if pngBytes, perr := renderDiffPNG(modelA, modelB, diff); perr == nil {
+		return mcp.NewToolResultImage(string(outputJSON), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+	}
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 

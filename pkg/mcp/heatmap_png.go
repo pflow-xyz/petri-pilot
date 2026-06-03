@@ -92,6 +92,22 @@ func renderHeatmapPNG(model *goflowmetamodel.Model, opts *HeatmapOpts) ([]byte, 
 	W := int(margin*2 + gridW + legendW)
 	H := int(titleH + margin*2 + gridH)
 
+	// Make sure the title fits without clipping. Measure it at the default
+	// title size; if it would overflow the canvas, widen the canvas so the
+	// centered title has room. This is cheaper than shrinking the font and
+	// keeps consistency with the other renderers.
+	if opts.Title != "" {
+		if f, err := pngFace(true, 16); err == nil {
+			tmp := gg.NewContext(1, 1)
+			tmp.SetFontFace(f)
+			tw, _ := tmp.MeasureString(opts.Title)
+			minW := int(tw + margin*2 + 24)
+			if minW > W {
+				W = minW
+			}
+		}
+	}
+
 	dc := gg.NewContext(W, H)
 	dc.SetHexColor("#ffffff")
 	dc.Clear()
