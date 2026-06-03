@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Petri-Pilot — Model, simulate, and generate apps from Petri nets</title>
-  <meta name="description" content="Design Petri net models in your browser, simulate them with ODE kinetics, and generate Go backends and ES module frontends from a single specification. Includes ZK-proof workflows, AI-agent tooling (MCP), and a live catalog of game, resource, workflow, and computation nets.">
-  <meta name="keywords" content="Petri net, ODE simulation, code generation, zero-knowledge proofs, gnark, Groth16, MCP, model-driven development, state machine, workflow, formal methods">
+  <meta name="description" content="Design Petri net models, simulate them with ODE / SDE / Gillespie SSA, fit rates to observed data, optimize across Pareto frontiers, and generate Go backends and ES module frontends. 27 MCP tools for Claude and any AI agent. Includes AMM math, impermanent loss analysis, correlated price processes, and ZK-proof workflows.">
+  <meta name="keywords" content="Petri net, ODE simulation, SDE, Gillespie SSA, Nelder-Mead fitting, Pareto optimization, AMM, impermanent loss, code generation, zero-knowledge proofs, gnark, Groth16, MCP, Claude, model-driven development, state machine, workflow, formal methods, DeFi modeling">
   <meta name="author" content="pflow-xyz">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#0f0f1a">
@@ -19,7 +19,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Petri-Pilot">
   <meta property="og:title" content="Petri-Pilot — Model, simulate, and generate apps from Petri nets">
-  <meta property="og:description" content="Design Petri net models, simulate with ODE kinetics, and generate Go backends + ES module frontends from a single specification. Live demos, ZK proofs, and MCP tools for AI agents.">
+  <meta property="og:description" content="Design Petri net models, simulate with ODE / SDE / SSA, fit rates to observed data, find Pareto-optimal parameters, and generate full-stack apps. 27 MCP tools for Claude including AMM math, impermanent loss, and correlated price simulation.">
   <meta property="og:url" content="https://pilot.pflow.xyz/">
   <meta property="og:image" content="https://pilot.pflow.xyz/logo-square.png">
   <meta property="og:image:type" content="image/png">
@@ -31,7 +31,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Petri-Pilot — Model, simulate, and generate apps from Petri nets">
-  <meta name="twitter:description" content="Design Petri net models, simulate with ODE kinetics, and generate Go backends + ES module frontends from a single specification.">
+  <meta name="twitter:description" content="Design Petri net models, simulate ODE / SDE / SSA dynamics, fit rates from data, optimize Pareto frontiers. 27 MCP tools including AMM math and DeFi templates.">
   <meta name="twitter:image" content="https://pilot.pflow.xyz/logo-square.png">
   <meta name="twitter:image:alt" content="Petri-Pilot logo">
 
@@ -67,7 +67,7 @@
         "url": "https://pilot.pflow.xyz/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web",
-        "description": "Petri-Pilot generates complete applications from Petri net models. An LLM designs the model via MCP tools, then deterministic code generation produces Go backends and ES module frontends.",
+        "description": "Petri-Pilot is a model-first toolkit with 27 MCP tools for AI agents. Design Petri net models, simulate continuous (ODE), stochastic (Gillespie SSA), and noisy (SDE with Cholesky-correlated paths) dynamics, fit rates to observed data via Nelder-Mead, find Pareto-optimal parameters via Monte Carlo, analyze AMM math and impermanent loss, and generate Go backends + ES module frontends.",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
     ]
@@ -517,7 +517,7 @@
     <img src="/logo-light.svg" alt="Petri-Pilot" class="logo">
     <h1 class="title">Petri-Pilot</h1>
     <p class="tagline">Model, simulate, and generate applications from Petri nets</p>
-    <p class="subtitle">Define any system as places, transitions, and arcs &mdash; then generate Go backends, ES module frontends, and GraphQL APIs from a single model.</p>
+    <p class="subtitle">27 MCP tools your AI agent can drive: design models, run ODE / SDE / SSA simulations, fit rates to observed data, search Pareto frontiers, analyze AMM math &mdash; then generate Go backends and ES module frontends.</p>
   </section>
 
   <section class="intro-section">
@@ -579,11 +579,25 @@
       <a href="/mcp" class="demo-card">
         <span class="demo-icon">&#129302;</span>
         <h3 class="demo-name">AI Agent Integration</h3>
-        <p class="demo-desc"><strong>MCP tools for Claude and any AI agent.</strong> Design models, simulate behavior, generate full-stack apps, seal models with invariants, and browse the public catalog &mdash; all from your AI assistant. One-line install for Claude Code.</p>
+        <p class="demo-desc"><strong>27 MCP tools for Claude and any AI agent.</strong> Design and validate models, run ODE / Gillespie SSA / SDE simulations, fit rates to observed data, search Pareto frontiers, scan parameters, and generate full-stack apps &mdash; all from your AI assistant. Every calculation tool has a <code>verbose</code> mode that returns the formula alongside the result, plus a dedicated <code>petri_explain</code> tool for math concepts. One-line install for Claude Code.</p>
         <div class="demo-meta">
           <span class="demo-tag">MCP</span>
           <span class="demo-tag">Claude Code</span>
-          <span class="demo-tag">Streamable HTTP</span>
+          <span class="demo-tag">ODE / SSA / SDE</span>
+          <span class="demo-tag">fit &amp; optimize</span>
+          <span class="demo-tag">math explainer</span>
+        </div>
+      </a>
+
+      <a href="/mcp" class="demo-card">
+        <span class="demo-icon">&#128202;</span>
+        <h3 class="demo-name">DeFi Modeling</h3>
+        <p class="demo-desc"><strong>From mechanism design to portfolio risk.</strong> Pre-built templates for AMMs, lending pools, staking, vesting, DAO governance, and liquidation cascades. Closed-form AMM math: swap quotes, impermanent-loss curves with fee-yield breakeven, depth charts. Correlated multi-asset price paths via Cholesky-factored SDE. Multi-objective optimization for protocol parameter sweeps.</p>
+        <div class="demo-meta">
+          <span class="demo-tag">AMM</span>
+          <span class="demo-tag">impermanent loss</span>
+          <span class="demo-tag">correlated SDE</span>
+          <span class="demo-tag">templates</span>
         </div>
       </a>
 
