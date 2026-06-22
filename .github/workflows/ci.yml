@@ -46,6 +46,15 @@ jobs:
         env:
           GOPRIVATE: github.com/pflow-xyz/petri-pilot
 
+      # F4: the shipped binary uses gnark-crypto's asm field arithmetic, but
+      # Bazel builds with -tags purego. This asserts the two backends produce
+      # bit-identical field/circuit digests, so a divergence can never reach
+      # the on-chain Groth16 verifiers undetected.
+      - name: ZK field backend parity (purego vs asm)
+        run: ./scripts/zk-parity-check.sh
+        env:
+          GOPRIVATE: github.com/pflow-xyz/petri-pilot
+
   build:
     runs-on: ubuntu-latest
     steps:

@@ -213,14 +213,23 @@ Layout:
 - Per-package `BUILD.bazel` files are Gazelle-generated; hand-added attributes are marked `# keep`.
 
 **Gotchas / decisions baked in:**
-- **rules_go 0.61.1 / Go SDK 1.25.6.** go.mod requires `go 1.25.6`, so the hermetic SDK
-  must be ≥ 1.25. rules_go ≤ 0.55.x hardcodes `GOEXPERIMENT=coverageredesign`, which Go 1.25
-  removed (`go: unknown GOEXPERIMENT coverageredesign`) — hence the newer rules_go/gazelle
-  pin than go-pflow uses.
+- **rules_go 0.61.1 / Go SDK 1.26.0.** go.mod requires `go 1.25.6`, so the hermetic SDK
+  must be ≥ 1.25 (`MODULE.bazel` pins 1.26.0 to share remote-cache keys with the other
+  ecosystem consumers). rules_go ≤ 0.55.x hardcodes `GOEXPERIMENT=coverageredesign`, which
+  Go 1.25 removed (`go: unknown GOEXPERIMENT coverageredesign`) — hence the newer
+  rules_go/gazelle pin than go-pflow uses.
 - **`purego` build tag (Bazel only).** `gnark-crypto`'s amd64/arm64 assembly uses relative
-  cross-package `#include` directives that don't resolve in Bazel's sandbox. The `purego` tag
-  (set in `.bazelrc`) selects its pure-Go field arithmetic — bit-identical, just slower.
-  `go build`/the Makefile still use the asm fast path.
+  cross-package `#include` directives that don't resolve in Bazel's sandbox (the included
+  `field/asm/element_Nw/*.s` files live in a separate package that rules_go can't stage as
+  an asm include — see gnark-crypto issue #619). The `purego` tag (set in `.bazelrc`) selects
+  its pure-Go field arithmetic. `go build`/the Makefile still use the asm fast path, so the
+  shipped binary and the hermetic Bazel artifact use *different* field backends. That the two
+  are bit-identical is **not** assumed — `scripts/zk-parity-check.sh` (run in CI, builds
+  `cmd/zk-field-parity` both ways) asserts they produce identical digests for raw Fp/Fr ops,
+  native MiMC, the compiled R1CS, and a solved witness. A divergence fails CI rather than
+  silently reaching the on-chain Groth16 verifiers. (F4: the structural fix — building the
+  asm path hermetically — would need a gnark-crypto Bazel patch; the parity check guards the
+  gap until then.)
 - **`//pkg/mcp:mcp_test`** runs with `-test.short` (`# keep` in its BUILD.bazel):
   `TestServiceManagerIntegration` shells out to `go build` (needs a Go dev env + GOCACHE →
   non-hermetic) and self-skips under short mode. The other ~25 cases still run.
