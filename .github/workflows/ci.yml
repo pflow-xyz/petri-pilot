@@ -55,6 +55,15 @@ jobs:
         env:
           GOPRIVATE: github.com/pflow-xyz/petri-pilot
 
+      # F4 Tier 3: assert each committed Solidity verifier still matches its
+      # circuit's hermetic R1CS, so a circuit edit can't silently leave the
+      # deployed verifier verifying the wrong relation. (The on-chain bytecode
+      # leg needs forge+RPC — scripts/zk-onchain-bytecode-check.sh, run manually.)
+      - name: ZK verifier provenance (circuit <-> verifier)
+        run: go run ./cmd/zk-verifier-provenance
+        env:
+          GOPRIVATE: github.com/pflow-xyz/petri-pilot
+
   build:
     runs-on: ubuntu-latest
     steps:

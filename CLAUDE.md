@@ -707,6 +707,32 @@ For discrete systems (like TTT), the post-state root is the MiMC hash of the dis
 
 Deployed instances of the verifiable computation pattern.
 
+### Verifier provenance (F4 Tier 3)
+
+`zk-ode/provenance.json` binds each deployed Groth16 verifier to the circuit it
+was generated from, so a circuit edit can't silently leave the chain verifying
+the wrong relation. `cmd/zk-verifier-provenance` (run in CI) compiles each
+circuit hermetically — reproducible since F4 Tier 2 — and asserts its
+public-input count, constraint count, and R1CS digest match the manifest, and
+that the committed Solidity verifier's hardcoded `input[]` arity matches the
+circuit's public inputs. The verifying key is baked into the committed `.sol` as
+constants, so the committed verifier is the vk of record.
+
+```bash
+go run ./cmd/zk-verifier-provenance          # check (CI gate)
+go run ./cmd/zk-verifier-provenance -write    # regenerate after re-exporting a verifier
+```
+
+The remaining leg — deployed *bytecode* == committed Solidity — needs `forge` +
+an RPC, so it's a manual/opt-in helper rather than a CI gate:
+
+```bash
+RPC_URL=https://sepolia.base.org scripts/zk-onchain-bytecode-check.sh
+```
+
+Full reproducibility of the verifier from scratch would also require pinning the
+verifying key (the trusted setup is randomized); that's the next hardening step.
+
 ### Cascade Contracts (3 places, 2 transitions)
 
 | Contract | Address | Purpose |
