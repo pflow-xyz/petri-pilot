@@ -218,18 +218,23 @@ Layout:
   ecosystem consumers). rules_go ≤ 0.55.x hardcodes `GOEXPERIMENT=coverageredesign`, which
   Go 1.25 removed (`go: unknown GOEXPERIMENT coverageredesign`) — hence the newer
   rules_go/gazelle pin than go-pflow uses.
-- **`purego` build tag (Bazel only).** `gnark-crypto`'s amd64/arm64 assembly uses relative
-  cross-package `#include` directives that don't resolve in Bazel's sandbox (the included
-  `field/asm/element_Nw/*.s` files live in a separate package that rules_go can't stage as
-  an asm include — see gnark-crypto issue #619). The `purego` tag (set in `.bazelrc`) selects
-  its pure-Go field arithmetic. `go build`/the Makefile still use the asm fast path, so the
-  shipped binary and the hermetic Bazel artifact use *different* field backends. That the two
-  are bit-identical is **not** assumed — `scripts/zk-parity-check.sh` (run in CI, builds
-  `cmd/zk-field-parity` both ways) asserts they produce identical digests for raw Fp/Fr ops,
-  native MiMC, the compiled R1CS, and a solved witness. A divergence fails CI rather than
-  silently reaching the on-chain Groth16 verifiers. (F4: the structural fix — building the
-  asm path hermetically — would need a gnark-crypto Bazel patch; the parity check guards the
-  gap until then.)
+- **gnark-crypto asm built hermetically (F4 Tier 2).** `gnark-crypto`'s amd64/arm64 assembly
+  uses relative cross-package `#include` directives that don't resolve in Bazel's sandbox (the
+  included `field/asm/element_Nw/*.s` files live in a separate vendoring-hack package — see
+  gnark-crypto issue #619). Rather than fall back to pure-Go via `-tags purego`,
+  `bazel/patches/gnark-crypto-asm-hermetic.patch` (wired via `go_deps.module_override` in
+  `MODULE.bazel`) **inlines** each included file's content directly into the consuming `.s`, so
+  rules_go assembles it in-sandbox with no new files or BUILD/srcs changes. Bazel now compiles
+  the **same asm field backend** `make build` ships — the hermetic artifact and the shipped
+  binary are no longer different builds. Regenerate the patch after a gnark-crypto bump with
+  `scripts/gen-gnark-asm-patch.sh` (it covers all 36 consuming files across `ecc/*` and
+  `field/{babybear,koalabear}`). The pure-Go path is still available as a fallback via
+  `bazel build --config=purego`.
+- **Defense in depth — purego↔asm parity.** Independent of the build path, `scripts/zk-parity-check.sh`
+  (run in CI; builds `cmd/zk-field-parity` with and without `-tags purego`) asserts the two field
+  backends produce identical digests for raw Fp/Fr ops, native MiMC, the compiled R1CS, and a
+  solved witness — so an asm/purego divergence can never silently reach the on-chain Groth16
+  verifiers.
 - **`//pkg/mcp:mcp_test`** runs with `-test.short` (`# keep` in its BUILD.bazel):
   `TestServiceManagerIntegration` shells out to `go build` (needs a Go dev env + GOCACHE →
   non-hermetic) and self-skips under short mode. The other ~25 cases still run.
