@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "zkgo",
+    srcs = ["generator.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//zkcompile/petrigen",
+    ],
+)
+
+go_test(
+    name = "zkgo_test",
+    srcs = ["generator_test.go"],
+    # The test reads ../../../services/tic-tac-toe.json from disk; supply it as a
+    # runfile so the test is hermetic under Bazel's sandbox.
+    data = ["//services:tic-tac-toe.json"],  # keep
+    embed = [":zkgo"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//zkcompile/petrigen",
+    ],
+)

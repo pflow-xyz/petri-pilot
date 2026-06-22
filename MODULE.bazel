@@ -1,0 +1,43 @@
+"""petri-pilot: pure-Bazel (Bzlmod) build.
+
+Code generator + MCP server built on go-pflow. Dependencies are sourced from
+go.mod via Gazelle's go_deps extension, so `go build`/`go test` continue to work
+alongside Bazel.
+"""
+
+module(
+    name = "petri_pilot",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_go", version = "0.61.1", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "gazelle", version = "0.51.3", repo_name = "bazel_gazelle")
+
+# Hermetic Go SDK, pinned to the ecosystem-wide line (1.26.0) so compiled actions
+# share remote-cache keys with go-pflow and the other consumers' build graphs. The
+# SDK only needs to be >= go.mod's `go`/`toolchain` directives. nogo runs static
+# analysis at build time.
+go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.26.0")
+go_sdk.nogo(nogo = "//:nogo")
+
+# External Go deps come straight from go.mod / go.sum.
+go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+
+# `bazel mod tidy` populates this use_repo list from the go.mod graph.
+use_repo(
+    go_deps,
+    "com_github_anthropics_anthropic_sdk_go",
+    "com_github_consensys_gnark",
+    "com_github_consensys_gnark_crypto",
+    "com_github_fogleman_gg",
+    "com_github_google_uuid",
+    "com_github_gorilla_websocket",
+    "com_github_mark3labs_mcp_go",
+    "com_github_pflow_xyz_go_pflow",
+    "org_golang_x_image",
+    "org_golang_x_net",
+    "org_golang_x_oauth2",
+    "org_modernc_sqlite",
+)

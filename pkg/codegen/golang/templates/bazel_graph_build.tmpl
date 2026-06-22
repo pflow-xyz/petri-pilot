@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "graph",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),  # keep
+    importpath = "{{.Bazel.GraphImportPath}}",
+    visibility = ["//visibility:public"],
+    deps = [
+{{- range .Bazel.GraphDeps}}
+        "{{.}}",
+{{- end}}
+    ],
+)

@@ -132,6 +132,9 @@ type Context struct {
 
 	// Schema JSON for schema viewer page
 	SchemaJSON string
+
+	// Bazel build spec, populated when IncludeBazel is set.
+	Bazel *BazelBuildContext
 }
 
 // WorkflowContext provides template-friendly access to workflow orchestration data.

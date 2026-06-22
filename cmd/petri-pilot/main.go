@@ -523,6 +523,7 @@ func cmdCodegen(args []string) {
 	includeObs := fs.Bool("observability", false, "Include logging and Prometheus metrics")
 	includeDeploy := fs.Bool("deploy", false, "Include K8s manifests and GitHub Actions CI")
 	includeRealtime := fs.Bool("realtime", false, "Include SSE and WebSocket handlers")
+	includeBazel := fs.Bool("bazel", false, "Include Bazel build files (BUILD.bazel; MODULE.bazel/.bazelrc for standalone)")
 	apiOnly := fs.Bool("api-only", false, "Generate OpenAPI spec only")
 	includeFrontend := fs.Bool("frontend", false, "Generate ES modules frontend in frontend/ subdirectory")
 	asSubmodule := fs.Bool("submodule", false, "Skip go.mod generation (treat output as part of parent module)")
@@ -670,6 +671,7 @@ Examples:
 		IncludeObservability: *includeObs,
 		IncludeDeploy:        *includeDeploy,
 		IncludeRealtime:      *includeRealtime,
+		IncludeBazel:         *includeBazel,
 		AsSubmodule:          *asSubmodule,
 	})
 	if err != nil {

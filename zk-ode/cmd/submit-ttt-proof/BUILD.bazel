@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "submit-ttt-proof_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/zk-ode/cmd/submit-ttt-proof",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//zk-ode",
+        "@com_github_pflow_xyz_go_pflow//prover",
+    ],
+)
+
+go_binary(
+    name = "submit-ttt-proof",
+    embed = [":submit-ttt-proof_lib"],
+    visibility = ["//visibility:public"],
+)

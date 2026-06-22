@@ -1,0 +1,53 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "zk-ode",
+    srcs = [
+        "circuits.go",
+        "evaluate.go",
+        "fixedpoint.go",
+        "httpservice.go",
+        "service.go",
+        "state.go",
+        "topology.go",
+        "tsit5.go",
+        "ttt_heatmap_circuit.go",
+        "ttt_heatmap_witness.go",
+        "ttt_topology.go",
+        "ttt_witness.go",
+        "witness.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/zk-ode",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/serve",
+        "@com_github_consensys_gnark//constraint/solver",
+        "@com_github_consensys_gnark//frontend",
+        "@com_github_consensys_gnark//std/hash/mimc",
+        "@com_github_consensys_gnark_crypto//ecc/bn254/fr",
+        "@com_github_consensys_gnark_crypto//ecc/bn254/fr/mimc",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//prover",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)
+
+go_test(
+    name = "zk-ode_test",
+    srcs = [
+        "circuits_test.go",
+        "evaluate_test.go",
+        "fixedpoint_test.go",
+        "ttt_heatmap_test.go",
+        "ttt_topology_test.go",
+        "ttt_witness_test.go",
+    ],
+    embed = [":zk-ode"],
+    deps = [
+        "@com_github_consensys_gnark//backend/groth16",
+        "@com_github_consensys_gnark//frontend",
+        "@com_github_consensys_gnark//frontend/cs/r1cs",
+        "@com_github_consensys_gnark_crypto//ecc",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)

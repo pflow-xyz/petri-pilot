@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "serve",
+    srcs = [
+        "auth.go",
+        "codetoflow.go",
+        "deploy.go",
+        "graphql.go",
+        "metrics.go",
+        "playground.go",
+        "seo.go",
+        "serve.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/serve",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/llm",
+        "//pkg/validator",
+        "@com_github_pflow_xyz_go_pflow//graphql",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@org_golang_x_oauth2//:oauth2",
+        "@org_golang_x_oauth2//github",
+    ],
+)
+
+go_test(
+    name = "serve_test",
+    srcs = [
+        "poker_hand_test.go",
+        "seo_test.go",
+    ],
+    embed = [":serve"],
+)

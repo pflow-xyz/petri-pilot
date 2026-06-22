@@ -1,0 +1,44 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "esmodules",
+    srcs = [
+        "context.go",
+        "generator.go",
+        "templates.go",
+    ],
+    embedsrcs = [
+        "templates/admin.tmpl",
+        "templates/blobs.tmpl",
+        "templates/components.tmpl",
+        "templates/events.tmpl",
+        "templates/extensions.tmpl",
+        "templates/index_html.tmpl",
+        "templates/main.tmpl",
+        "templates/navigation.tmpl",
+        "templates/package_json.tmpl",
+        "templates/pages.tmpl",
+        "templates/router.tmpl",
+        "templates/simulation.tmpl",
+        "templates/theme.tmpl",
+        "templates/views.tmpl",
+        "templates/vite_config.tmpl",
+        "templates/wallet.tmpl",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/extensions",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "esmodules_test",
+    srcs = ["context_test.go"],
+    embed = [":esmodules"],
+    deps = [
+        "//pkg/extensions",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)

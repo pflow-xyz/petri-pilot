@@ -87,6 +87,13 @@ const (
 
 	// Documentation templates
 	TemplateReadme = "readme"
+
+	// Bazel build templates
+	TemplateBazelBuild      = "bazel_build"       // per-package BUILD.bazel
+	TemplateBazelGraphBuild = "bazel_graph_build" // graph/BUILD.bazel (GraphQL)
+	TemplateBazelModule     = "bazel_module"      // MODULE.bazel (standalone)
+	TemplateBazelrc         = "bazelrc"           // .bazelrc (standalone)
+	TemplateBazelVersion    = "bazel_version"     // .bazelversion (standalone)
 )
 
 // templateInfo maps template names to their file names and output files.
@@ -168,6 +175,13 @@ var templateInfo = map[string]struct {
 
 	// Documentation templates
 	TemplateReadme: {File: "readme.tmpl", Output: "README.md"},
+
+	// Bazel build templates
+	TemplateBazelBuild:      {File: "bazel_build.tmpl", Output: "BUILD.bazel"},
+	TemplateBazelGraphBuild: {File: "bazel_graph_build.tmpl", Output: "graph/BUILD.bazel"},
+	TemplateBazelModule:     {File: "bazel_module.tmpl", Output: "MODULE.bazel"},
+	TemplateBazelrc:         {File: "bazelrc.tmpl", Output: ".bazelrc"},
+	TemplateBazelVersion:    {File: "bazel_version.tmpl", Output: ".bazelversion"},
 }
 
 // Templates holds parsed templates for code generation.
@@ -419,4 +433,22 @@ func DocTemplateNames() []string {
 	return []string{
 		TemplateReadme,
 	}
+}
+
+// BazelTemplateNames returns the Bazel build templates to emit for the given
+// build spec. Submodule apps get a single BUILD.bazel (the parent module owns
+// MODULE.bazel/gazelle/nogo); standalone apps additionally get the Bzlmod
+// module files. The graph/ subpackage BUILD.bazel is added when GraphQL is on.
+func BazelTemplateNames(b *BazelBuildContext) []string {
+	if b == nil {
+		return nil
+	}
+	names := []string{TemplateBazelBuild}
+	if b.HasGraph {
+		names = append(names, TemplateBazelGraphBuild)
+	}
+	if !b.Submodule {
+		names = append(names, TemplateBazelModule, TemplateBazelrc, TemplateBazelVersion)
+	}
+	return names
 }

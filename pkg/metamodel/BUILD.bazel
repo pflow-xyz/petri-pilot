@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "metamodel",
+    srcs = [
+        "application.go",
+        "runtime.go",
+        "schema.go",
+        "views.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/metamodel",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)

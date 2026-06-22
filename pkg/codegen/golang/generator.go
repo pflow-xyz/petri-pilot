@@ -41,6 +41,10 @@ type Options struct {
 	// IncludeRealtime generates SSE and WebSocket handlers if true.
 	IncludeRealtime bool
 
+	// IncludeBazel generates Bazel build files (BUILD.bazel, and for standalone
+	// modules MODULE.bazel/.bazelrc/.bazelversion) alongside the Go output.
+	IncludeBazel bool
+
 	// AsSubmodule skips go.mod generation, treating output as part of parent module.
 	AsSubmodule bool
 }
@@ -273,6 +277,13 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 		templateNames = append(templateNames, SafemathTemplateNames()...)
 	}
 
+	// Include Bazel build files if requested (computed after all feature flags
+	// are known so dependency labels match the enabled templates).
+	if g.opts.IncludeBazel {
+		ctx.Bazel = computeBazelBuild(ctx, g.opts)
+		templateNames = append(templateNames, BazelTemplateNames(ctx.Bazel)...)
+	}
+
 	// Always include documentation templates (README.md)
 	templateNames = append(templateNames, DocTemplateNames()...)
 
@@ -387,6 +398,10 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 	}
 	if ctx.UsesMetamodelRuntime() {
 		templateNames = append(templateNames, SafemathTemplateNames()...)
+	}
+	if g.opts.IncludeBazel {
+		ctx.Bazel = computeBazelBuild(ctx, g.opts)
+		templateNames = append(templateNames, BazelTemplateNames(ctx.Bazel)...)
 	}
 	templateNames = append(templateNames, DocTemplateNames()...)
 

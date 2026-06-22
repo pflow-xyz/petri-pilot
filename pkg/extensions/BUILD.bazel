@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "extensions",
+    srcs = [
+        "adapter.go",
+        "application.go",
+        "entities.go",
+        "pages.go",
+        "roles.go",
+        "views.go",
+        "workflows.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/extensions",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)
+
+go_test(
+    name = "extensions_test",
+    srcs = [
+        "adapter_test.go",
+        "extensions_test.go",
+    ],
+    embed = [":extensions"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)

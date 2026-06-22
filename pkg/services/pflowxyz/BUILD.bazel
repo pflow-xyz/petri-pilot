@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pflowxyz",
+    srcs = ["service.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/services/pflowxyz",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/serve"],
+)

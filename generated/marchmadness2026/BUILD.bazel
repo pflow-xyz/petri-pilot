@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "marchmadness2026",
+    srcs = [
+        "main.go",
+        "service.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/marchmadness2026",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/marchmadness2026/data",
+        "//pkg/serve",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//plotter",
+        "@com_github_pflow_xyz_go_pflow//reachability",
+        "@com_github_pflow_xyz_go_pflow//solver",
+        "@com_github_pflow_xyz_go_pflow//visualization",
+    ],
+)

@@ -177,12 +177,90 @@ When adding schema features:
 - Access context fields directly: `{{.ModelName}}`, `{{.Routes}}`
 - Helper methods: `{{.TransitionRequiresAuth "id"}}`
 
-## Testing
+## Building (Go + Bazel)
+
+petri-pilot builds two ways. **Go tooling and Bazel coexist** — `go.mod`/`go.sum`
+stay the source of truth for dependencies; Bazel reads them via Gazelle. Mirrors the
+[go-pflow Bazel setup](../go-pflow/CLAUDE.md).
+
+### Go (default for day-to-day dev)
 
 ```bash
+make build              # go build -> ./petri-pilot
 go test ./...           # All tests
 make build-examples     # Regenerate and build all examples
 ```
+
+### Bazel (pure Bzlmod, hermetic, with nogo static analysis)
+
+Bazel is driven by [bazelisk](https://github.com/bazelbuild/bazelisk) (pinned to the
+version in `.bazelversion`). If you don't have it: `go install github.com/bazelbuild/bazelisk@latest`
+(installs to `$(go env GOPATH)/bin`; symlink/alias it to `bazel`).
+
+```bash
+bazel build //...                  # build everything (runs nogo: go vet + x/tools passes)
+bazel test //...                   # run all tests
+bazel run //cmd/petri-pilot -- help
+bazel run //:gazelle               # regenerate BUILD.bazel files after adding/moving Go files
+bazel mod tidy                     # sync go_deps use_repo list after editing go.mod
+```
+
+Layout:
+- `MODULE.bazel` — Bzlmod: `rules_go` + `gazelle`; deps come from `go.mod` via the
+  `go_deps` extension. The hermetic Go SDK and the `nogo` target are registered here.
+- `.bazelrc` — Bzlmod-only (`--noenable_workspace`); sets `--@io_bazel_rules_go//go/config:tags=purego`.
+- `BUILD.bazel` (root) — the `gazelle` target and the `nogo` target (`TOOLS_NOGO` analyzer set).
+- Per-package `BUILD.bazel` files are Gazelle-generated; hand-added attributes are marked `# keep`.
+
+**Gotchas / decisions baked in:**
+- **rules_go 0.61.1 / Go SDK 1.25.6.** go.mod requires `go 1.25.6`, so the hermetic SDK
+  must be ≥ 1.25. rules_go ≤ 0.55.x hardcodes `GOEXPERIMENT=coverageredesign`, which Go 1.25
+  removed (`go: unknown GOEXPERIMENT coverageredesign`) — hence the newer rules_go/gazelle
+  pin than go-pflow uses.
+- **`purego` build tag (Bazel only).** `gnark-crypto`'s amd64/arm64 assembly uses relative
+  cross-package `#include` directives that don't resolve in Bazel's sandbox. The `purego` tag
+  (set in `.bazelrc`) selects its pure-Go field arithmetic — bit-identical, just slower.
+  `go build`/the Makefile still use the asm fast path.
+- **`//pkg/mcp:mcp_test`** runs with `-test.short` (`# keep` in its BUILD.bazel):
+  `TestServiceManagerIntegration` shells out to `go build` (needs a Go dev env + GOCACHE →
+  non-hermetic) and self-skips under short mode. The other ~25 cases still run.
+- **`//pkg/codegen/zkgo:zkgo_test`** reads `../../../services/tic-tac-toe.json` from disk;
+  that file is supplied as a `data` runfile (`services` `exports_files` it) so the test is
+  hermetic.
+- After editing `go.mod`, run `bazel mod tidy`; after adding/moving `.go` files, run
+  `bazel run //:gazelle`. Generated apps under `generated/` are part of the main module
+  (single-module architecture), so Gazelle picks them up automatically.
+
+### Generating Bazel-ready apps (`-bazel`)
+
+The Go app generator can emit Bazel build files alongside the Go (and Solidity) output.
+Pass `-bazel` to `codegen`:
+
+```bash
+# Submodule (default for in-repo apps): just a per-package BUILD.bazel
+petri-pilot codegen -submodule -bazel -pkg myapp -o generated/myapp model.json
+
+# Standalone module: BUILD.bazel + MODULE.bazel + .bazelrc + .bazelversion
+petri-pilot codegen -bazel -o /path/to/myapp model.json
+```
+
+What it emits (driven by `AsSubmodule`, mirroring how `go.mod` is gated):
+- **Submodule** → one `BUILD.bazel` (`go_library` + `go_test`), plus `graph/BUILD.bazel`
+  when GraphQL is enabled. The parent module owns `MODULE.bazel`/gazelle/nogo.
+- **Standalone** → additionally `MODULE.bazel` (rules_go + gazelle, hermetic SDK,
+  `go_deps` from the generated `go.mod`), `.bazelrc`, `.bazelversion`, and a root
+  `BUILD.bazel` carrying the `gazelle`/`nogo` targets and a `go_binary`.
+
+Mechanics worth knowing (`pkg/codegen/golang/bazel.go`):
+- `srcs` use `glob(["*.go"], exclude=["*_test.go"])` marked **`# keep`** so Gazelle
+  doesn't error trying to merge a glob (it would otherwise report
+  `could not merge expression`) — Gazelle still resolves/repairs `deps`.
+- `deps` are feature-gated to match the imports each enabled template pulls in
+  (graph subpkg ↔ GraphQL, `oauth2` ↔ auth, `//pkg/dsl` ↔ guards, etc.). rules_go
+  doesn't fail on *unused* deps, only missing ones, so the list errs toward complete.
+- The generated submodule `BUILD.bazel` is byte-compatible with what
+  `bazel run //:gazelle` produces (only `glob`-vs-explicit `srcs` differs), so the
+  two never fight. After regenerating, `bazel build //generated/<app>/...` works as-is.
 
 ### E2E Tests
 

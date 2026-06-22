@@ -1,0 +1,47 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library"{{if .Bazel.Binary}}, "go_binary"{{end}}{{if .Bazel.HasTest}}, "go_test"{{end}}{{if not .Bazel.Submodule}}, "TOOLS_NOGO", "nogo"{{end}})
+{{- if not .Bazel.Submodule}}
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix {{.Bazel.ImportPath}}
+gazelle(name = "gazelle")
+
+# Static analysis run as part of every `bazel build` (go vet + x/tools passes).
+nogo(
+    name = "nogo",
+    visibility = ["//visibility:public"],
+    deps = TOOLS_NOGO,
+)
+{{- end}}
+
+go_library(
+    name = "{{.Bazel.LibName}}",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),  # keep
+    importpath = "{{.Bazel.ImportPath}}",
+    visibility = ["//visibility:public"],
+    deps = [
+{{- range .Bazel.Deps}}
+        "{{.}}",
+{{- end}}
+    ],
+)
+{{- if .Bazel.Binary}}
+
+go_binary(
+    name = "{{.Bazel.BinName}}",
+    embed = [":{{.Bazel.LibName}}"],
+    visibility = ["//visibility:public"],
+)
+{{- end}}
+{{- if .Bazel.HasTest}}
+
+go_test(
+    name = "{{.Bazel.LibName}}_test",
+    srcs = glob(["*_test.go"]),  # keep
+    embed = [":{{.Bazel.LibName}}"],
+    deps = [
+{{- range .Bazel.TestDeps}}
+        "{{.}}",
+{{- end}}
+    ],
+)
+{{- end}}

@@ -1,3 +1,7 @@
+# Bazel: ignore only the convenience symlinks. MODULE.bazel, .bazelrc, .bazelversion,
+# BUILD.bazel files, and MODULE.bazel.lock ARE tracked (lock pins deps for reproducibility).
+/bazel-*
+
 # Binaries
 /petri-pilot
 *.exe

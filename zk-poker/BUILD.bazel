@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "zk-poker",
+    srcs = [
+        "action_circuit.go",
+        "circuits.go",
+        "graphql.go",
+        "hand_eval.go",
+        "showdown_circuit.go",
+        "state.go",
+        "topology.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/zk-poker",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/serve",
+        "@com_github_consensys_gnark//frontend",
+        "@com_github_consensys_gnark//std/hash/mimc",
+        "@com_github_consensys_gnark_crypto//ecc/bn254/fr",
+        "@com_github_consensys_gnark_crypto//ecc/bn254/fr/mimc",
+    ],
+)
+
+go_test(
+    name = "zk-poker_test",
+    srcs = [
+        "action_circuit_test.go",
+        "circuits_test.go",
+        "graphql_test.go",
+        "showdown_circuit_test.go",
+        "state_test.go",
+        "topology_test.go",
+    ],
+    embed = [":zk-poker"],
+    deps = [
+        "@com_github_consensys_gnark//backend",
+        "@com_github_consensys_gnark//frontend",
+        "@com_github_consensys_gnark//frontend/cs/r1cs",
+        "@com_github_consensys_gnark//test",
+        "@com_github_consensys_gnark_crypto//ecc",
+    ],
+)

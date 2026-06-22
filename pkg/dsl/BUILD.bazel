@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dsl",
+    srcs = [
+        "eval.go",
+        "evaluator.go",
+        "guard.go",
+        "lexer.go",
+        "parser.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/dsl",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/metamodel"],
+)
+
+go_test(
+    name = "dsl_test",
+    srcs = ["guard_test.go"],
+    embed = [":dsl"],
+)

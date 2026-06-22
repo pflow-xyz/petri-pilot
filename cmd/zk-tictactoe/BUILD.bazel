@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "zk-tictactoe_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/cmd/zk-tictactoe",
+    visibility = ["//visibility:private"],
+    deps = ["//zk-tictactoe"],
+)
+
+go_binary(
+    name = "zk-tictactoe",
+    embed = [":zk-tictactoe_lib"],
+    visibility = ["//visibility:public"],
+)

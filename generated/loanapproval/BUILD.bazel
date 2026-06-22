@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "loanapproval",
+    srcs = [
+        "aggregate.go",
+        "api.go",
+        "api_events.go",
+        "config.go",
+        "debug.go",
+        "events.go",
+        "graphql.go",
+        "service.go",
+        "workflow.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/loanapproval",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/loanapproval/graph",
+        "//pkg/runtime/api",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)
+
+go_test(
+    name = "loanapproval_test",
+    srcs = ["workflow_test.go"],
+    embed = [":loanapproval"],
+    deps = ["@com_github_pflow_xyz_go_pflow//eventsource"],
+)

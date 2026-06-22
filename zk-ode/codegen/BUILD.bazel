@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "codegen",
+    srcs = [
+        "context.go",
+        "generator.go",
+        "scoring.go",
+        "templates.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/zk-ode/codegen",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)
+
+go_test(
+    name = "codegen_test",
+    srcs = [
+        "crossvalidate_test.go",
+        "generator_test.go",
+    ],
+    embed = [":codegen"],
+    deps = [
+        "//zk-ode",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)

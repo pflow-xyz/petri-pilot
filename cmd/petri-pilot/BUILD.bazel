@@ -1,0 +1,44 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "petri-pilot_lib",
+    srcs = [
+        "delegate.go",
+        "main.go",
+        "serve.go",
+        "serve_import.go",
+        "service.go",
+        "zkgen.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/cmd/petri-pilot",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//generated",
+        "//internal/llm",
+        "//internal/version",
+        "//pkg/codegen/esmodules",
+        "//pkg/codegen/golang",
+        "//pkg/delegate",
+        "//pkg/extensions",
+        "//pkg/feedback",
+        "//pkg/generator",
+        "//pkg/mcp",
+        "//pkg/serve",
+        "//pkg/services/pflowxyz",
+        "//pkg/validator",
+        "//schema",
+        "//services",
+        "//zk-ode",
+        "//zk-ode/codegen",
+        "//zk-tictactoe",
+        "@com_github_mark3labs_mcp_go//server",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//tokenmodel/dsl",
+    ],
+)
+
+go_binary(
+    name = "petri-pilot",
+    embed = [":petri-pilot_lib"],
+    visibility = ["//visibility:public"],
+)

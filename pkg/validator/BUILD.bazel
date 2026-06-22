@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "validator",
+    srcs = [
+        "implementability.go",
+        "validator.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/validator",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//reachability",
+        "@com_github_pflow_xyz_go_pflow//tokenmodel/petri",
+    ],
+)
+
+go_test(
+    name = "validator_test",
+    srcs = ["implementability_test.go"],
+    deps = [
+        ":validator",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)

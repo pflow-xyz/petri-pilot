@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "feedback",
+    srcs = ["feedback.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/feedback",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)
