@@ -1,33 +1,51 @@
 {
-  "_comment": "F4 Tier 3 verifier provenance — binds each deployed Groth16 verifier to its circuit's hermetic R1CS. Regenerate with `go run ./cmd/zk-verifier-provenance -write` after re-exporting a verifier. CI runs the check (no -write).",
+  "_comment": "F4 Tier 3 verifier provenance. `deployed` is the circuit each on-chain verifier attests (captured from its deploy commit, immutable); `current` is what the source compiles to now. inSyncWithDeployment=false means the verifier is stale and needs a redeploy/revert. Recompute current with `go run ./cmd/zk-verifier-provenance -write`.",
   "verifiers": [
     {
       "name": "ttt_heatmap",
       "circuit": "zk-ode.TTTHeatmapCircuit",
       "verifierSource": "solidity/src/TTTHeatmapVerifier.sol",
-      "publicInputs": 12,
-      "constraints": 180253,
-      "r1csSHA256": "9c817d6d68e70c6f378dce0bd1c08a209b4101ee0dc48801b6ca89f21f353352",
-      "sourceSHA256": "44d9e815b97b1e919c16925f0be553b187925740c924020e7f30d1fb451fdd5a",
+      "verifierSourceSHA256": "44d9e815b97b1e919c16925f0be553b187925740c924020e7f30d1fb451fdd5a",
       "deployment": {
         "address": "0x97a6Bb8FBBbBb81BF36456829A6a41e29030f351",
         "chainId": 84532,
         "network": "base-sepolia"
-      }
+      },
+      "deployed": {
+        "commit": "a0d6eb5",
+        "publicInputs": 12,
+        "constraints": 176891,
+        "r1csSHA256": "2be6c8562926862686bfb1219e7aef02cc45d0682f0a615e0a318fc28148570a"
+      },
+      "current": {
+        "publicInputs": 12,
+        "constraints": 180253,
+        "r1csSHA256": "9c817d6d68e70c6f378dce0bd1c08a209b4101ee0dc48801b6ca89f21f353352"
+      },
+      "inSyncWithDeployment": false
     },
     {
       "name": "cascade",
       "circuit": "zk-ode.Tsit5StepCircuit",
       "verifierSource": "solidity/src/Groth16Verifier.sol",
-      "publicInputs": 5,
-      "constraints": 9644,
-      "r1csSHA256": "ce2710080f475980c3249de54366140d3c87711308228c84cbcf7f37e75b2c84",
-      "sourceSHA256": "417c740246d63bc80eeb8f6839c218f38217c5e64df2553f91e4d586f74e4a2a",
+      "verifierSourceSHA256": "417c740246d63bc80eeb8f6839c218f38217c5e64df2553f91e4d586f74e4a2a",
       "deployment": {
         "address": "0xA675a162C5097e5eBa2968C918D4D0530b7005Ae",
         "chainId": 84532,
         "network": "base-sepolia"
-      }
+      },
+      "deployed": {
+        "commit": "d84f9fc",
+        "publicInputs": 5,
+        "constraints": 9644,
+        "r1csSHA256": "ce2710080f475980c3249de54366140d3c87711308228c84cbcf7f37e75b2c84"
+      },
+      "current": {
+        "publicInputs": 5,
+        "constraints": 9644,
+        "r1csSHA256": "ce2710080f475980c3249de54366140d3c87711308228c84cbcf7f37e75b2c84"
+      },
+      "inSyncWithDeployment": true
     }
   ]
 }

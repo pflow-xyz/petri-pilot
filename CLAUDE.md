@@ -710,18 +710,36 @@ Deployed instances of the verifiable computation pattern.
 ### Verifier provenance (F4 Tier 3)
 
 `zk-ode/provenance.json` binds each deployed Groth16 verifier to the circuit it
-was generated from, so a circuit edit can't silently leave the chain verifying
-the wrong relation. `cmd/zk-verifier-provenance` (run in CI) compiles each
-circuit hermetically — reproducible since F4 Tier 2 — and asserts its
-public-input count, constraint count, and R1CS digest match the manifest, and
-that the committed Solidity verifier's hardcoded `input[]` arity matches the
-circuit's public inputs. The verifying key is baked into the committed `.sol` as
-constants, so the committed verifier is the vk of record.
+attests and surfaces when the source has drifted away from what's on-chain.
+Each verifier carries an immutable **`deployed`** baseline — the circuit (commit,
+public inputs, constraints, R1CS digest) captured from its deploy commit — and a
+**`current`** block recomputed by hermetically compiling the circuit (reproducible
+since F4 Tier 2). `inSyncWithDeployment` is true iff `current` == `deployed`.
+
+`cmd/zk-verifier-provenance` (run in CI):
+- recomputes `current` + the committed verifier's source hash and **fails** if
+  they don't match the manifest (a circuit/verifier edit that wasn't reconciled);
+- asserts the verifier's hardcoded `input[]` arity matches the circuit's public
+  inputs;
+- **warns** (does not fail) when a deployment is stale — that's a real,
+  acknowledged state, not a manifest error. Flip `failOnDrift` in the command to
+  gate CI on it once the drift is reconciled.
+
+The verifying key is baked into the committed `.sol` as constants, so the
+committed verifier is the vk of record.
 
 ```bash
-go run ./cmd/zk-verifier-provenance          # check (CI gate)
-go run ./cmd/zk-verifier-provenance -write    # regenerate after re-exporting a verifier
+go run ./cmd/zk-verifier-provenance          # check (CI)
+go run ./cmd/zk-verifier-provenance -write    # recompute `current` after a circuit/verifier change
 ```
+
+> **Known drift (2026-06):** `ttt_heatmap` is stale. The on-chain verifier
+> `0x97a6…` attests the **176,891-constraint** circuit at commit `a0d6eb5`, but
+> the source was refactored afterwards (`780d9f2` generic topology compiler,
+> `0ac24bb` added the `move_tokens` place + `draw` transition) and now compiles to
+> **180,253** constraints. Reconcile by redeploying the verifier from the current
+> circuit (then re-baseline) or reverting those circuit changes. `cascade` is in
+> sync.
 
 The remaining leg — deployed *bytecode* == committed Solidity — needs `forge` +
 an RPC, so it's a manual/opt-in helper rather than a CI gate:

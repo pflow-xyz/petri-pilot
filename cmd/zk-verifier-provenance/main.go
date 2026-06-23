@@ -1,34 +1,39 @@
 // Command zk-verifier-provenance binds each deployed Groth16 verifier to the
-// circuit it was generated from (F4 Tier 3).
+// circuit it was generated from, and surfaces when the circuit source has
+// drifted away from what's actually on-chain (F4 Tier 3).
 //
 // The breach this closes: the on-chain verifiers (CLAUDE.md "ZkOde Contracts")
 // are exported from a gnark circuit + a one-time trusted setup. Nothing checked
-// that the committed Solidity verifier still corresponds to the committed
-// circuit — a circuit edit that wasn't re-exported/redeployed would silently
-// leave the chain verifying the wrong relation.
+// that the committed circuit still matches the *deployed* verifier — a circuit
+// edit that wasn't re-exported/redeployed silently leaves the chain verifying an
+// older relation than the source describes.
 //
-// This makes that falsifiable. For each (circuit, verifier) pair it:
-//   - compiles the circuit hermetically (R1CS — reproducible since F4 Tier 2),
-//     recording its public-input count, constraint count, and R1CS digest;
-//   - parses the committed Solidity verifier's hardcoded public-input arity;
-//   - asserts the verifier arity == circuit public inputs (the verifier's
-//     `input[]` excludes gnark's implicit ONE wire, so arity == nbPublic - 1);
-//   - hashes the verifier source.
+// Model. Each verifier carries an immutable `deployed` baseline — the circuit
+// (commit, public inputs, constraint count, R1CS digest) the on-chain verifier
+// actually attests, captured once from the deploy commit. The tool compiles the
+// *current* circuit hermetically (reproducible since F4 Tier 2) and records it
+// as `current`. `inSyncWithDeployment` is true iff the current R1CS digest equals
+// the deployed baseline's.
 //
-// The results are checked against (or written to) provenance.json. Any circuit
-// change flips the digest/counts and fails the check until the manifest — and,
-// by implication, the deployed verifier — is reconciled.
+// The check (no -write):
+//   - recomputes current + the committed verifier's source hash and asserts they
+//     match the manifest — so a circuit edit or a verifier-source edit that
+//     wasn't reconciled fails (run -write and review);
+//   - asserts the committed verifier's hardcoded input arity matches the circuit
+//     public-input count (the verifier's input[] excludes gnark's ONE wire);
+//   - reports drift loudly but does NOT fail on it: a stale deployment is a real,
+//     acknowledged state (inSyncWithDeployment:false), not a manifest error. Flip
+//     `failOnDrift` to gate CI on it once the redeploy/revert decision is made.
 //
 // What this does NOT do: prove the *deployed bytecode* equals the committed
-// Solidity. That leg needs `forge` + an RPC and is recorded per-verifier as
-// (address, chainId); verify it with scripts/zk-onchain-bytecode-check.sh in an
-// environment that has both. The verifying key itself is baked into the
-// committed verifier as constants, so the committed .sol is the vk of record.
+// Solidity — that needs forge+RPC (scripts/zk-onchain-bytecode-check.sh). The
+// verifying key is baked into the committed .sol as constants, so the committed
+// verifier is the vk of record.
 //
 // Usage:
 //
 //	go run ./cmd/zk-verifier-provenance            # check against provenance.json
-//	go run ./cmd/zk-verifier-provenance -write     # regenerate provenance.json
+//	go run ./cmd/zk-verifier-provenance -write     # recompute current/ + rewrite it
 package main
 
 import (
@@ -49,24 +54,38 @@ import (
 	zkode "github.com/pflow-xyz/petri-pilot/zk-ode"
 )
 
-// manifestPath is relative to the repo root (the command is run from there).
 const manifestPath = "zk-ode/provenance.json"
 
-// verifier pairs a deployed verifier with the circuit it must correspond to.
+// failOnDrift gates CI on a stale deployment. Left false for now: the heatmap
+// verifier is knowingly drifted (see provenance.json) pending a redeploy/revert
+// decision, and we don't want that to red CI. Flip to true once reconciled so a
+// future drift can't slip in.
+const failOnDrift = false
+
+// circuitState is a circuit's compiled shape — the falsifiable fingerprint.
+type circuitState struct {
+	Commit       string `json:"commit,omitempty"` // deploy commit (baseline only)
+	PublicInputs int    `json:"publicInputs"`
+	Constraints  int    `json:"constraints"`
+	R1CSSHA256   string `json:"r1csSHA256"`
+}
+
+// verifier pairs a deployed verifier with its circuit and its deploy baseline.
 type verifier struct {
 	Name           string           `json:"name"`
 	Circuit        string           `json:"circuit"`
 	VerifierSource string           `json:"verifierSource"`
-	PublicInputs   int              `json:"publicInputs"`
-	Constraints    int              `json:"constraints"`
-	R1CSSHA256     string           `json:"r1csSHA256"`
-	SourceSHA256   string           `json:"sourceSHA256"`
+	SourceSHA256   string           `json:"verifierSourceSHA256"`
 	Deployment     map[string]any   `json:"deployment"`
+	Deployed       circuitState     `json:"deployed"` // immutable historical fact
+	Current        circuitState     `json:"current"`  // recomputed from source
+	InSync         bool             `json:"inSyncWithDeployment"`
 	circuit        frontend.Circuit `json:"-"`
 }
 
-// pairs is the source of truth for what's deployed. Add an entry to track a new
-// verifier. Deployment metadata mirrors CLAUDE.md "ZkOde Contracts".
+// pairs is the source of truth. The Deployed baseline is captured once from each
+// verifier's deploy commit (compile the circuit at that commit) and never
+// recomputed — it records what the on-chain verifier attests.
 var pairs = []verifier{
 	{
 		Name:           "ttt_heatmap",
@@ -77,6 +96,12 @@ var pairs = []verifier{
 			"address": "0x97a6Bb8FBBbBb81BF36456829A6a41e29030f351",
 			"chainId": 84532,
 			"network": "base-sepolia",
+		},
+		Deployed: circuitState{
+			Commit:       "a0d6eb5",
+			PublicInputs: 12,
+			Constraints:  176891,
+			R1CSSHA256:   "2be6c8562926862686bfb1219e7aef02cc45d0682f0a615e0a318fc28148570a",
 		},
 	},
 	{
@@ -89,28 +114,43 @@ var pairs = []verifier{
 			"chainId": 84532,
 			"network": "base-sepolia",
 		},
+		Deployed: circuitState{
+			Commit:       "d84f9fc",
+			PublicInputs: 5,
+			Constraints:  9644,
+			R1CSSHA256:   "ce2710080f475980c3249de54366140d3c87711308228c84cbcf7f37e75b2c84",
+		},
 	},
 }
 
-// inputArityRe matches gnark's exported verifier public-input array, e.g.
-// `uint256[12] calldata input`.
 var inputArityRe = regexp.MustCompile(`uint256\[(\d+)\] calldata input`)
 
 func main() {
-	write := flag.Bool("write", false, "regenerate the provenance manifest instead of checking it")
+	write := flag.Bool("write", false, "recompute current state and rewrite the manifest")
 	flag.Parse()
 	logger.Disable()
 
 	computed := make([]verifier, 0, len(pairs))
+	drift := false
 	for i := range pairs {
 		v, err := compute(pairs[i])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %v\n", pairs[i].Name, err)
 			os.Exit(2)
 		}
-		fmt.Printf("%-12s circuit=%-26s public=%2d constraints=%-7d r1cs=%s… verifier=%s[%d]\n",
-			v.Name, v.Circuit, v.PublicInputs, v.Constraints, v.R1CSSHA256[:12],
-			filepath.Base(v.VerifierSource), v.PublicInputs)
+		status := "ALIGNED"
+		if !v.InSync {
+			status = "DRIFT"
+			drift = true
+		}
+		fmt.Printf("%-12s %-7s deployed=%d@%s current=%d  verifier=%s[%d]\n",
+			v.Name, status, v.Deployed.Constraints, v.Deployed.Commit,
+			v.Current.Constraints, filepath.Base(v.VerifierSource), v.Current.PublicInputs)
+		if !v.InSync {
+			fmt.Printf("             ⚠ on-chain %v attests the %d-constraint circuit @%s; "+
+				"source now compiles to %d. Redeploy or reconcile.\n",
+				v.Deployment["address"], v.Deployed.Constraints, v.Deployed.Commit, v.Current.Constraints)
+		}
 		computed = append(computed, v)
 	}
 
@@ -123,16 +163,24 @@ func main() {
 		return
 	}
 	if err := checkManifest(computed); err != nil {
-		fmt.Fprintf(os.Stderr, "\nPROVENANCE MISMATCH: %v\n", err)
-		fmt.Fprintln(os.Stderr, "the committed verifier no longer matches its circuit; "+
-			"re-export/redeploy the verifier, then `go run ./cmd/zk-verifier-provenance -write`.")
+		fmt.Fprintf(os.Stderr, "\nMANIFEST STALE: %v\n", err)
+		fmt.Fprintln(os.Stderr, "the circuit or verifier source changed without updating the manifest; "+
+			"run `go run ./cmd/zk-verifier-provenance -write` and review the diff.")
 		os.Exit(1)
 	}
-	fmt.Println("\nPASS: every committed verifier matches its circuit's hermetic R1CS")
+	if drift {
+		fmt.Println("\nWARN: a deployed verifier is stale relative to its circuit (see ⚠ above). " +
+			"Manifest is consistent; reconcile via redeploy/revert.")
+		if failOnDrift {
+			os.Exit(1)
+		}
+		return
+	}
+	fmt.Println("\nPASS: every committed verifier matches its circuit and its deployment")
 }
 
-// compute compiles the circuit and parses the verifier, filling the derived
-// fields of v.
+// compute compiles the current circuit and parses the verifier, filling the
+// derived fields (Current, SourceSHA256, InSync) of v.
 func compute(v verifier) (verifier, error) {
 	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, v.circuit)
 	if err != nil {
@@ -140,14 +188,18 @@ func compute(v verifier) (verifier, error) {
 	}
 	// gnark counts the implicit ONE wire among public variables; the Solidity
 	// verifier's input[] excludes it.
-	v.PublicInputs = ccs.GetNbPublicVariables() - 1
-	v.Constraints = ccs.GetNbConstraints()
+	pub := ccs.GetNbPublicVariables() - 1
 
 	h := sha256.New()
 	if _, err := ccs.WriteTo(h); err != nil {
 		return v, fmt.Errorf("r1cs digest: %w", err)
 	}
-	v.R1CSSHA256 = hex.EncodeToString(h.Sum(nil))
+	v.Current = circuitState{
+		PublicInputs: pub,
+		Constraints:  ccs.GetNbConstraints(),
+		R1CSSHA256:   hex.EncodeToString(h.Sum(nil)),
+	}
+	v.InSync = v.Current.R1CSSHA256 == v.Deployed.R1CSSHA256
 
 	src, err := os.ReadFile(v.VerifierSource)
 	if err != nil {
@@ -160,9 +212,8 @@ func compute(v verifier) (verifier, error) {
 	if err != nil {
 		return v, err
 	}
-	if arity != v.PublicInputs {
-		return v, fmt.Errorf("verifier hardcodes %d public inputs but circuit has %d "+
-			"(verifier is stale relative to the circuit)", arity, v.PublicInputs)
+	if arity != pub {
+		return v, fmt.Errorf("verifier hardcodes %d public inputs but circuit has %d", arity, pub)
 	}
 	return v, nil
 }
@@ -187,9 +238,10 @@ func verifierArity(src []byte) (int, error) {
 
 func writeManifest(vs []verifier) error {
 	out := map[string]any{
-		"_comment": "F4 Tier 3 verifier provenance — binds each deployed Groth16 verifier to " +
-			"its circuit's hermetic R1CS. Regenerate with `go run ./cmd/zk-verifier-provenance -write` " +
-			"after re-exporting a verifier. CI runs the check (no -write).",
+		"_comment": "F4 Tier 3 verifier provenance. `deployed` is the circuit each on-chain " +
+			"verifier attests (captured from its deploy commit, immutable); `current` is what the " +
+			"source compiles to now. inSyncWithDeployment=false means the verifier is stale and needs " +
+			"a redeploy/revert. Recompute current with `go run ./cmd/zk-verifier-provenance -write`.",
 		"verifiers": vs,
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
@@ -210,12 +262,12 @@ func checkManifest(computed []verifier) error {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return fmt.Errorf("parse manifest: %w", err)
 	}
+	if len(m.Verifiers) != len(computed) {
+		return fmt.Errorf("manifest lists %d verifiers, code tracks %d", len(m.Verifiers), len(computed))
+	}
 	byName := map[string]verifier{}
 	for _, v := range m.Verifiers {
 		byName[v.Name] = v
-	}
-	if len(m.Verifiers) != len(computed) {
-		return fmt.Errorf("manifest lists %d verifiers, code tracks %d", len(m.Verifiers), len(computed))
 	}
 	for _, c := range computed {
 		want, ok := byName[c.Name]
@@ -223,14 +275,15 @@ func checkManifest(computed []verifier) error {
 			return fmt.Errorf("%s missing from manifest", c.Name)
 		}
 		switch {
-		case want.PublicInputs != c.PublicInputs:
-			return fmt.Errorf("%s public inputs: manifest %d, computed %d", c.Name, want.PublicInputs, c.PublicInputs)
-		case want.Constraints != c.Constraints:
-			return fmt.Errorf("%s constraints: manifest %d, computed %d", c.Name, want.Constraints, c.Constraints)
-		case want.R1CSSHA256 != c.R1CSSHA256:
-			return fmt.Errorf("%s R1CS digest changed (circuit edited): manifest %s, computed %s", c.Name, want.R1CSSHA256, c.R1CSSHA256)
+		case want.Deployed != c.Deployed:
+			return fmt.Errorf("%s deployed baseline in manifest != code (the baseline is immutable; "+
+				"do not edit it by hand)", c.Name)
+		case want.Current != c.Current:
+			return fmt.Errorf("%s current circuit changed: manifest %+v, computed %+v", c.Name, want.Current, c.Current)
 		case want.SourceSHA256 != c.SourceSHA256:
 			return fmt.Errorf("%s verifier source changed: manifest %s, computed %s", c.Name, want.SourceSHA256, c.SourceSHA256)
+		case want.InSync != c.InSync:
+			return fmt.Errorf("%s inSyncWithDeployment stale: manifest %v, computed %v", c.Name, want.InSync, c.InSync)
 		}
 	}
 	return nil
