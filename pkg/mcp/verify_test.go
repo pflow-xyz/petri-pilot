@@ -267,3 +267,65 @@ func TestParsePropertiesObjectValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestAnalyzeSurfacesInvariants checks petri_analyze hands back the net's
+// conservation laws. These are the one part of the analysis that stays valid
+// when the state space is too big to explore, so an agent needs to see them.
+func TestAnalyzeSurfacesInvariants(t *testing.T) {
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_analyze"
+	req.Params.Arguments = map[string]any{"model": mutexModelJSON}
+
+	result, err := handleAnalyze(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handleAnalyze error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("tool error: %s", resultText(result))
+	}
+
+	var out struct {
+		PInvariants []string `json:"p_invariants"`
+		TInvariants []string `json:"t_invariants"`
+	}
+	if err := json.Unmarshal([]byte(resultText(result)), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	want := "busy1 + busy2 + sem == 1" // the mutual-exclusion law
+	found := false
+	for _, inv := range out.PInvariants {
+		if inv == want {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("p_invariants = %v, want to include %q", out.PInvariants, want)
+	}
+
+	// The mutex net cycles, so it must have T-invariants too.
+	if len(out.TInvariants) == 0 {
+		t.Error("t_invariants is empty for a cyclic net")
+	}
+}
+
+// TestAnalyzeInvariantsEmptyNotNull: an acyclic, non-conserving net should
+// return empty arrays rather than null, so callers can iterate unconditionally.
+func TestAnalyzeInvariantsEmptyNotNull(t *testing.T) {
+	model := `{"name":"pump","places":[{"id":"buffer"}],"transitions":[{"id":"produce"}],
+	           "arcs":[{"from":"produce","to":"buffer"}]}`
+
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_analyze"
+	req.Params.Arguments = map[string]any{"model": model}
+
+	result, err := handleAnalyze(context.Background(), req)
+	if err != nil || result.IsError {
+		t.Fatalf("analyze failed: %v %s", err, resultText(result))
+	}
+
+	raw := resultText(result)
+	if !strings.Contains(raw, `"p_invariants": []`) {
+		t.Errorf("expected an empty array for p_invariants, got:\n%s", raw)
+	}
+}
