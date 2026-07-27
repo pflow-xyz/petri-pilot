@@ -88,7 +88,7 @@ Examples:
   petri-pilot delegate app blog -d "A blog with comments" -f auth,admin -c medium`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -156,7 +156,7 @@ Examples:
   petri-pilot delegate roadmap TODO.md         Delegate tasks from TODO.md`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -227,7 +227,7 @@ Examples:
   petri-pilot delegate status -json      Show status as JSON`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -302,7 +302,7 @@ Examples:
   petri-pilot delegate wait -json           Output final status as JSON`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

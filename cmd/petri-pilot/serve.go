@@ -37,7 +37,7 @@ Examples:
   petri-pilot serve tic-tac-toe coffeeshop Run both services together`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

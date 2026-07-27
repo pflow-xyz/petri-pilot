@@ -34,7 +34,7 @@ Examples:
   petri-pilot zkgen -submodule -pkg mynet -o generated/zk-mynet model.json`)
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

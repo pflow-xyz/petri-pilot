@@ -66,8 +66,10 @@ petri-pilot mcp
 
 | Tool | Purpose |
 |------|---------|
-| `petri_validate` | Structural correctness |
-| `petri_analyze` | Reachability, deadlocks, liveness |
+| `petri_validate` | Structural correctness, conservation laws |
+| `petri_analyze` | Reachability, deadlocks, liveness, P/T-invariants |
+| `petri_verify` | Check stated properties — proved/refuted/unknown + counterexample |
+| `petri_conformance` | Replay a real event log against the model (fitness/precision) |
 | `petri_simulate` | Fire transitions, trace state |
 | `petri_code_to_flow` | Convert source code into a Petri net model |
 | `petri_codegen` | Generate Go backend |

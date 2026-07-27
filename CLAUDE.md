@@ -200,8 +200,8 @@ When adding schema features:
 3. Add `Has*()` helper if conditionally generated
 4. Create/update templates in `pkg/codegen/golang/templates/`
 5. Update `generator.go` to include new template
-6. Update examples in `examples/*.json`
-7. Run `make build-examples` to verify
+6. Update the model files in `services/*.json`
+7. Regenerate the affected app and run `go build ./...` to verify
 
 ## Template Conventions
 
@@ -221,7 +221,6 @@ stay the source of truth for dependencies; Bazel reads them via Gazelle. Mirrors
 ```bash
 make build              # go build -> ./petri-pilot
 go test ./...           # All tests
-make build-examples     # Regenerate and build all examples
 ```
 
 ### Bazel (pure Bzlmod, hermetic, with nogo static analysis)
@@ -447,7 +446,8 @@ When using the CLI to regenerate apps, always use the `-submodule` flag:
 petri-pilot codegen -o generated/myapp -pkg myapp -submodule model.json
 ```
 
-Note: Flags must come **before** the model file argument (Go's flag package requirement).
+Flags may be written before or after the model file — the CLI reorders arguments
+before parsing them.
 
 Each generated app contains:
 - `main.go` - Entry point
@@ -866,10 +866,10 @@ To add a new service/app to the petri-pilot landing page and deployment:
 
 ### 1. Create the Model
 
-Add your Petri net model JSON file to `examples/`:
+Add your Petri net model JSON file to `services/`:
 
 ```bash
-examples/my-app.json
+services/my-app.json
 ```
 
 ### 2. Generate the Service Module
@@ -877,7 +877,7 @@ examples/my-app.json
 Generate as a submodule (no separate go.mod):
 
 ```bash
-./petri-pilot codegen -submodule -pkg myapp -o generated/myapp examples/my-app.json
+./petri-pilot codegen -submodule -pkg myapp -o generated/myapp services/my-app.json
 ```
 
 ### 3. Register the Service

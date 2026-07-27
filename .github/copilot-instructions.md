@@ -69,7 +69,7 @@ func localHelper() { ... }
 
 After any template change:
 ```bash
-make build-examples  # Regenerates all examples and builds them
+go build ./...       # Verify everything compiles
 go test ./...        # Runs all tests
 ```
 

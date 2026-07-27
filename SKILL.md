@@ -64,7 +64,14 @@ Or run the server locally:
 ## Example workflow
 
 1. Design a model: `petri_validate(model='{"name":"order",...}')`
-2. Simulate behavior: `petri_simulate(model='...', transitions='["ship"]')`
-3. Generate code: `petri_codegen(model='...', language='go')`
-4. Start service: `service_start(directory='/path/to/app')`
-5. Test in browser and iterate
+2. Check it against the requirements: `petri_verify(model='...', properties='["deadlock-free","mutex:busy1,busy2"]')`
+3. Simulate behavior: `petri_simulate(model='...', transitions='["ship"]')`
+4. Generate code: `petri_codegen(model='...', language='go')`
+5. Start service: `service_start(directory='/path/to/app')`
+6. Test in browser and iterate
+
+`petri_verify` returns proved / refuted / unknown per property. A refutation
+carries a firing sequence you can replay through `petri_simulate` to reproduce
+the failure, and `unknown` means undecided — it is not a pass. Where real
+execution data exists, `petri_conformance(model='...', log='[...]')` checks the
+model against observed behavior, which the structural tools cannot do.

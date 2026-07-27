@@ -1,8 +1,9 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
     name = "petri-pilot_lib",
     srcs = [
+        "args.go",
         "delegate.go",
         "main.go",
         "serve.go",
@@ -41,4 +42,10 @@ go_binary(
     name = "petri-pilot",
     embed = [":petri-pilot_lib"],
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "petri-pilot_test",
+    srcs = ["args_test.go"],
+    embed = [":petri-pilot_lib"],
 )
