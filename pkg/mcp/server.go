@@ -38,6 +38,8 @@ func NewServer() *server.MCPServer {
 	// Register tools
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
+	s.AddTool(verifyTool(), handleVerify)
+	s.AddTool(conformanceTool(), handleConformance)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)

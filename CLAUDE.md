@@ -62,6 +62,39 @@ petri_simulate(model='...', transitions='["ship"]')
 
 Use `petri_analyze` for deeper analysis (reachability, deadlocks, liveness).
 
+### 1b. Verify Against Requirements
+
+`petri_validate` says the model is well-formed; `petri_verify` says whether it does
+what you asked. State the requirements as properties and get proved / refuted /
+unknown back, with a replayable firing sequence on refutation:
+
+```
+petri_verify(model='...', properties='["deadlock-free","mutex:busy1,busy2","minted == circulating + burned"]')
+```
+
+Each verdict carries a `method`. `structural` means it was proved by linear algebra
+on the incidence matrix and therefore holds for **any** initial marking; `exhaustive`
+means the full state space of *this* marking was enumerated; `witness` means a finite
+constructive witness decided it; `partial` means exploration was truncated, so only
+refutations are sound. The report's `ok` is true only when every property was
+*proved* — `unknown` is never a pass.
+
+Once real execution data exists, `petri_conformance` closes the last gap — a model
+can be deadlock-free, bounded and live while still not describing the actual process:
+
+```
+petri_conformance(model='...', log='[{"case":"o1","activity":"validate"},{"case":"o1","activity":"ship"}]')
+```
+
+It returns fitness (can the model reproduce observed traces?), precision (does it
+permit behavior never seen?), and per-trace diagnostics naming the activities that
+could not be replayed, worst-fitting traces first.
+
+**Dependency note:** both tools need the go-pflow `verify` package. `go.mod`
+currently carries a temporary `replace` pointing at the sibling `../go-pflow`
+checkout. **Before releasing, tag go-pflow and swap that replace for a version
+bump on the `require` line** — a `replace` must not ship in a released module.
+
 ### 2. Generate Code
 
 For a complete full-stack application with entities, roles, and pages:
