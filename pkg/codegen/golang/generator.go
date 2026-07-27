@@ -2,8 +2,10 @@ package golang
 
 import (
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
@@ -155,6 +157,31 @@ func (g *Generator) GenerateFromApp(app *extensions.ApplicationSpec) ([]string, 
 	return paths, nil
 }
 
+// formatGo runs generated Go source through go/format, so emitted files are
+// gofmt-clean without anyone having to remember to run gofmt over generated/.
+//
+// Templates produce readable-but-not-canonical whitespace — struct field
+// alignment in particular depends on the widest field, which a template cannot
+// know. Leaving that unformatted meant every generated file was permanently
+// gofmt-dirty, so running gofmt on a package pulled unrelated generated files
+// into the diff.
+//
+// A parse failure means the template emitted invalid Go. That is reported
+// rather than written out, because the alternative is a file that fails to
+// compile later with an error pointing at generated code instead of at the
+// template that produced it.
+func formatGo(name string, content []byte) ([]byte, error) {
+	if !strings.HasSuffix(name, ".go") {
+		return content, nil
+	}
+
+	formatted, err := format.Source(content)
+	if err != nil {
+		return nil, fmt.Errorf("generated %s is not valid Go: %w", name, err)
+	}
+	return formatted, nil
+}
+
 // GenerateFiles generates Go code files in memory without writing to disk.
 // Useful for testing and preview functionality.
 func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, error) {
@@ -207,7 +234,7 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 	if g.opts.IncludeRealtime {
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
-	
+
 	// Include workflows template if context has workflows (Phase 12)
 	if ctx.HasWorkflows() {
 		templateNames = append(templateNames, WorkflowTemplateNames()...)
@@ -295,9 +322,15 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 			return nil, fmt.Errorf("generating %s: %w", name, err)
 		}
 
+		outName := g.templates.OutputFileName(name)
+		formatted, err := formatGo(outName, content)
+		if err != nil {
+			return nil, err
+		}
+
 		files = append(files, GeneratedFile{
-			Name:    g.templates.OutputFileName(name),
-			Content: content,
+			Name:    outName,
+			Content: formatted,
 		})
 	}
 
@@ -412,9 +445,15 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 		if err != nil {
 			return nil, fmt.Errorf("generating %s: %w", name, err)
 		}
+		outName := g.templates.OutputFileName(name)
+		formatted, err := formatGo(outName, content)
+		if err != nil {
+			return nil, err
+		}
+
 		files = append(files, GeneratedFile{
-			Name:    g.templates.OutputFileName(name),
-			Content: content,
+			Name:    outName,
+			Content: formatted,
 		})
 	}
 
@@ -450,8 +489,8 @@ func GenerateToDir(model *metamodel.Model, outputDir string, includeTests bool) 
 	gen, err := New(Options{
 		OutputDir:    outputDir,
 		IncludeTests: includeTests,
-		IncludeInfra: true,  // Include infrastructure by default
-		AsSubmodule:  true,  // Always generate as submodule (no go.mod)
+		IncludeInfra: true, // Include infrastructure by default
+		AsSubmodule:  true, // Always generate as submodule (no go.mod)
 	})
 	if err != nil {
 		return nil, err
