@@ -38,6 +38,8 @@ func NewServer() *server.MCPServer {
 	// Register tools
 	s.AddTool(validateTool(), handleValidate)
 	s.AddTool(analyzeTool(), handleAnalyze)
+	s.AddTool(verifyTool(), handleVerify)
+	s.AddTool(conformanceTool(), handleConformance)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)
@@ -461,6 +463,11 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	// Run implementability analysis
 	implResult := v.ValidateImplementability(model)
 
+	// Structural invariants. A P-invariant holds at every reachable marking and
+	// is proved without exploring the state space, so it stays valid where the
+	// reachability figures above have to truncate.
+	pInvariants, tInvariants := analyzeInvariants(model)
+
 	// Return analysis-focused output
 	output := struct {
 		Valid             bool                              `json:"valid"`
@@ -468,12 +475,16 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		Errors            []goflowmetamodel.ValidationError          `json:"errors,omitempty"`
 		Warnings          []goflowmetamodel.ValidationError          `json:"warnings,omitempty"`
 		Implementability  *validator.ImplementabilityResult `json:"implementability,omitempty"`
+		PInvariants       []string                          `json:"p_invariants"`
+		TInvariants       []string                          `json:"t_invariants"`
 	}{
 		Valid:            result.Valid,
 		Analysis:         result.Analysis,
 		Errors:           result.Errors,
 		Warnings:         result.Warnings,
 		Implementability: implResult,
+		PInvariants:      pInvariants,
+		TInvariants:      tInvariants,
 	}
 
 	outputJSON, err := json.MarshalIndent(output, "", "  ")

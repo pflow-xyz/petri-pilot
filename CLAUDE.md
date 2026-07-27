@@ -62,6 +62,39 @@ petri_simulate(model='...', transitions='["ship"]')
 
 Use `petri_analyze` for deeper analysis (reachability, deadlocks, liveness).
 
+### 1b. Verify Against Requirements
+
+`petri_validate` says the model is well-formed; `petri_verify` says whether it does
+what you asked. State the requirements as properties and get proved / refuted /
+unknown back, with a replayable firing sequence on refutation:
+
+```
+petri_verify(model='...', properties='["deadlock-free","mutex:busy1,busy2","minted == circulating + burned"]')
+```
+
+Each verdict carries a `method`. `structural` means it was proved by linear algebra
+on the incidence matrix and therefore holds for **any** initial marking; `exhaustive`
+means the full state space of *this* marking was enumerated; `witness` means a finite
+constructive witness decided it; `partial` means exploration was truncated, so only
+refutations are sound. The report's `ok` is true only when every property was
+*proved* — `unknown` is never a pass.
+
+Once real execution data exists, `petri_conformance` closes the last gap — a model
+can be deadlock-free, bounded and live while still not describing the actual process:
+
+```
+petri_conformance(model='...', log='[{"case":"o1","activity":"validate"},{"case":"o1","activity":"ship"}]')
+```
+
+It returns fitness (can the model reproduce observed traces?), precision (does it
+permit behavior never seen?), and per-trace diagnostics naming the activities that
+could not be replayed, worst-fitting traces first.
+
+**Dependency note:** both tools need the go-pflow `verify` package. `go.mod`
+currently carries a temporary `replace` pointing at the sibling `../go-pflow`
+checkout. **Before releasing, tag go-pflow and swap that replace for a version
+bump on the `require` line** — a `replace` must not ship in a released module.
+
 ### 2. Generate Code
 
 For a complete full-stack application with entities, roles, and pages:
@@ -706,6 +739,50 @@ For discrete systems (like TTT), the post-state root is the MiMC hash of the dis
 ## ZkOde Contracts (Base Sepolia)
 
 Deployed instances of the verifiable computation pattern.
+
+### Verifier provenance (F4 Tier 3)
+
+`zk-ode/provenance.json` binds each deployed Groth16 verifier to the circuit it
+attests and surfaces when the source has drifted away from what's on-chain.
+Each verifier carries an immutable **`deployed`** baseline — the circuit (commit,
+public inputs, constraints, R1CS digest) captured from its deploy commit — and a
+**`current`** block recomputed by hermetically compiling the circuit (reproducible
+since F4 Tier 2). `inSyncWithDeployment` is true iff `current` == `deployed`.
+
+`cmd/zk-verifier-provenance` (run in CI):
+- recomputes `current` + the committed verifier's source hash and **fails** if
+  they don't match the manifest (a circuit/verifier edit that wasn't reconciled);
+- asserts the verifier's hardcoded `input[]` arity matches the circuit's public
+  inputs;
+- **warns** (does not fail) when a deployment is stale — that's a real,
+  acknowledged state, not a manifest error. Flip `failOnDrift` in the command to
+  gate CI on it once the drift is reconciled.
+
+The verifying key is baked into the committed `.sol` as constants, so the
+committed verifier is the vk of record.
+
+```bash
+go run ./cmd/zk-verifier-provenance          # check (CI)
+go run ./cmd/zk-verifier-provenance -write    # recompute `current` after a circuit/verifier change
+```
+
+> **Known drift (2026-06):** `ttt_heatmap` is stale. The on-chain verifier
+> `0x97a6…` attests the **176,891-constraint** circuit at commit `a0d6eb5`, but
+> the source was refactored afterwards (`780d9f2` generic topology compiler,
+> `0ac24bb` added the `move_tokens` place + `draw` transition) and now compiles to
+> **180,253** constraints. Reconcile by redeploying the verifier from the current
+> circuit (then re-baseline) or reverting those circuit changes. `cascade` is in
+> sync.
+
+The remaining leg — deployed *bytecode* == committed Solidity — needs `forge` +
+an RPC, so it's a manual/opt-in helper rather than a CI gate:
+
+```bash
+RPC_URL=https://sepolia.base.org scripts/zk-onchain-bytecode-check.sh
+```
+
+Full reproducibility of the verifier from scratch would also require pinning the
+verifying key (the trusted setup is randomized); that's the next hardening step.
 
 ### Cascade Contracts (3 places, 2 transitions)
 
