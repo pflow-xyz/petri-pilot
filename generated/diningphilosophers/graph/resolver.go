@@ -80,7 +80,6 @@ func (r *Resolver) DiningPhilosophersList(ctx context.Context, place *string, pa
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateDiningphilosophers creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateDiningphilosophers(ctx context.Context) (*AggregateStat
 
 	return aggregateToState(agg), nil
 }
-
 
 // PickupLeft0 executes the pickup_left_0 transition.
 func (r *Resolver) PickupLeft0(ctx context.Context, input PickupLeft0Input) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) PickupLeft0(ctx context.Context, input PickupLeft0Input) (*Tr
 	}, nil
 }
 
-
 // PickupLeft1 executes the pickup_left_1 transition.
 func (r *Resolver) PickupLeft1(ctx context.Context, input PickupLeft1Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) PickupLeft1(ctx context.Context, input PickupLeft1Input) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // PickupLeft2 executes the pickup_left_2 transition.
 func (r *Resolver) PickupLeft2(ctx context.Context, input PickupLeft2Input) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) PickupLeft2(ctx context.Context, input PickupLeft2Input) (*Tr
 	}, nil
 }
 
-
 // PickupLeft3 executes the pickup_left_3 transition.
 func (r *Resolver) PickupLeft3(ctx context.Context, input PickupLeft3Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) PickupLeft3(ctx context.Context, input PickupLeft3Input) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // PickupLeft4 executes the pickup_left_4 transition.
 func (r *Resolver) PickupLeft4(ctx context.Context, input PickupLeft4Input) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) PickupLeft4(ctx context.Context, input PickupLeft4Input) (*Tr
 	}, nil
 }
 
-
 // PickupRight0 executes the pickup_right_0 transition.
 func (r *Resolver) PickupRight0(ctx context.Context, input PickupRight0Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,7 +301,6 @@ func (r *Resolver) PickupRight0(ctx context.Context, input PickupRight0Input) (*
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // PickupRight1 executes the pickup_right_1 transition.
 func (r *Resolver) PickupRight1(ctx context.Context, input PickupRight1Input) (*TransitionResult, error) {
@@ -338,7 +329,6 @@ func (r *Resolver) PickupRight1(ctx context.Context, input PickupRight1Input) (*
 	}, nil
 }
 
-
 // PickupRight2 executes the pickup_right_2 transition.
 func (r *Resolver) PickupRight2(ctx context.Context, input PickupRight2Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -365,7 +355,6 @@ func (r *Resolver) PickupRight2(ctx context.Context, input PickupRight2Input) (*
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // PickupRight3 executes the pickup_right_3 transition.
 func (r *Resolver) PickupRight3(ctx context.Context, input PickupRight3Input) (*TransitionResult, error) {
@@ -394,7 +383,6 @@ func (r *Resolver) PickupRight3(ctx context.Context, input PickupRight3Input) (*
 	}, nil
 }
 
-
 // PickupRight4 executes the pickup_right_4 transition.
 func (r *Resolver) PickupRight4(ctx context.Context, input PickupRight4Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -421,7 +409,6 @@ func (r *Resolver) PickupRight4(ctx context.Context, input PickupRight4Input) (*
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // Release0 executes the release_0 transition.
 func (r *Resolver) Release0(ctx context.Context, input Release0Input) (*TransitionResult, error) {
@@ -450,7 +437,6 @@ func (r *Resolver) Release0(ctx context.Context, input Release0Input) (*Transiti
 	}, nil
 }
 
-
 // Release1 executes the release_1 transition.
 func (r *Resolver) Release1(ctx context.Context, input Release1Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -477,7 +463,6 @@ func (r *Resolver) Release1(ctx context.Context, input Release1Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // Release2 executes the release_2 transition.
 func (r *Resolver) Release2(ctx context.Context, input Release2Input) (*TransitionResult, error) {
@@ -506,7 +491,6 @@ func (r *Resolver) Release2(ctx context.Context, input Release2Input) (*Transiti
 	}, nil
 }
 
-
 // Release3 executes the release_3 transition.
 func (r *Resolver) Release3(ctx context.Context, input Release3Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -534,7 +518,6 @@ func (r *Resolver) Release3(ctx context.Context, input Release3Input) (*Transiti
 	}, nil
 }
 
-
 // Release4 executes the release_4 transition.
 func (r *Resolver) Release4(ctx context.Context, input Release4Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -561,8 +544,6 @@ func (r *Resolver) Release4(ctx context.Context, input Release4Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -742,21 +723,21 @@ type State struct {
 	Thinking2 any `json:"thinking2"`
 	Thinking3 any `json:"thinking3"`
 	Thinking4 any `json:"thinking4"`
-	Fork0 any `json:"fork0"`
-	Fork1 any `json:"fork1"`
-	Fork2 any `json:"fork2"`
-	Fork3 any `json:"fork3"`
-	Fork4 any `json:"fork4"`
-	HasLeft0 any `json:"hasLeft0"`
-	HasLeft1 any `json:"hasLeft1"`
-	HasLeft2 any `json:"hasLeft2"`
-	HasLeft3 any `json:"hasLeft3"`
-	HasLeft4 any `json:"hasLeft4"`
-	Eating0 any `json:"eating0"`
-	Eating1 any `json:"eating1"`
-	Eating2 any `json:"eating2"`
-	Eating3 any `json:"eating3"`
-	Eating4 any `json:"eating4"`
+	Fork0     any `json:"fork0"`
+	Fork1     any `json:"fork1"`
+	Fork2     any `json:"fork2"`
+	Fork3     any `json:"fork3"`
+	Fork4     any `json:"fork4"`
+	HasLeft0  any `json:"hasLeft0"`
+	HasLeft1  any `json:"hasLeft1"`
+	HasLeft2  any `json:"hasLeft2"`
+	HasLeft3  any `json:"hasLeft3"`
+	HasLeft4  any `json:"hasLeft4"`
+	Eating0   any `json:"eating0"`
+	Eating1   any `json:"eating1"`
+	Eating2   any `json:"eating2"`
+	Eating3   any `json:"eating3"`
+	Eating4   any `json:"eating4"`
 }
 
 type Places struct {
@@ -765,21 +746,21 @@ type Places struct {
 	Thinking2 int `json:"thinking2"`
 	Thinking3 int `json:"thinking3"`
 	Thinking4 int `json:"thinking4"`
-	Fork0 int `json:"fork0"`
-	Fork1 int `json:"fork1"`
-	Fork2 int `json:"fork2"`
-	Fork3 int `json:"fork3"`
-	Fork4 int `json:"fork4"`
-	HasLeft0 int `json:"hasLeft0"`
-	HasLeft1 int `json:"hasLeft1"`
-	HasLeft2 int `json:"hasLeft2"`
-	HasLeft3 int `json:"hasLeft3"`
-	HasLeft4 int `json:"hasLeft4"`
-	Eating0 int `json:"eating0"`
-	Eating1 int `json:"eating1"`
-	Eating2 int `json:"eating2"`
-	Eating3 int `json:"eating3"`
-	Eating4 int `json:"eating4"`
+	Fork0     int `json:"fork0"`
+	Fork1     int `json:"fork1"`
+	Fork2     int `json:"fork2"`
+	Fork3     int `json:"fork3"`
+	Fork4     int `json:"fork4"`
+	HasLeft0  int `json:"hasLeft0"`
+	HasLeft1  int `json:"hasLeft1"`
+	HasLeft2  int `json:"hasLeft2"`
+	HasLeft3  int `json:"hasLeft3"`
+	HasLeft4  int `json:"hasLeft4"`
+	Eating0   int `json:"eating0"`
+	Eating1   int `json:"eating1"`
+	Eating2   int `json:"eating2"`
+	Eating3   int `json:"eating3"`
+	Eating4   int `json:"eating4"`
 }
 
 type TransitionResult struct {
@@ -798,7 +779,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -808,80 +788,64 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type PickupLeft0Input struct {
 	AggregateID string
 }
 
-
 type PickupLeft1Input struct {
 	AggregateID string
 }
-
 
 type PickupLeft2Input struct {
 	AggregateID string
 }
 
-
 type PickupLeft3Input struct {
 	AggregateID string
 }
-
 
 type PickupLeft4Input struct {
 	AggregateID string
 }
 
-
 type PickupRight0Input struct {
 	AggregateID string
 }
-
 
 type PickupRight1Input struct {
 	AggregateID string
 }
 
-
 type PickupRight2Input struct {
 	AggregateID string
 }
-
 
 type PickupRight3Input struct {
 	AggregateID string
 }
 
-
 type PickupRight4Input struct {
 	AggregateID string
 }
-
 
 type Release0Input struct {
 	AggregateID string
 }
 
-
 type Release1Input struct {
 	AggregateID string
 }
-
 
 type Release2Input struct {
 	AggregateID string
 }
 
-
 type Release3Input struct {
 	AggregateID string
 }
 
-
 type Release4Input struct {
 	AggregateID string
 }
-

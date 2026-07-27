@@ -134,7 +134,6 @@ func (r *Resolver) AdminStats(ctx context.Context) (*AdminStats, error) {
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -178,7 +177,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateTictactoe creates a new aggregate instance.
@@ -195,7 +193,6 @@ func (r *Resolver) CreateTictactoe(ctx context.Context) (*AggregateState, error)
 
 	return aggregateToState(agg), nil
 }
-
 
 // XPlay00 executes the x_play_00 transition.
 func (r *Resolver) XPlay00(ctx context.Context, input XPlay00Input) (*TransitionResult, error) {
@@ -224,7 +221,6 @@ func (r *Resolver) XPlay00(ctx context.Context, input XPlay00Input) (*Transition
 	}, nil
 }
 
-
 // XPlay01 executes the x_play_01 transition.
 func (r *Resolver) XPlay01(ctx context.Context, input XPlay01Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -251,7 +247,6 @@ func (r *Resolver) XPlay01(ctx context.Context, input XPlay01Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XPlay02 executes the x_play_02 transition.
 func (r *Resolver) XPlay02(ctx context.Context, input XPlay02Input) (*TransitionResult, error) {
@@ -280,7 +275,6 @@ func (r *Resolver) XPlay02(ctx context.Context, input XPlay02Input) (*Transition
 	}, nil
 }
 
-
 // XPlay10 executes the x_play_10 transition.
 func (r *Resolver) XPlay10(ctx context.Context, input XPlay10Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -307,7 +301,6 @@ func (r *Resolver) XPlay10(ctx context.Context, input XPlay10Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XPlay11 executes the x_play_11 transition.
 func (r *Resolver) XPlay11(ctx context.Context, input XPlay11Input) (*TransitionResult, error) {
@@ -336,7 +329,6 @@ func (r *Resolver) XPlay11(ctx context.Context, input XPlay11Input) (*Transition
 	}, nil
 }
 
-
 // XPlay12 executes the x_play_12 transition.
 func (r *Resolver) XPlay12(ctx context.Context, input XPlay12Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -363,7 +355,6 @@ func (r *Resolver) XPlay12(ctx context.Context, input XPlay12Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XPlay20 executes the x_play_20 transition.
 func (r *Resolver) XPlay20(ctx context.Context, input XPlay20Input) (*TransitionResult, error) {
@@ -392,7 +383,6 @@ func (r *Resolver) XPlay20(ctx context.Context, input XPlay20Input) (*Transition
 	}, nil
 }
 
-
 // XPlay21 executes the x_play_21 transition.
 func (r *Resolver) XPlay21(ctx context.Context, input XPlay21Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -419,7 +409,6 @@ func (r *Resolver) XPlay21(ctx context.Context, input XPlay21Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XPlay22 executes the x_play_22 transition.
 func (r *Resolver) XPlay22(ctx context.Context, input XPlay22Input) (*TransitionResult, error) {
@@ -448,7 +437,6 @@ func (r *Resolver) XPlay22(ctx context.Context, input XPlay22Input) (*Transition
 	}, nil
 }
 
-
 // OPlay00 executes the o_play_00 transition.
 func (r *Resolver) OPlay00(ctx context.Context, input OPlay00Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -475,7 +463,6 @@ func (r *Resolver) OPlay00(ctx context.Context, input OPlay00Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OPlay01 executes the o_play_01 transition.
 func (r *Resolver) OPlay01(ctx context.Context, input OPlay01Input) (*TransitionResult, error) {
@@ -504,7 +491,6 @@ func (r *Resolver) OPlay01(ctx context.Context, input OPlay01Input) (*Transition
 	}, nil
 }
 
-
 // OPlay02 executes the o_play_02 transition.
 func (r *Resolver) OPlay02(ctx context.Context, input OPlay02Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -531,7 +517,6 @@ func (r *Resolver) OPlay02(ctx context.Context, input OPlay02Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OPlay10 executes the o_play_10 transition.
 func (r *Resolver) OPlay10(ctx context.Context, input OPlay10Input) (*TransitionResult, error) {
@@ -560,7 +545,6 @@ func (r *Resolver) OPlay10(ctx context.Context, input OPlay10Input) (*Transition
 	}, nil
 }
 
-
 // OPlay11 executes the o_play_11 transition.
 func (r *Resolver) OPlay11(ctx context.Context, input OPlay11Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -587,7 +571,6 @@ func (r *Resolver) OPlay11(ctx context.Context, input OPlay11Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OPlay12 executes the o_play_12 transition.
 func (r *Resolver) OPlay12(ctx context.Context, input OPlay12Input) (*TransitionResult, error) {
@@ -616,7 +599,6 @@ func (r *Resolver) OPlay12(ctx context.Context, input OPlay12Input) (*Transition
 	}, nil
 }
 
-
 // OPlay20 executes the o_play_20 transition.
 func (r *Resolver) OPlay20(ctx context.Context, input OPlay20Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -643,7 +625,6 @@ func (r *Resolver) OPlay20(ctx context.Context, input OPlay20Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OPlay21 executes the o_play_21 transition.
 func (r *Resolver) OPlay21(ctx context.Context, input OPlay21Input) (*TransitionResult, error) {
@@ -672,7 +653,6 @@ func (r *Resolver) OPlay21(ctx context.Context, input OPlay21Input) (*Transition
 	}, nil
 }
 
-
 // OPlay22 executes the o_play_22 transition.
 func (r *Resolver) OPlay22(ctx context.Context, input OPlay22Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -699,7 +679,6 @@ func (r *Resolver) OPlay22(ctx context.Context, input OPlay22Input) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XWinRow0 executes the x_win_row0 transition.
 func (r *Resolver) XWinRow0(ctx context.Context, input XWinRow0Input) (*TransitionResult, error) {
@@ -728,7 +707,6 @@ func (r *Resolver) XWinRow0(ctx context.Context, input XWinRow0Input) (*Transiti
 	}, nil
 }
 
-
 // XWinRow1 executes the x_win_row1 transition.
 func (r *Resolver) XWinRow1(ctx context.Context, input XWinRow1Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -755,7 +733,6 @@ func (r *Resolver) XWinRow1(ctx context.Context, input XWinRow1Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XWinRow2 executes the x_win_row2 transition.
 func (r *Resolver) XWinRow2(ctx context.Context, input XWinRow2Input) (*TransitionResult, error) {
@@ -784,7 +761,6 @@ func (r *Resolver) XWinRow2(ctx context.Context, input XWinRow2Input) (*Transiti
 	}, nil
 }
 
-
 // XWinCol0 executes the x_win_col0 transition.
 func (r *Resolver) XWinCol0(ctx context.Context, input XWinCol0Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -811,7 +787,6 @@ func (r *Resolver) XWinCol0(ctx context.Context, input XWinCol0Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XWinCol1 executes the x_win_col1 transition.
 func (r *Resolver) XWinCol1(ctx context.Context, input XWinCol1Input) (*TransitionResult, error) {
@@ -840,7 +815,6 @@ func (r *Resolver) XWinCol1(ctx context.Context, input XWinCol1Input) (*Transiti
 	}, nil
 }
 
-
 // XWinCol2 executes the x_win_col2 transition.
 func (r *Resolver) XWinCol2(ctx context.Context, input XWinCol2Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -867,7 +841,6 @@ func (r *Resolver) XWinCol2(ctx context.Context, input XWinCol2Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // XWinDiag executes the x_win_diag transition.
 func (r *Resolver) XWinDiag(ctx context.Context, input XWinDiagInput) (*TransitionResult, error) {
@@ -896,7 +869,6 @@ func (r *Resolver) XWinDiag(ctx context.Context, input XWinDiagInput) (*Transiti
 	}, nil
 }
 
-
 // XWinAnti executes the x_win_anti transition.
 func (r *Resolver) XWinAnti(ctx context.Context, input XWinAntiInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -923,7 +895,6 @@ func (r *Resolver) XWinAnti(ctx context.Context, input XWinAntiInput) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OWinRow0 executes the o_win_row0 transition.
 func (r *Resolver) OWinRow0(ctx context.Context, input OWinRow0Input) (*TransitionResult, error) {
@@ -952,7 +923,6 @@ func (r *Resolver) OWinRow0(ctx context.Context, input OWinRow0Input) (*Transiti
 	}, nil
 }
 
-
 // OWinRow1 executes the o_win_row1 transition.
 func (r *Resolver) OWinRow1(ctx context.Context, input OWinRow1Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -979,7 +949,6 @@ func (r *Resolver) OWinRow1(ctx context.Context, input OWinRow1Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OWinRow2 executes the o_win_row2 transition.
 func (r *Resolver) OWinRow2(ctx context.Context, input OWinRow2Input) (*TransitionResult, error) {
@@ -1008,7 +977,6 @@ func (r *Resolver) OWinRow2(ctx context.Context, input OWinRow2Input) (*Transiti
 	}, nil
 }
 
-
 // OWinCol0 executes the o_win_col0 transition.
 func (r *Resolver) OWinCol0(ctx context.Context, input OWinCol0Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1035,7 +1003,6 @@ func (r *Resolver) OWinCol0(ctx context.Context, input OWinCol0Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OWinCol1 executes the o_win_col1 transition.
 func (r *Resolver) OWinCol1(ctx context.Context, input OWinCol1Input) (*TransitionResult, error) {
@@ -1064,7 +1031,6 @@ func (r *Resolver) OWinCol1(ctx context.Context, input OWinCol1Input) (*Transiti
 	}, nil
 }
 
-
 // OWinCol2 executes the o_win_col2 transition.
 func (r *Resolver) OWinCol2(ctx context.Context, input OWinCol2Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1091,7 +1057,6 @@ func (r *Resolver) OWinCol2(ctx context.Context, input OWinCol2Input) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OWinDiag executes the o_win_diag transition.
 func (r *Resolver) OWinDiag(ctx context.Context, input OWinDiagInput) (*TransitionResult, error) {
@@ -1120,7 +1085,6 @@ func (r *Resolver) OWinDiag(ctx context.Context, input OWinDiagInput) (*Transiti
 	}, nil
 }
 
-
 // OWinAnti executes the o_win_anti transition.
 func (r *Resolver) OWinAnti(ctx context.Context, input OWinAntiInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1148,7 +1112,6 @@ func (r *Resolver) OWinAnti(ctx context.Context, input OWinAntiInput) (*Transiti
 	}, nil
 }
 
-
 // Draw executes the draw transition.
 func (r *Resolver) Draw(ctx context.Context, input DrawInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1175,8 +1138,6 @@ func (r *Resolver) Draw(ctx context.Context, input DrawInput) (*TransitionResult
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -1429,73 +1390,73 @@ type AggregateState struct {
 }
 
 type State struct {
-	P00 any `json:"p00"`
-	P01 any `json:"p01"`
-	P02 any `json:"p02"`
-	P10 any `json:"p10"`
-	P11 any `json:"p11"`
-	P12 any `json:"p12"`
-	P20 any `json:"p20"`
-	P21 any `json:"p21"`
-	P22 any `json:"p22"`
-	X00 any `json:"x00"`
-	X01 any `json:"x01"`
-	X02 any `json:"x02"`
-	X10 any `json:"x10"`
-	X11 any `json:"x11"`
-	X12 any `json:"x12"`
-	X20 any `json:"x20"`
-	X21 any `json:"x21"`
-	X22 any `json:"x22"`
-	O00 any `json:"o00"`
-	O01 any `json:"o01"`
-	O02 any `json:"o02"`
-	O10 any `json:"o10"`
-	O11 any `json:"o11"`
-	O12 any `json:"o12"`
-	O20 any `json:"o20"`
-	O21 any `json:"o21"`
-	O22 any `json:"o22"`
-	XTurn any `json:"xTurn"`
-	OTurn any `json:"oTurn"`
-	WinX any `json:"winX"`
-	WinO any `json:"winO"`
+	P00        any `json:"p00"`
+	P01        any `json:"p01"`
+	P02        any `json:"p02"`
+	P10        any `json:"p10"`
+	P11        any `json:"p11"`
+	P12        any `json:"p12"`
+	P20        any `json:"p20"`
+	P21        any `json:"p21"`
+	P22        any `json:"p22"`
+	X00        any `json:"x00"`
+	X01        any `json:"x01"`
+	X02        any `json:"x02"`
+	X10        any `json:"x10"`
+	X11        any `json:"x11"`
+	X12        any `json:"x12"`
+	X20        any `json:"x20"`
+	X21        any `json:"x21"`
+	X22        any `json:"x22"`
+	O00        any `json:"o00"`
+	O01        any `json:"o01"`
+	O02        any `json:"o02"`
+	O10        any `json:"o10"`
+	O11        any `json:"o11"`
+	O12        any `json:"o12"`
+	O20        any `json:"o20"`
+	O21        any `json:"o21"`
+	O22        any `json:"o22"`
+	XTurn      any `json:"xTurn"`
+	OTurn      any `json:"oTurn"`
+	WinX       any `json:"winX"`
+	WinO       any `json:"winO"`
 	GameActive any `json:"gameActive"`
 	MoveTokens any `json:"moveTokens"`
 }
 
 type Places struct {
-	P00 int `json:"p00"`
-	P01 int `json:"p01"`
-	P02 int `json:"p02"`
-	P10 int `json:"p10"`
-	P11 int `json:"p11"`
-	P12 int `json:"p12"`
-	P20 int `json:"p20"`
-	P21 int `json:"p21"`
-	P22 int `json:"p22"`
-	X00 int `json:"x00"`
-	X01 int `json:"x01"`
-	X02 int `json:"x02"`
-	X10 int `json:"x10"`
-	X11 int `json:"x11"`
-	X12 int `json:"x12"`
-	X20 int `json:"x20"`
-	X21 int `json:"x21"`
-	X22 int `json:"x22"`
-	O00 int `json:"o00"`
-	O01 int `json:"o01"`
-	O02 int `json:"o02"`
-	O10 int `json:"o10"`
-	O11 int `json:"o11"`
-	O12 int `json:"o12"`
-	O20 int `json:"o20"`
-	O21 int `json:"o21"`
-	O22 int `json:"o22"`
-	XTurn int `json:"xTurn"`
-	OTurn int `json:"oTurn"`
-	WinX int `json:"winX"`
-	WinO int `json:"winO"`
+	P00        int `json:"p00"`
+	P01        int `json:"p01"`
+	P02        int `json:"p02"`
+	P10        int `json:"p10"`
+	P11        int `json:"p11"`
+	P12        int `json:"p12"`
+	P20        int `json:"p20"`
+	P21        int `json:"p21"`
+	P22        int `json:"p22"`
+	X00        int `json:"x00"`
+	X01        int `json:"x01"`
+	X02        int `json:"x02"`
+	X10        int `json:"x10"`
+	X11        int `json:"x11"`
+	X12        int `json:"x12"`
+	X20        int `json:"x20"`
+	X21        int `json:"x21"`
+	X22        int `json:"x22"`
+	O00        int `json:"o00"`
+	O01        int `json:"o01"`
+	O02        int `json:"o02"`
+	O10        int `json:"o10"`
+	O11        int `json:"o11"`
+	O12        int `json:"o12"`
+	O20        int `json:"o20"`
+	O21        int `json:"o21"`
+	O22        int `json:"o22"`
+	XTurn      int `json:"xTurn"`
+	OTurn      int `json:"oTurn"`
+	WinX       int `json:"winX"`
+	WinO       int `json:"winO"`
 	GameActive int `json:"gameActive"`
 	MoveTokens int `json:"moveTokens"`
 }
@@ -1526,7 +1487,6 @@ type PlaceCount struct {
 	Count int    `json:"count"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -1536,180 +1496,144 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type XPlay00Input struct {
 	AggregateID string
 }
 
-
 type XPlay01Input struct {
 	AggregateID string
 }
-
 
 type XPlay02Input struct {
 	AggregateID string
 }
 
-
 type XPlay10Input struct {
 	AggregateID string
 }
-
 
 type XPlay11Input struct {
 	AggregateID string
 }
 
-
 type XPlay12Input struct {
 	AggregateID string
 }
-
 
 type XPlay20Input struct {
 	AggregateID string
 }
 
-
 type XPlay21Input struct {
 	AggregateID string
 }
-
 
 type XPlay22Input struct {
 	AggregateID string
 }
 
-
 type OPlay00Input struct {
 	AggregateID string
 }
-
 
 type OPlay01Input struct {
 	AggregateID string
 }
 
-
 type OPlay02Input struct {
 	AggregateID string
 }
-
 
 type OPlay10Input struct {
 	AggregateID string
 }
 
-
 type OPlay11Input struct {
 	AggregateID string
 }
-
 
 type OPlay12Input struct {
 	AggregateID string
 }
 
-
 type OPlay20Input struct {
 	AggregateID string
 }
-
 
 type OPlay21Input struct {
 	AggregateID string
 }
 
-
 type OPlay22Input struct {
 	AggregateID string
 }
-
 
 type XWinRow0Input struct {
 	AggregateID string
 }
 
-
 type XWinRow1Input struct {
 	AggregateID string
 }
-
 
 type XWinRow2Input struct {
 	AggregateID string
 }
 
-
 type XWinCol0Input struct {
 	AggregateID string
 }
-
 
 type XWinCol1Input struct {
 	AggregateID string
 }
 
-
 type XWinCol2Input struct {
 	AggregateID string
 }
-
 
 type XWinDiagInput struct {
 	AggregateID string
 }
 
-
 type XWinAntiInput struct {
 	AggregateID string
 }
-
 
 type OWinRow0Input struct {
 	AggregateID string
 }
 
-
 type OWinRow1Input struct {
 	AggregateID string
 }
-
 
 type OWinRow2Input struct {
 	AggregateID string
 }
 
-
 type OWinCol0Input struct {
 	AggregateID string
 }
-
 
 type OWinCol1Input struct {
 	AggregateID string
 }
 
-
 type OWinCol2Input struct {
 	AggregateID string
 }
-
 
 type OWinDiagInput struct {
 	AggregateID string
 }
 
-
 type OWinAntiInput struct {
 	AggregateID string
 }
 
-
 type DrawInput struct {
 	AggregateID string
 }
-

@@ -65,10 +65,10 @@ type riskResponse struct {
 	Paths         int                `json:"paths"`
 	Tspan         [2]float64         `json:"tspan"`
 	InitialValue  float64            `json:"initialValue"`
-	Final         map[string]float64 `json:"final"`     // mean/stdev/percentiles of final value
-	Returns       map[string]float64 `json:"returns"`   // same for log returns (final / initial)
+	Final         map[string]float64 `json:"final"`       // mean/stdev/percentiles of final value
+	Returns       map[string]float64 `json:"returns"`     // same for log returns (final / initial)
 	MaxDrawdown   map[string]float64 `json:"maxDrawdown"` // mean / median / worst peak-to-trough per-path
-	CVaR95        float64            `json:"cvar95"`   // mean of worst 5% final values
+	CVaR95        float64            `json:"cvar95"`      // mean of worst 5% final values
 	WorstFinal    float64            `json:"worstFinal"`
 	BestFinal     float64            `json:"bestFinal"`
 	DrawdownBins  []float64          `json:"drawdownBins"`

@@ -4,34 +4,34 @@ package tcphandshake
 
 // Place constants
 const (
-	PlaceClientClosed = "client_closed"
-	PlaceClientSynSent = "client_syn_sent"
+	PlaceClientClosed      = "client_closed"
+	PlaceClientSynSent     = "client_syn_sent"
 	PlaceClientEstablished = "client_established"
-	PlaceClientFinWait = "client_fin_wait"
-	PlaceServerListen = "server_listen"
+	PlaceClientFinWait     = "client_fin_wait"
+	PlaceServerListen      = "server_listen"
 	PlaceServerSynReceived = "server_syn_received"
 	PlaceServerEstablished = "server_established"
-	PlaceServerClosed = "server_closed"
+	PlaceServerClosed      = "server_closed"
 )
 
 // Transition constants
 const (
-	TransitionSendSyn = "send_syn"
+	TransitionSendSyn    = "send_syn"
 	TransitionSendSynAck = "send_syn_ack"
-	TransitionSendAck = "send_ack"
-	TransitionSendFin = "send_fin"
+	TransitionSendAck    = "send_ack"
+	TransitionSendFin    = "send_fin"
 	TransitionSendFinAck = "send_fin_ack"
-	TransitionClose = "close"
+	TransitionClose      = "close"
 )
 
 // Event type constants
 const (
-	EventTypeSendSyn = "SendSyned"
+	EventTypeSendSyn    = "SendSyned"
 	EventTypeSendSynAck = "SendSynAcked"
-	EventTypeSendAck = "SendAcked"
-	EventTypeSendFin = "SendFined"
+	EventTypeSendAck    = "SendAcked"
+	EventTypeSendFin    = "SendFined"
 	EventTypeSendFinAck = "SendFinAcked"
-	EventTypeClose = "Closeed"
+	EventTypeClose      = "Closeed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.

@@ -13,42 +13,42 @@ import (
 
 // State holds the aggregate state for galton-board.
 type State struct {
-	Top int `json:"top"`
-	R10 int `json:"r1_0"`
-	R11 int `json:"r1_1"`
-	R20 int `json:"r2_0"`
-	R21 int `json:"r2_1"`
-	R22 int `json:"r2_2"`
-	R30 int `json:"r3_0"`
-	R31 int `json:"r3_1"`
-	R32 int `json:"r3_2"`
-	R33 int `json:"r3_3"`
-	R40 int `json:"r4_0"`
-	R41 int `json:"r4_1"`
-	R42 int `json:"r4_2"`
-	R43 int `json:"r4_3"`
-	R44 int `json:"r4_4"`
-	R50 int `json:"r5_0"`
-	R51 int `json:"r5_1"`
-	R52 int `json:"r5_2"`
-	R53 int `json:"r5_3"`
-	R54 int `json:"r5_4"`
-	R55 int `json:"r5_5"`
-	R60 int `json:"r6_0"`
-	R61 int `json:"r6_1"`
-	R62 int `json:"r6_2"`
-	R63 int `json:"r6_3"`
-	R64 int `json:"r6_4"`
-	R65 int `json:"r6_5"`
-	R66 int `json:"r6_6"`
-	R70 int `json:"r7_0"`
-	R71 int `json:"r7_1"`
-	R72 int `json:"r7_2"`
-	R73 int `json:"r7_3"`
-	R74 int `json:"r7_4"`
-	R75 int `json:"r7_5"`
-	R76 int `json:"r7_6"`
-	R77 int `json:"r7_7"`
+	Top  int `json:"top"`
+	R10  int `json:"r1_0"`
+	R11  int `json:"r1_1"`
+	R20  int `json:"r2_0"`
+	R21  int `json:"r2_1"`
+	R22  int `json:"r2_2"`
+	R30  int `json:"r3_0"`
+	R31  int `json:"r3_1"`
+	R32  int `json:"r3_2"`
+	R33  int `json:"r3_3"`
+	R40  int `json:"r4_0"`
+	R41  int `json:"r4_1"`
+	R42  int `json:"r4_2"`
+	R43  int `json:"r4_3"`
+	R44  int `json:"r4_4"`
+	R50  int `json:"r5_0"`
+	R51  int `json:"r5_1"`
+	R52  int `json:"r5_2"`
+	R53  int `json:"r5_3"`
+	R54  int `json:"r5_4"`
+	R55  int `json:"r5_5"`
+	R60  int `json:"r6_0"`
+	R61  int `json:"r6_1"`
+	R62  int `json:"r6_2"`
+	R63  int `json:"r6_3"`
+	R64  int `json:"r6_4"`
+	R65  int `json:"r6_5"`
+	R66  int `json:"r6_6"`
+	R70  int `json:"r7_0"`
+	R71  int `json:"r7_1"`
+	R72  int `json:"r7_2"`
+	R73  int `json:"r7_3"`
+	R74  int `json:"r7_4"`
+	R75  int `json:"r7_5"`
+	R76  int `json:"r7_6"`
+	R77  int `json:"r7_7"`
 	Bin0 int `json:"bin_0"`
 	Bin1 int `json:"bin_1"`
 	Bin2 int `json:"bin_2"`
@@ -62,8 +62,7 @@ type State struct {
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the galton-board state.

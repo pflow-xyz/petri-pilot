@@ -61,11 +61,11 @@ func renderDiffPNGTitled(modelA, modelB *goflowmetamodel.Model, diff ModelDiff, 
 	}
 
 	const (
-		titleH      = 32
-		subtitleH   = 22
-		gap         = 16
-		legendH     = 28
-		bottomPad   = 8
+		titleH    = 32
+		subtitleH = 22
+		gap       = 16
+		legendH   = 28
+		bottomPad = 8
 	)
 	W := panelW*2 + gap
 	H := titleH + subtitleH + panelH + legendH + bottomPad

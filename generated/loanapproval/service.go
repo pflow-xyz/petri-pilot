@@ -18,8 +18,8 @@ func init() {
 
 // Service implements serve.Service for the loan-approval workflow.
 type Service struct {
-	store eventsource.Store
-	app   *Application
+	store       eventsource.Store
+	app         *Application
 	debugBroker *DebugBroker
 }
 
@@ -65,4 +65,3 @@ func (s *Service) GraphQLSchema() string {
 func (s *Service) GraphQLResolvers() map[string]serve.GraphQLResolver {
 	return GraphQLResolversMap(s.app)
 }
-

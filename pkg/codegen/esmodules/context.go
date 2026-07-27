@@ -227,9 +227,9 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		HasEventSourcing: true,
 		HasSnapshots:     true,
 		// Feature flags are set via NewContextFromApp when using extensions
-		HasDebug:  false,
-		HasAdmin:  false,
-		HasViews:  false,
+		HasDebug: false,
+		HasAdmin: false,
+		HasViews: false,
 		// Initialize Status with default empty config
 		Status: &StatusContext{
 			PlacesJSON: "{}",

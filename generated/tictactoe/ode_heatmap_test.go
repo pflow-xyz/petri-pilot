@@ -101,12 +101,12 @@ func buildTicTacToeNet() *petri.PetriNet {
 	for _, w := range xWinPatterns {
 		net.AddTransition(w.trans, "x", 0, 0, nil)
 		for _, p := range w.pieces {
-			net.AddArc(p, w.trans, 1.0, false)        // consume piece (read arc in ODE)
-			net.AddArc(w.trans, p, 1.0, false)        // return piece
+			net.AddArc(p, w.trans, 1.0, false) // consume piece (read arc in ODE)
+			net.AddArc(w.trans, p, 1.0, false) // return piece
 		}
-		net.AddArc("o_turn", w.trans, 1.0, false)     // consume o_turn (X wins during O's turn)
+		net.AddArc("o_turn", w.trans, 1.0, false)      // consume o_turn (X wins during O's turn)
 		net.AddArc("game_active", w.trans, 1.0, false) // consume game_active
-		net.AddArc(w.trans, "win_x", 1.0, false)      // produce win token
+		net.AddArc(w.trans, "win_x", 1.0, false)       // produce win token
 	}
 
 	// O win transitions - similar structure
@@ -126,12 +126,12 @@ func buildTicTacToeNet() *petri.PetriNet {
 	for _, w := range oWinPatterns {
 		net.AddTransition(w.trans, "o", 0, 0, nil)
 		for _, p := range w.pieces {
-			net.AddArc(p, w.trans, 1.0, false)        // consume piece
-			net.AddArc(w.trans, p, 1.0, false)        // return piece
+			net.AddArc(p, w.trans, 1.0, false) // consume piece
+			net.AddArc(w.trans, p, 1.0, false) // return piece
 		}
-		net.AddArc("x_turn", w.trans, 1.0, false)     // consume x_turn (O wins during X's turn)
+		net.AddArc("x_turn", w.trans, 1.0, false)      // consume x_turn (O wins during X's turn)
 		net.AddArc("game_active", w.trans, 1.0, false) // consume game_active
-		net.AddArc(w.trans, "win_o", 1.0, false)      // produce win token
+		net.AddArc(w.trans, "win_o", 1.0, false)       // produce win token
 	}
 
 	return net
@@ -938,7 +938,6 @@ func getImmediateWinningMoves(board [3][3]string, player string) []string {
 	}
 	return wins
 }
-
 
 // TestODETicTacToeReferenceValues tests tic-tac-toe ODE against known reference values.
 // Update these values after verifying JS parity.

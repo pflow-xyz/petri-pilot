@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // StartReviewsedEvent is emitted when the start_reviews transition fires.
 type StartReviewsedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e StartReviewsedEvent) EventType() string {
 	return "StartReviewsed"
 }
 
-
 // ApproveCreditedEvent is emitted when the approve_credit transition fires.
 type ApproveCreditedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e ApproveCreditedEvent) EventType() string {
 	return "ApproveCredited"
 }
 
-
 // RejectCreditedEvent is emitted when the reject_credit transition fires.
 type RejectCreditedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e RejectCreditedEvent) EventType() string {
 	return "RejectCredited"
 }
 
-
 // ApproveEmploymentedEvent is emitted when the approve_employment transition fires.
 type ApproveEmploymentedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e ApproveEmploymentedEvent) EventType() string {
 	return "ApproveEmploymented"
 }
 
-
 // RejectEmploymentedEvent is emitted when the reject_employment transition fires.
 type RejectEmploymentedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e RejectEmploymentedEvent) EventType() string {
 	return "RejectEmploymented"
 }
 
-
 // MergeReviewsedEvent is emitted when the merge_reviews transition fires.
 type MergeReviewsedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e MergeReviewsedEvent) EventType() string {
 	return "MergeReviewsed"
 }
 
-
 // BeginUnderwritingedEvent is emitted when the begin_underwriting transition fires.
 type BeginUnderwritingedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e BeginUnderwritingedEvent) EventType() string {
 	return "BeginUnderwritinged"
 }
 
-
 // ApproveLoanedEvent is emitted when the approve_loan transition fires.
 type ApproveLoanedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e ApproveLoanedEvent) EventType() string {
 	return "ApproveLoaned"
 }
 
-
 // RejectLoanedEvent is emitted when the reject_loan transition fires.
 type RejectLoanedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e RejectLoanedEvent) EventType() string {
 	return "RejectLoaned"
 }
 
-
 // RejectOnCreditedEvent is emitted when the reject_on_credit transition fires.
 type RejectOnCreditedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,16 +116,13 @@ func (e RejectOnCreditedEvent) EventType() string {
 	return "RejectOnCredited"
 }
 
-
 // RejectOnEmploymentedEvent is emitted when the reject_on_employment transition fires.
 type RejectOnEmploymentedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e RejectOnEmploymentedEvent) EventType() string {
 	return "RejectOnEmploymented"
 }
-
-

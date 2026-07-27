@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/loanapproval/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/loanapproval/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -371,7 +369,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "loanapproval(") {
 		id := ""
@@ -411,7 +408,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -432,7 +428,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -699,7 +694,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createLoanapproval"] = resolvers["loanapproval_create"]
 
-
 	resolvers["loanapproval_start_reviews"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.StartReviewsInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -710,7 +704,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.StartReviews(ctx, input)
 	}
 	resolvers["startReviews"] = resolvers["loanapproval_start_reviews"]
-
 
 	resolvers["loanapproval_approve_credit"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ApproveCreditInput{}
@@ -723,7 +716,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["approveCredit"] = resolvers["loanapproval_approve_credit"]
 
-
 	resolvers["loanapproval_reject_credit"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectCreditInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -734,7 +726,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RejectCredit(ctx, input)
 	}
 	resolvers["rejectCredit"] = resolvers["loanapproval_reject_credit"]
-
 
 	resolvers["loanapproval_approve_employment"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ApproveEmploymentInput{}
@@ -747,7 +738,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["approveEmployment"] = resolvers["loanapproval_approve_employment"]
 
-
 	resolvers["loanapproval_reject_employment"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectEmploymentInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -758,7 +748,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RejectEmployment(ctx, input)
 	}
 	resolvers["rejectEmployment"] = resolvers["loanapproval_reject_employment"]
-
 
 	resolvers["loanapproval_merge_reviews"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.MergeReviewsInput{}
@@ -771,7 +760,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["mergeReviews"] = resolvers["loanapproval_merge_reviews"]
 
-
 	resolvers["loanapproval_begin_underwriting"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.BeginUnderwritingInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -782,7 +770,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.BeginUnderwriting(ctx, input)
 	}
 	resolvers["beginUnderwriting"] = resolvers["loanapproval_begin_underwriting"]
-
 
 	resolvers["loanapproval_approve_loan"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ApproveLoanInput{}
@@ -795,7 +782,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["approveLoan"] = resolvers["loanapproval_approve_loan"]
 
-
 	resolvers["loanapproval_reject_loan"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectLoanInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -806,7 +792,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RejectLoan(ctx, input)
 	}
 	resolvers["rejectLoan"] = resolvers["loanapproval_reject_loan"]
-
 
 	resolvers["loanapproval_reject_on_credit"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectOnCreditInput{}
@@ -819,7 +804,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["rejectOnCredit"] = resolvers["loanapproval_reject_on_credit"]
 
-
 	resolvers["loanapproval_reject_on_employment"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectOnEmploymentInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -830,9 +814,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RejectOnEmployment(ctx, input)
 	}
 	resolvers["rejectOnEmployment"] = resolvers["loanapproval_reject_on_employment"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["loanapproval_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -846,7 +827,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["loanapproval_events"]
 	resolvers["loanapprovalEvents"] = resolvers["loanapproval_events"]
-
 
 	return resolvers
 }

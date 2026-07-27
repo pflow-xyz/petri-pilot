@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/coffeeshop/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/coffeeshop/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -391,7 +389,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "coffeeshop(") {
 		id := ""
@@ -431,7 +428,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -452,7 +448,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -721,7 +716,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createCoffeeshop"] = resolvers["coffeeshop_create"]
 
-
 	resolvers["coffeeshop_order_espresso"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.OrderEspressoInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -732,7 +726,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.OrderEspresso(ctx, input)
 	}
 	resolvers["orderEspresso"] = resolvers["coffeeshop_order_espresso"]
-
 
 	resolvers["coffeeshop_order_latte"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.OrderLatteInput{}
@@ -745,7 +738,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["orderLatte"] = resolvers["coffeeshop_order_latte"]
 
-
 	resolvers["coffeeshop_order_cappuccino"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.OrderCappuccinoInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -756,7 +748,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.OrderCappuccino(ctx, input)
 	}
 	resolvers["orderCappuccino"] = resolvers["coffeeshop_order_cappuccino"]
-
 
 	resolvers["coffeeshop_make_espresso"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.MakeEspressoInput{}
@@ -769,7 +760,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["makeEspresso"] = resolvers["coffeeshop_make_espresso"]
 
-
 	resolvers["coffeeshop_make_latte"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.MakeLatteInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -780,7 +770,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.MakeLatte(ctx, input)
 	}
 	resolvers["makeLatte"] = resolvers["coffeeshop_make_latte"]
-
 
 	resolvers["coffeeshop_make_cappuccino"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.MakeCappuccinoInput{}
@@ -793,7 +782,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["makeCappuccino"] = resolvers["coffeeshop_make_cappuccino"]
 
-
 	resolvers["coffeeshop_serve_espresso"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ServeEspressoInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -804,7 +792,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.ServeEspresso(ctx, input)
 	}
 	resolvers["serveEspresso"] = resolvers["coffeeshop_serve_espresso"]
-
 
 	resolvers["coffeeshop_serve_latte"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ServeLatteInput{}
@@ -817,7 +804,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["serveLatte"] = resolvers["coffeeshop_serve_latte"]
 
-
 	resolvers["coffeeshop_serve_cappuccino"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ServeCappuccinoInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -828,7 +814,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.ServeCappuccino(ctx, input)
 	}
 	resolvers["serveCappuccino"] = resolvers["coffeeshop_serve_cappuccino"]
-
 
 	resolvers["coffeeshop_restock_coffee_beans"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RestockCoffeeBeansInput{}
@@ -841,7 +826,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["restockCoffeeBeans"] = resolvers["coffeeshop_restock_coffee_beans"]
 
-
 	resolvers["coffeeshop_restock_milk"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RestockMilkInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -853,7 +837,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["restockMilk"] = resolvers["coffeeshop_restock_milk"]
 
-
 	resolvers["coffeeshop_restock_cups"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RestockCupsInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -864,9 +847,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RestockCups(ctx, input)
 	}
 	resolvers["restockCups"] = resolvers["coffeeshop_restock_cups"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["coffeeshop_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -880,7 +860,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["coffeeshop_events"]
 	resolvers["coffeeshopEvents"] = resolvers["coffeeshop_events"]
-
 
 	return resolvers
 }

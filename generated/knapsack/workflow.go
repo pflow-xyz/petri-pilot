@@ -4,16 +4,16 @@ package knapsack
 
 // Place constants
 const (
-	PlaceItem0 = "item0"
-	PlaceItem1 = "item1"
-	PlaceItem2 = "item2"
-	PlaceItem3 = "item3"
-	PlaceCapacity = "capacity"
-	PlaceItem0Taken = "item0_taken"
-	PlaceItem1Taken = "item1_taken"
-	PlaceItem2Taken = "item2_taken"
-	PlaceItem3Taken = "item3_taken"
-	PlaceTotalValue = "total_value"
+	PlaceItem0       = "item0"
+	PlaceItem1       = "item1"
+	PlaceItem2       = "item2"
+	PlaceItem3       = "item3"
+	PlaceCapacity    = "capacity"
+	PlaceItem0Taken  = "item0_taken"
+	PlaceItem1Taken  = "item1_taken"
+	PlaceItem2Taken  = "item2_taken"
+	PlaceItem3Taken  = "item3_taken"
+	PlaceTotalValue  = "total_value"
 	PlaceTotalWeight = "total_weight"
 )
 
@@ -23,7 +23,7 @@ const (
 	TransitionTakeItem1 = "take_item1"
 	TransitionTakeItem2 = "take_item2"
 	TransitionTakeItem3 = "take_item3"
-	TransitionReset = "reset"
+	TransitionReset     = "reset"
 )
 
 // Event type constants
@@ -32,16 +32,16 @@ const (
 	EventTypeTakeItem1 = "TakeItem1ed"
 	EventTypeTakeItem2 = "TakeItem2ed"
 	EventTypeTakeItem3 = "TakeItem3ed"
-	EventTypeReset = "Reseted"
+	EventTypeReset     = "Reseted"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
-		PlaceItem0: 1,
-		PlaceItem1: 1,
-		PlaceItem2: 1,
-		PlaceItem3: 1,
+		PlaceItem0:    1,
+		PlaceItem1:    1,
+		PlaceItem2:    1,
+		PlaceItem3:    1,
 		PlaceCapacity: 15,
 	}
 }

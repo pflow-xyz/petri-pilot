@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // SendSynedEvent is emitted when the send_syn transition fires.
 type SendSynedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e SendSynedEvent) EventType() string {
 	return "SendSyned"
 }
 
-
 // SendSynAckedEvent is emitted when the send_syn_ack transition fires.
 type SendSynAckedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e SendSynAckedEvent) EventType() string {
 	return "SendSynAcked"
 }
 
-
 // SendAckedEvent is emitted when the send_ack transition fires.
 type SendAckedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e SendAckedEvent) EventType() string {
 	return "SendAcked"
 }
 
-
 // SendFinedEvent is emitted when the send_fin transition fires.
 type SendFinedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e SendFinedEvent) EventType() string {
 	return "SendFined"
 }
 
-
 // SendFinAckedEvent is emitted when the send_fin_ack transition fires.
 type SendFinAckedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,16 +61,13 @@ func (e SendFinAckedEvent) EventType() string {
 	return "SendFinAcked"
 }
 
-
 // CloseedEvent is emitted when the close transition fires.
 type CloseedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e CloseedEvent) EventType() string {
 	return "Closeed"
 }
-
-

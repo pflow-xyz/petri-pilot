@@ -46,12 +46,12 @@ func odeSensitivityTool() mcp.Tool {
 }
 
 type odeSensitivityResponse struct {
-	Observable       string             `json:"observable"`
-	BaseEquilibrium  float64            `json:"baseEquilibrium"`
-	BaseRates        map[string]float64 `json:"baseRates"`
-	Delta            float64            `json:"delta"`
-	Elasticities     map[string]float64 `json:"elasticities"`
-	Ranked           []elasticityEntry  `json:"ranked"`
+	Observable      string             `json:"observable"`
+	BaseEquilibrium float64            `json:"baseEquilibrium"`
+	BaseRates       map[string]float64 `json:"baseRates"`
+	Delta           float64            `json:"delta"`
+	Elasticities    map[string]float64 `json:"elasticities"`
+	Ranked          []elasticityEntry  `json:"ranked"`
 }
 
 type elasticityEntry struct {

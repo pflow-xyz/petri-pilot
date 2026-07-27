@@ -33,50 +33,25 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/predatorprey/{id}", "Get predator-prey state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/predatorprey/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/predatorprey/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/predatorprey/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("prey_reproduce", "/api/prey_reproduce", "Prey natural reproduction (birth rate)", HandlePreyReproduce(app))
@@ -95,9 +70,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/predator-prey",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/predatorprey/frontend",         // Generated frontend from repo root
+		"frontends/predator-prey",         // Custom frontend (top priority)
+		"frontend",                        // Running from service directory
+		"generated/predatorprey/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "predatorprey", "frontend"), // Platform-safe
 	}
 
@@ -234,7 +209,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePreyReproduce handles the prey_reproduce transition.
 func HandlePreyReproduce(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +240,6 @@ func HandlePreyReproduce(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePredation handles the predation transition.
 func HandlePredation(app *Application) http.HandlerFunc {
@@ -300,7 +273,6 @@ func HandlePredation(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePredatorDeath handles the predator_death transition.
 func HandlePredatorDeath(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -332,13 +304,6 @@ func HandlePredatorDeath(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -425,17 +390,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -457,7 +418,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -474,4 +434,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

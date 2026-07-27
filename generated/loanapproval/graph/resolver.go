@@ -80,7 +80,6 @@ func (r *Resolver) LoanApprovalList(ctx context.Context, place *string, page *in
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateLoanapproval creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateLoanapproval(ctx context.Context) (*AggregateState, err
 
 	return aggregateToState(agg), nil
 }
-
 
 // StartReviews executes the start_reviews transition.
 func (r *Resolver) StartReviews(ctx context.Context, input StartReviewsInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) StartReviews(ctx context.Context, input StartReviewsInput) (*
 	}, nil
 }
 
-
 // ApproveCredit executes the approve_credit transition.
 func (r *Resolver) ApproveCredit(ctx context.Context, input ApproveCreditInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) ApproveCredit(ctx context.Context, input ApproveCreditInput) 
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // RejectCredit executes the reject_credit transition.
 func (r *Resolver) RejectCredit(ctx context.Context, input RejectCreditInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) RejectCredit(ctx context.Context, input RejectCreditInput) (*
 	}, nil
 }
 
-
 // ApproveEmployment executes the approve_employment transition.
 func (r *Resolver) ApproveEmployment(ctx context.Context, input ApproveEmploymentInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) ApproveEmployment(ctx context.Context, input ApproveEmploymen
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // RejectEmployment executes the reject_employment transition.
 func (r *Resolver) RejectEmployment(ctx context.Context, input RejectEmploymentInput) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) RejectEmployment(ctx context.Context, input RejectEmploymentI
 	}, nil
 }
 
-
 // MergeReviews executes the merge_reviews transition.
 func (r *Resolver) MergeReviews(ctx context.Context, input MergeReviewsInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,7 +301,6 @@ func (r *Resolver) MergeReviews(ctx context.Context, input MergeReviewsInput) (*
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // BeginUnderwriting executes the begin_underwriting transition.
 func (r *Resolver) BeginUnderwriting(ctx context.Context, input BeginUnderwritingInput) (*TransitionResult, error) {
@@ -338,7 +329,6 @@ func (r *Resolver) BeginUnderwriting(ctx context.Context, input BeginUnderwritin
 	}, nil
 }
 
-
 // ApproveLoan executes the approve_loan transition.
 func (r *Resolver) ApproveLoan(ctx context.Context, input ApproveLoanInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -365,7 +355,6 @@ func (r *Resolver) ApproveLoan(ctx context.Context, input ApproveLoanInput) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // RejectLoan executes the reject_loan transition.
 func (r *Resolver) RejectLoan(ctx context.Context, input RejectLoanInput) (*TransitionResult, error) {
@@ -394,7 +383,6 @@ func (r *Resolver) RejectLoan(ctx context.Context, input RejectLoanInput) (*Tran
 	}, nil
 }
 
-
 // RejectOnCredit executes the reject_on_credit transition.
 func (r *Resolver) RejectOnCredit(ctx context.Context, input RejectOnCreditInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -422,7 +410,6 @@ func (r *Resolver) RejectOnCredit(ctx context.Context, input RejectOnCreditInput
 	}, nil
 }
 
-
 // RejectOnEmployment executes the reject_on_employment transition.
 func (r *Resolver) RejectOnEmployment(ctx context.Context, input RejectOnEmploymentInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -449,8 +436,6 @@ func (r *Resolver) RejectOnEmployment(ctx context.Context, input RejectOnEmploym
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -571,31 +556,31 @@ type AggregateState struct {
 }
 
 type State struct {
-	Submitted any `json:"submitted"`
-	CreditReview any `json:"creditReview"`
+	Submitted        any `json:"submitted"`
+	CreditReview     any `json:"creditReview"`
 	EmploymentReview any `json:"employmentReview"`
-	CreditPassed any `json:"creditPassed"`
-	CreditFailed any `json:"creditFailed"`
+	CreditPassed     any `json:"creditPassed"`
+	CreditFailed     any `json:"creditFailed"`
 	EmploymentPassed any `json:"employmentPassed"`
 	EmploymentFailed any `json:"employmentFailed"`
 	ReadyForDecision any `json:"readyForDecision"`
-	UnderReview any `json:"underReview"`
-	Approved any `json:"approved"`
-	Rejected any `json:"rejected"`
+	UnderReview      any `json:"underReview"`
+	Approved         any `json:"approved"`
+	Rejected         any `json:"rejected"`
 }
 
 type Places struct {
-	Submitted int `json:"submitted"`
-	CreditReview int `json:"creditReview"`
+	Submitted        int `json:"submitted"`
+	CreditReview     int `json:"creditReview"`
 	EmploymentReview int `json:"employmentReview"`
-	CreditPassed int `json:"creditPassed"`
-	CreditFailed int `json:"creditFailed"`
+	CreditPassed     int `json:"creditPassed"`
+	CreditFailed     int `json:"creditFailed"`
 	EmploymentPassed int `json:"employmentPassed"`
 	EmploymentFailed int `json:"employmentFailed"`
 	ReadyForDecision int `json:"readyForDecision"`
-	UnderReview int `json:"underReview"`
-	Approved int `json:"approved"`
-	Rejected int `json:"rejected"`
+	UnderReview      int `json:"underReview"`
+	Approved         int `json:"approved"`
+	Rejected         int `json:"rejected"`
 }
 
 type TransitionResult struct {
@@ -614,7 +599,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -624,60 +608,48 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type StartReviewsInput struct {
 	AggregateID string
 }
 
-
 type ApproveCreditInput struct {
 	AggregateID string
 }
-
 
 type RejectCreditInput struct {
 	AggregateID string
 }
 
-
 type ApproveEmploymentInput struct {
 	AggregateID string
 }
-
 
 type RejectEmploymentInput struct {
 	AggregateID string
 }
 
-
 type MergeReviewsInput struct {
 	AggregateID string
 }
-
 
 type BeginUnderwritingInput struct {
 	AggregateID string
 }
 
-
 type ApproveLoanInput struct {
 	AggregateID string
 }
-
 
 type RejectLoanInput struct {
 	AggregateID string
 }
 
-
 type RejectOnCreditInput struct {
 	AggregateID string
 }
 
-
 type RejectOnEmploymentInput struct {
 	AggregateID string
 }
-

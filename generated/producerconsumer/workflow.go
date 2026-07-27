@@ -5,27 +5,27 @@ package producerconsumer
 // Place constants
 const (
 	PlaceProducerIdle = "producer_idle"
-	PlaceProducing = "producing"
-	PlaceBuffer = "buffer"
-	PlaceBufferSpace = "buffer_space"
+	PlaceProducing    = "producing"
+	PlaceBuffer       = "buffer"
+	PlaceBufferSpace  = "buffer_space"
 	PlaceConsumerIdle = "consumer_idle"
-	PlaceConsuming = "consuming"
-	PlaceConsumed = "consumed"
+	PlaceConsuming    = "consuming"
+	PlaceConsumed     = "consumed"
 )
 
 // Transition constants
 const (
-	TransitionStartProduce = "start_produce"
+	TransitionStartProduce  = "start_produce"
 	TransitionFinishProduce = "finish_produce"
-	TransitionStartConsume = "start_consume"
+	TransitionStartConsume  = "start_consume"
 	TransitionFinishConsume = "finish_consume"
 )
 
 // Event type constants
 const (
-	EventTypeStartProduce = "StartProduceed"
+	EventTypeStartProduce  = "StartProduceed"
 	EventTypeFinishProduce = "FinishProduceed"
-	EventTypeStartConsume = "StartConsumeed"
+	EventTypeStartConsume  = "StartConsumeed"
 	EventTypeFinishConsume = "FinishConsumeed"
 )
 
@@ -33,7 +33,7 @@ const (
 func InitialPlaces() map[string]int {
 	return map[string]int{
 		PlaceProducerIdle: 1,
-		PlaceBufferSpace: 5,
+		PlaceBufferSpace:  5,
 		PlaceConsumerIdle: 1,
 	}
 }

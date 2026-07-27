@@ -72,7 +72,7 @@ Specify which places should have tokens initially:
 
 Here's the structure you should use:
 
-` + "```json" + `
+`+"```json"+`
 {
   "name": "workflow-name",
   "version": "1.0.0",
@@ -97,7 +97,7 @@ Here's the structure you should use:
     {"from": "transition_id", "to": "next_place_id"}
   ]
 }
-` + "```" + `
+`+"```"+`
 
 Now, based on your workflow description, let's start:
 
@@ -139,13 +139,13 @@ Create role definitions with:
 - **inherits**: Optional list of parent roles for inheritance
 
 Example:
-` + "```json" + `
+`+"```json"+`
 "roles": [
   {"id": "user", "name": "Regular User", "description": "Basic workflow access"},
   {"id": "reviewer", "name": "Reviewer", "description": "Can approve/reject items"},
   {"id": "admin", "name": "Administrator", "inherits": ["user", "reviewer"]}
 ]
-` + "```" + `
+`+"```"+`
 
 ## Step 3: Map Transitions to Roles
 
@@ -154,21 +154,21 @@ For each transition in your model, decide:
 - Are there any additional conditions (guards)?
 
 Create access rules:
-` + "```json" + `
+`+"```json"+`
 "access": [
   {"transition": "submit", "roles": ["user"]},
   {"transition": "approve", "roles": ["reviewer", "admin"]},
   {"transition": "reject", "roles": ["reviewer", "admin"]},
   {"transition": "*", "roles": ["admin"]}
 ]
-` + "```" + `
+`+"```"+`
 
 ## Step 4: Add Guard Conditions (Optional)
 
 Guards are expressions that further restrict access:
-` + "```json" + `
+`+"```json"+`
 {"transition": "edit", "roles": ["user"], "guard": "user.id == author_id"}
-` + "```" + `
+`+"```"+`
 
 ## Questions to Answer:
 
@@ -227,28 +227,28 @@ Based on your workflow, what user types should exist? Consider:
 - Who has administrative access?
 
 Suggested roles to start:
-` + "```json" + `
+`+"```json"+`
 "roles": [
   {"id": "user", "name": "Regular User"},
   {"id": "admin", "name": "Administrator"}
 ]
-` + "```" + `
+`+"```"+`
 
 ## Step 2: Assign Transitions to Roles
 
 For each transition above, decide which roles can execute it:
-` + "```json" + `
+`+"```json"+`
 "access": [
   {"transition": "transition_id", "roles": ["role1", "role2"]}
 ]
-` + "```" + `
+`+"```"+`
 
 ## Step 3: Add Guard Conditions (if needed)
 
 If certain transitions should only be allowed under specific conditions:
-` + "```json" + `
+`+"```json"+`
 {"transition": "edit", "roles": ["user"], "guard": "user.id == owner_id"}
-` + "```" + `
+`+"```"+`
 
 What roles do you want to define for this workflow?`, transitionList))),
 	}
@@ -283,7 +283,7 @@ Views can have different purposes:
 
 ### List/Table View (kind: "table")
 Shows multiple workflow instances in a tabular format:
-` + "```json" + `
+`+"```json"+`
 {
   "id": "task_list",
   "name": "Task List",
@@ -299,11 +299,11 @@ Shows multiple workflow instances in a tabular format:
     }
   ]
 }
-` + "```" + `
+`+"```"+`
 
 ### Detail/Form View (kind: "form" or "detail")
 Shows or edits a single workflow instance:
-` + "```json" + `
+`+"```json"+`
 {
   "id": "task_form",
   "name": "Task Details",
@@ -328,7 +328,7 @@ Shows or edits a single workflow instance:
   ],
   "actions": ["submit", "save_draft"]
 }
-` + "```" + `
+`+"```"+`
 
 ### Card View (kind: "card")
 Shows summary information in a card layout for dashboards
@@ -336,9 +336,9 @@ Shows summary information in a card layout for dashboards
 ## Step 3: Map UI Actions to Transitions
 
 The "actions" array in a view specifies which workflow transitions can be triggered:
-` + "```json" + `
+`+"```json"+`
 "actions": ["start_task", "submit", "approve"]
-` + "```" + `
+`+"```"+`
 
 ## Field Type Options
 
@@ -440,7 +440,7 @@ Common fields might include: title, description, created_at, updated_at, assigne
 ## Step 2: Create a List View
 
 A table view to show multiple instances:
-` + "```json" + `
+`+"```json"+`
 {
   "id": "list_view",
   "name": "List View",
@@ -456,12 +456,12 @@ A table view to show multiple instances:
     }
   ]
 }
-` + "```" + `
+`+"```"+`
 
 ## Step 3: Create a Detail/Form View
 
 A form view for viewing/editing a single instance:
-` + "```json" + `
+`+"```json"+`
 {
   "id": "detail_view",
   "name": "Detail View",
@@ -478,7 +478,7 @@ A form view for viewing/editing a single instance:
   ],
   "actions": ["transition_id_1", "transition_id_2"]
 }
-` + "```" + `
+`+"```"+`
 
 ## Step 4: Map Actions
 

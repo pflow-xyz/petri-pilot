@@ -6,13 +6,12 @@ import (
 	"time"
 )
 
-
 // XPlayedEvent is emitted when the x_play_00 transition fires.
 type XPlayedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Row int `json:"row"`
-	Col int `json:"col"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Row         int       `json:"row"`
+	Col         int       `json:"col"`
 }
 
 // EventType returns the event type identifier.
@@ -20,13 +19,12 @@ func (e XPlayedEvent) EventType() string {
 	return "XPlayed"
 }
 
-
 // OPlayedEvent is emitted when the o_play_00 transition fires.
 type OPlayedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Row int `json:"row"`
-	Col int `json:"col"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Row         int       `json:"row"`
+	Col         int       `json:"col"`
 }
 
 // EventType returns the event type identifier.
@@ -34,11 +32,10 @@ func (e OPlayedEvent) EventType() string {
 	return "OPlayed"
 }
 
-
 // XWinRow0edEvent is emitted when the x_win_row0 transition fires.
 type XWinRow0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -46,11 +43,10 @@ func (e XWinRow0edEvent) EventType() string {
 	return "XWinRow0ed"
 }
 
-
 // XWinRow1edEvent is emitted when the x_win_row1 transition fires.
 type XWinRow1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -58,11 +54,10 @@ func (e XWinRow1edEvent) EventType() string {
 	return "XWinRow1ed"
 }
 
-
 // XWinRow2edEvent is emitted when the x_win_row2 transition fires.
 type XWinRow2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -70,11 +65,10 @@ func (e XWinRow2edEvent) EventType() string {
 	return "XWinRow2ed"
 }
 
-
 // XWinCol0edEvent is emitted when the x_win_col0 transition fires.
 type XWinCol0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -82,11 +76,10 @@ func (e XWinCol0edEvent) EventType() string {
 	return "XWinCol0ed"
 }
 
-
 // XWinCol1edEvent is emitted when the x_win_col1 transition fires.
 type XWinCol1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -94,11 +87,10 @@ func (e XWinCol1edEvent) EventType() string {
 	return "XWinCol1ed"
 }
 
-
 // XWinCol2edEvent is emitted when the x_win_col2 transition fires.
 type XWinCol2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -106,11 +98,10 @@ func (e XWinCol2edEvent) EventType() string {
 	return "XWinCol2ed"
 }
 
-
 // XWinDiagedEvent is emitted when the x_win_diag transition fires.
 type XWinDiagedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -118,11 +109,10 @@ func (e XWinDiagedEvent) EventType() string {
 	return "XWinDiaged"
 }
 
-
 // XWinAntiedEvent is emitted when the x_win_anti transition fires.
 type XWinAntiedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -130,11 +120,10 @@ func (e XWinAntiedEvent) EventType() string {
 	return "XWinAntied"
 }
 
-
 // OWinRow0edEvent is emitted when the o_win_row0 transition fires.
 type OWinRow0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -142,11 +131,10 @@ func (e OWinRow0edEvent) EventType() string {
 	return "OWinRow0ed"
 }
 
-
 // OWinRow1edEvent is emitted when the o_win_row1 transition fires.
 type OWinRow1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -154,11 +142,10 @@ func (e OWinRow1edEvent) EventType() string {
 	return "OWinRow1ed"
 }
 
-
 // OWinRow2edEvent is emitted when the o_win_row2 transition fires.
 type OWinRow2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -166,11 +153,10 @@ func (e OWinRow2edEvent) EventType() string {
 	return "OWinRow2ed"
 }
 
-
 // OWinCol0edEvent is emitted when the o_win_col0 transition fires.
 type OWinCol0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -178,11 +164,10 @@ func (e OWinCol0edEvent) EventType() string {
 	return "OWinCol0ed"
 }
 
-
 // OWinCol1edEvent is emitted when the o_win_col1 transition fires.
 type OWinCol1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -190,11 +175,10 @@ func (e OWinCol1edEvent) EventType() string {
 	return "OWinCol1ed"
 }
 
-
 // OWinCol2edEvent is emitted when the o_win_col2 transition fires.
 type OWinCol2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -202,11 +186,10 @@ func (e OWinCol2edEvent) EventType() string {
 	return "OWinCol2ed"
 }
 
-
 // OWinDiagedEvent is emitted when the o_win_diag transition fires.
 type OWinDiagedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -214,11 +197,10 @@ func (e OWinDiagedEvent) EventType() string {
 	return "OWinDiaged"
 }
 
-
 // OWinAntiedEvent is emitted when the o_win_anti transition fires.
 type OWinAntiedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -226,16 +208,13 @@ func (e OWinAntiedEvent) EventType() string {
 	return "OWinAntied"
 }
 
-
 // GameDrawEvent is emitted when the draw transition fires.
 type GameDrawEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e GameDrawEvent) EventType() string {
 	return "GameDraw"
 }
-
-

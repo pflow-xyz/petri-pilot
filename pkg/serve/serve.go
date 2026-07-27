@@ -134,11 +134,11 @@ type RouteRegistrar func(mux *http.ServeMux)
 
 // Options configures service startup.
 type Options struct {
-	Port           int
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	IdleTimeout    time.Duration
-	CustomRoutes   RouteRegistrar // Optional function to register custom routes
+	Port         int
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+	CustomRoutes RouteRegistrar // Optional function to register custom routes
 }
 
 // DefaultOptions returns sensible default options.
@@ -209,9 +209,9 @@ func RunMultiple(names []string, opts Options) error {
 	authHandler := NewAuthHandler(baseURL)
 	if authHandler.Enabled() {
 		log.Printf("  GitHub OAuth enabled")
-	if googleAnalyticsID != "" {
-		log.Printf("  Google Analytics: %s", googleAnalyticsID)
-	}
+		if googleAnalyticsID != "" {
+			log.Printf("  Google Analytics: %s", googleAnalyticsID)
+		}
 	}
 
 	// Build combined mux
@@ -300,7 +300,7 @@ func RunMultiple(names []string, opts Options) error {
 		name := names[i]
 		handler := svc.BuildHandler()
 		prefix := "/" + name
-		
+
 		// Check if there's a custom frontend for this service
 		customFrontendPath := filepath.Join("frontends", name)
 		if _, err := os.Stat(customFrontendPath); err == nil {
@@ -655,7 +655,6 @@ func createSPAHandler(frontendPath string) http.Handler {
 		http.NotFound(w, r)
 	})
 }
-
 
 // normalizeCard normalizes card notation (e.g., "10h" -> "Th", "ah" -> "Ah")
 func normalizeCard(card string) string {

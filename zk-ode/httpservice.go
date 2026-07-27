@@ -184,10 +184,10 @@ func (s *HTTPService) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]interface{}{
-		"values":  values,
-		"scores":  result.Scores,
-		"player":  result.Player,
-		"status":  "ok",
+		"values": values,
+		"scores": result.Scores,
+		"player": result.Player,
+		"status": "ok",
 	}
 	if result.Optimal != nil {
 		resp["optimal"] = fmt.Sprintf("%d%d", result.Optimal.Row, result.Optimal.Col)

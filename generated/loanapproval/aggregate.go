@@ -13,23 +13,22 @@ import (
 
 // State holds the aggregate state for loan-approval.
 type State struct {
-	Submitted int `json:"submitted"`
-	CreditReview int `json:"credit_review"`
+	Submitted        int `json:"submitted"`
+	CreditReview     int `json:"credit_review"`
 	EmploymentReview int `json:"employment_review"`
-	CreditPassed int `json:"credit_passed"`
-	CreditFailed int `json:"credit_failed"`
+	CreditPassed     int `json:"credit_passed"`
+	CreditFailed     int `json:"credit_failed"`
 	EmploymentPassed int `json:"employment_passed"`
 	EmploymentFailed int `json:"employment_failed"`
 	ReadyForDecision int `json:"ready_for_decision"`
-	UnderReview int `json:"under_review"`
-	Approved int `json:"approved"`
-	Rejected int `json:"rejected"`
+	UnderReview      int `json:"under_review"`
+	Approved         int `json:"approved"`
+	Rejected         int `json:"rejected"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the loan-approval state.
@@ -52,7 +51,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceSubmitted: 1,
 		},
 		Outputs: map[string]int{
-			PlaceCreditReview: 1,
+			PlaceCreditReview:     1,
 			PlaceEmploymentReview: 1,
 		},
 	})
@@ -100,7 +99,7 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionMergeReviews,
 		EventType: EventTypeMergeReviews,
 		Inputs: map[string]int{
-			PlaceCreditPassed: 1,
+			PlaceCreditPassed:     1,
 			PlaceEmploymentPassed: 1,
 		},
 		Outputs: map[string]int{

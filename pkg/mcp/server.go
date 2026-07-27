@@ -12,10 +12,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/pflow-xyz/petri-pilot/internal/version"
-	"github.com/pflow-xyz/petri-pilot/services"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
+	"github.com/pflow-xyz/petri-pilot/internal/version"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo"
@@ -24,6 +23,7 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
+	"github.com/pflow-xyz/petri-pilot/services"
 )
 
 // NewServer creates a new MCP server with Petri net tools.
@@ -483,13 +483,13 @@ func handleAnalyze(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 
 	// Return analysis-focused output
 	output := struct {
-		Valid             bool                              `json:"valid"`
-		Analysis          *goflowmetamodel.AnalysisResult            `json:"analysis,omitempty"`
-		Errors            []goflowmetamodel.ValidationError          `json:"errors,omitempty"`
-		Warnings          []goflowmetamodel.ValidationError          `json:"warnings,omitempty"`
-		Implementability  *validator.ImplementabilityResult `json:"implementability,omitempty"`
-		PInvariants       []string                          `json:"p_invariants"`
-		TInvariants       []string                          `json:"t_invariants"`
+		Valid            bool                              `json:"valid"`
+		Analysis         *goflowmetamodel.AnalysisResult   `json:"analysis,omitempty"`
+		Errors           []goflowmetamodel.ValidationError `json:"errors,omitempty"`
+		Warnings         []goflowmetamodel.ValidationError `json:"warnings,omitempty"`
+		Implementability *validator.ImplementabilityResult `json:"implementability,omitempty"`
+		PInvariants      []string                          `json:"p_invariants"`
+		TInvariants      []string                          `json:"t_invariants"`
 	}{
 		Valid:            result.Valid,
 		Analysis:         result.Analysis,
@@ -750,17 +750,17 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	result := struct {
-		Success    bool     `json:"success"`
-		Applied    []string `json:"applied"`
-		Errors     []string `json:"errors,omitempty"`
-		Valid      bool     `json:"valid"`
-		Model      string   `json:"model"`
+		Success bool     `json:"success"`
+		Applied []string `json:"applied"`
+		Errors  []string `json:"errors,omitempty"`
+		Valid   bool     `json:"valid"`
+		Model   string   `json:"model"`
 	}{
-		Success:    len(errors) == 0,
-		Applied:    applied,
-		Errors:     errors,
-		Valid:      validationResult.Valid,
-		Model:      string(modelOutput),
+		Success: len(errors) == 0,
+		Applied: applied,
+		Errors:  errors,
+		Valid:   validationResult.Valid,
+		Model:   string(modelOutput),
 	}
 
 	outputJSON, err := json.MarshalIndent(result, "", "  ")
@@ -1752,11 +1752,11 @@ func titleCase(s string) string {
 
 // pflowPlace is for parsing pflow.xyz format where places is an object
 type pflowPlace struct {
-	Initial  []int  `json:"initial"`
-	Capacity []int  `json:"capacity"`
-	Offset   int    `json:"offset"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
+	Initial  []int `json:"initial"`
+	Capacity []int `json:"capacity"`
+	Offset   int   `json:"offset"`
+	X        int   `json:"x"`
+	Y        int   `json:"y"`
 }
 
 type pflowTransition struct {
@@ -2180,15 +2180,15 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	// Generate code for each entity
 	for i, entity := range app.Entities {
 		sb.WriteString(fmt.Sprintf("=== Entity %d: %s ===\n", i+1, entity.ID))
-		
+
 		// Convert Entity to metamodel.Schema then to goflowmetamodel.Model
 		metaSchema := entity.ToSchema()
 		model := metaSchema.ToModel()
-		
+
 		sb.WriteString(fmt.Sprintf("- States: %d\n", len(entity.States)))
 		sb.WriteString(fmt.Sprintf("- Actions: %d\n", len(entity.Actions)))
 		sb.WriteString(fmt.Sprintf("- Fields: %d\n", len(entity.Fields)))
-		
+
 		// Display access rules
 		if len(entity.Access) > 0 {
 			sb.WriteString(fmt.Sprintf("- Access rules: %d\n", len(entity.Access)))
@@ -2204,11 +2204,11 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				sb.WriteString("\n")
 			}
 		}
-		
+
 		// Generate backend code if requested
 		if backend == "go" {
 			sb.WriteString("\n--- Backend Code ---\n")
-			
+
 			// Build access rule contexts
 			var accessRules []golang.AccessRuleContext
 			for _, rule := range entity.Access {
@@ -2218,7 +2218,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 					Guard:        rule.Guard,
 				})
 			}
-			
+
 			// Build role contexts
 			var roles []golang.RoleContext
 			for _, role := range app.Roles {
@@ -2229,7 +2229,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 					Inherits:    role.Inherits,
 				})
 			}
-			
+
 			// Build webhook contexts
 			var webhooks []golang.WebhookContext
 			for _, wh := range app.Webhooks {
@@ -2249,7 +2249,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 					RetryPolicy: retryPolicy,
 				})
 			}
-			
+
 			// Build workflow contexts (Phase 12)
 			var workflows []golang.WorkflowContext
 			for _, wf := range app.Workflows {
@@ -2261,7 +2261,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 						Action: wf.Trigger.Action,
 						Cron:   wf.Trigger.Cron,
 					}
-					
+
 					var steps []golang.WorkflowStepContext
 					for _, step := range wf.Steps {
 						steps = append(steps, golang.WorkflowStepContext{
@@ -2277,7 +2277,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 							OnFailure:  step.OnFailure,
 						})
 					}
-					
+
 					workflows = append(workflows, golang.WorkflowContext{
 						ID:          wf.ID,
 						Name:        wf.Name,
@@ -2290,7 +2290,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 					})
 				}
 			}
-			
+
 			gen, err := golang.New(golang.Options{
 				PackageName:          entity.ID,
 				IncludeTests:         true,
@@ -2304,14 +2304,14 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				sb.WriteString(fmt.Sprintf("Error creating backend generator: %v\n", err))
 				continue
 			}
-			
+
 			// Generate files with access control, workflows, and webhooks context
 			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows, webhooks)
 			if err != nil {
 				sb.WriteString(fmt.Sprintf("Error generating backend: %v\n", err))
 				continue
 			}
-			
+
 			sb.WriteString(fmt.Sprintf("Generated %d backend files\n", len(files)))
 			for _, file := range files {
 				sb.WriteString(fmt.Sprintf("  - %s\n", file.Name))
@@ -2320,11 +2320,11 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				sb.WriteString(fmt.Sprintf("  - Workflows: %d\n", len(workflows)))
 			}
 		}
-		
+
 		// Generate frontend code if requested
 		if frontend == "esm" {
 			sb.WriteString("\n--- Frontend Code ---\n")
-			
+
 			// Build page contexts from application pages
 			var pageContexts []esmodules.PageContext
 			for _, page := range app.Pages {
@@ -2342,7 +2342,7 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 					})
 				}
 			}
-			
+
 			gen, err := esmodules.New(esmodules.Options{
 				ProjectName: app.Name + "-" + entity.ID,
 				APIBaseURL:  "http://localhost:8080",
@@ -2351,20 +2351,20 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 				sb.WriteString(fmt.Sprintf("Error creating frontend generator: %v\n", err))
 				continue
 			}
-			
+
 			// Generate files with page contexts
 			files, err := generateFrontendWithPages(gen, model, pageContexts)
 			if err != nil {
 				sb.WriteString(fmt.Sprintf("Error generating frontend: %v\n", err))
 				continue
 			}
-			
+
 			sb.WriteString(fmt.Sprintf("Generated %d frontend files\n", len(files)))
 			for _, file := range files {
 				sb.WriteString(fmt.Sprintf("  - %s\n", file.Name))
 			}
 		}
-		
+
 		sb.WriteString("\n")
 	}
 
@@ -2397,10 +2397,10 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *goflowmetamo
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Generate files manually to inject access control context
 	var files []golang.GeneratedFile
-	
+
 	// Get template names
 	templates := gen.GetTemplates()
 	templateNames := []string{
@@ -2414,29 +2414,29 @@ func generateBackendWithAccessControl(gen *golang.Generator, model *goflowmetamo
 		golang.TemplateTest,
 		golang.TemplateMigrations,
 	}
-	
+
 	// Add auth templates if we have access rules or roles
 	if len(accessRules) > 0 || len(roles) > 0 {
 		templateNames = append(templateNames, golang.TemplateAuth, golang.TemplateMiddleware)
 	}
-	
+
 	// Add workflows template if we have workflows (Phase 12)
 	if len(workflows) > 0 {
 		templateNames = append(templateNames, golang.TemplateWorkflows)
 	}
-	
+
 	for _, name := range templateNames {
 		content, err := templates.Execute(name, ctx)
 		if err != nil {
 			return nil, fmt.Errorf("executing template %s: %w", name, err)
 		}
-		
+
 		files = append(files, golang.GeneratedFile{
 			Name:    templates.OutputFileName(name),
 			Content: content,
 		})
 	}
-	
+
 	return files, nil
 }
 
@@ -2450,23 +2450,23 @@ func generateFrontendWithPages(gen *esmodules.Generator, model *goflowmetamodel.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Generate files manually to inject page context
 	var files []esmodules.GeneratedFile
-	
+
 	templates := gen.GetTemplates()
 	for _, name := range esmodules.AllTemplateNames() {
 		content, err := templates.Execute(name, ctx)
 		if err != nil {
 			return nil, fmt.Errorf("executing template %s: %w", name, err)
 		}
-		
+
 		files = append(files, esmodules.GeneratedFile{
 			Name:    templates.OutputFileName(name),
 			Content: content,
 		})
 	}
-	
+
 	return files, nil
 }
 

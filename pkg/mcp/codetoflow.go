@@ -187,14 +187,14 @@ func handleCodeToFlow(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 }
 
 type codeToFlowResult struct {
-	Model      json.RawMessage                  `json:"model"`
-	Valid      bool                             `json:"valid"`
-	Pattern    string                           `json:"pattern,omitempty"`
-	Summary    string                           `json:"summary"`
-	PreviewURL string                           `json:"preview_url"`
+	Model      json.RawMessage                   `json:"model"`
+	Valid      bool                              `json:"valid"`
+	Pattern    string                            `json:"pattern,omitempty"`
+	Summary    string                            `json:"summary"`
+	PreviewURL string                            `json:"preview_url"`
 	Errors     []goflowmetamodel.ValidationError `json:"errors,omitempty"`
 	Warnings   []goflowmetamodel.ValidationError `json:"warnings,omitempty"`
-	Usage      codeToFlowUsage                  `json:"usage"`
+	Usage      codeToFlowUsage                   `json:"usage"`
 }
 
 type codeToFlowUsage struct {

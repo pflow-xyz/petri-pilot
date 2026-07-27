@@ -18,8 +18,8 @@ func init() {
 
 // Service implements serve.Service for the texas-holdem workflow.
 type Service struct {
-	store eventsource.Store
-	app   *Application
+	store      eventsource.Store
+	app        *Application
 	sessions   SessionStore
 	middleware *Middleware
 }
@@ -37,8 +37,7 @@ func NewService() (serve.Service, error) {
 	svc.sessions = NewInMemorySessionStore()
 
 	// Configure access control rules
-	accessRules := []*AccessControl{
-	}
+	accessRules := []*AccessControl{}
 
 	// Initialize middleware
 	svc.middleware = NewMiddleware(svc.sessions, accessRules)
@@ -73,4 +72,3 @@ func (s *Service) GraphQLSchema() string {
 func (s *Service) GraphQLResolvers() map[string]serve.GraphQLResolver {
 	return GraphQLResolversMap(s.app)
 }
-

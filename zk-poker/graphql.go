@@ -13,12 +13,12 @@ import (
 
 // PokerGame represents an active poker game with ZK support.
 type PokerGame struct {
-	ID       string
-	Players  [NumPlayers]*PlayerState
-	Community [5]Card
-	Phase    string // "waiting", "preflop", "flop", "turn", "river", "showdown"
-	Pot      int64
-	CurrentBet int64
+	ID             string
+	Players        [NumPlayers]*PlayerState
+	Community      [5]Card
+	Phase          string // "waiting", "preflop", "flop", "turn", "river", "showdown"
+	Pot            int64
+	CurrentBet     int64
 	DeckCommitment *DeckCommitment
 
 	// For off-chain simulation

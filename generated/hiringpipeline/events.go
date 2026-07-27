@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // ScreenCandidateedEvent is emitted when the screen_candidate transition fires.
 type ScreenCandidateedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e ScreenCandidateedEvent) EventType() string {
 	return "ScreenCandidateed"
 }
 
-
 // PassScreenedEvent is emitted when the pass_screen transition fires.
 type PassScreenedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e PassScreenedEvent) EventType() string {
 	return "PassScreened"
 }
 
-
 // FailScreenedEvent is emitted when the fail_screen transition fires.
 type FailScreenedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e FailScreenedEvent) EventType() string {
 	return "FailScreened"
 }
 
-
 // PassTechnicaledEvent is emitted when the pass_technical transition fires.
 type PassTechnicaledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e PassTechnicaledEvent) EventType() string {
 	return "PassTechnicaled"
 }
 
-
 // FailTechnicaledEvent is emitted when the fail_technical transition fires.
 type FailTechnicaledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e FailTechnicaledEvent) EventType() string {
 	return "FailTechnicaled"
 }
 
-
 // PassCultureedEvent is emitted when the pass_culture transition fires.
 type PassCultureedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e PassCultureedEvent) EventType() string {
 	return "PassCultureed"
 }
 
-
 // FailCultureedEvent is emitted when the fail_culture transition fires.
 type FailCultureedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e FailCultureedEvent) EventType() string {
 	return "FailCultureed"
 }
 
-
 // MergeInterviewsedEvent is emitted when the merge_interviews transition fires.
 type MergeInterviewsedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e MergeInterviewsedEvent) EventType() string {
 	return "MergeInterviewsed"
 }
 
-
 // ExtendOfferedEvent is emitted when the extend_offer transition fires.
 type ExtendOfferedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e ExtendOfferedEvent) EventType() string {
 	return "ExtendOffered"
 }
 
-
 // AcceptOfferedEvent is emitted when the accept_offer transition fires.
 type AcceptOfferedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,16 +116,13 @@ func (e AcceptOfferedEvent) EventType() string {
 	return "AcceptOffered"
 }
 
-
 // RejectOfferedEvent is emitted when the reject_offer transition fires.
 type RejectOfferedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e RejectOfferedEvent) EventType() string {
 	return "RejectOffered"
 }
-
-

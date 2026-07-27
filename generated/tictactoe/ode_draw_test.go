@@ -629,7 +629,7 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 		"p10": 0.0, "p11": 0.0, "p12": 1.0,
 		"p20": 1.0, "p21": 0.0, "p22": 1.0,
 		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0,
+		"o10":    1.0,
 		"x_turn": 0.0, "o_turn": 1.0,
 		"game_active": 1.0,
 	})
@@ -668,7 +668,7 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 		"p10": 0.0, "p11": 0.0, "p12": 1.0,
 		"p20": 1.0, "p21": 0.0, "p22": 1.0,
 		"x11": 1.0, "x21": 1.0,
-		"o10": 1.0,
+		"o10":    1.0,
 		"x_turn": 0.0, "o_turn": 1.0,
 		"game_active": 1.0,
 		"move_tokens": 3.0, // 3 moves already played
@@ -710,7 +710,7 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 			"p10": 0.0, "p11": 0.0, "p12": 1.0,
 			"p20": 1.0, "p21": 0.0, "p22": 1.0,
 			"x11": 1.0, "x21": 1.0,
-			"o10": 1.0,
+			"o10":    1.0,
 			"x_turn": 1.0, "o_turn": 0.0,
 			"game_active": 1.0,
 			"move_tokens": 4.0,
@@ -734,7 +734,7 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 			"p10": 0.0, "p11": 0.0, "p12": 1.0,
 			"p20": 1.0, "p21": 0.0, "p22": 1.0,
 			"x11": 1.0, "x21": 1.0,
-			"o10": 1.0,
+			"o10":    1.0,
 			"x_turn": 1.0, "o_turn": 0.0,
 			"game_active": 1.0,
 		}
@@ -752,8 +752,8 @@ func TestODEDrawFixesBlocking(t *testing.T) {
 
 	// All available moves for O
 	moves := []struct {
-		place string
-		name  string
+		place   string
+		name    string
 		isBlock bool
 	}{
 		{"o01", "(0,1) BLOCK", true},
@@ -871,7 +871,7 @@ func TestBlogExample4Scores(t *testing.T) {
 			"p10": 0.0, "p11": 0.0, "p12": 1.0,
 			"p20": 1.0, "p21": 1.0, "p22": 1.0,
 			"x10": 1.0, "x11": 1.0, // X at (1,0) and (1,1)
-			"o00": 1.0,             // O at (0,0)
+			"o00":         1.0, // O at (0,0)
 			"x_turn":      0.0,
 			"o_turn":      1.0,
 			"game_active": 1.0,
@@ -898,7 +898,7 @@ func TestBlogExample4Scores(t *testing.T) {
 			"p10": 0.0, "p11": 0.0, "p12": 1.0,
 			"p20": 1.0, "p21": 1.0, "p22": 1.0,
 			"x10": 1.0, "x11": 1.0,
-			"o00": 1.0,
+			"o00":         1.0,
 			"x_turn":      0.0,
 			"o_turn":      1.0,
 			"game_active": 1.0,
@@ -1022,7 +1022,7 @@ func TestBlogExamples123Scores(t *testing.T) {
 		"p20": 1.0, "p21": 1.0, "p22": 1.0,
 		"x_turn": 1.0, "o_turn": 0.0,
 	}
-	positions := [][2]int{{0,0}, {0,1}, {0,2}, {1,0}, {1,1}, {1,2}, {2,0}, {2,1}, {2,2}}
+	positions := [][2]int{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}}
 	for _, pos := range positions {
 		score := evaluateMove(emptyBoard, pos[0], pos[1], "x", 0.0)
 		posType := "edge"
@@ -1041,7 +1041,7 @@ func TestBlogExamples123Scores(t *testing.T) {
 		"p00": 1.0, "p01": 1.0, "p02": 1.0,
 		"p10": 1.0, "p11": 0.0, "p12": 1.0,
 		"p20": 1.0, "p21": 1.0, "p22": 1.0,
-		"x11": 1.0,
+		"x11":    1.0,
 		"x_turn": 0.0, "o_turn": 1.0,
 	}
 	for _, pos := range positions {
@@ -1063,8 +1063,8 @@ func TestBlogExamples123Scores(t *testing.T) {
 		"p00": 0.0, "p01": 1.0, "p02": 1.0,
 		"p10": 1.0, "p11": 0.0, "p12": 1.0,
 		"p20": 1.0, "p21": 1.0, "p22": 1.0,
-		"x11": 1.0,
-		"o00": 1.0,
+		"x11":    1.0,
+		"o00":    1.0,
 		"x_turn": 1.0, "o_turn": 0.0,
 	}
 	for _, pos := range positions {

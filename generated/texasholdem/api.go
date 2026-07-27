@@ -36,41 +36,17 @@ func BuildRouter(app *Application, middleware *Middleware, sessions SessionStore
 	// Get aggregate state
 	r.GET("/api/texasholdem/{id}", "Get texas-holdem state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/texasholdem/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/texasholdem/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/texasholdem/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("start_hand", "/api/start_hand", "Start a new hand", HandleStartHand(app))
@@ -118,9 +94,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/texas-holdem",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/texasholdem/frontend",         // Generated frontend from repo root
+		"frontends/texas-holdem",         // Custom frontend (top priority)
+		"frontend",                       // Running from service directory
+		"generated/texasholdem/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "texasholdem", "frontend"), // Platform-safe
 	}
 
@@ -257,7 +233,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleStartHand handles the start_hand transition.
 func HandleStartHand(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -289,7 +264,6 @@ func HandleStartHand(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleDealFlop handles the deal_flop transition.
 func HandleDealFlop(app *Application) http.HandlerFunc {
@@ -323,7 +297,6 @@ func HandleDealFlop(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleDealTurn handles the deal_turn transition.
 func HandleDealTurn(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -355,7 +328,6 @@ func HandleDealTurn(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleDealRiver handles the deal_river transition.
 func HandleDealRiver(app *Application) http.HandlerFunc {
@@ -389,7 +361,6 @@ func HandleDealRiver(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleGoShowdown handles the go_showdown transition.
 func HandleGoShowdown(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -421,7 +392,6 @@ func HandleGoShowdown(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleDetermineWinner handles the determine_winner transition.
 func HandleDetermineWinner(app *Application) http.HandlerFunc {
@@ -455,7 +425,6 @@ func HandleDetermineWinner(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleEndHand handles the end_hand transition.
 func HandleEndHand(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -487,7 +456,6 @@ func HandleEndHand(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP0Fold handles the p0_fold transition.
 func HandleP0Fold(app *Application) http.HandlerFunc {
@@ -521,7 +489,6 @@ func HandleP0Fold(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP0Check handles the p0_check transition.
 func HandleP0Check(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -553,7 +520,6 @@ func HandleP0Check(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP0Call handles the p0_call transition.
 func HandleP0Call(app *Application) http.HandlerFunc {
@@ -587,7 +553,6 @@ func HandleP0Call(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP0Raise handles the p0_raise transition.
 func HandleP0Raise(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -619,7 +584,6 @@ func HandleP0Raise(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP1Fold handles the p1_fold transition.
 func HandleP1Fold(app *Application) http.HandlerFunc {
@@ -653,7 +617,6 @@ func HandleP1Fold(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP1Check handles the p1_check transition.
 func HandleP1Check(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -685,7 +648,6 @@ func HandleP1Check(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP1Call handles the p1_call transition.
 func HandleP1Call(app *Application) http.HandlerFunc {
@@ -719,7 +681,6 @@ func HandleP1Call(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP1Raise handles the p1_raise transition.
 func HandleP1Raise(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -751,7 +712,6 @@ func HandleP1Raise(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP2Fold handles the p2_fold transition.
 func HandleP2Fold(app *Application) http.HandlerFunc {
@@ -785,7 +745,6 @@ func HandleP2Fold(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP2Check handles the p2_check transition.
 func HandleP2Check(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -817,7 +776,6 @@ func HandleP2Check(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP2Call handles the p2_call transition.
 func HandleP2Call(app *Application) http.HandlerFunc {
@@ -851,7 +809,6 @@ func HandleP2Call(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP2Raise handles the p2_raise transition.
 func HandleP2Raise(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -883,7 +840,6 @@ func HandleP2Raise(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP3Fold handles the p3_fold transition.
 func HandleP3Fold(app *Application) http.HandlerFunc {
@@ -917,7 +873,6 @@ func HandleP3Fold(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP3Check handles the p3_check transition.
 func HandleP3Check(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -949,7 +904,6 @@ func HandleP3Check(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP3Call handles the p3_call transition.
 func HandleP3Call(app *Application) http.HandlerFunc {
@@ -983,7 +937,6 @@ func HandleP3Call(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP3Raise handles the p3_raise transition.
 func HandleP3Raise(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1015,7 +968,6 @@ func HandleP3Raise(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP4Fold handles the p4_fold transition.
 func HandleP4Fold(app *Application) http.HandlerFunc {
@@ -1049,7 +1001,6 @@ func HandleP4Fold(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP4Check handles the p4_check transition.
 func HandleP4Check(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1081,7 +1032,6 @@ func HandleP4Check(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP4Call handles the p4_call transition.
 func HandleP4Call(app *Application) http.HandlerFunc {
@@ -1115,7 +1065,6 @@ func HandleP4Call(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP4Raise handles the p4_raise transition.
 func HandleP4Raise(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1147,7 +1096,6 @@ func HandleP4Raise(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP0Skip handles the p0_skip transition.
 func HandleP0Skip(app *Application) http.HandlerFunc {
@@ -1181,7 +1129,6 @@ func HandleP0Skip(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP1Skip handles the p1_skip transition.
 func HandleP1Skip(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1213,7 +1160,6 @@ func HandleP1Skip(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP2Skip handles the p2_skip transition.
 func HandleP2Skip(app *Application) http.HandlerFunc {
@@ -1247,7 +1193,6 @@ func HandleP2Skip(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP3Skip handles the p3_skip transition.
 func HandleP3Skip(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1280,7 +1225,6 @@ func HandleP3Skip(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP4Skip handles the p4_skip transition.
 func HandleP4Skip(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1312,13 +1256,6 @@ func HandleP4Skip(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -1405,17 +1342,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -1437,7 +1370,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -1454,4 +1386,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

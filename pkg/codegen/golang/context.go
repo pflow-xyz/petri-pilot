@@ -326,30 +326,30 @@ type TimerContext struct {
 
 // NotificationContext provides template-friendly access to notification configuration.
 type NotificationContext struct {
-	ID        string            // Notification ID
-	On        string            // Trigger (transition or place)
-	Channel   string            // email, sms, slack, webhook, in_app
-	To        string            // Recipient expression
-	Template  string            // Template ID or inline
-	Subject   string            // Subject line
-	Webhook   string            // Webhook URL
-	Condition string            // Condition expression
-	Data      map[string]string // Additional data
-	PascalName string           // e.g., "ApprovalNotification"
+	ID         string            // Notification ID
+	On         string            // Trigger (transition or place)
+	Channel    string            // email, sms, slack, webhook, in_app
+	To         string            // Recipient expression
+	Template   string            // Template ID or inline
+	Subject    string            // Subject line
+	Webhook    string            // Webhook URL
+	Condition  string            // Condition expression
+	Data       map[string]string // Additional data
+	PascalName string            // e.g., "ApprovalNotification"
 }
 
 // RelationshipContext provides template-friendly access to relationship configuration.
 type RelationshipContext struct {
-	Name        string // Relationship name
-	Type        string // hasMany, hasOne, belongsTo
-	Target      string // Target model name
-	ForeignKey  string // Foreign key field
-	Cascade     string // Cascade behavior
-	PascalName  string // e.g., "LineItems"
+	Name         string // Relationship name
+	Type         string // hasMany, hasOne, belongsTo
+	Target       string // Target model name
+	ForeignKey   string // Foreign key field
+	Cascade      string // Cascade behavior
+	PascalName   string // e.g., "LineItems"
 	TargetPascal string // e.g., "OrderItem"
-	IsHasMany   bool
-	IsHasOne    bool
-	IsBelongsTo bool
+	IsHasMany    bool
+	IsHasOne     bool
+	IsBelongsTo  bool
 }
 
 // ComputedFieldContext provides template-friendly access to computed field configuration.
@@ -624,8 +624,8 @@ type EntityFieldContext struct {
 // EventDataContext provides template-friendly access to typed event data.
 // Each transition can have typed input data based on entity fields.
 type EventDataContext struct {
-	TransitionID string              // Transition this data applies to
-	StructName   string              // Go struct name (e.g., "SaveBookmarkData")
+	TransitionID string // Transition this data applies to
+	StructName   string // Go struct name (e.g., "SaveBookmarkData")
 	Fields       []EventDataFieldContext
 }
 
@@ -640,19 +640,19 @@ type EventDataFieldContext struct {
 // EntityRouteContext provides RESTful route aliases for entities.
 // Maps CRUD operations to the appropriate transition handlers.
 type EntityRouteContext struct {
-	EntityID        string // Entity ID (e.g., "bookmark")
-	EntityName      string // Display name (e.g., "Bookmark")
-	PluralName      string // Plural name for routes (e.g., "bookmarks")
-	BasePath        string // RESTful base path (e.g., "/api/bookmarks")
-	CreateHandler   string // Handler name for POST (create)
+	EntityID         string // Entity ID (e.g., "bookmark")
+	EntityName       string // Display name (e.g., "Bookmark")
+	PluralName       string // Plural name for routes (e.g., "bookmarks")
+	BasePath         string // RESTful base path (e.g., "/api/bookmarks")
+	CreateHandler    string // Handler name for POST (create)
 	CreateTransition string // Transition ID for create
-	UpdateHandler   string // Handler name for PUT (update)
+	UpdateHandler    string // Handler name for PUT (update)
 	UpdateTransition string // Transition ID for update
-	DeleteHandler   string // Handler name for DELETE
+	DeleteHandler    string // Handler name for DELETE
 	DeleteTransition string // Transition ID for delete
-	HasCreate       bool   // True if create transition exists
-	HasUpdate       bool   // True if update transition exists
-	HasDelete       bool   // True if delete transition exists
+	HasCreate        bool   // True if create transition exists
+	HasUpdate        bool   // True if update transition exists
+	HasDelete        bool   // True if delete transition exists
 }
 
 // CollectionContext provides template-friendly access to DataState collections.
@@ -693,9 +693,9 @@ type DataArcContext struct {
 
 // GuardContext provides template-friendly access to guard conditions.
 type GuardContext struct {
-	TransitionID string // Transition this guard belongs to
-	Expression   string // Original guard expression
-	GoCode       string // Generated Go code (placeholder for complex guards)
+	TransitionID string   // Transition this guard belongs to
+	Expression   string   // Original guard expression
+	GoCode       string   // Generated Go code (placeholder for complex guards)
 	Collections  []string // Collections referenced by the guard
 }
 
@@ -1405,26 +1405,26 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 		hasSLATiming := t.Duration != "" || t.MinDuration != "" || t.MaxDuration != ""
 
 		result[i] = TransitionContext{
-			ID:           t.ID,
-			Description:  t.Description,
-			Guard:        t.Guard,
-			EventType:    eventType,
-			EventRef:     t.Event,
-			HTTPMethod:   t.HTTPMethod,
-			HTTPPath:     t.HTTPPath,
-			Bindings:     bindings,
-			Inputs:       inputArcs[t.ID],
-			Outputs:      outputArcs[t.ID],
-			Duration:     t.Duration,
-			MinDuration:  t.MinDuration,
-			MaxDuration:  t.MaxDuration,
+			ID:            t.ID,
+			Description:   t.Description,
+			Guard:         t.Guard,
+			EventType:     eventType,
+			EventRef:      t.Event,
+			HTTPMethod:    t.HTTPMethod,
+			HTTPPath:      t.HTTPPath,
+			Bindings:      bindings,
+			Inputs:        inputArcs[t.ID],
+			Outputs:       outputArcs[t.ID],
+			Duration:      t.Duration,
+			MinDuration:   t.MinDuration,
+			MaxDuration:   t.MaxDuration,
 			HasSLATiming:  hasSLATiming,
 			Rate:          t.Rate,
 			ClearsHistory: t.ClearsHistory,
 			ConstName:     ToConstName("Transition", t.ID),
-			HandlerName:  ToHandlerName(t.ID),
-			EventName:    ToEventStructName(eventType),
-			FuncName:     ToPascalCase(t.ID),
+			HandlerName:   ToHandlerName(t.ID),
+			EventName:     ToEventStructName(eventType),
+			FuncName:      ToPascalCase(t.ID),
 		}
 	}
 	return result
@@ -1926,63 +1926,63 @@ func (c *Context) HasEntityRoutes() bool {
 
 // buildNavigationContext converts metamodel.Navigation to NavigationContext.
 func buildNavigationContext(nav *metamodel.Navigation) *NavigationContext {
-if nav == nil {
-return nil
-}
+	if nav == nil {
+		return nil
+	}
 
-items := make([]NavigationItemContext, len(nav.Items))
-for i, item := range nav.Items {
-items[i] = NavigationItemContext{
-Label: item.Label,
-Path:  item.Path,
-Icon:  item.Icon,
-Roles: item.Roles,
-}
-}
+	items := make([]NavigationItemContext, len(nav.Items))
+	for i, item := range nav.Items {
+		items[i] = NavigationItemContext{
+			Label: item.Label,
+			Path:  item.Path,
+			Icon:  item.Icon,
+			Roles: item.Roles,
+		}
+	}
 
-return &NavigationContext{
-Brand: nav.Brand,
-Items: items,
-}
+	return &NavigationContext{
+		Brand: nav.Brand,
+		Items: items,
+	}
 }
 
 // buildAdminContext converts metamodel.Admin to AdminContext.
 func buildAdminContext(admin *metamodel.Admin) *AdminContext {
-if admin == nil {
-return nil
-}
+	if admin == nil {
+		return nil
+	}
 
-return &AdminContext{
-Enabled:  admin.Enabled,
-Path:     admin.Path,
-Roles:    admin.Roles,
-Features: admin.Features,
-}
+	return &AdminContext{
+		Enabled:  admin.Enabled,
+		Path:     admin.Path,
+		Roles:    admin.Roles,
+		Features: admin.Features,
+	}
 }
 
 // buildEventSourcingContext converts metamodel.EventSourcing to EventSourcingContext.
 func buildEventSourcingContext(es *metamodel.EventSourcingConfig) *EventSourcingContext {
-if es == nil {
-return nil
-}
+	if es == nil {
+		return nil
+	}
 
-ctx := &EventSourcingContext{}
+	ctx := &EventSourcingContext{}
 
-if es.Snapshots != nil {
-ctx.Snapshots = &SnapshotConfigContext{
-Enabled:   es.Snapshots.Enabled,
-Frequency: es.Snapshots.Frequency,
-}
-}
+	if es.Snapshots != nil {
+		ctx.Snapshots = &SnapshotConfigContext{
+			Enabled:   es.Snapshots.Enabled,
+			Frequency: es.Snapshots.Frequency,
+		}
+	}
 
-if es.Retention != nil {
-ctx.Retention = &RetentionConfigContext{
-Events:    es.Retention.Events,
-Snapshots: es.Retention.Snapshots,
-}
-}
+	if es.Retention != nil {
+		ctx.Retention = &RetentionConfigContext{
+			Events:    es.Retention.Events,
+			Snapshots: es.Retention.Snapshots,
+		}
+	}
 
-return ctx
+	return ctx
 }
 
 // buildDebugContext converts metamodel.Debug to DebugContext.
@@ -1999,12 +1999,12 @@ func buildDebugContext(debug *metamodel.Debug) *DebugContext {
 
 // HasNavigation returns true if the model has navigation configuration.
 func (c *Context) HasNavigation() bool {
-return c.Navigation != nil
+	return c.Navigation != nil
 }
 
 // HasAdmin returns true if the model has admin dashboard configuration.
 func (c *Context) HasAdmin() bool {
-return c.Admin != nil && c.Admin.Enabled
+	return c.Admin != nil && c.Admin.Enabled
 }
 
 // HasEventSourcing returns true if event sourcing is enabled.
@@ -2015,7 +2015,7 @@ func (c *Context) HasEventSourcing() bool {
 
 // HasSnapshots returns true if automatic snapshots are enabled.
 func (c *Context) HasSnapshots() bool {
-return c.EventSourcing != nil && c.EventSourcing.Snapshots != nil && c.EventSourcing.Snapshots.Enabled
+	return c.EventSourcing != nil && c.EventSourcing.Snapshots != nil && c.EventSourcing.Snapshots.Enabled
 }
 
 // HasDebug returns true if debug mode is enabled.

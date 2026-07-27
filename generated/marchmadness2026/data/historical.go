@@ -11,14 +11,14 @@ import (
 
 // TournamentResult holds a single tournament game outcome.
 type TournamentResult struct {
-	Season   int
-	Round    int // 1=R64, 2=R32, 3=S16, 4=E8, 5=F4, 6=Championship
-	WTeam    string
-	WScore   int
-	WSeed    int
-	LTeam    string
-	LScore   int
-	LSeed    int
+	Season int
+	Round  int // 1=R64, 2=R32, 3=S16, 4=E8, 5=F4, 6=Championship
+	WTeam  string
+	WScore int
+	WSeed  int
+	LTeam  string
+	LScore int
+	LSeed  int
 }
 
 // HistoricalSeason holds all tournament results and team stats for a season.

@@ -113,7 +113,6 @@ func TestApplicationLoadNewAggregate(t *testing.T) {
 	}
 }
 
-
 func TestFirstTransition(t *testing.T) {
 	store := eventsource.NewMemoryStore()
 	defer store.Close()
@@ -144,7 +143,6 @@ func TestFirstTransition(t *testing.T) {
 		t.Errorf("expected version 0 after first transition, got %d", agg.Version())
 	}
 }
-
 
 func TestCannotFireDisabledTransition(t *testing.T) {
 	store := eventsource.NewMemoryStore()

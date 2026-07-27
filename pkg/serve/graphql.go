@@ -372,7 +372,6 @@ func (ug *UnifiedGraphQL) executeGraphQL(ctx context.Context, query, _ string, v
 	return result
 }
 
-
 // Handler returns the HTTP handler for the unified GraphQL endpoint.
 func (ug *UnifiedGraphQL) Handler() http.Handler {
 	return ug

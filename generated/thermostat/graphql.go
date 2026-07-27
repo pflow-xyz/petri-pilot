@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/thermostat/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/thermostat/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -231,7 +229,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "thermostat(") {
 		id := ""
@@ -271,7 +268,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -292,7 +288,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -487,7 +482,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createThermostat"] = resolvers["thermostat_create"]
 
-
 	resolvers["thermostat_heat"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.HeatInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -498,7 +492,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Heat(ctx, input)
 	}
 	resolvers["heat"] = resolvers["thermostat_heat"]
-
 
 	resolvers["thermostat_cool"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.CoolInput{}
@@ -511,7 +504,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["cool"] = resolvers["thermostat_cool"]
 
-
 	resolvers["thermostat_turn_on"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.TurnOnInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -523,7 +515,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["turnOn"] = resolvers["thermostat_turn_on"]
 
-
 	resolvers["thermostat_turn_off"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.TurnOffInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -534,9 +525,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.TurnOff(ctx, input)
 	}
 	resolvers["turnOff"] = resolvers["thermostat_turn_off"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["thermostat_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -550,7 +538,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["thermostat_events"]
 	resolvers["thermostatEvents"] = resolvers["thermostat_events"]
-
 
 	return resolvers
 }

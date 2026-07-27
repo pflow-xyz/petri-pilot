@@ -13,23 +13,22 @@ import (
 
 // State holds the aggregate state for knapsack.
 type State struct {
-	Item0 int `json:"item0"`
-	Item1 int `json:"item1"`
-	Item2 int `json:"item2"`
-	Item3 int `json:"item3"`
-	Capacity int `json:"capacity"`
-	Item0Taken int `json:"item0_taken"`
-	Item1Taken int `json:"item1_taken"`
-	Item2Taken int `json:"item2_taken"`
-	Item3Taken int `json:"item3_taken"`
-	TotalValue int `json:"total_value"`
+	Item0       int `json:"item0"`
+	Item1       int `json:"item1"`
+	Item2       int `json:"item2"`
+	Item3       int `json:"item3"`
+	Capacity    int `json:"capacity"`
+	Item0Taken  int `json:"item0_taken"`
+	Item1Taken  int `json:"item1_taken"`
+	Item2Taken  int `json:"item2_taken"`
+	Item3Taken  int `json:"item3_taken"`
+	TotalValue  int `json:"total_value"`
 	TotalWeight int `json:"total_weight"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the knapsack state.
@@ -49,12 +48,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionTakeItem0,
 		EventType: EventTypeTakeItem0,
 		Inputs: map[string]int{
-			PlaceItem0: 1,
+			PlaceItem0:    1,
 			PlaceCapacity: 2,
 		},
 		Outputs: map[string]int{
-			PlaceItem0Taken: 1,
-			PlaceTotalValue: 10,
+			PlaceItem0Taken:  1,
+			PlaceTotalValue:  10,
 			PlaceTotalWeight: 2,
 		},
 	})
@@ -62,12 +61,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionTakeItem1,
 		EventType: EventTypeTakeItem1,
 		Inputs: map[string]int{
-			PlaceItem1: 1,
+			PlaceItem1:    1,
 			PlaceCapacity: 5,
 		},
 		Outputs: map[string]int{
-			PlaceItem1Taken: 1,
-			PlaceTotalValue: 15,
+			PlaceItem1Taken:  1,
+			PlaceTotalValue:  15,
 			PlaceTotalWeight: 5,
 		},
 	})
@@ -75,12 +74,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionTakeItem2,
 		EventType: EventTypeTakeItem2,
 		Inputs: map[string]int{
-			PlaceItem2: 1,
+			PlaceItem2:    1,
 			PlaceCapacity: 6,
 		},
 		Outputs: map[string]int{
-			PlaceItem2Taken: 1,
-			PlaceTotalValue: 12,
+			PlaceItem2Taken:  1,
+			PlaceTotalValue:  12,
 			PlaceTotalWeight: 6,
 		},
 	})
@@ -88,12 +87,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionTakeItem3,
 		EventType: EventTypeTakeItem3,
 		Inputs: map[string]int{
-			PlaceItem3: 1,
+			PlaceItem3:    1,
 			PlaceCapacity: 8,
 		},
 		Outputs: map[string]int{
-			PlaceItem3Taken: 1,
-			PlaceTotalValue: 13,
+			PlaceItem3Taken:  1,
+			PlaceTotalValue:  13,
 			PlaceTotalWeight: 8,
 		},
 	})
@@ -101,18 +100,18 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionReset,
 		EventType: EventTypeReset,
 		Inputs: map[string]int{
-			PlaceItem0Taken: 1,
-			PlaceItem1Taken: 1,
-			PlaceItem2Taken: 1,
-			PlaceItem3Taken: 1,
-			PlaceTotalValue: 50,
+			PlaceItem0Taken:  1,
+			PlaceItem1Taken:  1,
+			PlaceItem2Taken:  1,
+			PlaceItem3Taken:  1,
+			PlaceTotalValue:  50,
 			PlaceTotalWeight: 15,
 		},
 		Outputs: map[string]int{
-			PlaceItem0: 1,
-			PlaceItem1: 1,
-			PlaceItem2: 1,
-			PlaceItem3: 1,
+			PlaceItem0:    1,
+			PlaceItem1:    1,
+			PlaceItem2:    1,
+			PlaceItem3:    1,
 			PlaceCapacity: 15,
 		},
 	})

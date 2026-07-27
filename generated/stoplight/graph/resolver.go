@@ -80,7 +80,6 @@ func (r *Resolver) StoplightList(ctx context.Context, place *string, page *int, 
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateStoplight creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateStoplight(ctx context.Context) (*AggregateState, error)
 
 	return aggregateToState(agg), nil
 }
-
 
 // Go executes the go transition.
 func (r *Resolver) Go(ctx context.Context, input GoInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) Go(ctx context.Context, input GoInput) (*TransitionResult, er
 	}, nil
 }
 
-
 // Slow executes the slow transition.
 func (r *Resolver) Slow(ctx context.Context, input SlowInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -198,7 +194,6 @@ func (r *Resolver) Slow(ctx context.Context, input SlowInput) (*TransitionResult
 	}, nil
 }
 
-
 // Stop executes the stop transition.
 func (r *Resolver) Stop(ctx context.Context, input StopInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -225,8 +220,6 @@ func (r *Resolver) Stop(ctx context.Context, input StopInput) (*TransitionResult
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -299,14 +292,14 @@ type AggregateState struct {
 }
 
 type State struct {
-	Red any `json:"red"`
-	Green any `json:"green"`
+	Red    any `json:"red"`
+	Green  any `json:"green"`
 	Yellow any `json:"yellow"`
 }
 
 type Places struct {
-	Red int `json:"red"`
-	Green int `json:"green"`
+	Red    int `json:"red"`
+	Green  int `json:"green"`
 	Yellow int `json:"yellow"`
 }
 
@@ -326,7 +319,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -336,20 +328,16 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type GoInput struct {
 	AggregateID string
 }
 
-
 type SlowInput struct {
 	AggregateID string
 }
 
-
 type StopInput struct {
 	AggregateID string
 }
-

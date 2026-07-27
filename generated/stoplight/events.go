@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // GoEvent is emitted when the go transition fires.
 type GoEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e GoEvent) EventType() string {
 	return "Go"
 }
 
-
 // SlowedEvent is emitted when the slow transition fires.
 type SlowedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,16 +28,13 @@ func (e SlowedEvent) EventType() string {
 	return "Slowed"
 }
 
-
 // StopedEvent is emitted when the stop transition fires.
 type StopedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e StopedEvent) EventType() string {
 	return "Stoped"
 }
-
-

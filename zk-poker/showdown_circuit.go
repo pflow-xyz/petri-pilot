@@ -29,9 +29,9 @@ type ShowdownCircuitV2 struct {
 	// Private inputs
 	Holes          [NumPlayers][2]frontend.Variable
 	HoleSalts      [NumPlayers]frontend.Variable
-	PlayerRanks    [NumPlayers]frontend.Variable    // 0-8 hand rank
-	PlayerHighCard [NumPlayers]frontend.Variable    // primary tiebreaker (high card rank 0-12)
-	PlayerKicker   [NumPlayers]frontend.Variable    // secondary tiebreaker
+	PlayerRanks    [NumPlayers]frontend.Variable // 0-8 hand rank
+	PlayerHighCard [NumPlayers]frontend.Variable // primary tiebreaker (high card rank 0-12)
+	PlayerKicker   [NumPlayers]frontend.Variable // secondary tiebreaker
 }
 
 // Define implements the circuit constraints.

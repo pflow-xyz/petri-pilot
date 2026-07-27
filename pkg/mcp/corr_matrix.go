@@ -121,12 +121,12 @@ func renderCorrMatrixPNG(M [][]float64, labels []string, title string) ([]byte, 
 	}
 
 	const (
-		cellMin = 50.0
-		cellMax = 120.0
-		margin  = 40.0
-		titleH  = 30.0
+		cellMin     = 50.0
+		cellMax     = 120.0
+		margin      = 40.0
+		titleH      = 30.0
 		labelGutter = 60.0 // for row/col labels
-		legendW = 90.0
+		legendW     = 90.0
 	)
 	cell := math.Max(cellMin, math.Min(cellMax, 480.0/float64(n)))
 	gridW := cell * float64(n)

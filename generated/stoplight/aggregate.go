@@ -13,15 +13,14 @@ import (
 
 // State holds the aggregate state for stoplight.
 type State struct {
-	Red int `json:"red"`
-	Green int `json:"green"`
+	Red    int `json:"red"`
+	Green  int `json:"green"`
 	Yellow int `json:"yellow"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the stoplight state.

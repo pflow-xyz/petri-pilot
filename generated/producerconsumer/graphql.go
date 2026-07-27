@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/producerconsumer/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/producerconsumer/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -231,7 +229,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "producerconsumer(") {
 		id := ""
@@ -271,7 +268,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -292,7 +288,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -495,7 +490,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createProducerconsumer"] = resolvers["producerconsumer_create"]
 
-
 	resolvers["producerconsumer_start_produce"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.StartProduceInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -506,7 +500,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.StartProduce(ctx, input)
 	}
 	resolvers["startProduce"] = resolvers["producerconsumer_start_produce"]
-
 
 	resolvers["producerconsumer_finish_produce"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.FinishProduceInput{}
@@ -519,7 +512,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["finishProduce"] = resolvers["producerconsumer_finish_produce"]
 
-
 	resolvers["producerconsumer_start_consume"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.StartConsumeInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -531,7 +523,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["startConsume"] = resolvers["producerconsumer_start_consume"]
 
-
 	resolvers["producerconsumer_finish_consume"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.FinishConsumeInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -542,9 +533,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.FinishConsume(ctx, input)
 	}
 	resolvers["finishConsume"] = resolvers["producerconsumer_finish_consume"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["producerconsumer_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -558,7 +546,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["producerconsumer_events"]
 	resolvers["producerconsumerEvents"] = resolvers["producerconsumer_events"]
-
 
 	return resolvers
 }

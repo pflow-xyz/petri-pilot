@@ -14,9 +14,9 @@ import (
 // Proof chain: the PostStateRoot of step N becomes the PreStateRoot of step N+1.
 type Tsit5StepCircuit struct {
 	// Public inputs
-	PreStateRoot  frontend.Variable `gnark:",public"`
-	PostStateRoot frontend.Variable `gnark:",public"`
-	StepSize      frontend.Variable `gnark:",public"` // h, fixed-point
+	PreStateRoot  frontend.Variable                 `gnark:",public"`
+	PostStateRoot frontend.Variable                 `gnark:",public"`
+	StepSize      frontend.Variable                 `gnark:",public"` // h, fixed-point
 	Rates         [NumTransitions]frontend.Variable `gnark:",public"`
 
 	// Private witness

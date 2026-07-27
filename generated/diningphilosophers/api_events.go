@@ -3,4 +3,3 @@ package diningphilosophers
 
 // Event replay and snapshot handlers are implemented in api.go
 // This file serves as a placeholder for event sourcing configuration
-

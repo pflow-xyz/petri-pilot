@@ -33,50 +33,25 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/loanapproval/{id}", "Get loan-approval state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/loanapproval/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/loanapproval/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/loanapproval/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("start_reviews", "/api/start_reviews", "Begin parallel credit and employment reviews", HandleStartReviews(app))
@@ -103,9 +78,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/loan-approval",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/loanapproval/frontend",         // Generated frontend from repo root
+		"frontends/loan-approval",         // Custom frontend (top priority)
+		"frontend",                        // Running from service directory
+		"generated/loanapproval/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "loanapproval", "frontend"), // Platform-safe
 	}
 
@@ -242,7 +217,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleStartReviews handles the start_reviews transition.
 func HandleStartReviews(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +248,6 @@ func HandleStartReviews(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleApproveCredit handles the approve_credit transition.
 func HandleApproveCredit(app *Application) http.HandlerFunc {
@@ -308,7 +281,6 @@ func HandleApproveCredit(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRejectCredit handles the reject_credit transition.
 func HandleRejectCredit(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +312,6 @@ func HandleRejectCredit(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleApproveEmployment handles the approve_employment transition.
 func HandleApproveEmployment(app *Application) http.HandlerFunc {
@@ -374,7 +345,6 @@ func HandleApproveEmployment(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRejectEmployment handles the reject_employment transition.
 func HandleRejectEmployment(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -406,7 +376,6 @@ func HandleRejectEmployment(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleMergeReviews handles the merge_reviews transition.
 func HandleMergeReviews(app *Application) http.HandlerFunc {
@@ -440,7 +409,6 @@ func HandleMergeReviews(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleBeginUnderwriting handles the begin_underwriting transition.
 func HandleBeginUnderwriting(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -472,7 +440,6 @@ func HandleBeginUnderwriting(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleApproveLoan handles the approve_loan transition.
 func HandleApproveLoan(app *Application) http.HandlerFunc {
@@ -506,7 +473,6 @@ func HandleApproveLoan(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRejectLoan handles the reject_loan transition.
 func HandleRejectLoan(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -538,7 +504,6 @@ func HandleRejectLoan(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleRejectOnCredit handles the reject_on_credit transition.
 func HandleRejectOnCredit(app *Application) http.HandlerFunc {
@@ -572,7 +537,6 @@ func HandleRejectOnCredit(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRejectOnEmployment handles the reject_on_employment transition.
 func HandleRejectOnEmployment(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -604,13 +568,6 @@ func HandleRejectOnEmployment(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -697,17 +654,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -729,7 +682,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -746,4 +698,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

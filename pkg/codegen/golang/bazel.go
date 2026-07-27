@@ -30,11 +30,11 @@ type BazelBuildContext struct {
 	// go.mod / MODULE.bazel of its own).
 	Submodule bool
 
-	ImportPath   string // go_library importpath
-	LibName      string // go_library target name
-	Deps         []string
-	HasTest      bool
-	TestDeps     []string
+	ImportPath string // go_library importpath
+	LibName    string // go_library target name
+	Deps       []string
+	HasTest    bool
+	TestDeps   []string
 
 	// Standalone-only fields.
 	Binary       bool   // emit a go_binary (package main)

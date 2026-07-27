@@ -11,7 +11,8 @@ import (
 // Private witness (64): PreMarking[32], PostMarking[32]
 //
 // The heatmap scores incorporate base ODE rates plus tactical adjustments:
-//   score[i] = base_rate[i] + BONUS * win_flag[i] - PENALTY * block_flag[i] * (1 - win_flag[i])
+//
+//	score[i] = base_rate[i] + BONUS * win_flag[i] - PENALTY * block_flag[i] * (1 - win_flag[i])
 type TTTHeatmapCircuit struct {
 	// Public inputs
 	PreStateRoot  frontend.Variable    `gnark:",public"`

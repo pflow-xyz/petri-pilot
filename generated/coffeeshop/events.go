@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // OrderEspressoedEvent is emitted when the order_espresso transition fires.
 type OrderEspressoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e OrderEspressoedEvent) EventType() string {
 	return "OrderEspressoed"
 }
 
-
 // OrderLatteedEvent is emitted when the order_latte transition fires.
 type OrderLatteedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e OrderLatteedEvent) EventType() string {
 	return "OrderLatteed"
 }
 
-
 // OrderCappuccinoedEvent is emitted when the order_cappuccino transition fires.
 type OrderCappuccinoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e OrderCappuccinoedEvent) EventType() string {
 	return "OrderCappuccinoed"
 }
 
-
 // MakeEspressoedEvent is emitted when the make_espresso transition fires.
 type MakeEspressoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e MakeEspressoedEvent) EventType() string {
 	return "MakeEspressoed"
 }
 
-
 // MakeLatteedEvent is emitted when the make_latte transition fires.
 type MakeLatteedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e MakeLatteedEvent) EventType() string {
 	return "MakeLatteed"
 }
 
-
 // MakeCappuccinoedEvent is emitted when the make_cappuccino transition fires.
 type MakeCappuccinoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e MakeCappuccinoedEvent) EventType() string {
 	return "MakeCappuccinoed"
 }
 
-
 // ServeEspressoedEvent is emitted when the serve_espresso transition fires.
 type ServeEspressoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e ServeEspressoedEvent) EventType() string {
 	return "ServeEspressoed"
 }
 
-
 // ServeLatteedEvent is emitted when the serve_latte transition fires.
 type ServeLatteedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e ServeLatteedEvent) EventType() string {
 	return "ServeLatteed"
 }
 
-
 // ServeCappuccinoedEvent is emitted when the serve_cappuccino transition fires.
 type ServeCappuccinoedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e ServeCappuccinoedEvent) EventType() string {
 	return "ServeCappuccinoed"
 }
 
-
 // RestockCoffeeBeansedEvent is emitted when the restock_coffee_beans transition fires.
 type RestockCoffeeBeansedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,11 +116,10 @@ func (e RestockCoffeeBeansedEvent) EventType() string {
 	return "RestockCoffeeBeansed"
 }
 
-
 // RestockMilkedEvent is emitted when the restock_milk transition fires.
 type RestockMilkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -138,16 +127,13 @@ func (e RestockMilkedEvent) EventType() string {
 	return "RestockMilked"
 }
 
-
 // RestockCupsedEvent is emitted when the restock_cups transition fires.
 type RestockCupsedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e RestockCupsedEvent) EventType() string {
 	return "RestockCupsed"
 }
-
-

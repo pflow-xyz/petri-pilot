@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/texasholdem/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/texasholdem/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -791,7 +789,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "texasholdem(") {
 		id := ""
@@ -831,7 +828,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -852,7 +848,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -1301,7 +1296,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createTexasholdem"] = resolvers["texasholdem_create"]
 
-
 	resolvers["texasholdem_start_hand"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.StartHandInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1312,7 +1306,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.StartHand(ctx, input)
 	}
 	resolvers["startHand"] = resolvers["texasholdem_start_hand"]
-
 
 	resolvers["texasholdem_deal_flop"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.DealFlopInput{}
@@ -1325,7 +1318,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["dealFlop"] = resolvers["texasholdem_deal_flop"]
 
-
 	resolvers["texasholdem_deal_turn"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.DealTurnInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1336,7 +1328,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.DealTurn(ctx, input)
 	}
 	resolvers["dealTurn"] = resolvers["texasholdem_deal_turn"]
-
 
 	resolvers["texasholdem_deal_river"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.DealRiverInput{}
@@ -1349,7 +1340,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["dealRiver"] = resolvers["texasholdem_deal_river"]
 
-
 	resolvers["texasholdem_go_showdown"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.GoShowdownInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1360,7 +1350,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.GoShowdown(ctx, input)
 	}
 	resolvers["goShowdown"] = resolvers["texasholdem_go_showdown"]
-
 
 	resolvers["texasholdem_determine_winner"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.DetermineWinnerInput{}
@@ -1373,7 +1362,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["determineWinner"] = resolvers["texasholdem_determine_winner"]
 
-
 	resolvers["texasholdem_end_hand"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.EndHandInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1384,7 +1372,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.EndHand(ctx, input)
 	}
 	resolvers["endHand"] = resolvers["texasholdem_end_hand"]
-
 
 	resolvers["texasholdem_p0_fold"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P0FoldInput{}
@@ -1397,7 +1384,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p0Fold"] = resolvers["texasholdem_p0_fold"]
 
-
 	resolvers["texasholdem_p0_check"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P0CheckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1408,7 +1394,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P0Check(ctx, input)
 	}
 	resolvers["p0Check"] = resolvers["texasholdem_p0_check"]
-
 
 	resolvers["texasholdem_p0_call"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P0CallInput{}
@@ -1421,7 +1406,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p0Call"] = resolvers["texasholdem_p0_call"]
 
-
 	resolvers["texasholdem_p0_raise"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P0RaiseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1432,7 +1416,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P0Raise(ctx, input)
 	}
 	resolvers["p0Raise"] = resolvers["texasholdem_p0_raise"]
-
 
 	resolvers["texasholdem_p1_fold"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P1FoldInput{}
@@ -1445,7 +1428,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p1Fold"] = resolvers["texasholdem_p1_fold"]
 
-
 	resolvers["texasholdem_p1_check"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P1CheckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1456,7 +1438,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P1Check(ctx, input)
 	}
 	resolvers["p1Check"] = resolvers["texasholdem_p1_check"]
-
 
 	resolvers["texasholdem_p1_call"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P1CallInput{}
@@ -1469,7 +1450,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p1Call"] = resolvers["texasholdem_p1_call"]
 
-
 	resolvers["texasholdem_p1_raise"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P1RaiseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1480,7 +1460,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P1Raise(ctx, input)
 	}
 	resolvers["p1Raise"] = resolvers["texasholdem_p1_raise"]
-
 
 	resolvers["texasholdem_p2_fold"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P2FoldInput{}
@@ -1493,7 +1472,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p2Fold"] = resolvers["texasholdem_p2_fold"]
 
-
 	resolvers["texasholdem_p2_check"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P2CheckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1504,7 +1482,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P2Check(ctx, input)
 	}
 	resolvers["p2Check"] = resolvers["texasholdem_p2_check"]
-
 
 	resolvers["texasholdem_p2_call"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P2CallInput{}
@@ -1517,7 +1494,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p2Call"] = resolvers["texasholdem_p2_call"]
 
-
 	resolvers["texasholdem_p2_raise"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P2RaiseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1528,7 +1504,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P2Raise(ctx, input)
 	}
 	resolvers["p2Raise"] = resolvers["texasholdem_p2_raise"]
-
 
 	resolvers["texasholdem_p3_fold"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P3FoldInput{}
@@ -1541,7 +1516,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p3Fold"] = resolvers["texasholdem_p3_fold"]
 
-
 	resolvers["texasholdem_p3_check"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P3CheckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1552,7 +1526,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P3Check(ctx, input)
 	}
 	resolvers["p3Check"] = resolvers["texasholdem_p3_check"]
-
 
 	resolvers["texasholdem_p3_call"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P3CallInput{}
@@ -1565,7 +1538,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p3Call"] = resolvers["texasholdem_p3_call"]
 
-
 	resolvers["texasholdem_p3_raise"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P3RaiseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1576,7 +1548,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P3Raise(ctx, input)
 	}
 	resolvers["p3Raise"] = resolvers["texasholdem_p3_raise"]
-
 
 	resolvers["texasholdem_p4_fold"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P4FoldInput{}
@@ -1589,7 +1560,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p4Fold"] = resolvers["texasholdem_p4_fold"]
 
-
 	resolvers["texasholdem_p4_check"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P4CheckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1600,7 +1570,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P4Check(ctx, input)
 	}
 	resolvers["p4Check"] = resolvers["texasholdem_p4_check"]
-
 
 	resolvers["texasholdem_p4_call"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P4CallInput{}
@@ -1613,7 +1582,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p4Call"] = resolvers["texasholdem_p4_call"]
 
-
 	resolvers["texasholdem_p4_raise"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P4RaiseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1624,7 +1592,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P4Raise(ctx, input)
 	}
 	resolvers["p4Raise"] = resolvers["texasholdem_p4_raise"]
-
 
 	resolvers["texasholdem_p0_skip"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P0SkipInput{}
@@ -1637,7 +1604,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p0Skip"] = resolvers["texasholdem_p0_skip"]
 
-
 	resolvers["texasholdem_p1_skip"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P1SkipInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1648,7 +1614,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P1Skip(ctx, input)
 	}
 	resolvers["p1Skip"] = resolvers["texasholdem_p1_skip"]
-
 
 	resolvers["texasholdem_p2_skip"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P2SkipInput{}
@@ -1661,7 +1626,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p2Skip"] = resolvers["texasholdem_p2_skip"]
 
-
 	resolvers["texasholdem_p3_skip"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P3SkipInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1673,7 +1637,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["p3Skip"] = resolvers["texasholdem_p3_skip"]
 
-
 	resolvers["texasholdem_p4_skip"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.P4SkipInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -1684,9 +1647,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.P4Skip(ctx, input)
 	}
 	resolvers["p4Skip"] = resolvers["texasholdem_p4_skip"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["texasholdem_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -1700,7 +1660,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["texasholdem_events"]
 	resolvers["texasholdemEvents"] = resolvers["texasholdem_events"]
-
 
 	return resolvers
 }

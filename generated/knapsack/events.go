@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // TakeItem0edEvent is emitted when the take_item0 transition fires.
 type TakeItem0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e TakeItem0edEvent) EventType() string {
 	return "TakeItem0ed"
 }
 
-
 // TakeItem1edEvent is emitted when the take_item1 transition fires.
 type TakeItem1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e TakeItem1edEvent) EventType() string {
 	return "TakeItem1ed"
 }
 
-
 // TakeItem2edEvent is emitted when the take_item2 transition fires.
 type TakeItem2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e TakeItem2edEvent) EventType() string {
 	return "TakeItem2ed"
 }
 
-
 // TakeItem3edEvent is emitted when the take_item3 transition fires.
 type TakeItem3edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,16 +50,13 @@ func (e TakeItem3edEvent) EventType() string {
 	return "TakeItem3ed"
 }
 
-
 // ResetedEvent is emitted when the reset transition fires.
 type ResetedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e ResetedEvent) EventType() string {
 	return "Reseted"
 }
-
-

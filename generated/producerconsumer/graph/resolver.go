@@ -80,7 +80,6 @@ func (r *Resolver) ProducerConsumerList(ctx context.Context, place *string, page
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateProducerconsumer creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateProducerconsumer(ctx context.Context) (*AggregateState,
 
 	return aggregateToState(agg), nil
 }
-
 
 // StartProduce executes the start_produce transition.
 func (r *Resolver) StartProduce(ctx context.Context, input StartProduceInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) StartProduce(ctx context.Context, input StartProduceInput) (*
 	}, nil
 }
 
-
 // FinishProduce executes the finish_produce transition.
 func (r *Resolver) FinishProduce(ctx context.Context, input FinishProduceInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) FinishProduce(ctx context.Context, input FinishProduceInput) 
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // StartConsume executes the start_consume transition.
 func (r *Resolver) StartConsume(ctx context.Context, input StartConsumeInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) StartConsume(ctx context.Context, input StartConsumeInput) (*
 	}, nil
 }
 
-
 // FinishConsume executes the finish_consume transition.
 func (r *Resolver) FinishConsume(ctx context.Context, input FinishConsumeInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,8 +247,6 @@ func (r *Resolver) FinishConsume(ctx context.Context, input FinishConsumeInput) 
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -352,22 +344,22 @@ type AggregateState struct {
 
 type State struct {
 	ProducerIdle any `json:"producerIdle"`
-	Producing any `json:"producing"`
-	Buffer any `json:"buffer"`
-	BufferSpace any `json:"bufferSpace"`
+	Producing    any `json:"producing"`
+	Buffer       any `json:"buffer"`
+	BufferSpace  any `json:"bufferSpace"`
 	ConsumerIdle any `json:"consumerIdle"`
-	Consuming any `json:"consuming"`
-	Consumed any `json:"consumed"`
+	Consuming    any `json:"consuming"`
+	Consumed     any `json:"consumed"`
 }
 
 type Places struct {
 	ProducerIdle int `json:"producerIdle"`
-	Producing int `json:"producing"`
-	Buffer int `json:"buffer"`
-	BufferSpace int `json:"bufferSpace"`
+	Producing    int `json:"producing"`
+	Buffer       int `json:"buffer"`
+	BufferSpace  int `json:"bufferSpace"`
 	ConsumerIdle int `json:"consumerIdle"`
-	Consuming int `json:"consuming"`
-	Consumed int `json:"consumed"`
+	Consuming    int `json:"consuming"`
+	Consumed     int `json:"consumed"`
 }
 
 type TransitionResult struct {
@@ -386,7 +378,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -396,25 +387,20 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type StartProduceInput struct {
 	AggregateID string
 }
 
-
 type FinishProduceInput struct {
 	AggregateID string
 }
-
 
 type StartConsumeInput struct {
 	AggregateID string
 }
 
-
 type FinishConsumeInput struct {
 	AggregateID string
 }
-

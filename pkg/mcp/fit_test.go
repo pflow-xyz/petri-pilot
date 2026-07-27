@@ -88,11 +88,11 @@ func TestFit_Interpolate(t *testing.T) {
 	cases := []struct {
 		t, want float64
 	}{
-		{-1, 0},  // before start
+		{-1, 0}, // before start
 		{0, 0},
 		{0.5, 5}, // between 0 and 1
 		{2, 20},
-		{3, 30},  // midpoint of (2,20)→(4,40)
+		{3, 30}, // midpoint of (2,20)→(4,40)
 		{8, 80},
 		{10, 80}, // past end
 	}

@@ -13,45 +13,44 @@ import (
 
 // State holds the aggregate state for tic-tac-toe.
 type State struct {
-	P00 int `json:"p00"`
-	P01 int `json:"p01"`
-	P02 int `json:"p02"`
-	P10 int `json:"p10"`
-	P11 int `json:"p11"`
-	P12 int `json:"p12"`
-	P20 int `json:"p20"`
-	P21 int `json:"p21"`
-	P22 int `json:"p22"`
-	X00 int `json:"x00"`
-	X01 int `json:"x01"`
-	X02 int `json:"x02"`
-	X10 int `json:"x10"`
-	X11 int `json:"x11"`
-	X12 int `json:"x12"`
-	X20 int `json:"x20"`
-	X21 int `json:"x21"`
-	X22 int `json:"x22"`
-	O00 int `json:"o00"`
-	O01 int `json:"o01"`
-	O02 int `json:"o02"`
-	O10 int `json:"o10"`
-	O11 int `json:"o11"`
-	O12 int `json:"o12"`
-	O20 int `json:"o20"`
-	O21 int `json:"o21"`
-	O22 int `json:"o22"`
-	XTurn int `json:"x_turn"`
-	OTurn int `json:"o_turn"`
-	WinX int `json:"win_x"`
-	WinO int `json:"win_o"`
+	P00        int `json:"p00"`
+	P01        int `json:"p01"`
+	P02        int `json:"p02"`
+	P10        int `json:"p10"`
+	P11        int `json:"p11"`
+	P12        int `json:"p12"`
+	P20        int `json:"p20"`
+	P21        int `json:"p21"`
+	P22        int `json:"p22"`
+	X00        int `json:"x00"`
+	X01        int `json:"x01"`
+	X02        int `json:"x02"`
+	X10        int `json:"x10"`
+	X11        int `json:"x11"`
+	X12        int `json:"x12"`
+	X20        int `json:"x20"`
+	X21        int `json:"x21"`
+	X22        int `json:"x22"`
+	O00        int `json:"o00"`
+	O01        int `json:"o01"`
+	O02        int `json:"o02"`
+	O10        int `json:"o10"`
+	O11        int `json:"o11"`
+	O12        int `json:"o12"`
+	O20        int `json:"o20"`
+	O21        int `json:"o21"`
+	O22        int `json:"o22"`
+	XTurn      int `json:"x_turn"`
+	OTurn      int `json:"o_turn"`
+	WinX       int `json:"win_x"`
+	WinO       int `json:"win_o"`
 	GameActive int `json:"game_active"`
 	MoveTokens int `json:"move_tokens"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the tic-tac-toe state.
@@ -71,12 +70,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay00,
 		EventType: EventTypeXPlay00,
 		Inputs: map[string]int{
-			PlaceP00: 1,
+			PlaceP00:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX00: 1,
-			PlaceOTurn: 1,
+			PlaceX00:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -84,12 +83,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay01,
 		EventType: EventTypeXPlay01,
 		Inputs: map[string]int{
-			PlaceP01: 1,
+			PlaceP01:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX01: 1,
-			PlaceOTurn: 1,
+			PlaceX01:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -98,24 +97,24 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeXPlay02,
 		Inputs: map[string]int{
 			PlaceXTurn: 1,
-			PlaceP02: 1,
+			PlaceP02:   1,
 		},
 		Outputs: map[string]int{
 			PlaceMoveTokens: 1,
-			PlaceX02: 1,
-			PlaceOTurn: 1,
+			PlaceX02:        1,
+			PlaceOTurn:      1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXPlay10,
 		EventType: EventTypeXPlay10,
 		Inputs: map[string]int{
-			PlaceP10: 1,
+			PlaceP10:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX10: 1,
-			PlaceOTurn: 1,
+			PlaceX10:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -123,12 +122,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay11,
 		EventType: EventTypeXPlay11,
 		Inputs: map[string]int{
-			PlaceP11: 1,
+			PlaceP11:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX11: 1,
-			PlaceOTurn: 1,
+			PlaceX11:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -136,12 +135,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay12,
 		EventType: EventTypeXPlay12,
 		Inputs: map[string]int{
-			PlaceP12: 1,
+			PlaceP12:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX12: 1,
-			PlaceOTurn: 1,
+			PlaceX12:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -149,25 +148,25 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay20,
 		EventType: EventTypeXPlay20,
 		Inputs: map[string]int{
-			PlaceP20: 1,
+			PlaceP20:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceOTurn: 1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
-			PlaceX20: 1,
+			PlaceX20:        1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXPlay21,
 		EventType: EventTypeXPlay21,
 		Inputs: map[string]int{
-			PlaceP21: 1,
+			PlaceP21:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX21: 1,
-			PlaceOTurn: 1,
+			PlaceX21:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -175,12 +174,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXPlay22,
 		EventType: EventTypeXPlay22,
 		Inputs: map[string]int{
-			PlaceP22: 1,
+			PlaceP22:   1,
 			PlaceXTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX22: 1,
-			PlaceOTurn: 1,
+			PlaceX22:        1,
+			PlaceOTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -188,12 +187,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay00,
 		EventType: EventTypeOPlay00,
 		Inputs: map[string]int{
-			PlaceP00: 1,
+			PlaceP00:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO00: 1,
-			PlaceXTurn: 1,
+			PlaceO00:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -201,12 +200,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay01,
 		EventType: EventTypeOPlay01,
 		Inputs: map[string]int{
-			PlaceP01: 1,
+			PlaceP01:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO01: 1,
-			PlaceXTurn: 1,
+			PlaceO01:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -214,12 +213,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay02,
 		EventType: EventTypeOPlay02,
 		Inputs: map[string]int{
-			PlaceP02: 1,
+			PlaceP02:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO02: 1,
-			PlaceXTurn: 1,
+			PlaceO02:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -227,12 +226,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay10,
 		EventType: EventTypeOPlay10,
 		Inputs: map[string]int{
-			PlaceP10: 1,
+			PlaceP10:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO10: 1,
-			PlaceXTurn: 1,
+			PlaceO10:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -240,12 +239,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay11,
 		EventType: EventTypeOPlay11,
 		Inputs: map[string]int{
-			PlaceP11: 1,
+			PlaceP11:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO11: 1,
-			PlaceXTurn: 1,
+			PlaceO11:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -253,12 +252,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay12,
 		EventType: EventTypeOPlay12,
 		Inputs: map[string]int{
-			PlaceP12: 1,
+			PlaceP12:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO12: 1,
-			PlaceXTurn: 1,
+			PlaceO12:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -266,25 +265,25 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay20,
 		EventType: EventTypeOPlay20,
 		Inputs: map[string]int{
-			PlaceP20: 1,
+			PlaceP20:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
 			PlaceMoveTokens: 1,
-			PlaceO20: 1,
-			PlaceXTurn: 1,
+			PlaceO20:        1,
+			PlaceXTurn:      1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOPlay21,
 		EventType: EventTypeOPlay21,
 		Inputs: map[string]int{
-			PlaceP21: 1,
+			PlaceP21:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO21: 1,
-			PlaceXTurn: 1,
+			PlaceO21:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -292,12 +291,12 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOPlay22,
 		EventType: EventTypeOPlay22,
 		Inputs: map[string]int{
-			PlaceP22: 1,
+			PlaceP22:   1,
 			PlaceOTurn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceO22: 1,
-			PlaceXTurn: 1,
+			PlaceO22:        1,
+			PlaceXTurn:      1,
 			PlaceMoveTokens: 1,
 		},
 	})
@@ -305,17 +304,17 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinRow0,
 		EventType: EventTypeXWinRow0,
 		Inputs: map[string]int{
-			PlaceX00: 1,
-			PlaceX01: 1,
-			PlaceX02: 1,
+			PlaceX00:        1,
+			PlaceX01:        1,
+			PlaceX02:        1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
+			PlaceOTurn:      1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
-			PlaceX00: 1,
-			PlaceX01: 1,
-			PlaceX02: 1,
+			PlaceX00:  1,
+			PlaceX01:  1,
+			PlaceX02:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -323,32 +322,32 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeXWinRow1,
 		Inputs: map[string]int{
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
-			PlaceX10: 1,
-			PlaceX11: 1,
-			PlaceX12: 1,
+			PlaceOTurn:      1,
+			PlaceX10:        1,
+			PlaceX11:        1,
+			PlaceX12:        1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
-			PlaceX10: 1,
-			PlaceX11: 1,
-			PlaceX12: 1,
+			PlaceX10:  1,
+			PlaceX11:  1,
+			PlaceX12:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinRow2,
 		EventType: EventTypeXWinRow2,
 		Inputs: map[string]int{
-			PlaceX20: 1,
-			PlaceX21: 1,
-			PlaceX22: 1,
+			PlaceX20:        1,
+			PlaceX21:        1,
+			PlaceX22:        1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
+			PlaceOTurn:      1,
 		},
 		Outputs: map[string]int{
-			PlaceX20: 1,
-			PlaceX21: 1,
-			PlaceX22: 1,
+			PlaceX20:  1,
+			PlaceX21:  1,
+			PlaceX22:  1,
 			PlaceWinX: 1,
 		},
 	})
@@ -356,16 +355,16 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinCol0,
 		EventType: EventTypeXWinCol0,
 		Inputs: map[string]int{
-			PlaceX00: 1,
-			PlaceX10: 1,
-			PlaceX20: 1,
+			PlaceX00:        1,
+			PlaceX10:        1,
+			PlaceX20:        1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
+			PlaceOTurn:      1,
 		},
 		Outputs: map[string]int{
-			PlaceX00: 1,
-			PlaceX10: 1,
-			PlaceX20: 1,
+			PlaceX00:  1,
+			PlaceX10:  1,
+			PlaceX20:  1,
 			PlaceWinX: 1,
 		},
 	})
@@ -373,101 +372,101 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionXWinCol1,
 		EventType: EventTypeXWinCol1,
 		Inputs: map[string]int{
-			PlaceOTurn: 1,
-			PlaceX01: 1,
-			PlaceX11: 1,
-			PlaceX21: 1,
+			PlaceOTurn:      1,
+			PlaceX01:        1,
+			PlaceX11:        1,
+			PlaceX21:        1,
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
-			PlaceX01: 1,
-			PlaceX11: 1,
-			PlaceX21: 1,
+			PlaceX01:  1,
+			PlaceX11:  1,
+			PlaceX21:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinCol2,
 		EventType: EventTypeXWinCol2,
 		Inputs: map[string]int{
-			PlaceOTurn: 1,
-			PlaceX02: 1,
-			PlaceX12: 1,
-			PlaceX22: 1,
+			PlaceOTurn:      1,
+			PlaceX02:        1,
+			PlaceX12:        1,
+			PlaceX22:        1,
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinX: 1,
-			PlaceX02: 1,
-			PlaceX12: 1,
-			PlaceX22: 1,
+			PlaceX02:  1,
+			PlaceX12:  1,
+			PlaceX22:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinDiag,
 		EventType: EventTypeXWinDiag,
 		Inputs: map[string]int{
-			PlaceOTurn: 1,
-			PlaceX00: 1,
-			PlaceX11: 1,
-			PlaceX22: 1,
+			PlaceOTurn:      1,
+			PlaceX00:        1,
+			PlaceX11:        1,
+			PlaceX22:        1,
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
-			PlaceX11: 1,
-			PlaceX22: 1,
+			PlaceX11:  1,
+			PlaceX22:  1,
 			PlaceWinX: 1,
-			PlaceX00: 1,
+			PlaceX00:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionXWinAnti,
 		EventType: EventTypeXWinAnti,
 		Inputs: map[string]int{
-			PlaceX02: 1,
-			PlaceX11: 1,
-			PlaceX20: 1,
+			PlaceX02:        1,
+			PlaceX11:        1,
+			PlaceX20:        1,
 			PlaceGameActive: 1,
-			PlaceOTurn: 1,
+			PlaceOTurn:      1,
 		},
 		Outputs: map[string]int{
-			PlaceX20: 1,
+			PlaceX20:  1,
 			PlaceWinX: 1,
-			PlaceX02: 1,
-			PlaceX11: 1,
+			PlaceX02:  1,
+			PlaceX11:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinRow0,
 		EventType: EventTypeOWinRow0,
 		Inputs: map[string]int{
-			PlaceXTurn: 1,
-			PlaceO00: 1,
-			PlaceO01: 1,
-			PlaceO02: 1,
+			PlaceXTurn:      1,
+			PlaceO00:        1,
+			PlaceO01:        1,
+			PlaceO02:        1,
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO00: 1,
-			PlaceO01: 1,
-			PlaceO02: 1,
+			PlaceO00:  1,
+			PlaceO01:  1,
+			PlaceO02:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinRow1,
 		EventType: EventTypeOWinRow1,
 		Inputs: map[string]int{
-			PlaceO10: 1,
-			PlaceO11: 1,
-			PlaceO12: 1,
+			PlaceO10:        1,
+			PlaceO11:        1,
+			PlaceO12:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
+			PlaceXTurn:      1,
 		},
 		Outputs: map[string]int{
-			PlaceO10: 1,
-			PlaceO11: 1,
-			PlaceO12: 1,
+			PlaceO10:  1,
+			PlaceO11:  1,
+			PlaceO12:  1,
 			PlaceWinO: 1,
 		},
 	})
@@ -475,102 +474,102 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionOWinRow2,
 		EventType: EventTypeOWinRow2,
 		Inputs: map[string]int{
-			PlaceO20: 1,
-			PlaceO21: 1,
-			PlaceO22: 1,
+			PlaceO20:        1,
+			PlaceO21:        1,
+			PlaceO22:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
+			PlaceXTurn:      1,
 		},
 		Outputs: map[string]int{
-			PlaceO21: 1,
-			PlaceO22: 1,
+			PlaceO21:  1,
+			PlaceO22:  1,
 			PlaceWinO: 1,
-			PlaceO20: 1,
+			PlaceO20:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinCol0,
 		EventType: EventTypeOWinCol0,
 		Inputs: map[string]int{
-			PlaceO00: 1,
-			PlaceO10: 1,
-			PlaceO20: 1,
+			PlaceO00:        1,
+			PlaceO10:        1,
+			PlaceO20:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
+			PlaceXTurn:      1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO00: 1,
-			PlaceO10: 1,
-			PlaceO20: 1,
+			PlaceO00:  1,
+			PlaceO10:  1,
+			PlaceO20:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinCol1,
 		EventType: EventTypeOWinCol1,
 		Inputs: map[string]int{
-			PlaceO01: 1,
-			PlaceO11: 1,
-			PlaceO21: 1,
+			PlaceO01:        1,
+			PlaceO11:        1,
+			PlaceO21:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
+			PlaceXTurn:      1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO01: 1,
-			PlaceO11: 1,
-			PlaceO21: 1,
+			PlaceO01:  1,
+			PlaceO11:  1,
+			PlaceO21:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinCol2,
 		EventType: EventTypeOWinCol2,
 		Inputs: map[string]int{
-			PlaceO02: 1,
-			PlaceO12: 1,
-			PlaceO22: 1,
+			PlaceO02:        1,
+			PlaceO12:        1,
+			PlaceO22:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
+			PlaceXTurn:      1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO02: 1,
-			PlaceO12: 1,
-			PlaceO22: 1,
+			PlaceO02:  1,
+			PlaceO12:  1,
+			PlaceO22:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinDiag,
 		EventType: EventTypeOWinDiag,
 		Inputs: map[string]int{
-			PlaceO11: 1,
-			PlaceO22: 1,
+			PlaceO11:        1,
+			PlaceO22:        1,
 			PlaceGameActive: 1,
-			PlaceXTurn: 1,
-			PlaceO00: 1,
+			PlaceXTurn:      1,
+			PlaceO00:        1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO00: 1,
-			PlaceO11: 1,
-			PlaceO22: 1,
+			PlaceO00:  1,
+			PlaceO11:  1,
+			PlaceO22:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOWinAnti,
 		EventType: EventTypeOWinAnti,
 		Inputs: map[string]int{
-			PlaceXTurn: 1,
-			PlaceO02: 1,
-			PlaceO11: 1,
-			PlaceO20: 1,
+			PlaceXTurn:      1,
+			PlaceO02:        1,
+			PlaceO11:        1,
+			PlaceO20:        1,
 			PlaceGameActive: 1,
 		},
 		Outputs: map[string]int{
 			PlaceWinO: 1,
-			PlaceO02: 1,
-			PlaceO11: 1,
-			PlaceO20: 1,
+			PlaceO02:  1,
+			PlaceO11:  1,
+			PlaceO20:  1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{

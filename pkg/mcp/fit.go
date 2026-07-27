@@ -67,13 +67,13 @@ type fitObservation struct {
 }
 
 type fitResponse struct {
-	FittedRates  map[string]float64 `json:"fittedRates"`
-	FinalLoss    float64            `json:"finalLoss"`
-	Iterations   int                `json:"iterations"`
-	Converged    bool               `json:"converged"`
-	ParamOrder   []string           `json:"paramOrder"`
+	FittedRates  map[string]float64      `json:"fittedRates"`
+	FinalLoss    float64                 `json:"finalLoss"`
+	Iterations   int                     `json:"iterations"`
+	Converged    bool                    `json:"converged"`
+	ParamOrder   []string                `json:"paramOrder"`
 	Observations map[string][][2]float64 `json:"observations"`
-	Explanation  string             `json:"explanation,omitempty"`
+	Explanation  string                  `json:"explanation,omitempty"`
 }
 
 func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/stoplight/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/stoplight/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -211,7 +209,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "stoplight(") {
 		id := ""
@@ -251,7 +248,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -272,7 +268,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -459,7 +454,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createStoplight"] = resolvers["stoplight_create"]
 
-
 	resolvers["stoplight_go"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.GoInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -470,7 +464,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Go(ctx, input)
 	}
 	resolvers["go"] = resolvers["stoplight_go"]
-
 
 	resolvers["stoplight_slow"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SlowInput{}
@@ -483,7 +476,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["slow"] = resolvers["stoplight_slow"]
 
-
 	resolvers["stoplight_stop"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.StopInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -494,9 +486,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Stop(ctx, input)
 	}
 	resolvers["stop"] = resolvers["stoplight_stop"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["stoplight_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -510,7 +499,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["stoplight_events"]
 	resolvers["stoplightEvents"] = resolvers["stoplight_events"]
-
 
 	return resolvers
 }

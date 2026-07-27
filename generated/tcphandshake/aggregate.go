@@ -13,20 +13,19 @@ import (
 
 // State holds the aggregate state for tcp-handshake.
 type State struct {
-	ClientClosed int `json:"client_closed"`
-	ClientSynSent int `json:"client_syn_sent"`
+	ClientClosed      int `json:"client_closed"`
+	ClientSynSent     int `json:"client_syn_sent"`
 	ClientEstablished int `json:"client_established"`
-	ClientFinWait int `json:"client_fin_wait"`
-	ServerListen int `json:"server_listen"`
+	ClientFinWait     int `json:"client_fin_wait"`
+	ServerListen      int `json:"server_listen"`
 	ServerSynReceived int `json:"server_syn_received"`
 	ServerEstablished int `json:"server_established"`
-	ServerClosed int `json:"server_closed"`
+	ServerClosed      int `json:"server_closed"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the tcp-handshake state.
@@ -88,7 +87,7 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionSendFinAck,
 		EventType: EventTypeSendFinAck,
 		Inputs: map[string]int{
-			PlaceClientFinWait: 1,
+			PlaceClientFinWait:     1,
 			PlaceServerEstablished: 1,
 		},
 		Outputs: map[string]int{

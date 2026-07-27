@@ -241,7 +241,6 @@ func HandleListSessions(broker *DebugBroker) http.HandlerFunc {
 	}
 }
 
-
 // HandleDebugGuestLogin creates a mock guest session (debug mode only, no access control).
 func HandleDebugGuestLogin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +274,6 @@ func HandleDebugGuestLogin() http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleSessionEval sends code to a browser session for evaluation.
 func HandleSessionEval(broker *DebugBroker) http.HandlerFunc {

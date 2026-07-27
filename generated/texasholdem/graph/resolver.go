@@ -80,7 +80,6 @@ func (r *Resolver) TexasHoldemList(ctx context.Context, place *string, page *int
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateTexasholdem creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateTexasholdem(ctx context.Context) (*AggregateState, erro
 
 	return aggregateToState(agg), nil
 }
-
 
 // StartHand executes the start_hand transition.
 func (r *Resolver) StartHand(ctx context.Context, input StartHandInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) StartHand(ctx context.Context, input StartHandInput) (*Transi
 	}, nil
 }
 
-
 // DealFlop executes the deal_flop transition.
 func (r *Resolver) DealFlop(ctx context.Context, input DealFlopInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) DealFlop(ctx context.Context, input DealFlopInput) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // DealTurn executes the deal_turn transition.
 func (r *Resolver) DealTurn(ctx context.Context, input DealTurnInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) DealTurn(ctx context.Context, input DealTurnInput) (*Transiti
 	}, nil
 }
 
-
 // DealRiver executes the deal_river transition.
 func (r *Resolver) DealRiver(ctx context.Context, input DealRiverInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) DealRiver(ctx context.Context, input DealRiverInput) (*Transi
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // GoShowdown executes the go_showdown transition.
 func (r *Resolver) GoShowdown(ctx context.Context, input GoShowdownInput) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) GoShowdown(ctx context.Context, input GoShowdownInput) (*Tran
 	}, nil
 }
 
-
 // DetermineWinner executes the determine_winner transition.
 func (r *Resolver) DetermineWinner(ctx context.Context, input DetermineWinnerInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,7 +301,6 @@ func (r *Resolver) DetermineWinner(ctx context.Context, input DetermineWinnerInp
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // EndHand executes the end_hand transition.
 func (r *Resolver) EndHand(ctx context.Context, input EndHandInput) (*TransitionResult, error) {
@@ -338,7 +329,6 @@ func (r *Resolver) EndHand(ctx context.Context, input EndHandInput) (*Transition
 	}, nil
 }
 
-
 // P0Fold executes the p0_fold transition.
 func (r *Resolver) P0Fold(ctx context.Context, input P0FoldInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -365,7 +355,6 @@ func (r *Resolver) P0Fold(ctx context.Context, input P0FoldInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P0Check executes the p0_check transition.
 func (r *Resolver) P0Check(ctx context.Context, input P0CheckInput) (*TransitionResult, error) {
@@ -394,7 +383,6 @@ func (r *Resolver) P0Check(ctx context.Context, input P0CheckInput) (*Transition
 	}, nil
 }
 
-
 // P0Call executes the p0_call transition.
 func (r *Resolver) P0Call(ctx context.Context, input P0CallInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -421,7 +409,6 @@ func (r *Resolver) P0Call(ctx context.Context, input P0CallInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P0Raise executes the p0_raise transition.
 func (r *Resolver) P0Raise(ctx context.Context, input P0RaiseInput) (*TransitionResult, error) {
@@ -450,7 +437,6 @@ func (r *Resolver) P0Raise(ctx context.Context, input P0RaiseInput) (*Transition
 	}, nil
 }
 
-
 // P1Fold executes the p1_fold transition.
 func (r *Resolver) P1Fold(ctx context.Context, input P1FoldInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -477,7 +463,6 @@ func (r *Resolver) P1Fold(ctx context.Context, input P1FoldInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P1Check executes the p1_check transition.
 func (r *Resolver) P1Check(ctx context.Context, input P1CheckInput) (*TransitionResult, error) {
@@ -506,7 +491,6 @@ func (r *Resolver) P1Check(ctx context.Context, input P1CheckInput) (*Transition
 	}, nil
 }
 
-
 // P1Call executes the p1_call transition.
 func (r *Resolver) P1Call(ctx context.Context, input P1CallInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -533,7 +517,6 @@ func (r *Resolver) P1Call(ctx context.Context, input P1CallInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P1Raise executes the p1_raise transition.
 func (r *Resolver) P1Raise(ctx context.Context, input P1RaiseInput) (*TransitionResult, error) {
@@ -562,7 +545,6 @@ func (r *Resolver) P1Raise(ctx context.Context, input P1RaiseInput) (*Transition
 	}, nil
 }
 
-
 // P2Fold executes the p2_fold transition.
 func (r *Resolver) P2Fold(ctx context.Context, input P2FoldInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -589,7 +571,6 @@ func (r *Resolver) P2Fold(ctx context.Context, input P2FoldInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P2Check executes the p2_check transition.
 func (r *Resolver) P2Check(ctx context.Context, input P2CheckInput) (*TransitionResult, error) {
@@ -618,7 +599,6 @@ func (r *Resolver) P2Check(ctx context.Context, input P2CheckInput) (*Transition
 	}, nil
 }
 
-
 // P2Call executes the p2_call transition.
 func (r *Resolver) P2Call(ctx context.Context, input P2CallInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -645,7 +625,6 @@ func (r *Resolver) P2Call(ctx context.Context, input P2CallInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P2Raise executes the p2_raise transition.
 func (r *Resolver) P2Raise(ctx context.Context, input P2RaiseInput) (*TransitionResult, error) {
@@ -674,7 +653,6 @@ func (r *Resolver) P2Raise(ctx context.Context, input P2RaiseInput) (*Transition
 	}, nil
 }
 
-
 // P3Fold executes the p3_fold transition.
 func (r *Resolver) P3Fold(ctx context.Context, input P3FoldInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -701,7 +679,6 @@ func (r *Resolver) P3Fold(ctx context.Context, input P3FoldInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P3Check executes the p3_check transition.
 func (r *Resolver) P3Check(ctx context.Context, input P3CheckInput) (*TransitionResult, error) {
@@ -730,7 +707,6 @@ func (r *Resolver) P3Check(ctx context.Context, input P3CheckInput) (*Transition
 	}, nil
 }
 
-
 // P3Call executes the p3_call transition.
 func (r *Resolver) P3Call(ctx context.Context, input P3CallInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -757,7 +733,6 @@ func (r *Resolver) P3Call(ctx context.Context, input P3CallInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P3Raise executes the p3_raise transition.
 func (r *Resolver) P3Raise(ctx context.Context, input P3RaiseInput) (*TransitionResult, error) {
@@ -786,7 +761,6 @@ func (r *Resolver) P3Raise(ctx context.Context, input P3RaiseInput) (*Transition
 	}, nil
 }
 
-
 // P4Fold executes the p4_fold transition.
 func (r *Resolver) P4Fold(ctx context.Context, input P4FoldInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -813,7 +787,6 @@ func (r *Resolver) P4Fold(ctx context.Context, input P4FoldInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P4Check executes the p4_check transition.
 func (r *Resolver) P4Check(ctx context.Context, input P4CheckInput) (*TransitionResult, error) {
@@ -842,7 +815,6 @@ func (r *Resolver) P4Check(ctx context.Context, input P4CheckInput) (*Transition
 	}, nil
 }
 
-
 // P4Call executes the p4_call transition.
 func (r *Resolver) P4Call(ctx context.Context, input P4CallInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -869,7 +841,6 @@ func (r *Resolver) P4Call(ctx context.Context, input P4CallInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P4Raise executes the p4_raise transition.
 func (r *Resolver) P4Raise(ctx context.Context, input P4RaiseInput) (*TransitionResult, error) {
@@ -898,7 +869,6 @@ func (r *Resolver) P4Raise(ctx context.Context, input P4RaiseInput) (*Transition
 	}, nil
 }
 
-
 // P0Skip executes the p0_skip transition.
 func (r *Resolver) P0Skip(ctx context.Context, input P0SkipInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -925,7 +895,6 @@ func (r *Resolver) P0Skip(ctx context.Context, input P0SkipInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P1Skip executes the p1_skip transition.
 func (r *Resolver) P1Skip(ctx context.Context, input P1SkipInput) (*TransitionResult, error) {
@@ -954,7 +923,6 @@ func (r *Resolver) P1Skip(ctx context.Context, input P1SkipInput) (*TransitionRe
 	}, nil
 }
 
-
 // P2Skip executes the p2_skip transition.
 func (r *Resolver) P2Skip(ctx context.Context, input P2SkipInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -981,7 +949,6 @@ func (r *Resolver) P2Skip(ctx context.Context, input P2SkipInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // P3Skip executes the p3_skip transition.
 func (r *Resolver) P3Skip(ctx context.Context, input P3SkipInput) (*TransitionResult, error) {
@@ -1010,7 +977,6 @@ func (r *Resolver) P3Skip(ctx context.Context, input P3SkipInput) (*TransitionRe
 	}, nil
 }
 
-
 // P4Skip executes the p4_skip transition.
 func (r *Resolver) P4Skip(ctx context.Context, input P4SkipInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -1037,8 +1003,6 @@ func (r *Resolver) P4Skip(ctx context.Context, input P4SkipInput) (*TransitionRe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -1201,44 +1165,44 @@ type AggregateState struct {
 }
 
 type State struct {
-	Waiting any `json:"waiting"`
-	Preflop any `json:"preflop"`
-	Flop any `json:"flop"`
-	TurnRound any `json:"turnRound"`
-	River any `json:"river"`
-	Showdown any `json:"showdown"`
-	Complete any `json:"complete"`
-	P0Turn any `json:"p0Turn"`
-	P1Turn any `json:"p1Turn"`
-	P2Turn any `json:"p2Turn"`
-	P3Turn any `json:"p3Turn"`
-	P4Turn any `json:"p4Turn"`
-	P0Active any `json:"p0Active"`
-	P1Active any `json:"p1Active"`
-	P2Active any `json:"p2Active"`
-	P3Active any `json:"p3Active"`
-	P4Active any `json:"p4Active"`
+	Waiting     any `json:"waiting"`
+	Preflop     any `json:"preflop"`
+	Flop        any `json:"flop"`
+	TurnRound   any `json:"turnRound"`
+	River       any `json:"river"`
+	Showdown    any `json:"showdown"`
+	Complete    any `json:"complete"`
+	P0Turn      any `json:"p0Turn"`
+	P1Turn      any `json:"p1Turn"`
+	P2Turn      any `json:"p2Turn"`
+	P3Turn      any `json:"p3Turn"`
+	P4Turn      any `json:"p4Turn"`
+	P0Active    any `json:"p0Active"`
+	P1Active    any `json:"p1Active"`
+	P2Active    any `json:"p2Active"`
+	P3Active    any `json:"p3Active"`
+	P4Active    any `json:"p4Active"`
 	BettingDone any `json:"bettingDone"`
 }
 
 type Places struct {
-	Waiting int `json:"waiting"`
-	Preflop int `json:"preflop"`
-	Flop int `json:"flop"`
-	TurnRound int `json:"turnRound"`
-	River int `json:"river"`
-	Showdown int `json:"showdown"`
-	Complete int `json:"complete"`
-	P0Turn int `json:"p0Turn"`
-	P1Turn int `json:"p1Turn"`
-	P2Turn int `json:"p2Turn"`
-	P3Turn int `json:"p3Turn"`
-	P4Turn int `json:"p4Turn"`
-	P0Active int `json:"p0Active"`
-	P1Active int `json:"p1Active"`
-	P2Active int `json:"p2Active"`
-	P3Active int `json:"p3Active"`
-	P4Active int `json:"p4Active"`
+	Waiting     int `json:"waiting"`
+	Preflop     int `json:"preflop"`
+	Flop        int `json:"flop"`
+	TurnRound   int `json:"turnRound"`
+	River       int `json:"river"`
+	Showdown    int `json:"showdown"`
+	Complete    int `json:"complete"`
+	P0Turn      int `json:"p0Turn"`
+	P1Turn      int `json:"p1Turn"`
+	P2Turn      int `json:"p2Turn"`
+	P3Turn      int `json:"p3Turn"`
+	P4Turn      int `json:"p4Turn"`
+	P0Active    int `json:"p0Active"`
+	P1Active    int `json:"p1Active"`
+	P2Active    int `json:"p2Active"`
+	P3Active    int `json:"p3Active"`
+	P4Active    int `json:"p4Active"`
 	BettingDone int `json:"bettingDone"`
 }
 
@@ -1258,7 +1222,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -1268,165 +1231,132 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type StartHandInput struct {
 	AggregateID string
 }
 
-
 type DealFlopInput struct {
 	AggregateID string
 }
-
 
 type DealTurnInput struct {
 	AggregateID string
 }
 
-
 type DealRiverInput struct {
 	AggregateID string
 }
-
 
 type GoShowdownInput struct {
 	AggregateID string
 }
 
-
 type DetermineWinnerInput struct {
 	AggregateID string
 }
-
 
 type EndHandInput struct {
 	AggregateID string
 }
 
-
 type P0FoldInput struct {
 	AggregateID string
 }
-
 
 type P0CheckInput struct {
 	AggregateID string
 }
 
-
 type P0CallInput struct {
 	AggregateID string
 }
-
 
 type P0RaiseInput struct {
 	AggregateID string
 }
 
-
 type P1FoldInput struct {
 	AggregateID string
 }
-
 
 type P1CheckInput struct {
 	AggregateID string
 }
 
-
 type P1CallInput struct {
 	AggregateID string
 }
-
 
 type P1RaiseInput struct {
 	AggregateID string
 }
 
-
 type P2FoldInput struct {
 	AggregateID string
 }
-
 
 type P2CheckInput struct {
 	AggregateID string
 }
 
-
 type P2CallInput struct {
 	AggregateID string
 }
-
 
 type P2RaiseInput struct {
 	AggregateID string
 }
 
-
 type P3FoldInput struct {
 	AggregateID string
 }
-
 
 type P3CheckInput struct {
 	AggregateID string
 }
 
-
 type P3CallInput struct {
 	AggregateID string
 }
-
 
 type P3RaiseInput struct {
 	AggregateID string
 }
 
-
 type P4FoldInput struct {
 	AggregateID string
 }
-
 
 type P4CheckInput struct {
 	AggregateID string
 }
 
-
 type P4CallInput struct {
 	AggregateID string
 }
-
 
 type P4RaiseInput struct {
 	AggregateID string
 }
 
-
 type P0SkipInput struct {
 	AggregateID string
 }
-
 
 type P1SkipInput struct {
 	AggregateID string
 }
 
-
 type P2SkipInput struct {
 	AggregateID string
 }
-
 
 type P3SkipInput struct {
 	AggregateID string
 }
 
-
 type P4SkipInput struct {
 	AggregateID string
 }
-

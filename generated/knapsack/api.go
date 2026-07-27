@@ -33,25 +33,17 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/knapsack/{id}", "Get knapsack state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/knapsack/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/knapsack/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/knapsack/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
@@ -59,22 +51,6 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("take_item0", "/api/take_item0", "Take item 0 (weight=2, value=10)", HandleTakeItem0(app))
@@ -95,9 +71,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/knapsack",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/knapsack/frontend",         // Generated frontend from repo root
+		"frontends/knapsack",          // Custom frontend (top priority)
+		"frontend",                    // Running from service directory
+		"generated/knapsack/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "knapsack", "frontend"), // Platform-safe
 	}
 
@@ -234,7 +210,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleTakeItem0 handles the take_item0 transition.
 func HandleTakeItem0(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +241,6 @@ func HandleTakeItem0(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleTakeItem1 handles the take_item1 transition.
 func HandleTakeItem1(app *Application) http.HandlerFunc {
@@ -300,7 +274,6 @@ func HandleTakeItem1(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleTakeItem2 handles the take_item2 transition.
 func HandleTakeItem2(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -332,7 +305,6 @@ func HandleTakeItem2(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleTakeItem3 handles the take_item3 transition.
 func HandleTakeItem3(app *Application) http.HandlerFunc {
@@ -366,7 +338,6 @@ func HandleTakeItem3(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleReset handles the reset transition.
 func HandleReset(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -398,13 +369,6 @@ func HandleReset(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -491,17 +455,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -523,7 +483,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -540,4 +499,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

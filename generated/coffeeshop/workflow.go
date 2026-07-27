@@ -4,54 +4,54 @@ package coffeeshop
 
 // Place constants
 const (
-	PlaceCoffeeBeans = "coffee_beans"
-	PlaceMilk = "milk"
-	PlaceCups = "cups"
-	PlaceOrdersPending = "orders_pending"
-	PlaceEspressoReady = "espresso_ready"
-	PlaceLatteReady = "latte_ready"
+	PlaceCoffeeBeans     = "coffee_beans"
+	PlaceMilk            = "milk"
+	PlaceCups            = "cups"
+	PlaceOrdersPending   = "orders_pending"
+	PlaceEspressoReady   = "espresso_ready"
+	PlaceLatteReady      = "latte_ready"
 	PlaceCappuccinoReady = "cappuccino_ready"
-	PlaceOrdersComplete = "orders_complete"
+	PlaceOrdersComplete  = "orders_complete"
 )
 
 // Transition constants
 const (
-	TransitionOrderEspresso = "order_espresso"
-	TransitionOrderLatte = "order_latte"
-	TransitionOrderCappuccino = "order_cappuccino"
-	TransitionMakeEspresso = "make_espresso"
-	TransitionMakeLatte = "make_latte"
-	TransitionMakeCappuccino = "make_cappuccino"
-	TransitionServeEspresso = "serve_espresso"
-	TransitionServeLatte = "serve_latte"
-	TransitionServeCappuccino = "serve_cappuccino"
+	TransitionOrderEspresso      = "order_espresso"
+	TransitionOrderLatte         = "order_latte"
+	TransitionOrderCappuccino    = "order_cappuccino"
+	TransitionMakeEspresso       = "make_espresso"
+	TransitionMakeLatte          = "make_latte"
+	TransitionMakeCappuccino     = "make_cappuccino"
+	TransitionServeEspresso      = "serve_espresso"
+	TransitionServeLatte         = "serve_latte"
+	TransitionServeCappuccino    = "serve_cappuccino"
 	TransitionRestockCoffeeBeans = "restock_coffee_beans"
-	TransitionRestockMilk = "restock_milk"
-	TransitionRestockCups = "restock_cups"
+	TransitionRestockMilk        = "restock_milk"
+	TransitionRestockCups        = "restock_cups"
 )
 
 // Event type constants
 const (
-	EventTypeOrderEspresso = "OrderEspressoed"
-	EventTypeOrderLatte = "OrderLatteed"
-	EventTypeOrderCappuccino = "OrderCappuccinoed"
-	EventTypeMakeEspresso = "MakeEspressoed"
-	EventTypeMakeLatte = "MakeLatteed"
-	EventTypeMakeCappuccino = "MakeCappuccinoed"
-	EventTypeServeEspresso = "ServeEspressoed"
-	EventTypeServeLatte = "ServeLatteed"
-	EventTypeServeCappuccino = "ServeCappuccinoed"
+	EventTypeOrderEspresso      = "OrderEspressoed"
+	EventTypeOrderLatte         = "OrderLatteed"
+	EventTypeOrderCappuccino    = "OrderCappuccinoed"
+	EventTypeMakeEspresso       = "MakeEspressoed"
+	EventTypeMakeLatte          = "MakeLatteed"
+	EventTypeMakeCappuccino     = "MakeCappuccinoed"
+	EventTypeServeEspresso      = "ServeEspressoed"
+	EventTypeServeLatte         = "ServeLatteed"
+	EventTypeServeCappuccino    = "ServeCappuccinoed"
 	EventTypeRestockCoffeeBeans = "RestockCoffeeBeansed"
-	EventTypeRestockMilk = "RestockMilked"
-	EventTypeRestockCups = "RestockCupsed"
+	EventTypeRestockMilk        = "RestockMilked"
+	EventTypeRestockCups        = "RestockCupsed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
 		PlaceCoffeeBeans: 1000,
-		PlaceMilk: 500,
-		PlaceCups: 200,
+		PlaceMilk:        500,
+		PlaceCups:        200,
 	}
 }
 

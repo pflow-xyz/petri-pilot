@@ -4,46 +4,46 @@ package hiringpipeline
 
 // Place constants
 const (
-	PlaceApplied = "applied"
-	PlacePhoneScreen = "phone_screen"
+	PlaceApplied            = "applied"
+	PlacePhoneScreen        = "phone_screen"
 	PlaceTechnicalInterview = "technical_interview"
-	PlaceCultureInterview = "culture_interview"
-	PlaceTechPassed = "tech_passed"
-	PlaceCulturePassed = "culture_passed"
-	PlaceReadyForOffer = "ready_for_offer"
-	PlaceOfferExtended = "offer_extended"
-	PlaceHired = "hired"
-	PlaceRejected = "rejected"
+	PlaceCultureInterview   = "culture_interview"
+	PlaceTechPassed         = "tech_passed"
+	PlaceCulturePassed      = "culture_passed"
+	PlaceReadyForOffer      = "ready_for_offer"
+	PlaceOfferExtended      = "offer_extended"
+	PlaceHired              = "hired"
+	PlaceRejected           = "rejected"
 )
 
 // Transition constants
 const (
 	TransitionScreenCandidate = "screen_candidate"
-	TransitionPassScreen = "pass_screen"
-	TransitionFailScreen = "fail_screen"
-	TransitionPassTechnical = "pass_technical"
-	TransitionFailTechnical = "fail_technical"
-	TransitionPassCulture = "pass_culture"
-	TransitionFailCulture = "fail_culture"
+	TransitionPassScreen      = "pass_screen"
+	TransitionFailScreen      = "fail_screen"
+	TransitionPassTechnical   = "pass_technical"
+	TransitionFailTechnical   = "fail_technical"
+	TransitionPassCulture     = "pass_culture"
+	TransitionFailCulture     = "fail_culture"
 	TransitionMergeInterviews = "merge_interviews"
-	TransitionExtendOffer = "extend_offer"
-	TransitionAcceptOffer = "accept_offer"
-	TransitionRejectOffer = "reject_offer"
+	TransitionExtendOffer     = "extend_offer"
+	TransitionAcceptOffer     = "accept_offer"
+	TransitionRejectOffer     = "reject_offer"
 )
 
 // Event type constants
 const (
 	EventTypeScreenCandidate = "ScreenCandidateed"
-	EventTypePassScreen = "PassScreened"
-	EventTypeFailScreen = "FailScreened"
-	EventTypePassTechnical = "PassTechnicaled"
-	EventTypeFailTechnical = "FailTechnicaled"
-	EventTypePassCulture = "PassCultureed"
-	EventTypeFailCulture = "FailCultureed"
+	EventTypePassScreen      = "PassScreened"
+	EventTypeFailScreen      = "FailScreened"
+	EventTypePassTechnical   = "PassTechnicaled"
+	EventTypeFailTechnical   = "FailTechnicaled"
+	EventTypePassCulture     = "PassCultureed"
+	EventTypeFailCulture     = "FailCultureed"
 	EventTypeMergeInterviews = "MergeInterviewsed"
-	EventTypeExtendOffer = "ExtendOffered"
-	EventTypeAcceptOffer = "AcceptOffered"
-	EventTypeRejectOffer = "RejectOffered"
+	EventTypeExtendOffer     = "ExtendOffered"
+	EventTypeAcceptOffer     = "AcceptOffered"
+	EventTypeRejectOffer     = "RejectOffered"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.

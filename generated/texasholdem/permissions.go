@@ -9,14 +9,14 @@ import (
 // Role constants
 const (
 	RoleDealer = "dealer"
-	RoleAdmin = "admin"
+	RoleAdmin  = "admin"
 )
 
 // AllRolesFor maps each role to its effective roles (including inherited).
 // For example, if admin inherits from user, AllRolesFor[RoleAdmin] = []string{"admin", "user"}.
 var AllRolesFor = map[string][]string{
-	RoleDealer: { "dealer" },
-	RoleAdmin: { "admin", "dealer" },
+	RoleDealer: {"dealer"},
+	RoleAdmin:  {"admin", "dealer"},
 }
 
 // HasRole checks if a user has a specific role (including inherited roles).
@@ -135,8 +135,6 @@ func CheckRoleAccess(user *User, requiredRoles []string) error {
 	return nil
 }
 
-
-
 // GetUserRoles returns the effective roles for a user (with inheritance expanded).
 func GetUserRoles(user *User) []string {
 	if user == nil {
@@ -167,4 +165,3 @@ func GetUserRoles(user *User) []string {
 
 	return result
 }
-

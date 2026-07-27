@@ -33,50 +33,25 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/diningphilosophers/{id}", "Get dining-philosophers state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/diningphilosophers/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/diningphilosophers/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/diningphilosophers/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("pickup_left_0", "/api/pickup_left_0", "Philosopher 0 picks up left fork (fork 4)", HandlePickupLeft0(app))
@@ -107,9 +82,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/dining-philosophers",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/diningphilosophers/frontend",         // Generated frontend from repo root
+		"frontends/dining-philosophers",         // Custom frontend (top priority)
+		"frontend",                              // Running from service directory
+		"generated/diningphilosophers/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "diningphilosophers", "frontend"), // Platform-safe
 	}
 
@@ -246,7 +221,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePickupLeft0 handles the pickup_left_0 transition.
 func HandlePickupLeft0(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +252,6 @@ func HandlePickupLeft0(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePickupLeft1 handles the pickup_left_1 transition.
 func HandlePickupLeft1(app *Application) http.HandlerFunc {
@@ -312,7 +285,6 @@ func HandlePickupLeft1(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePickupLeft2 handles the pickup_left_2 transition.
 func HandlePickupLeft2(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -344,7 +316,6 @@ func HandlePickupLeft2(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePickupLeft3 handles the pickup_left_3 transition.
 func HandlePickupLeft3(app *Application) http.HandlerFunc {
@@ -378,7 +349,6 @@ func HandlePickupLeft3(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePickupLeft4 handles the pickup_left_4 transition.
 func HandlePickupLeft4(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -410,7 +380,6 @@ func HandlePickupLeft4(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePickupRight0 handles the pickup_right_0 transition.
 func HandlePickupRight0(app *Application) http.HandlerFunc {
@@ -444,7 +413,6 @@ func HandlePickupRight0(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePickupRight1 handles the pickup_right_1 transition.
 func HandlePickupRight1(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -476,7 +444,6 @@ func HandlePickupRight1(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePickupRight2 handles the pickup_right_2 transition.
 func HandlePickupRight2(app *Application) http.HandlerFunc {
@@ -510,7 +477,6 @@ func HandlePickupRight2(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandlePickupRight3 handles the pickup_right_3 transition.
 func HandlePickupRight3(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -542,7 +508,6 @@ func HandlePickupRight3(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePickupRight4 handles the pickup_right_4 transition.
 func HandlePickupRight4(app *Application) http.HandlerFunc {
@@ -576,7 +541,6 @@ func HandlePickupRight4(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRelease0 handles the release_0 transition.
 func HandleRelease0(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -608,7 +572,6 @@ func HandleRelease0(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleRelease1 handles the release_1 transition.
 func HandleRelease1(app *Application) http.HandlerFunc {
@@ -642,7 +605,6 @@ func HandleRelease1(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRelease2 handles the release_2 transition.
 func HandleRelease2(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -674,7 +636,6 @@ func HandleRelease2(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleRelease3 handles the release_3 transition.
 func HandleRelease3(app *Application) http.HandlerFunc {
@@ -708,7 +669,6 @@ func HandleRelease3(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRelease4 handles the release_4 transition.
 func HandleRelease4(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -740,13 +700,6 @@ func HandleRelease4(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -833,17 +786,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -865,7 +814,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -882,4 +830,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

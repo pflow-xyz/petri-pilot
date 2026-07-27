@@ -33,38 +33,13 @@ func BuildRouter(app *Application) http.Handler {
 	// Get aggregate state
 	r.GET("/api/galtonboard/{id}", "Get galton-board state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/galtonboard/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/galtonboard/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/galtonboard/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("p00L", "/api/p00L", "Peg 0,0 bounce left", HandleP00l(app))
@@ -152,9 +127,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/galton-board",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/galtonboard/frontend",         // Generated frontend from repo root
+		"frontends/galton-board",         // Custom frontend (top priority)
+		"frontend",                       // Running from service directory
+		"generated/galtonboard/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "galtonboard", "frontend"), // Platform-safe
 	}
 
@@ -291,7 +266,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP00l handles the p00L transition.
 func HandleP00l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +297,6 @@ func HandleP00l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP00r handles the p00R transition.
 func HandleP00r(app *Application) http.HandlerFunc {
@@ -357,7 +330,6 @@ func HandleP00r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP10l handles the p10L transition.
 func HandleP10l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -389,7 +361,6 @@ func HandleP10l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP10r handles the p10R transition.
 func HandleP10r(app *Application) http.HandlerFunc {
@@ -423,7 +394,6 @@ func HandleP10r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP11l handles the p11L transition.
 func HandleP11l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -455,7 +425,6 @@ func HandleP11l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP11r handles the p11R transition.
 func HandleP11r(app *Application) http.HandlerFunc {
@@ -489,7 +458,6 @@ func HandleP11r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP20l handles the p20L transition.
 func HandleP20l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -521,7 +489,6 @@ func HandleP20l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP20r handles the p20R transition.
 func HandleP20r(app *Application) http.HandlerFunc {
@@ -555,7 +522,6 @@ func HandleP20r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP21l handles the p21L transition.
 func HandleP21l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -587,7 +553,6 @@ func HandleP21l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP21r handles the p21R transition.
 func HandleP21r(app *Application) http.HandlerFunc {
@@ -621,7 +586,6 @@ func HandleP21r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP22l handles the p22L transition.
 func HandleP22l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -653,7 +617,6 @@ func HandleP22l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP22r handles the p22R transition.
 func HandleP22r(app *Application) http.HandlerFunc {
@@ -687,7 +650,6 @@ func HandleP22r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP30l handles the p30L transition.
 func HandleP30l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -719,7 +681,6 @@ func HandleP30l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP30r handles the p30R transition.
 func HandleP30r(app *Application) http.HandlerFunc {
@@ -753,7 +714,6 @@ func HandleP30r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP31l handles the p31L transition.
 func HandleP31l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -785,7 +745,6 @@ func HandleP31l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP31r handles the p31R transition.
 func HandleP31r(app *Application) http.HandlerFunc {
@@ -819,7 +778,6 @@ func HandleP31r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP32l handles the p32L transition.
 func HandleP32l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -851,7 +809,6 @@ func HandleP32l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP32r handles the p32R transition.
 func HandleP32r(app *Application) http.HandlerFunc {
@@ -885,7 +842,6 @@ func HandleP32r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP33l handles the p33L transition.
 func HandleP33l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -917,7 +873,6 @@ func HandleP33l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP33r handles the p33R transition.
 func HandleP33r(app *Application) http.HandlerFunc {
@@ -951,7 +906,6 @@ func HandleP33r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP40l handles the p40L transition.
 func HandleP40l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -983,7 +937,6 @@ func HandleP40l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP40r handles the p40R transition.
 func HandleP40r(app *Application) http.HandlerFunc {
@@ -1017,7 +970,6 @@ func HandleP40r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP41l handles the p41L transition.
 func HandleP41l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1049,7 +1001,6 @@ func HandleP41l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP41r handles the p41R transition.
 func HandleP41r(app *Application) http.HandlerFunc {
@@ -1083,7 +1034,6 @@ func HandleP41r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP42l handles the p42L transition.
 func HandleP42l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1115,7 +1065,6 @@ func HandleP42l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP42r handles the p42R transition.
 func HandleP42r(app *Application) http.HandlerFunc {
@@ -1149,7 +1098,6 @@ func HandleP42r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP43l handles the p43L transition.
 func HandleP43l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1181,7 +1129,6 @@ func HandleP43l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP43r handles the p43R transition.
 func HandleP43r(app *Application) http.HandlerFunc {
@@ -1215,7 +1162,6 @@ func HandleP43r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP44l handles the p44L transition.
 func HandleP44l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1247,7 +1193,6 @@ func HandleP44l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP44r handles the p44R transition.
 func HandleP44r(app *Application) http.HandlerFunc {
@@ -1281,7 +1226,6 @@ func HandleP44r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP50l handles the p50L transition.
 func HandleP50l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1313,7 +1257,6 @@ func HandleP50l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP50r handles the p50R transition.
 func HandleP50r(app *Application) http.HandlerFunc {
@@ -1347,7 +1290,6 @@ func HandleP50r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP51l handles the p51L transition.
 func HandleP51l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1379,7 +1321,6 @@ func HandleP51l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP51r handles the p51R transition.
 func HandleP51r(app *Application) http.HandlerFunc {
@@ -1413,7 +1354,6 @@ func HandleP51r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP52l handles the p52L transition.
 func HandleP52l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1445,7 +1385,6 @@ func HandleP52l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP52r handles the p52R transition.
 func HandleP52r(app *Application) http.HandlerFunc {
@@ -1479,7 +1418,6 @@ func HandleP52r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP53l handles the p53L transition.
 func HandleP53l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1511,7 +1449,6 @@ func HandleP53l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP53r handles the p53R transition.
 func HandleP53r(app *Application) http.HandlerFunc {
@@ -1545,7 +1482,6 @@ func HandleP53r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP54l handles the p54L transition.
 func HandleP54l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1577,7 +1513,6 @@ func HandleP54l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP54r handles the p54R transition.
 func HandleP54r(app *Application) http.HandlerFunc {
@@ -1611,7 +1546,6 @@ func HandleP54r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP55l handles the p55L transition.
 func HandleP55l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1643,7 +1577,6 @@ func HandleP55l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP55r handles the p55R transition.
 func HandleP55r(app *Application) http.HandlerFunc {
@@ -1677,7 +1610,6 @@ func HandleP55r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP60l handles the p60L transition.
 func HandleP60l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1709,7 +1641,6 @@ func HandleP60l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP60r handles the p60R transition.
 func HandleP60r(app *Application) http.HandlerFunc {
@@ -1743,7 +1674,6 @@ func HandleP60r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP61l handles the p61L transition.
 func HandleP61l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1775,7 +1705,6 @@ func HandleP61l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP61r handles the p61R transition.
 func HandleP61r(app *Application) http.HandlerFunc {
@@ -1809,7 +1738,6 @@ func HandleP61r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP62l handles the p62L transition.
 func HandleP62l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1841,7 +1769,6 @@ func HandleP62l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP62r handles the p62R transition.
 func HandleP62r(app *Application) http.HandlerFunc {
@@ -1875,7 +1802,6 @@ func HandleP62r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP63l handles the p63L transition.
 func HandleP63l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1907,7 +1833,6 @@ func HandleP63l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP63r handles the p63R transition.
 func HandleP63r(app *Application) http.HandlerFunc {
@@ -1941,7 +1866,6 @@ func HandleP63r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP64l handles the p64L transition.
 func HandleP64l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1973,7 +1897,6 @@ func HandleP64l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP64r handles the p64R transition.
 func HandleP64r(app *Application) http.HandlerFunc {
@@ -2007,7 +1930,6 @@ func HandleP64r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP65l handles the p65L transition.
 func HandleP65l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2039,7 +1961,6 @@ func HandleP65l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP65r handles the p65R transition.
 func HandleP65r(app *Application) http.HandlerFunc {
@@ -2073,7 +1994,6 @@ func HandleP65r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP66l handles the p66L transition.
 func HandleP66l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2105,7 +2025,6 @@ func HandleP66l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP66r handles the p66R transition.
 func HandleP66r(app *Application) http.HandlerFunc {
@@ -2139,7 +2058,6 @@ func HandleP66r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP70l handles the p70L transition.
 func HandleP70l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2171,7 +2089,6 @@ func HandleP70l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP70r handles the p70R transition.
 func HandleP70r(app *Application) http.HandlerFunc {
@@ -2205,7 +2122,6 @@ func HandleP70r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP71l handles the p71L transition.
 func HandleP71l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2237,7 +2153,6 @@ func HandleP71l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP71r handles the p71R transition.
 func HandleP71r(app *Application) http.HandlerFunc {
@@ -2271,7 +2186,6 @@ func HandleP71r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP72l handles the p72L transition.
 func HandleP72l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2303,7 +2217,6 @@ func HandleP72l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP72r handles the p72R transition.
 func HandleP72r(app *Application) http.HandlerFunc {
@@ -2337,7 +2250,6 @@ func HandleP72r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP73l handles the p73L transition.
 func HandleP73l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2369,7 +2281,6 @@ func HandleP73l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP73r handles the p73R transition.
 func HandleP73r(app *Application) http.HandlerFunc {
@@ -2403,7 +2314,6 @@ func HandleP73r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP74l handles the p74L transition.
 func HandleP74l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2435,7 +2345,6 @@ func HandleP74l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP74r handles the p74R transition.
 func HandleP74r(app *Application) http.HandlerFunc {
@@ -2469,7 +2378,6 @@ func HandleP74r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP75l handles the p75L transition.
 func HandleP75l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2501,7 +2409,6 @@ func HandleP75l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP75r handles the p75R transition.
 func HandleP75r(app *Application) http.HandlerFunc {
@@ -2535,7 +2442,6 @@ func HandleP75r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP76l handles the p76L transition.
 func HandleP76l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2567,7 +2473,6 @@ func HandleP76l(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleP76r handles the p76R transition.
 func HandleP76r(app *Application) http.HandlerFunc {
@@ -2601,7 +2506,6 @@ func HandleP76r(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP77l handles the p77L transition.
 func HandleP77l(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2634,7 +2538,6 @@ func HandleP77l(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleP77r handles the p77R transition.
 func HandleP77r(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2666,13 +2569,6 @@ func HandleP77r(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -2759,17 +2655,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -2791,7 +2683,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -2808,4 +2699,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

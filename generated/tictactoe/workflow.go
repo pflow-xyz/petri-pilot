@@ -4,61 +4,61 @@ package tictactoe
 
 // Place constants
 const (
-	PlaceP00 = "p00"
-	PlaceP01 = "p01"
-	PlaceP02 = "p02"
-	PlaceP10 = "p10"
-	PlaceP11 = "p11"
-	PlaceP12 = "p12"
-	PlaceP20 = "p20"
-	PlaceP21 = "p21"
-	PlaceP22 = "p22"
-	PlaceX00 = "x00"
-	PlaceX01 = "x01"
-	PlaceX02 = "x02"
-	PlaceX10 = "x10"
-	PlaceX11 = "x11"
-	PlaceX12 = "x12"
-	PlaceX20 = "x20"
-	PlaceX21 = "x21"
-	PlaceX22 = "x22"
-	PlaceO00 = "o00"
-	PlaceO01 = "o01"
-	PlaceO02 = "o02"
-	PlaceO10 = "o10"
-	PlaceO11 = "o11"
-	PlaceO12 = "o12"
-	PlaceO20 = "o20"
-	PlaceO21 = "o21"
-	PlaceO22 = "o22"
-	PlaceXTurn = "x_turn"
-	PlaceOTurn = "o_turn"
-	PlaceWinX = "win_x"
-	PlaceWinO = "win_o"
+	PlaceP00        = "p00"
+	PlaceP01        = "p01"
+	PlaceP02        = "p02"
+	PlaceP10        = "p10"
+	PlaceP11        = "p11"
+	PlaceP12        = "p12"
+	PlaceP20        = "p20"
+	PlaceP21        = "p21"
+	PlaceP22        = "p22"
+	PlaceX00        = "x00"
+	PlaceX01        = "x01"
+	PlaceX02        = "x02"
+	PlaceX10        = "x10"
+	PlaceX11        = "x11"
+	PlaceX12        = "x12"
+	PlaceX20        = "x20"
+	PlaceX21        = "x21"
+	PlaceX22        = "x22"
+	PlaceO00        = "o00"
+	PlaceO01        = "o01"
+	PlaceO02        = "o02"
+	PlaceO10        = "o10"
+	PlaceO11        = "o11"
+	PlaceO12        = "o12"
+	PlaceO20        = "o20"
+	PlaceO21        = "o21"
+	PlaceO22        = "o22"
+	PlaceXTurn      = "x_turn"
+	PlaceOTurn      = "o_turn"
+	PlaceWinX       = "win_x"
+	PlaceWinO       = "win_o"
 	PlaceGameActive = "game_active"
 	PlaceMoveTokens = "move_tokens"
 )
 
 // Transition constants
 const (
-	TransitionXPlay00 = "x_play_00"
-	TransitionXPlay01 = "x_play_01"
-	TransitionXPlay02 = "x_play_02"
-	TransitionXPlay10 = "x_play_10"
-	TransitionXPlay11 = "x_play_11"
-	TransitionXPlay12 = "x_play_12"
-	TransitionXPlay20 = "x_play_20"
-	TransitionXPlay21 = "x_play_21"
-	TransitionXPlay22 = "x_play_22"
-	TransitionOPlay00 = "o_play_00"
-	TransitionOPlay01 = "o_play_01"
-	TransitionOPlay02 = "o_play_02"
-	TransitionOPlay10 = "o_play_10"
-	TransitionOPlay11 = "o_play_11"
-	TransitionOPlay12 = "o_play_12"
-	TransitionOPlay20 = "o_play_20"
-	TransitionOPlay21 = "o_play_21"
-	TransitionOPlay22 = "o_play_22"
+	TransitionXPlay00  = "x_play_00"
+	TransitionXPlay01  = "x_play_01"
+	TransitionXPlay02  = "x_play_02"
+	TransitionXPlay10  = "x_play_10"
+	TransitionXPlay11  = "x_play_11"
+	TransitionXPlay12  = "x_play_12"
+	TransitionXPlay20  = "x_play_20"
+	TransitionXPlay21  = "x_play_21"
+	TransitionXPlay22  = "x_play_22"
+	TransitionOPlay00  = "o_play_00"
+	TransitionOPlay01  = "o_play_01"
+	TransitionOPlay02  = "o_play_02"
+	TransitionOPlay10  = "o_play_10"
+	TransitionOPlay11  = "o_play_11"
+	TransitionOPlay12  = "o_play_12"
+	TransitionOPlay20  = "o_play_20"
+	TransitionOPlay21  = "o_play_21"
+	TransitionOPlay22  = "o_play_22"
 	TransitionXWinRow0 = "x_win_row0"
 	TransitionXWinRow1 = "x_win_row1"
 	TransitionXWinRow2 = "x_win_row2"
@@ -75,29 +75,29 @@ const (
 	TransitionOWinCol2 = "o_win_col2"
 	TransitionOWinDiag = "o_win_diag"
 	TransitionOWinAnti = "o_win_anti"
-	TransitionDraw = "draw"
+	TransitionDraw     = "draw"
 )
 
 // Event type constants
 const (
-	EventTypeXPlay00 = "XPlayed00"
-	EventTypeXPlay01 = "XPlayed01"
-	EventTypeXPlay02 = "XPlayed02"
-	EventTypeXPlay10 = "XPlayed10"
-	EventTypeXPlay11 = "XPlayed11"
-	EventTypeXPlay12 = "XPlayed12"
-	EventTypeXPlay20 = "XPlayed20"
-	EventTypeXPlay21 = "XPlayed21"
-	EventTypeXPlay22 = "XPlayed22"
-	EventTypeOPlay00 = "OPlayed00"
-	EventTypeOPlay01 = "OPlayed01"
-	EventTypeOPlay02 = "OPlayed02"
-	EventTypeOPlay10 = "OPlayed10"
-	EventTypeOPlay11 = "OPlayed11"
-	EventTypeOPlay12 = "OPlayed12"
-	EventTypeOPlay20 = "OPlayed20"
-	EventTypeOPlay21 = "OPlayed21"
-	EventTypeOPlay22 = "OPlayed22"
+	EventTypeXPlay00  = "XPlayed00"
+	EventTypeXPlay01  = "XPlayed01"
+	EventTypeXPlay02  = "XPlayed02"
+	EventTypeXPlay10  = "XPlayed10"
+	EventTypeXPlay11  = "XPlayed11"
+	EventTypeXPlay12  = "XPlayed12"
+	EventTypeXPlay20  = "XPlayed20"
+	EventTypeXPlay21  = "XPlayed21"
+	EventTypeXPlay22  = "XPlayed22"
+	EventTypeOPlay00  = "OPlayed00"
+	EventTypeOPlay01  = "OPlayed01"
+	EventTypeOPlay02  = "OPlayed02"
+	EventTypeOPlay10  = "OPlayed10"
+	EventTypeOPlay11  = "OPlayed11"
+	EventTypeOPlay12  = "OPlayed12"
+	EventTypeOPlay20  = "OPlayed20"
+	EventTypeOPlay21  = "OPlayed21"
+	EventTypeOPlay22  = "OPlayed22"
 	EventTypeXWinRow0 = "XWon0"
 	EventTypeXWinRow1 = "XWon1"
 	EventTypeXWinRow2 = "XWon2"
@@ -114,22 +114,22 @@ const (
 	EventTypeOWinCol2 = "OWon2"
 	EventTypeOWinDiag = "OWon"
 	EventTypeOWinAnti = "OWon"
-	EventTypeDraw = "GameDraw"
+	EventTypeDraw     = "GameDraw"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
-		PlaceP00: 1,
-		PlaceP01: 1,
-		PlaceP02: 1,
-		PlaceP10: 1,
-		PlaceP11: 1,
-		PlaceP12: 1,
-		PlaceP20: 1,
-		PlaceP21: 1,
-		PlaceP22: 1,
-		PlaceXTurn: 1,
+		PlaceP00:        1,
+		PlaceP01:        1,
+		PlaceP02:        1,
+		PlaceP10:        1,
+		PlaceP11:        1,
+		PlaceP12:        1,
+		PlaceP20:        1,
+		PlaceP21:        1,
+		PlaceP22:        1,
+		PlaceXTurn:      1,
 		PlaceGameActive: 1,
 	}
 }

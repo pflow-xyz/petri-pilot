@@ -371,12 +371,12 @@ func Run() {
 	// Each team starts with 100 probability tokens in R64
 	topContenders := teams[:8] // Top 8 for clarity
 	for _, t := range topContenders {
-		b4.Place(t.Name+"_r64", 100)  // Round of 64
-		b4.Place(t.Name+"_r32", 0)    // Round of 32
-		b4.Place(t.Name+"_s16", 0)    // Sweet 16
-		b4.Place(t.Name+"_e8", 0)     // Elite 8
-		b4.Place(t.Name+"_f4", 0)     // Final Four
-		b4.Place(t.Name+"_champ", 0)  // Championship
+		b4.Place(t.Name+"_r64", 100) // Round of 64
+		b4.Place(t.Name+"_r32", 0)   // Round of 32
+		b4.Place(t.Name+"_s16", 0)   // Sweet 16
+		b4.Place(t.Name+"_e8", 0)    // Elite 8
+		b4.Place(t.Name+"_f4", 0)    // Final Four
+		b4.Place(t.Name+"_champ", 0) // Championship
 	}
 	b4.Place("upset_pool", 0) // Probability mass lost to upsets
 
@@ -617,8 +617,8 @@ func Run() {
 	fmt.Println()
 	fmt.Println("Championship win frequency (outright wins in MC):")
 	type winFreq struct {
-		Name    string
-		WinPct  float64
+		Name     string
+		WinPct   float64
 		WinCount int
 	}
 	var wins []winFreq
@@ -856,7 +856,7 @@ func Run() {
 	}
 
 	// --- Comparison ---
-type bracketResult struct {
+	type bracketResult struct {
 		Name     string
 		Strength float64
 		ODEChamp float64
@@ -1093,7 +1093,7 @@ type bracketResult struct {
 			Topology: uniformProb[t.Name] * 100,
 			Analytic: survivalProb[t.Name] * 100,
 			ODE:      odeFinal6[t.Name+"_champ"] * 100,
-			MC: float64(champCounts[t.Name]) / float64(nSims) * 100,
+			MC:       float64(champCounts[t.Name]) / float64(nSims) * 100,
 		})
 	}
 	sort.Slice(m7results, func(i, j int) bool { return m7results[i].Analytic > m7results[j].Analytic })

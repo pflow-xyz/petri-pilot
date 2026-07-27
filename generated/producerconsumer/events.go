@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // StartProduceedEvent is emitted when the start_produce transition fires.
 type StartProduceedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e StartProduceedEvent) EventType() string {
 	return "StartProduceed"
 }
 
-
 // FinishProduceedEvent is emitted when the finish_produce transition fires.
 type FinishProduceedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e FinishProduceedEvent) EventType() string {
 	return "FinishProduceed"
 }
 
-
 // StartConsumeedEvent is emitted when the start_consume transition fires.
 type StartConsumeedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,16 +39,13 @@ func (e StartConsumeedEvent) EventType() string {
 	return "StartConsumeed"
 }
 
-
 // FinishConsumeedEvent is emitted when the finish_consume transition fires.
 type FinishConsumeedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e FinishConsumeedEvent) EventType() string {
 	return "FinishConsumeed"
 }
-
-

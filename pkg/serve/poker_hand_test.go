@@ -354,7 +354,7 @@ func TestPokerHandModelStructure(t *testing.T) {
 	// Should have 52 card places + 52 deck places + hand type places + hand_strength + pair_count
 	// Hand type places: pair, two_pair, three_kind, straight, flush, full_house, four_kind, straight_flush
 	expectedHandPlaces := 8
-	expectedCardPlaces := 52 * 2 // hand + deck
+	expectedCardPlaces := 52 * 2                             // hand + deck
 	minPlaces := expectedCardPlaces + expectedHandPlaces + 2 // +2 for hand_strength, pair_count
 
 	if len(places) < minPlaces {
@@ -409,15 +409,15 @@ func TestPokerHandRankingOrder(t *testing.T) {
 		expected  HandRank
 	}{
 		// Order from worst to best
-		{"Ah,Kd", "Qs,Jc,9h,7s,3c", HighCard},      // 0
-		{"Ah,Ad", "Qs,Jc,9h", Pair},                 // 1
-		{"Ah,Kh", "Ad,Kd,9s", TwoPair},              // 2
-		{"Ah,Ad", "As,Kd,Qc", ThreeOfAKind},         // 3
-		{"Ah,Kd", "Qs,Jc,Th", Straight},             // 4
-		{"Ah,Kh", "Qh,Jh,9h", Flush},                // 5
-		{"Ah,Ad", "As,Kd,Kc", FullHouse},            // 6
-		{"Ah,Ad", "As,Ac,Kd", FourOfAKind},          // 7
-		{"Ah,Kh", "Qh,Jh,Th", StraightFlush},        // 8
+		{"Ah,Kd", "Qs,Jc,9h,7s,3c", HighCard}, // 0
+		{"Ah,Ad", "Qs,Jc,9h", Pair},           // 1
+		{"Ah,Kh", "Ad,Kd,9s", TwoPair},        // 2
+		{"Ah,Ad", "As,Kd,Qc", ThreeOfAKind},   // 3
+		{"Ah,Kd", "Qs,Jc,Th", Straight},       // 4
+		{"Ah,Kh", "Qh,Jh,9h", Flush},          // 5
+		{"Ah,Ad", "As,Kd,Kc", FullHouse},      // 6
+		{"Ah,Ad", "As,Ac,Kd", FourOfAKind},    // 7
+		{"Ah,Kh", "Qh,Jh,Th", StraightFlush},  // 8
 	}
 
 	prevRank := HandRank(-1)
@@ -793,4 +793,3 @@ func TestHandComparisonMatrix(t *testing.T) {
 		}
 	}
 }
-

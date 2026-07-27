@@ -198,7 +198,7 @@ type Schema struct {
 	Actions     []Action     `json:"actions"`
 	Arcs        []Arc        `json:"arcs"`
 	Constraints []Constraint `json:"constraints,omitempty"`
-	Views       []View       `json:"views,omitempty"`  // UI views for forms and data display
+	Views       []View       `json:"views,omitempty"`      // UI views for forms and data display
 	Simulation  *Simulation  `json:"simulation,omitempty"` // ODE simulation config for AI/evaluation
 }
 

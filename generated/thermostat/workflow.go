@@ -5,23 +5,23 @@ package thermostat
 // Place constants
 const (
 	PlaceTemperature = "temperature"
-	PlaceHeaterOn = "heater_on"
-	PlaceHeaterOff = "heater_off"
+	PlaceHeaterOn    = "heater_on"
+	PlaceHeaterOff   = "heater_off"
 )
 
 // Transition constants
 const (
-	TransitionHeat = "heat"
-	TransitionCool = "cool"
-	TransitionTurnOn = "turn_on"
+	TransitionHeat    = "heat"
+	TransitionCool    = "cool"
+	TransitionTurnOn  = "turn_on"
 	TransitionTurnOff = "turn_off"
 )
 
 // Event type constants
 const (
-	EventTypeHeat = "Heated"
-	EventTypeCool = "Cooled"
-	EventTypeTurnOn = "TurnOned"
+	EventTypeHeat    = "Heated"
+	EventTypeCool    = "Cooled"
+	EventTypeTurnOn  = "TurnOned"
 	EventTypeTurnOff = "TurnOffed"
 )
 
@@ -29,7 +29,7 @@ const (
 func InitialPlaces() map[string]int {
 	return map[string]int{
 		PlaceTemperature: 15,
-		PlaceHeaterOff: 1,
+		PlaceHeaterOff:   1,
 	}
 }
 

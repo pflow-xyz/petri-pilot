@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	ncaaAPIBase    = "https://ncaa-api.henrygd.me"
-	barttovikURL   = "https://barttorvik.com/trank.php?year=%d&css=1&conlimit=#"
-	sportsRefBase  = "https://www.sports-reference.com/cbb/schools"
-	maxReqPerSec   = 5
+	ncaaAPIBase   = "https://ncaa-api.henrygd.me"
+	barttovikURL  = "https://barttorvik.com/trank.php?year=%d&css=1&conlimit=#"
+	sportsRefBase = "https://www.sports-reference.com/cbb/schools"
+	maxReqPerSec  = 5
 )
 
 var (
@@ -38,12 +38,12 @@ type RawTeamData struct {
 	ConfLosses int
 
 	// From Barttorvik
-	AdjOE    float64 // Adjusted offensive efficiency
-	AdjDE    float64 // Adjusted defensive efficiency
-	Barthag  float64 // Win probability vs average D-I team
-	SOS      float64 // Strength of schedule
-	WAB      float64 // Wins above bubble
-	Tempo    float64
+	AdjOE   float64 // Adjusted offensive efficiency
+	AdjDE   float64 // Adjusted defensive efficiency
+	Barthag float64 // Win probability vs average D-I team
+	SOS     float64 // Strength of schedule
+	WAB     float64 // Wins above bubble
+	Tempo   float64
 
 	// From game logs (momentum)
 	Last10Wins     int

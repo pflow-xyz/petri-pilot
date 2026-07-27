@@ -95,7 +95,7 @@ func TestPetriTransitionCircuit_WrongTurn(t *testing.T) {
 
 	// Manually craft invalid witness
 	badPost := preMarking
-	badPost[P00]--       // consume cell
+	badPost[P00]--        // consume cell
 	badPost[PlaceOTurn]-- // wrong - consuming o_turn
 	badPost[X00]++
 	badPost[PlaceOTurn]++ // producing o_turn again? This is nonsense

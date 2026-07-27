@@ -80,7 +80,6 @@ func (r *Resolver) KnapsackList(ctx context.Context, place *string, page *int, p
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateKnapsack creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateKnapsack(ctx context.Context) (*AggregateState, error) 
 
 	return aggregateToState(agg), nil
 }
-
 
 // TakeItem0 executes the take_item0 transition.
 func (r *Resolver) TakeItem0(ctx context.Context, input TakeItem0Input) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) TakeItem0(ctx context.Context, input TakeItem0Input) (*Transi
 	}, nil
 }
 
-
 // TakeItem1 executes the take_item1 transition.
 func (r *Resolver) TakeItem1(ctx context.Context, input TakeItem1Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) TakeItem1(ctx context.Context, input TakeItem1Input) (*Transi
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // TakeItem2 executes the take_item2 transition.
 func (r *Resolver) TakeItem2(ctx context.Context, input TakeItem2Input) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) TakeItem2(ctx context.Context, input TakeItem2Input) (*Transi
 	}, nil
 }
 
-
 // TakeItem3 executes the take_item3 transition.
 func (r *Resolver) TakeItem3(ctx context.Context, input TakeItem3Input) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -254,7 +248,6 @@ func (r *Resolver) TakeItem3(ctx context.Context, input TakeItem3Input) (*Transi
 	}, nil
 }
 
-
 // Reset executes the reset transition.
 func (r *Resolver) Reset(ctx context.Context, input ResetInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -281,8 +274,6 @@ func (r *Resolver) Reset(ctx context.Context, input ResetInput) (*TransitionResu
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -403,30 +394,30 @@ type AggregateState struct {
 }
 
 type State struct {
-	Item0 any `json:"item0"`
-	Item1 any `json:"item1"`
-	Item2 any `json:"item2"`
-	Item3 any `json:"item3"`
-	Capacity any `json:"capacity"`
-	Item0Taken any `json:"item0Taken"`
-	Item1Taken any `json:"item1Taken"`
-	Item2Taken any `json:"item2Taken"`
-	Item3Taken any `json:"item3Taken"`
-	TotalValue any `json:"totalValue"`
+	Item0       any `json:"item0"`
+	Item1       any `json:"item1"`
+	Item2       any `json:"item2"`
+	Item3       any `json:"item3"`
+	Capacity    any `json:"capacity"`
+	Item0Taken  any `json:"item0Taken"`
+	Item1Taken  any `json:"item1Taken"`
+	Item2Taken  any `json:"item2Taken"`
+	Item3Taken  any `json:"item3Taken"`
+	TotalValue  any `json:"totalValue"`
 	TotalWeight any `json:"totalWeight"`
 }
 
 type Places struct {
-	Item0 int `json:"item0"`
-	Item1 int `json:"item1"`
-	Item2 int `json:"item2"`
-	Item3 int `json:"item3"`
-	Capacity int `json:"capacity"`
-	Item0Taken int `json:"item0Taken"`
-	Item1Taken int `json:"item1Taken"`
-	Item2Taken int `json:"item2Taken"`
-	Item3Taken int `json:"item3Taken"`
-	TotalValue int `json:"totalValue"`
+	Item0       int `json:"item0"`
+	Item1       int `json:"item1"`
+	Item2       int `json:"item2"`
+	Item3       int `json:"item3"`
+	Capacity    int `json:"capacity"`
+	Item0Taken  int `json:"item0Taken"`
+	Item1Taken  int `json:"item1Taken"`
+	Item2Taken  int `json:"item2Taken"`
+	Item3Taken  int `json:"item3Taken"`
+	TotalValue  int `json:"totalValue"`
 	TotalWeight int `json:"totalWeight"`
 }
 
@@ -446,7 +437,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -456,30 +446,24 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type TakeItem0Input struct {
 	AggregateID string
 }
 
-
 type TakeItem1Input struct {
 	AggregateID string
 }
-
 
 type TakeItem2Input struct {
 	AggregateID string
 }
 
-
 type TakeItem3Input struct {
 	AggregateID string
 }
 
-
 type ResetInput struct {
 	AggregateID string
 }
-

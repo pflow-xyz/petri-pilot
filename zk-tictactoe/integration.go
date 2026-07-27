@@ -218,10 +218,10 @@ func (z *ZKIntegration) handleFireTransition(w http.ResponseWriter, r *http.Requ
 
 func (z *ZKIntegration) handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
-		"status":   "ok",
-		"circuits": []string{"transition", "win", "move"},
-		"model":    "petri-net",
-		"places":   NumPlaces,
+		"status":      "ok",
+		"circuits":    []string{"transition", "win", "move"},
+		"model":       "petri-net",
+		"places":      NumPlaces,
 		"transitions": NumTransitions,
 	})
 }
@@ -526,11 +526,11 @@ type ReplayRequest struct {
 
 // ReplayMove represents a move with its proof for replay verification.
 type ReplayMove struct {
-	Position     int    `json:"position"`
-	Player       uint8  `json:"player"`
-	PreRoot      string `json:"pre_root"`
-	PostRoot     string `json:"post_root"`
-	ProofVerified bool  `json:"proof_verified"` // Was proof verified when move was made
+	Position      int    `json:"position"`
+	Player        uint8  `json:"player"`
+	PreRoot       string `json:"pre_root"`
+	PostRoot      string `json:"post_root"`
+	ProofVerified bool   `json:"proof_verified"` // Was proof verified when move was made
 }
 
 // ReplayProof contains proof metadata for verification status.

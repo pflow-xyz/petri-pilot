@@ -58,15 +58,15 @@ func distributionTool() mcp.Tool {
 }
 
 type distributionResponse struct {
-	Observable string             `json:"observable"`
-	Mode       string             `json:"mode"`
-	Paths      int                `json:"paths"`
-	Tspan      [2]float64         `json:"tspan"`
-	Mean       float64            `json:"mean"`
-	Stdev      float64            `json:"stdev"`
+	Observable  string             `json:"observable"`
+	Mode        string             `json:"mode"`
+	Paths       int                `json:"paths"`
+	Tspan       [2]float64         `json:"tspan"`
+	Mean        float64            `json:"mean"`
+	Stdev       float64            `json:"stdev"`
 	Percentiles map[string]float64 `json:"percentiles"`
-	BinEdges   []float64          `json:"binEdges"`
-	BinCounts  []int              `json:"binCounts"`
+	BinEdges    []float64          `json:"binEdges"`
+	BinCounts   []int              `json:"binCounts"`
 }
 
 func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

@@ -80,7 +80,6 @@ func (r *Resolver) TcpHandshakeList(ctx context.Context, place *string, page *in
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateTcphandshake creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateTcphandshake(ctx context.Context) (*AggregateState, err
 
 	return aggregateToState(agg), nil
 }
-
 
 // SendSyn executes the send_syn transition.
 func (r *Resolver) SendSyn(ctx context.Context, input SendSynInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) SendSyn(ctx context.Context, input SendSynInput) (*Transition
 	}, nil
 }
 
-
 // SendSynAck executes the send_syn_ack transition.
 func (r *Resolver) SendSynAck(ctx context.Context, input SendSynAckInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) SendSynAck(ctx context.Context, input SendSynAckInput) (*Tran
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // SendAck executes the send_ack transition.
 func (r *Resolver) SendAck(ctx context.Context, input SendAckInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) SendAck(ctx context.Context, input SendAckInput) (*Transition
 	}, nil
 }
 
-
 // SendFin executes the send_fin transition.
 func (r *Resolver) SendFin(ctx context.Context, input SendFinInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) SendFin(ctx context.Context, input SendFinInput) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // SendFinAck executes the send_fin_ack transition.
 func (r *Resolver) SendFinAck(ctx context.Context, input SendFinAckInput) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) SendFinAck(ctx context.Context, input SendFinAckInput) (*Tran
 	}, nil
 }
 
-
 // Close executes the close transition.
 func (r *Resolver) Close(ctx context.Context, input CloseInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,8 +301,6 @@ func (r *Resolver) Close(ctx context.Context, input CloseInput) (*TransitionResu
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -413,25 +403,25 @@ type AggregateState struct {
 }
 
 type State struct {
-	ClientClosed any `json:"clientClosed"`
-	ClientSynSent any `json:"clientSynSent"`
+	ClientClosed      any `json:"clientClosed"`
+	ClientSynSent     any `json:"clientSynSent"`
 	ClientEstablished any `json:"clientEstablished"`
-	ClientFinWait any `json:"clientFinWait"`
-	ServerListen any `json:"serverListen"`
+	ClientFinWait     any `json:"clientFinWait"`
+	ServerListen      any `json:"serverListen"`
 	ServerSynReceived any `json:"serverSynReceived"`
 	ServerEstablished any `json:"serverEstablished"`
-	ServerClosed any `json:"serverClosed"`
+	ServerClosed      any `json:"serverClosed"`
 }
 
 type Places struct {
-	ClientClosed int `json:"clientClosed"`
-	ClientSynSent int `json:"clientSynSent"`
+	ClientClosed      int `json:"clientClosed"`
+	ClientSynSent     int `json:"clientSynSent"`
 	ClientEstablished int `json:"clientEstablished"`
-	ClientFinWait int `json:"clientFinWait"`
-	ServerListen int `json:"serverListen"`
+	ClientFinWait     int `json:"clientFinWait"`
+	ServerListen      int `json:"serverListen"`
 	ServerSynReceived int `json:"serverSynReceived"`
 	ServerEstablished int `json:"serverEstablished"`
-	ServerClosed int `json:"serverClosed"`
+	ServerClosed      int `json:"serverClosed"`
 }
 
 type TransitionResult struct {
@@ -450,7 +440,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -460,35 +449,28 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type SendSynInput struct {
 	AggregateID string
 }
 
-
 type SendSynAckInput struct {
 	AggregateID string
 }
-
 
 type SendAckInput struct {
 	AggregateID string
 }
 
-
 type SendFinInput struct {
 	AggregateID string
 }
-
 
 type SendFinAckInput struct {
 	AggregateID string
 }
 
-
 type CloseInput struct {
 	AggregateID string
 }
-

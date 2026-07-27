@@ -33,50 +33,25 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/hiringpipeline/{id}", "Get hiring-pipeline state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/hiringpipeline/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/hiringpipeline/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/hiringpipeline/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("screen_candidate", "/api/screen_candidate", "Recruiter conducts phone screen", HandleScreenCandidate(app))
@@ -103,9 +78,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/hiring-pipeline",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/hiringpipeline/frontend",         // Generated frontend from repo root
+		"frontends/hiring-pipeline",         // Custom frontend (top priority)
+		"frontend",                          // Running from service directory
+		"generated/hiringpipeline/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "hiringpipeline", "frontend"), // Platform-safe
 	}
 
@@ -242,7 +217,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleScreenCandidate handles the screen_candidate transition.
 func HandleScreenCandidate(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +248,6 @@ func HandleScreenCandidate(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePassScreen handles the pass_screen transition.
 func HandlePassScreen(app *Application) http.HandlerFunc {
@@ -308,7 +281,6 @@ func HandlePassScreen(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleFailScreen handles the fail_screen transition.
 func HandleFailScreen(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +312,6 @@ func HandleFailScreen(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePassTechnical handles the pass_technical transition.
 func HandlePassTechnical(app *Application) http.HandlerFunc {
@@ -374,7 +345,6 @@ func HandlePassTechnical(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleFailTechnical handles the fail_technical transition.
 func HandleFailTechnical(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -406,7 +376,6 @@ func HandleFailTechnical(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandlePassCulture handles the pass_culture transition.
 func HandlePassCulture(app *Application) http.HandlerFunc {
@@ -440,7 +409,6 @@ func HandlePassCulture(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleFailCulture handles the fail_culture transition.
 func HandleFailCulture(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -472,7 +440,6 @@ func HandleFailCulture(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleMergeInterviews handles the merge_interviews transition.
 func HandleMergeInterviews(app *Application) http.HandlerFunc {
@@ -506,7 +473,6 @@ func HandleMergeInterviews(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleExtendOffer handles the extend_offer transition.
 func HandleExtendOffer(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -538,7 +504,6 @@ func HandleExtendOffer(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleAcceptOffer handles the accept_offer transition.
 func HandleAcceptOffer(app *Application) http.HandlerFunc {
@@ -572,7 +537,6 @@ func HandleAcceptOffer(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRejectOffer handles the reject_offer transition.
 func HandleRejectOffer(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -604,13 +568,6 @@ func HandleRejectOffer(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -697,17 +654,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -729,7 +682,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -746,4 +698,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

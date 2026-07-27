@@ -317,10 +317,10 @@ func handleTemplate(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	result := struct {
-		Name        string `json:"name"`
-		Category    string `json:"category"`
-		Description string `json:"description"`
-		Notes       string `json:"notes,omitempty"`
+		Name        string          `json:"name"`
+		Category    string          `json:"category"`
+		Description string          `json:"description"`
+		Notes       string          `json:"notes,omitempty"`
 		Model       json.RawMessage `json:"model"`
 	}{
 		Name:        tpl.Name,
@@ -368,4 +368,3 @@ func listTemplates(templates map[string]defiTemplate) (*mcp.CallToolResult, erro
 	}
 	return mcp.NewToolResultText(string(out)), nil
 }
-

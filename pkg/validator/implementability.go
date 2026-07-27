@@ -40,8 +40,8 @@ type ImplementabilityIssue struct {
 
 // ModelPattern describes the detected pattern type.
 type ModelPattern struct {
-	Type        string `json:"type"` // "workflow", "state_machine", "resource_pool", "mixed"
-	Description string `json:"description"`
+	Type        string  `json:"type"` // "workflow", "state_machine", "resource_pool", "mixed"
+	Description string  `json:"description"`
 	Confidence  float64 `json:"confidence"` // 0.0 to 1.0
 }
 

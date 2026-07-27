@@ -24,9 +24,9 @@ import (
 // in the model take precedence wherever present.
 func computeAutoLayout(model *goflowmetamodel.Model) (placePos, transPos map[string][2]int) {
 	type node struct {
-		id        string
+		id           string
 		x, y, dx, dy float64
-		isPlace   bool
+		isPlace      bool
 	}
 
 	nodes := make([]*node, 0, len(model.Places)+len(model.Transitions))

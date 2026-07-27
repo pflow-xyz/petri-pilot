@@ -33,25 +33,17 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/coffeeshop/{id}", "Get coffeeshop state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
-
 
 	// Event replay endpoints
 	r.GET("/api/coffeeshop/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/coffeeshop/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/coffeeshop/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
@@ -59,22 +51,6 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("order_espresso", "/api/order_espresso", "Customer orders espresso", HandleOrderEspresso(app))
@@ -102,9 +78,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/coffeeshop",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/coffeeshop/frontend",         // Generated frontend from repo root
+		"frontends/coffeeshop",          // Custom frontend (top priority)
+		"frontend",                      // Running from service directory
+		"generated/coffeeshop/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "coffeeshop", "frontend"), // Platform-safe
 	}
 
@@ -241,7 +217,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOrderEspresso handles the order_espresso transition.
 func HandleOrderEspresso(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +248,6 @@ func HandleOrderEspresso(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOrderLatte handles the order_latte transition.
 func HandleOrderLatte(app *Application) http.HandlerFunc {
@@ -307,7 +281,6 @@ func HandleOrderLatte(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOrderCappuccino handles the order_cappuccino transition.
 func HandleOrderCappuccino(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +312,6 @@ func HandleOrderCappuccino(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleMakeEspresso handles the make_espresso transition.
 func HandleMakeEspresso(app *Application) http.HandlerFunc {
@@ -373,7 +345,6 @@ func HandleMakeEspresso(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleMakeLatte handles the make_latte transition.
 func HandleMakeLatte(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -405,7 +376,6 @@ func HandleMakeLatte(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleMakeCappuccino handles the make_cappuccino transition.
 func HandleMakeCappuccino(app *Application) http.HandlerFunc {
@@ -439,7 +409,6 @@ func HandleMakeCappuccino(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleServeEspresso handles the serve_espresso transition.
 func HandleServeEspresso(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -471,7 +440,6 @@ func HandleServeEspresso(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleServeLatte handles the serve_latte transition.
 func HandleServeLatte(app *Application) http.HandlerFunc {
@@ -505,7 +473,6 @@ func HandleServeLatte(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleServeCappuccino handles the serve_cappuccino transition.
 func HandleServeCappuccino(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -537,7 +504,6 @@ func HandleServeCappuccino(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleRestockCoffeeBeans handles the restock_coffee_beans transition.
 func HandleRestockCoffeeBeans(app *Application) http.HandlerFunc {
@@ -571,7 +537,6 @@ func HandleRestockCoffeeBeans(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRestockMilk handles the restock_milk transition.
 func HandleRestockMilk(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -604,7 +569,6 @@ func HandleRestockMilk(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleRestockCups handles the restock_cups transition.
 func HandleRestockCups(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -636,13 +600,6 @@ func HandleRestockCups(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
-
-
-
-
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -729,17 +686,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -761,7 +714,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -778,4 +730,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

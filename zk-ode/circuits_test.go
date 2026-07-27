@@ -191,4 +191,3 @@ func TestNativeSolverAccuracy(t *testing.T) {
 		t.Errorf("conservation violated: A+B+C = %.15f (expected 1.0)", sum)
 	}
 }
-

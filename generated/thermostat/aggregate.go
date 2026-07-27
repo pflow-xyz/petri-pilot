@@ -14,14 +14,13 @@ import (
 // State holds the aggregate state for thermostat.
 type State struct {
 	Temperature int `json:"temperature"`
-	HeaterOn int `json:"heater_on"`
-	HeaterOff int `json:"heater_off"`
+	HeaterOn    int `json:"heater_on"`
+	HeaterOff   int `json:"heater_off"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the thermostat state.
@@ -44,7 +43,7 @@ func NewAggregate(id string) *Aggregate {
 			PlaceHeaterOn: 1,
 		},
 		Outputs: map[string]int{
-			PlaceHeaterOn: 1,
+			PlaceHeaterOn:    1,
 			PlaceTemperature: 1,
 		},
 	})
@@ -54,8 +53,7 @@ func NewAggregate(id string) *Aggregate {
 		Inputs: map[string]int{
 			PlaceTemperature: 1,
 		},
-		Outputs: map[string]int{
-		},
+		Outputs: map[string]int{},
 	})
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionTurnOn,

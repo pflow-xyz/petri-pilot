@@ -13,22 +13,21 @@ import (
 
 // State holds the aggregate state for hiring-pipeline.
 type State struct {
-	Applied int `json:"applied"`
-	PhoneScreen int `json:"phone_screen"`
+	Applied            int `json:"applied"`
+	PhoneScreen        int `json:"phone_screen"`
 	TechnicalInterview int `json:"technical_interview"`
-	CultureInterview int `json:"culture_interview"`
-	TechPassed int `json:"tech_passed"`
-	CulturePassed int `json:"culture_passed"`
-	ReadyForOffer int `json:"ready_for_offer"`
-	OfferExtended int `json:"offer_extended"`
-	Hired int `json:"hired"`
-	Rejected int `json:"rejected"`
+	CultureInterview   int `json:"culture_interview"`
+	TechPassed         int `json:"tech_passed"`
+	CulturePassed      int `json:"culture_passed"`
+	ReadyForOffer      int `json:"ready_for_offer"`
+	OfferExtended      int `json:"offer_extended"`
+	Hired              int `json:"hired"`
+	Rejected           int `json:"rejected"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the hiring-pipeline state.
@@ -62,7 +61,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceTechnicalInterview: 1,
-			PlaceCultureInterview: 1,
+			PlaceCultureInterview:   1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -119,7 +118,7 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionMergeInterviews,
 		EventType: EventTypeMergeInterviews,
 		Inputs: map[string]int{
-			PlaceTechPassed: 1,
+			PlaceTechPassed:    1,
 			PlaceCulturePassed: 1,
 		},
 		Outputs: map[string]int{

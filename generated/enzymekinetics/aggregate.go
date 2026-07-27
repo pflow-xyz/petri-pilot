@@ -14,15 +14,14 @@ import (
 // State holds the aggregate state for enzyme-kinetics.
 type State struct {
 	Substrate int `json:"substrate"`
-	Enzyme int `json:"enzyme"`
-	Complex int `json:"complex"`
-	Product int `json:"product"`
+	Enzyme    int `json:"enzyme"`
+	Complex   int `json:"complex"`
+	Product   int `json:"product"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the enzyme-kinetics state.
@@ -43,7 +42,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeBind,
 		Inputs: map[string]int{
 			PlaceSubstrate: 1,
-			PlaceEnzyme: 1,
+			PlaceEnzyme:    1,
 		},
 		Outputs: map[string]int{
 			PlaceComplex: 1,
@@ -57,7 +56,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceSubstrate: 1,
-			PlaceEnzyme: 1,
+			PlaceEnzyme:    1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -68,7 +67,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceProduct: 1,
-			PlaceEnzyme: 1,
+			PlaceEnzyme:  1,
 		},
 	})
 

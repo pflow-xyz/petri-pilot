@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // P00LedEvent is emitted when the p00L transition fires.
 type P00LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e P00LedEvent) EventType() string {
 	return "P00Led"
 }
 
-
 // P00RedEvent is emitted when the p00R transition fires.
 type P00RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e P00RedEvent) EventType() string {
 	return "P00Red"
 }
 
-
 // P10LedEvent is emitted when the p10L transition fires.
 type P10LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e P10LedEvent) EventType() string {
 	return "P10Led"
 }
 
-
 // P10RedEvent is emitted when the p10R transition fires.
 type P10RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e P10RedEvent) EventType() string {
 	return "P10Red"
 }
 
-
 // P11LedEvent is emitted when the p11L transition fires.
 type P11LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e P11LedEvent) EventType() string {
 	return "P11Led"
 }
 
-
 // P11RedEvent is emitted when the p11R transition fires.
 type P11RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e P11RedEvent) EventType() string {
 	return "P11Red"
 }
 
-
 // P20LedEvent is emitted when the p20L transition fires.
 type P20LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e P20LedEvent) EventType() string {
 	return "P20Led"
 }
 
-
 // P20RedEvent is emitted when the p20R transition fires.
 type P20RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e P20RedEvent) EventType() string {
 	return "P20Red"
 }
 
-
 // P21LedEvent is emitted when the p21L transition fires.
 type P21LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e P21LedEvent) EventType() string {
 	return "P21Led"
 }
 
-
 // P21RedEvent is emitted when the p21R transition fires.
 type P21RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,11 +116,10 @@ func (e P21RedEvent) EventType() string {
 	return "P21Red"
 }
 
-
 // P22LedEvent is emitted when the p22L transition fires.
 type P22LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -138,11 +127,10 @@ func (e P22LedEvent) EventType() string {
 	return "P22Led"
 }
 
-
 // P22RedEvent is emitted when the p22R transition fires.
 type P22RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -150,11 +138,10 @@ func (e P22RedEvent) EventType() string {
 	return "P22Red"
 }
 
-
 // P30LedEvent is emitted when the p30L transition fires.
 type P30LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -162,11 +149,10 @@ func (e P30LedEvent) EventType() string {
 	return "P30Led"
 }
 
-
 // P30RedEvent is emitted when the p30R transition fires.
 type P30RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -174,11 +160,10 @@ func (e P30RedEvent) EventType() string {
 	return "P30Red"
 }
 
-
 // P31LedEvent is emitted when the p31L transition fires.
 type P31LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -186,11 +171,10 @@ func (e P31LedEvent) EventType() string {
 	return "P31Led"
 }
 
-
 // P31RedEvent is emitted when the p31R transition fires.
 type P31RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -198,11 +182,10 @@ func (e P31RedEvent) EventType() string {
 	return "P31Red"
 }
 
-
 // P32LedEvent is emitted when the p32L transition fires.
 type P32LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -210,11 +193,10 @@ func (e P32LedEvent) EventType() string {
 	return "P32Led"
 }
 
-
 // P32RedEvent is emitted when the p32R transition fires.
 type P32RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -222,11 +204,10 @@ func (e P32RedEvent) EventType() string {
 	return "P32Red"
 }
 
-
 // P33LedEvent is emitted when the p33L transition fires.
 type P33LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -234,11 +215,10 @@ func (e P33LedEvent) EventType() string {
 	return "P33Led"
 }
 
-
 // P33RedEvent is emitted when the p33R transition fires.
 type P33RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -246,11 +226,10 @@ func (e P33RedEvent) EventType() string {
 	return "P33Red"
 }
 
-
 // P40LedEvent is emitted when the p40L transition fires.
 type P40LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -258,11 +237,10 @@ func (e P40LedEvent) EventType() string {
 	return "P40Led"
 }
 
-
 // P40RedEvent is emitted when the p40R transition fires.
 type P40RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -270,11 +248,10 @@ func (e P40RedEvent) EventType() string {
 	return "P40Red"
 }
 
-
 // P41LedEvent is emitted when the p41L transition fires.
 type P41LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -282,11 +259,10 @@ func (e P41LedEvent) EventType() string {
 	return "P41Led"
 }
 
-
 // P41RedEvent is emitted when the p41R transition fires.
 type P41RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -294,11 +270,10 @@ func (e P41RedEvent) EventType() string {
 	return "P41Red"
 }
 
-
 // P42LedEvent is emitted when the p42L transition fires.
 type P42LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -306,11 +281,10 @@ func (e P42LedEvent) EventType() string {
 	return "P42Led"
 }
 
-
 // P42RedEvent is emitted when the p42R transition fires.
 type P42RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -318,11 +292,10 @@ func (e P42RedEvent) EventType() string {
 	return "P42Red"
 }
 
-
 // P43LedEvent is emitted when the p43L transition fires.
 type P43LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -330,11 +303,10 @@ func (e P43LedEvent) EventType() string {
 	return "P43Led"
 }
 
-
 // P43RedEvent is emitted when the p43R transition fires.
 type P43RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -342,11 +314,10 @@ func (e P43RedEvent) EventType() string {
 	return "P43Red"
 }
 
-
 // P44LedEvent is emitted when the p44L transition fires.
 type P44LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -354,11 +325,10 @@ func (e P44LedEvent) EventType() string {
 	return "P44Led"
 }
 
-
 // P44RedEvent is emitted when the p44R transition fires.
 type P44RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -366,11 +336,10 @@ func (e P44RedEvent) EventType() string {
 	return "P44Red"
 }
 
-
 // P50LedEvent is emitted when the p50L transition fires.
 type P50LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -378,11 +347,10 @@ func (e P50LedEvent) EventType() string {
 	return "P50Led"
 }
 
-
 // P50RedEvent is emitted when the p50R transition fires.
 type P50RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -390,11 +358,10 @@ func (e P50RedEvent) EventType() string {
 	return "P50Red"
 }
 
-
 // P51LedEvent is emitted when the p51L transition fires.
 type P51LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -402,11 +369,10 @@ func (e P51LedEvent) EventType() string {
 	return "P51Led"
 }
 
-
 // P51RedEvent is emitted when the p51R transition fires.
 type P51RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -414,11 +380,10 @@ func (e P51RedEvent) EventType() string {
 	return "P51Red"
 }
 
-
 // P52LedEvent is emitted when the p52L transition fires.
 type P52LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -426,11 +391,10 @@ func (e P52LedEvent) EventType() string {
 	return "P52Led"
 }
 
-
 // P52RedEvent is emitted when the p52R transition fires.
 type P52RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -438,11 +402,10 @@ func (e P52RedEvent) EventType() string {
 	return "P52Red"
 }
 
-
 // P53LedEvent is emitted when the p53L transition fires.
 type P53LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -450,11 +413,10 @@ func (e P53LedEvent) EventType() string {
 	return "P53Led"
 }
 
-
 // P53RedEvent is emitted when the p53R transition fires.
 type P53RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -462,11 +424,10 @@ func (e P53RedEvent) EventType() string {
 	return "P53Red"
 }
 
-
 // P54LedEvent is emitted when the p54L transition fires.
 type P54LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -474,11 +435,10 @@ func (e P54LedEvent) EventType() string {
 	return "P54Led"
 }
 
-
 // P54RedEvent is emitted when the p54R transition fires.
 type P54RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -486,11 +446,10 @@ func (e P54RedEvent) EventType() string {
 	return "P54Red"
 }
 
-
 // P55LedEvent is emitted when the p55L transition fires.
 type P55LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -498,11 +457,10 @@ func (e P55LedEvent) EventType() string {
 	return "P55Led"
 }
 
-
 // P55RedEvent is emitted when the p55R transition fires.
 type P55RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -510,11 +468,10 @@ func (e P55RedEvent) EventType() string {
 	return "P55Red"
 }
 
-
 // P60LedEvent is emitted when the p60L transition fires.
 type P60LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -522,11 +479,10 @@ func (e P60LedEvent) EventType() string {
 	return "P60Led"
 }
 
-
 // P60RedEvent is emitted when the p60R transition fires.
 type P60RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -534,11 +490,10 @@ func (e P60RedEvent) EventType() string {
 	return "P60Red"
 }
 
-
 // P61LedEvent is emitted when the p61L transition fires.
 type P61LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -546,11 +501,10 @@ func (e P61LedEvent) EventType() string {
 	return "P61Led"
 }
 
-
 // P61RedEvent is emitted when the p61R transition fires.
 type P61RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -558,11 +512,10 @@ func (e P61RedEvent) EventType() string {
 	return "P61Red"
 }
 
-
 // P62LedEvent is emitted when the p62L transition fires.
 type P62LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -570,11 +523,10 @@ func (e P62LedEvent) EventType() string {
 	return "P62Led"
 }
 
-
 // P62RedEvent is emitted when the p62R transition fires.
 type P62RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -582,11 +534,10 @@ func (e P62RedEvent) EventType() string {
 	return "P62Red"
 }
 
-
 // P63LedEvent is emitted when the p63L transition fires.
 type P63LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -594,11 +545,10 @@ func (e P63LedEvent) EventType() string {
 	return "P63Led"
 }
 
-
 // P63RedEvent is emitted when the p63R transition fires.
 type P63RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -606,11 +556,10 @@ func (e P63RedEvent) EventType() string {
 	return "P63Red"
 }
 
-
 // P64LedEvent is emitted when the p64L transition fires.
 type P64LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -618,11 +567,10 @@ func (e P64LedEvent) EventType() string {
 	return "P64Led"
 }
 
-
 // P64RedEvent is emitted when the p64R transition fires.
 type P64RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -630,11 +578,10 @@ func (e P64RedEvent) EventType() string {
 	return "P64Red"
 }
 
-
 // P65LedEvent is emitted when the p65L transition fires.
 type P65LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -642,11 +589,10 @@ func (e P65LedEvent) EventType() string {
 	return "P65Led"
 }
 
-
 // P65RedEvent is emitted when the p65R transition fires.
 type P65RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -654,11 +600,10 @@ func (e P65RedEvent) EventType() string {
 	return "P65Red"
 }
 
-
 // P66LedEvent is emitted when the p66L transition fires.
 type P66LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -666,11 +611,10 @@ func (e P66LedEvent) EventType() string {
 	return "P66Led"
 }
 
-
 // P66RedEvent is emitted when the p66R transition fires.
 type P66RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -678,11 +622,10 @@ func (e P66RedEvent) EventType() string {
 	return "P66Red"
 }
 
-
 // P70LedEvent is emitted when the p70L transition fires.
 type P70LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -690,11 +633,10 @@ func (e P70LedEvent) EventType() string {
 	return "P70Led"
 }
 
-
 // P70RedEvent is emitted when the p70R transition fires.
 type P70RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -702,11 +644,10 @@ func (e P70RedEvent) EventType() string {
 	return "P70Red"
 }
 
-
 // P71LedEvent is emitted when the p71L transition fires.
 type P71LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -714,11 +655,10 @@ func (e P71LedEvent) EventType() string {
 	return "P71Led"
 }
 
-
 // P71RedEvent is emitted when the p71R transition fires.
 type P71RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -726,11 +666,10 @@ func (e P71RedEvent) EventType() string {
 	return "P71Red"
 }
 
-
 // P72LedEvent is emitted when the p72L transition fires.
 type P72LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -738,11 +677,10 @@ func (e P72LedEvent) EventType() string {
 	return "P72Led"
 }
 
-
 // P72RedEvent is emitted when the p72R transition fires.
 type P72RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -750,11 +688,10 @@ func (e P72RedEvent) EventType() string {
 	return "P72Red"
 }
 
-
 // P73LedEvent is emitted when the p73L transition fires.
 type P73LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -762,11 +699,10 @@ func (e P73LedEvent) EventType() string {
 	return "P73Led"
 }
 
-
 // P73RedEvent is emitted when the p73R transition fires.
 type P73RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -774,11 +710,10 @@ func (e P73RedEvent) EventType() string {
 	return "P73Red"
 }
 
-
 // P74LedEvent is emitted when the p74L transition fires.
 type P74LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -786,11 +721,10 @@ func (e P74LedEvent) EventType() string {
 	return "P74Led"
 }
 
-
 // P74RedEvent is emitted when the p74R transition fires.
 type P74RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -798,11 +732,10 @@ func (e P74RedEvent) EventType() string {
 	return "P74Red"
 }
 
-
 // P75LedEvent is emitted when the p75L transition fires.
 type P75LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -810,11 +743,10 @@ func (e P75LedEvent) EventType() string {
 	return "P75Led"
 }
 
-
 // P75RedEvent is emitted when the p75R transition fires.
 type P75RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -822,11 +754,10 @@ func (e P75RedEvent) EventType() string {
 	return "P75Red"
 }
 
-
 // P76LedEvent is emitted when the p76L transition fires.
 type P76LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -834,11 +765,10 @@ func (e P76LedEvent) EventType() string {
 	return "P76Led"
 }
 
-
 // P76RedEvent is emitted when the p76R transition fires.
 type P76RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -846,11 +776,10 @@ func (e P76RedEvent) EventType() string {
 	return "P76Red"
 }
 
-
 // P77LedEvent is emitted when the p77L transition fires.
 type P77LedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -858,16 +787,13 @@ func (e P77LedEvent) EventType() string {
 	return "P77Led"
 }
 
-
 // P77RedEvent is emitted when the p77R transition fires.
 type P77RedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e P77RedEvent) EventType() string {
 	return "P77Red"
 }
-
-

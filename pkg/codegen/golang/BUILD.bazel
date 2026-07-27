@@ -64,7 +64,10 @@ go_library(
 
 go_test(
     name = "golang_test",
-    srcs = ["bazel_test.go"],
+    srcs = [
+        "bazel_test.go",
+        "format_test.go",
+    ],
     embed = [":golang"],
     deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
 )

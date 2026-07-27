@@ -72,8 +72,8 @@ type Field struct {
 
 // FieldReference defines a relationship to another entity.
 type FieldReference struct {
-	Entity   string `json:"entity"`            // Target entity ID
-	Field    string `json:"field,omitempty"`   // Target field (default: id)
+	Entity   string `json:"entity"`              // Target entity ID
+	Field    string `json:"field,omitempty"`     // Target field (default: id)
 	OnDelete string `json:"on_delete,omitempty"` // cascade, restrict, set_null
 }
 
@@ -117,18 +117,18 @@ type EntityAction struct {
 
 // ActionParam defines an input parameter for an action.
 type ActionParam struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name,omitempty"`
-	Type        FieldType `json:"type"`
-	Required    bool      `json:"required,omitempty"`
-	Default     any       `json:"default,omitempty"`
-	Validation  string    `json:"validation,omitempty"`
+	ID         string    `json:"id"`
+	Name       string    `json:"name,omitempty"`
+	Type       FieldType `json:"type"`
+	Required   bool      `json:"required,omitempty"`
+	Default    any       `json:"default,omitempty"`
+	Validation string    `json:"validation,omitempty"`
 }
 
 // ActionEffect defines a field update resulting from an action.
 type ActionEffect struct {
-	Field string `json:"field"`      // Field to update
-	Value string `json:"value"`      // Expression for new value (can reference inputs)
+	Field string `json:"field"`        // Field to update
+	Value string `json:"value"`        // Expression for new value (can reference inputs)
 	Op    string `json:"op,omitempty"` // set, add, subtract, append (default: set)
 }
 
@@ -190,18 +190,18 @@ type UIComponent struct {
 
 // Integration defines an external system connection.
 type Integration struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name,omitempty"`
-	Type        string         `json:"type"` // webhook, api, database, queue
-	Config      map[string]any `json:"config"`
+	ID     string         `json:"id"`
+	Name   string         `json:"name,omitempty"`
+	Type   string         `json:"type"` // webhook, api, database, queue
+	Config map[string]any `json:"config"`
 }
 
 // Webhook defines an outbound webhook integration.
 type Webhook struct {
 	ID          string       `json:"id"`
 	URL         string       `json:"url"`
-	Events      []string     `json:"events"`      // ["order.created", "order.shipped"]
-	Secret      string       `json:"secret"`      // For HMAC signature
+	Events      []string     `json:"events"` // ["order.created", "order.shipped"]
+	Secret      string       `json:"secret"` // For HMAC signature
 	Enabled     bool         `json:"enabled"`
 	RetryPolicy *RetryPolicy `json:"retryPolicy,omitempty"`
 }
@@ -227,7 +227,7 @@ type Workflow struct {
 
 // WorkflowTrigger defines what initiates a workflow.
 type WorkflowTrigger struct {
-	Type   string `json:"type"`   // event, schedule, manual
+	Type   string `json:"type"` // event, schedule, manual
 	Entity string `json:"entity,omitempty"`
 	Action string `json:"action,omitempty"`
 	Cron   string `json:"cron,omitempty"`
@@ -235,15 +235,15 @@ type WorkflowTrigger struct {
 
 // WorkflowStep defines a single step in a workflow.
 type WorkflowStep struct {
-	ID        string `json:"id"`
-	Type      string `json:"type"` // action, condition, parallel, wait
-	Entity    string `json:"entity,omitempty"`
-	Action    string `json:"action,omitempty"`
-	Condition string `json:"condition,omitempty"`
-	Duration  string `json:"duration,omitempty"` // Duration for wait steps (e.g., "5m", "1h")
-	Input     map[string]string `json:"input,omitempty"` // Mapping from workflow context
-	OnSuccess string `json:"on_success,omitempty"` // Next step ID
-	OnFailure string `json:"on_failure,omitempty"` // Step ID on failure
+	ID        string            `json:"id"`
+	Type      string            `json:"type"` // action, condition, parallel, wait
+	Entity    string            `json:"entity,omitempty"`
+	Action    string            `json:"action,omitempty"`
+	Condition string            `json:"condition,omitempty"`
+	Duration  string            `json:"duration,omitempty"`   // Duration for wait steps (e.g., "5m", "1h")
+	Input     map[string]string `json:"input,omitempty"`      // Mapping from workflow context
+	OnSuccess string            `json:"on_success,omitempty"` // Next step ID
+	OnFailure string            `json:"on_failure,omitempty"` // Step ID on failure
 }
 
 // ToSchema converts an Entity to a metamodel Schema.

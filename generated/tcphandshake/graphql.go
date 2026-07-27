@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/tcphandshake/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/tcphandshake/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -271,7 +269,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "tcphandshake(") {
 		id := ""
@@ -311,7 +308,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -332,7 +328,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -553,7 +548,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createTcphandshake"] = resolvers["tcphandshake_create"]
 
-
 	resolvers["tcphandshake_send_syn"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SendSynInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -564,7 +558,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.SendSyn(ctx, input)
 	}
 	resolvers["sendSyn"] = resolvers["tcphandshake_send_syn"]
-
 
 	resolvers["tcphandshake_send_syn_ack"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SendSynAckInput{}
@@ -577,7 +570,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["sendSynAck"] = resolvers["tcphandshake_send_syn_ack"]
 
-
 	resolvers["tcphandshake_send_ack"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SendAckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -588,7 +580,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.SendAck(ctx, input)
 	}
 	resolvers["sendAck"] = resolvers["tcphandshake_send_ack"]
-
 
 	resolvers["tcphandshake_send_fin"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SendFinInput{}
@@ -601,7 +592,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["sendFin"] = resolvers["tcphandshake_send_fin"]
 
-
 	resolvers["tcphandshake_send_fin_ack"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.SendFinAckInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -613,7 +603,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["sendFinAck"] = resolvers["tcphandshake_send_fin_ack"]
 
-
 	resolvers["tcphandshake_close"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.CloseInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -624,9 +613,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Close(ctx, input)
 	}
 	resolvers["close"] = resolvers["tcphandshake_close"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["tcphandshake_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -640,7 +626,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["tcphandshake_events"]
 	resolvers["tcphandshakeEvents"] = resolvers["tcphandshake_events"]
-
 
 	return resolvers
 }

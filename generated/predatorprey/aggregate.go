@@ -13,14 +13,13 @@ import (
 
 // State holds the aggregate state for predator-prey.
 type State struct {
-	Prey int `json:"prey"`
+	Prey     int `json:"prey"`
 	Predator int `json:"predator"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the predator-prey state.
@@ -50,7 +49,7 @@ func NewAggregate(id string) *Aggregate {
 		ID:        TransitionPredation,
 		EventType: EventTypePredation,
 		Inputs: map[string]int{
-			PlacePrey: 1,
+			PlacePrey:     1,
 			PlacePredator: 1,
 		},
 		Outputs: map[string]int{
@@ -63,8 +62,7 @@ func NewAggregate(id string) *Aggregate {
 		Inputs: map[string]int{
 			PlacePredator: 1,
 		},
-		Outputs: map[string]int{
-		},
+		Outputs: map[string]int{},
 	})
 
 	// Register event handlers for state updates

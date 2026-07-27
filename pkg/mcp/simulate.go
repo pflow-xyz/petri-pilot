@@ -31,11 +31,11 @@ type SimulationStep struct {
 // SimulationResult represents the result of a simulation.
 // It includes the overall success status, final state, and detailed step-by-step trace.
 type SimulationResult struct {
-	Success    bool              `json:"success"`
-	FinalState map[string]int    `json:"final_state"`
-	Steps      []StepResult      `json:"steps"`
-	Error      string            `json:"error,omitempty"`
-	
+	Success    bool           `json:"success"`
+	FinalState map[string]int `json:"final_state"`
+	Steps      []StepResult   `json:"steps"`
+	Error      string         `json:"error,omitempty"`
+
 	// Legacy fields for backwards compatibility with existing tests
 	InitialMarking map[string]int `json:"initial_marking,omitempty"`
 	FinalMarking   map[string]int `json:"final_marking,omitempty"`
@@ -83,7 +83,7 @@ func simulate(model *metamodel.Model, steps []SimulationStep) SimulationResult {
 	for _, step := range steps {
 		stepResult := executeStep(runtime, metaSchema, step)
 		result.Steps = append(result.Steps, stepResult)
-		
+
 		// Track fired and failed for backwards compatibility
 		if stepResult.Enabled && stepResult.Error == "" {
 			result.Fired = append(result.Fired, stepResult.Transition)
@@ -206,7 +206,7 @@ func handleSimulateWithSteps(ctx context.Context, request mcp.CallToolRequest) (
 
 	// Try new "steps" parameter first, then fall back to "transitions" for backwards compatibility
 	var steps []SimulationStep
-	
+
 	if stepsJSON := request.GetString("steps", ""); stepsJSON != "" {
 		// New API with SimulationStep objects
 		if err := json.Unmarshal([]byte(stepsJSON), &steps); err != nil {
@@ -218,7 +218,7 @@ func handleSimulateWithSteps(ctx context.Context, request mcp.CallToolRequest) (
 		if err := json.Unmarshal([]byte(transitionsJSON), &transitions); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid transitions JSON: %v", err)), nil
 		}
-		
+
 		// Convert string array to SimulationStep array
 		for _, t := range transitions {
 			steps = append(steps, SimulationStep{Transition: t})

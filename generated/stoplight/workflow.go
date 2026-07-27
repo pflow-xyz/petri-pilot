@@ -4,21 +4,21 @@ package stoplight
 
 // Place constants
 const (
-	PlaceRed = "red"
-	PlaceGreen = "green"
+	PlaceRed    = "red"
+	PlaceGreen  = "green"
 	PlaceYellow = "yellow"
 )
 
 // Transition constants
 const (
-	TransitionGo = "go"
+	TransitionGo   = "go"
 	TransitionSlow = "slow"
 	TransitionStop = "stop"
 )
 
 // Event type constants
 const (
-	EventTypeGo = "Go"
+	EventTypeGo   = "Go"
 	EventTypeSlow = "Slowed"
 	EventTypeStop = "Stoped"
 )

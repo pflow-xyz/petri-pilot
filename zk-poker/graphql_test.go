@@ -45,7 +45,7 @@ func TestGraphQLCommitHoleCards(t *testing.T) {
 	// Commit hole cards for all players
 	for p := 0; p < NumPlayers; p++ {
 		// Each player gets different cards
-		card1 := p * 2       // 0, 2, 4, 6, 8
+		card1 := p * 2        // 0, 2, 4, 6, 8
 		card2 := p*2 + 1 + 10 // 11, 13, 15, 17, 19
 
 		result, err := resolvers["commitHoleCards"](context.Background(), map[string]any{

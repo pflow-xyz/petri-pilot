@@ -80,7 +80,6 @@ func (r *Resolver) CoffeeshopList(ctx context.Context, place *string, page *int,
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateCoffeeshop creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateCoffeeshop(ctx context.Context) (*AggregateState, error
 
 	return aggregateToState(agg), nil
 }
-
 
 // OrderEspresso executes the order_espresso transition.
 func (r *Resolver) OrderEspresso(ctx context.Context, input OrderEspressoInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) OrderEspresso(ctx context.Context, input OrderEspressoInput) 
 	}, nil
 }
 
-
 // OrderLatte executes the order_latte transition.
 func (r *Resolver) OrderLatte(ctx context.Context, input OrderLatteInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) OrderLatte(ctx context.Context, input OrderLatteInput) (*Tran
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // OrderCappuccino executes the order_cappuccino transition.
 func (r *Resolver) OrderCappuccino(ctx context.Context, input OrderCappuccinoInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) OrderCappuccino(ctx context.Context, input OrderCappuccinoInp
 	}, nil
 }
 
-
 // MakeEspresso executes the make_espresso transition.
 func (r *Resolver) MakeEspresso(ctx context.Context, input MakeEspressoInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) MakeEspresso(ctx context.Context, input MakeEspressoInput) (*
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // MakeLatte executes the make_latte transition.
 func (r *Resolver) MakeLatte(ctx context.Context, input MakeLatteInput) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) MakeLatte(ctx context.Context, input MakeLatteInput) (*Transi
 	}, nil
 }
 
-
 // MakeCappuccino executes the make_cappuccino transition.
 func (r *Resolver) MakeCappuccino(ctx context.Context, input MakeCappuccinoInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,7 +301,6 @@ func (r *Resolver) MakeCappuccino(ctx context.Context, input MakeCappuccinoInput
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // ServeEspresso executes the serve_espresso transition.
 func (r *Resolver) ServeEspresso(ctx context.Context, input ServeEspressoInput) (*TransitionResult, error) {
@@ -338,7 +329,6 @@ func (r *Resolver) ServeEspresso(ctx context.Context, input ServeEspressoInput) 
 	}, nil
 }
 
-
 // ServeLatte executes the serve_latte transition.
 func (r *Resolver) ServeLatte(ctx context.Context, input ServeLatteInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -365,7 +355,6 @@ func (r *Resolver) ServeLatte(ctx context.Context, input ServeLatteInput) (*Tran
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // ServeCappuccino executes the serve_cappuccino transition.
 func (r *Resolver) ServeCappuccino(ctx context.Context, input ServeCappuccinoInput) (*TransitionResult, error) {
@@ -394,7 +383,6 @@ func (r *Resolver) ServeCappuccino(ctx context.Context, input ServeCappuccinoInp
 	}, nil
 }
 
-
 // RestockCoffeeBeans executes the restock_coffee_beans transition.
 func (r *Resolver) RestockCoffeeBeans(ctx context.Context, input RestockCoffeeBeansInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -421,7 +409,6 @@ func (r *Resolver) RestockCoffeeBeans(ctx context.Context, input RestockCoffeeBe
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // RestockMilk executes the restock_milk transition.
 func (r *Resolver) RestockMilk(ctx context.Context, input RestockMilkInput) (*TransitionResult, error) {
@@ -450,7 +437,6 @@ func (r *Resolver) RestockMilk(ctx context.Context, input RestockMilkInput) (*Tr
 	}, nil
 }
 
-
 // RestockCups executes the restock_cups transition.
 func (r *Resolver) RestockCups(ctx context.Context, input RestockCupsInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -477,8 +463,6 @@ func (r *Resolver) RestockCups(ctx context.Context, input RestockCupsInput) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -581,25 +565,25 @@ type AggregateState struct {
 }
 
 type State struct {
-	CoffeeBeans any `json:"coffeeBeans"`
-	Milk any `json:"milk"`
-	Cups any `json:"cups"`
-	OrdersPending any `json:"ordersPending"`
-	EspressoReady any `json:"espressoReady"`
-	LatteReady any `json:"latteReady"`
+	CoffeeBeans     any `json:"coffeeBeans"`
+	Milk            any `json:"milk"`
+	Cups            any `json:"cups"`
+	OrdersPending   any `json:"ordersPending"`
+	EspressoReady   any `json:"espressoReady"`
+	LatteReady      any `json:"latteReady"`
 	CappuccinoReady any `json:"cappuccinoReady"`
-	OrdersComplete any `json:"ordersComplete"`
+	OrdersComplete  any `json:"ordersComplete"`
 }
 
 type Places struct {
-	CoffeeBeans int `json:"coffeeBeans"`
-	Milk int `json:"milk"`
-	Cups int `json:"cups"`
-	OrdersPending int `json:"ordersPending"`
-	EspressoReady int `json:"espressoReady"`
-	LatteReady int `json:"latteReady"`
+	CoffeeBeans     int `json:"coffeeBeans"`
+	Milk            int `json:"milk"`
+	Cups            int `json:"cups"`
+	OrdersPending   int `json:"ordersPending"`
+	EspressoReady   int `json:"espressoReady"`
+	LatteReady      int `json:"latteReady"`
 	CappuccinoReady int `json:"cappuccinoReady"`
-	OrdersComplete int `json:"ordersComplete"`
+	OrdersComplete  int `json:"ordersComplete"`
 }
 
 type TransitionResult struct {
@@ -618,7 +602,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -628,65 +611,52 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type OrderEspressoInput struct {
 	AggregateID string
 }
 
-
 type OrderLatteInput struct {
 	AggregateID string
 }
-
 
 type OrderCappuccinoInput struct {
 	AggregateID string
 }
 
-
 type MakeEspressoInput struct {
 	AggregateID string
 }
-
 
 type MakeLatteInput struct {
 	AggregateID string
 }
 
-
 type MakeCappuccinoInput struct {
 	AggregateID string
 }
-
 
 type ServeEspressoInput struct {
 	AggregateID string
 }
 
-
 type ServeLatteInput struct {
 	AggregateID string
 }
-
 
 type ServeCappuccinoInput struct {
 	AggregateID string
 }
 
-
 type RestockCoffeeBeansInput struct {
 	AggregateID string
 }
-
 
 type RestockMilkInput struct {
 	AggregateID string
 }
 
-
 type RestockCupsInput struct {
 	AggregateID string
 }
-

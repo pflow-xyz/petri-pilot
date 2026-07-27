@@ -4,46 +4,46 @@ package loanapproval
 
 // Place constants
 const (
-	PlaceSubmitted = "submitted"
-	PlaceCreditReview = "credit_review"
+	PlaceSubmitted        = "submitted"
+	PlaceCreditReview     = "credit_review"
 	PlaceEmploymentReview = "employment_review"
-	PlaceCreditPassed = "credit_passed"
-	PlaceCreditFailed = "credit_failed"
+	PlaceCreditPassed     = "credit_passed"
+	PlaceCreditFailed     = "credit_failed"
 	PlaceEmploymentPassed = "employment_passed"
 	PlaceEmploymentFailed = "employment_failed"
 	PlaceReadyForDecision = "ready_for_decision"
-	PlaceUnderReview = "under_review"
-	PlaceApproved = "approved"
-	PlaceRejected = "rejected"
+	PlaceUnderReview      = "under_review"
+	PlaceApproved         = "approved"
+	PlaceRejected         = "rejected"
 )
 
 // Transition constants
 const (
-	TransitionStartReviews = "start_reviews"
-	TransitionApproveCredit = "approve_credit"
-	TransitionRejectCredit = "reject_credit"
-	TransitionApproveEmployment = "approve_employment"
-	TransitionRejectEmployment = "reject_employment"
-	TransitionMergeReviews = "merge_reviews"
-	TransitionBeginUnderwriting = "begin_underwriting"
-	TransitionApproveLoan = "approve_loan"
-	TransitionRejectLoan = "reject_loan"
-	TransitionRejectOnCredit = "reject_on_credit"
+	TransitionStartReviews       = "start_reviews"
+	TransitionApproveCredit      = "approve_credit"
+	TransitionRejectCredit       = "reject_credit"
+	TransitionApproveEmployment  = "approve_employment"
+	TransitionRejectEmployment   = "reject_employment"
+	TransitionMergeReviews       = "merge_reviews"
+	TransitionBeginUnderwriting  = "begin_underwriting"
+	TransitionApproveLoan        = "approve_loan"
+	TransitionRejectLoan         = "reject_loan"
+	TransitionRejectOnCredit     = "reject_on_credit"
 	TransitionRejectOnEmployment = "reject_on_employment"
 )
 
 // Event type constants
 const (
-	EventTypeStartReviews = "StartReviewsed"
-	EventTypeApproveCredit = "ApproveCredited"
-	EventTypeRejectCredit = "RejectCredited"
-	EventTypeApproveEmployment = "ApproveEmploymented"
-	EventTypeRejectEmployment = "RejectEmploymented"
-	EventTypeMergeReviews = "MergeReviewsed"
-	EventTypeBeginUnderwriting = "BeginUnderwritinged"
-	EventTypeApproveLoan = "ApproveLoaned"
-	EventTypeRejectLoan = "RejectLoaned"
-	EventTypeRejectOnCredit = "RejectOnCredited"
+	EventTypeStartReviews       = "StartReviewsed"
+	EventTypeApproveCredit      = "ApproveCredited"
+	EventTypeRejectCredit       = "RejectCredited"
+	EventTypeApproveEmployment  = "ApproveEmploymented"
+	EventTypeRejectEmployment   = "RejectEmploymented"
+	EventTypeMergeReviews       = "MergeReviewsed"
+	EventTypeBeginUnderwriting  = "BeginUnderwritinged"
+	EventTypeApproveLoan        = "ApproveLoaned"
+	EventTypeRejectLoan         = "RejectLoaned"
+	EventTypeRejectOnCredit     = "RejectOnCredited"
 	EventTypeRejectOnEmployment = "RejectOnEmploymented"
 )
 

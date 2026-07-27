@@ -14,18 +14,17 @@ import (
 // State holds the aggregate state for producer-consumer.
 type State struct {
 	ProducerIdle int `json:"producer_idle"`
-	Producing int `json:"producing"`
-	Buffer int `json:"buffer"`
-	BufferSpace int `json:"buffer_space"`
+	Producing    int `json:"producing"`
+	Buffer       int `json:"buffer"`
+	BufferSpace  int `json:"buffer_space"`
 	ConsumerIdle int `json:"consumer_idle"`
-	Consuming int `json:"consuming"`
-	Consumed int `json:"consumed"`
+	Consuming    int `json:"consuming"`
+	Consumed     int `json:"consumed"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the producer-consumer state.
@@ -46,7 +45,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeStartProduce,
 		Inputs: map[string]int{
 			PlaceProducerIdle: 1,
-			PlaceBufferSpace: 1,
+			PlaceBufferSpace:  1,
 		},
 		Outputs: map[string]int{
 			PlaceProducing: 1,
@@ -60,7 +59,7 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceProducerIdle: 1,
-			PlaceBuffer: 1,
+			PlaceBuffer:       1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -68,7 +67,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeStartConsume,
 		Inputs: map[string]int{
 			PlaceConsumerIdle: 1,
-			PlaceBuffer: 1,
+			PlaceBuffer:       1,
 		},
 		Outputs: map[string]int{
 			PlaceConsuming: 1,
@@ -82,8 +81,8 @@ func NewAggregate(id string) *Aggregate {
 		},
 		Outputs: map[string]int{
 			PlaceConsumerIdle: 1,
-			PlaceBufferSpace: 1,
-			PlaceConsumed: 1,
+			PlaceBufferSpace:  1,
+			PlaceConsumed:     1,
 		},
 	})
 

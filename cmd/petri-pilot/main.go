@@ -15,7 +15,6 @@ import (
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/internal/version"
-	"github.com/pflow-xyz/petri-pilot/services"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
@@ -24,6 +23,7 @@ import (
 	"github.com/pflow-xyz/petri-pilot/pkg/mcp"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
+	"github.com/pflow-xyz/petri-pilot/services"
 
 	// Register external services
 	_ "github.com/pflow-xyz/petri-pilot/pkg/services/pflowxyz"
@@ -907,13 +907,13 @@ type modelWithExtensions struct {
 	metamodel.Model
 
 	// Extension fields that may appear at the top level of v1 model JSON
-	Admin      *extensions.Admin           `json:"admin,omitempty"`
-	Navigation *extensions.Navigation      `json:"navigation,omitempty"`
-	Roles      []extensions.Role           `json:"roles,omitempty"`
-	Access     []accessRule                `json:"access,omitempty"`
-	Views      []extensions.View           `json:"views,omitempty"`
-	Debug      *metamodel.Debug            `json:"debug,omitempty"`
-	GraphQL    *metamodel.GraphQLConfig    `json:"graphql,omitempty"`
+	Admin      *extensions.Admin        `json:"admin,omitempty"`
+	Navigation *extensions.Navigation   `json:"navigation,omitempty"`
+	Roles      []extensions.Role        `json:"roles,omitempty"`
+	Access     []accessRule             `json:"access,omitempty"`
+	Views      []extensions.View        `json:"views,omitempty"`
+	Debug      *metamodel.Debug         `json:"debug,omitempty"`
+	GraphQL    *metamodel.GraphQLConfig `json:"graphql,omitempty"`
 }
 
 // accessRule is a simplified struct for parsing access rules from v1 model JSON.

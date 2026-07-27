@@ -55,19 +55,19 @@ func ammQuoteTool() mcp.Tool {
 }
 
 type ammQuoteResponse struct {
-	ReserveX        float64 `json:"reserveX"`
-	ReserveY        float64 `json:"reserveY"`
-	AmountIn        float64 `json:"amountIn"`
-	FeeBps          float64 `json:"feeBps"`
-	AmountOut       float64 `json:"amountOut"`
-	FeePaid         float64 `json:"feePaid"`
-	SpotPrice       float64 `json:"spotPrice"`
-	EffectivePrice  float64 `json:"effectivePrice"`
-	SlippageBps     float64 `json:"slippageBps"`
-	PriceImpactPct  float64 `json:"priceImpactPct"`
-	NewReserveX     float64 `json:"newReserveX"`
-	NewReserveY     float64 `json:"newReserveY"`
-	Derivation      string  `json:"derivation,omitempty"`
+	ReserveX       float64 `json:"reserveX"`
+	ReserveY       float64 `json:"reserveY"`
+	AmountIn       float64 `json:"amountIn"`
+	FeeBps         float64 `json:"feeBps"`
+	AmountOut      float64 `json:"amountOut"`
+	FeePaid        float64 `json:"feePaid"`
+	SpotPrice      float64 `json:"spotPrice"`
+	EffectivePrice float64 `json:"effectivePrice"`
+	SlippageBps    float64 `json:"slippageBps"`
+	PriceImpactPct float64 `json:"priceImpactPct"`
+	NewReserveX    float64 `json:"newReserveX"`
+	NewReserveY    float64 `json:"newReserveY"`
+	Derivation     string  `json:"derivation,omitempty"`
 }
 
 func handleAmmQuote(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -100,18 +100,18 @@ func handleAmmQuote(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	resp := ammQuoteResponse{
-		ReserveX:        rx,
-		ReserveY:        ry,
-		AmountIn:        dx,
-		FeeBps:          feeBps,
-		AmountOut:       dy,
-		FeePaid:         feePaid,
-		SpotPrice:       spotPrice,
-		EffectivePrice:  effectivePrice,
-		SlippageBps:     priceImpact * 10000,
-		PriceImpactPct:  priceImpact * 100,
-		NewReserveX:     rx + dx,
-		NewReserveY:     ry - dy,
+		ReserveX:       rx,
+		ReserveY:       ry,
+		AmountIn:       dx,
+		FeeBps:         feeBps,
+		AmountOut:      dy,
+		FeePaid:        feePaid,
+		SpotPrice:      spotPrice,
+		EffectivePrice: effectivePrice,
+		SlippageBps:    priceImpact * 10000,
+		PriceImpactPct: priceImpact * 100,
+		NewReserveX:    rx + dx,
+		NewReserveY:    ry - dy,
 	}
 	if request.GetBool("verbose", false) {
 		resp.Derivation = fmt.Sprintf(

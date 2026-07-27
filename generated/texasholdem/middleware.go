@@ -32,19 +32,12 @@ func NewMiddleware(sessions SessionStore, rules []*AccessControl) *Middleware {
 	for _, rule := range rules {
 		ruleMap[rule.TransitionID] = rule
 	}
-	
+
 	// Build role hierarchy (child -> parents)
 	roleHierarchy := make(map[string][]string)
-	
-	
-	
-	
-	
-	roleHierarchy["admin"] = []string{ "dealer" }
-	
-	
-	
-	
+
+	roleHierarchy["admin"] = []string{"dealer"}
+
 	return &Middleware{
 		sessions:      sessions,
 		rules:         ruleMap,
@@ -77,7 +70,7 @@ func (m *Middleware) RequireRole(roles ...string) func(http.Handler) http.Handle
 
 			// Extract user roles from context or user object
 			userRoles := m.getUserRoles(user)
-			
+
 			// Check if user has any of the required roles
 			if !m.hasAnyRole(userRoles, roles) {
 				http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
@@ -120,13 +113,13 @@ func (m *Middleware) RequirePermission(transitionID string) func(http.Handler) h
 			if rule.Guard != "" {
 				// Build bindings for guard evaluation
 				bindings := m.buildGuardBindings(user, r)
-				
+
 				allowed, err := dsl.Evaluate(rule.Guard, bindings, nil)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error evaluating access guard: %v", err), http.StatusInternalServerError)
 					return
 				}
-				
+
 				if !allowed {
 					http.Error(w, fmt.Sprintf("forbidden: access guard failed for '%s'", transitionID), http.StatusForbidden)
 					return
@@ -144,7 +137,7 @@ func (m *Middleware) getUserRoles(user *User) []string {
 	if len(user.Roles) > 0 {
 		return expandRolesWithInheritance(user.Roles, m.roleHierarchy)
 	}
-	
+
 	// Fallback to default role
 	return []string{"user"}
 }
@@ -154,7 +147,7 @@ func (m *Middleware) hasAnyRole(userRoles []string, requiredRoles []string) bool
 	if len(requiredRoles) == 0 {
 		return true // No role requirement
 	}
-	
+
 	for _, required := range requiredRoles {
 		for _, userRole := range userRoles {
 			if userRole == required {
@@ -168,7 +161,7 @@ func (m *Middleware) hasAnyRole(userRoles []string, requiredRoles []string) bool
 // buildGuardBindings creates bindings for guard expression evaluation.
 func (m *Middleware) buildGuardBindings(user *User, r *http.Request) map[string]any {
 	bindings := make(map[string]any)
-	
+
 	// Add user info to bindings
 	bindings["user"] = map[string]any{
 		"id":    user.ID,
@@ -176,19 +169,19 @@ func (m *Middleware) buildGuardBindings(user *User, r *http.Request) map[string]
 		"email": user.Email,
 		"roles": m.getUserRoles(user),
 	}
-	
+
 	// Add request parameters
 	bindings["request"] = extractRequestParams(r)
-	
+
 	// Add aggregate state (if available in context)
 	if state := getAggregateState(r.Context()); state != nil {
 		bindings["state"] = state
 	}
-	
+
 	// Add metadata
 	bindings["timestamp"] = time.Now().Unix()
 	bindings["path"] = r.URL.Path
-	
+
 	return bindings
 }
 
@@ -205,7 +198,7 @@ func EvaluateGuard(guard string, bindings map[string]any) (bool, error) {
 func expandRolesWithInheritance(roles []string, hierarchy map[string][]string) []string {
 	seen := make(map[string]bool)
 	expanded := make([]string, 0)
-	
+
 	var expand func(role string)
 	expand = func(role string) {
 		if seen[role] {
@@ -213,7 +206,7 @@ func expandRolesWithInheritance(roles []string, hierarchy map[string][]string) [
 		}
 		seen[role] = true
 		expanded = append(expanded, role)
-		
+
 		// Add parent roles
 		if parents, ok := hierarchy[role]; ok {
 			for _, parent := range parents {
@@ -221,18 +214,18 @@ func expandRolesWithInheritance(roles []string, hierarchy map[string][]string) [
 			}
 		}
 	}
-	
+
 	for _, role := range roles {
 		expand(role)
 	}
-	
+
 	return expanded
 }
 
 // extractRequestParams extracts parameters from the HTTP request.
 func extractRequestParams(r *http.Request) map[string]any {
 	params := make(map[string]any)
-	
+
 	// Query parameters
 	query := make(map[string]any)
 	for key, values := range r.URL.Query() {
@@ -245,18 +238,18 @@ func extractRequestParams(r *http.Request) map[string]any {
 	if len(query) > 0 {
 		params["query"] = query
 	}
-	
+
 	// Path parameters (if stored in context by router)
 	if pathParams := r.Context().Value("pathParams"); pathParams != nil {
 		if p, ok := pathParams.(map[string]string); ok {
 			params["path"] = p
 		}
 	}
-	
+
 	// HTTP method and headers
 	params["method"] = r.Method
 	params["headers"] = r.Header
-	
+
 	return params
 }
 

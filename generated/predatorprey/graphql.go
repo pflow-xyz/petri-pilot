@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/predatorprey/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/predatorprey/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -211,7 +209,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "predatorprey(") {
 		id := ""
@@ -251,7 +248,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -272,7 +268,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -457,7 +452,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createPredatorprey"] = resolvers["predatorprey_create"]
 
-
 	resolvers["predatorprey_prey_reproduce"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PreyReproduceInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -468,7 +462,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.PreyReproduce(ctx, input)
 	}
 	resolvers["preyReproduce"] = resolvers["predatorprey_prey_reproduce"]
-
 
 	resolvers["predatorprey_predation"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PredationInput{}
@@ -481,7 +474,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["predation"] = resolvers["predatorprey_predation"]
 
-
 	resolvers["predatorprey_predator_death"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PredatorDeathInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -492,9 +484,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.PredatorDeath(ctx, input)
 	}
 	resolvers["predatorDeath"] = resolvers["predatorprey_predator_death"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["predatorprey_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -508,7 +497,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["predatorprey_events"]
 	resolvers["predatorpreyEvents"] = resolvers["predatorprey_events"]
-
 
 	return resolvers
 }

@@ -80,7 +80,6 @@ func (r *Resolver) ThermostatList(ctx context.Context, place *string, page *int,
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateThermostat creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateThermostat(ctx context.Context) (*AggregateState, error
 
 	return aggregateToState(agg), nil
 }
-
 
 // Heat executes the heat transition.
 func (r *Resolver) Heat(ctx context.Context, input HeatInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) Heat(ctx context.Context, input HeatInput) (*TransitionResult
 	}, nil
 }
 
-
 // Cool executes the cool transition.
 func (r *Resolver) Cool(ctx context.Context, input CoolInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) Cool(ctx context.Context, input CoolInput) (*TransitionResult
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // TurnOn executes the turn_on transition.
 func (r *Resolver) TurnOn(ctx context.Context, input TurnOnInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) TurnOn(ctx context.Context, input TurnOnInput) (*TransitionRe
 	}, nil
 }
 
-
 // TurnOff executes the turn_off transition.
 func (r *Resolver) TurnOff(ctx context.Context, input TurnOffInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,8 +247,6 @@ func (r *Resolver) TurnOff(ctx context.Context, input TurnOffInput) (*Transition
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -328,14 +320,14 @@ type AggregateState struct {
 
 type State struct {
 	Temperature any `json:"temperature"`
-	HeaterOn any `json:"heaterOn"`
-	HeaterOff any `json:"heaterOff"`
+	HeaterOn    any `json:"heaterOn"`
+	HeaterOff   any `json:"heaterOff"`
 }
 
 type Places struct {
 	Temperature int `json:"temperature"`
-	HeaterOn int `json:"heaterOn"`
-	HeaterOff int `json:"heaterOff"`
+	HeaterOn    int `json:"heaterOn"`
+	HeaterOff   int `json:"heaterOff"`
 }
 
 type TransitionResult struct {
@@ -354,7 +346,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -364,25 +355,20 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type HeatInput struct {
 	AggregateID string
 }
 
-
 type CoolInput struct {
 	AggregateID string
 }
-
 
 type TurnOnInput struct {
 	AggregateID string
 }
 
-
 type TurnOffInput struct {
 	AggregateID string
 }
-

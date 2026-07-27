@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // hand_startedEvent is emitted when the start_hand transition fires.
 type hand_startedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e hand_startedEvent) EventType() string {
 	return "hand_started"
 }
 
-
 // flop_dealtEvent is emitted when the deal_flop transition fires.
 type flop_dealtEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e flop_dealtEvent) EventType() string {
 	return "flop_dealt"
 }
 
-
 // turn_dealtEvent is emitted when the deal_turn transition fires.
 type turn_dealtEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e turn_dealtEvent) EventType() string {
 	return "turn_dealt"
 }
 
-
 // river_dealtEvent is emitted when the deal_river transition fires.
 type river_dealtEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e river_dealtEvent) EventType() string {
 	return "river_dealt"
 }
 
-
 // showdown_reachedEvent is emitted when the go_showdown transition fires.
 type showdown_reachedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e showdown_reachedEvent) EventType() string {
 	return "showdown_reached"
 }
 
-
 // winner_determinedEvent is emitted when the determine_winner transition fires.
 type winner_determinedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e winner_determinedEvent) EventType() string {
 	return "winner_determined"
 }
 
-
 // hand_endedEvent is emitted when the end_hand transition fires.
 type hand_endedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e hand_endedEvent) EventType() string {
 	return "hand_ended"
 }
 
-
 // p0_foldedEvent is emitted when the p0_fold transition fires.
 type p0_foldedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e p0_foldedEvent) EventType() string {
 	return "p0_folded"
 }
 
-
 // p0_checkedEvent is emitted when the p0_check transition fires.
 type p0_checkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e p0_checkedEvent) EventType() string {
 	return "p0_checked"
 }
 
-
 // p0_calledEvent is emitted when the p0_call transition fires.
 type p0_calledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,11 +116,10 @@ func (e p0_calledEvent) EventType() string {
 	return "p0_called"
 }
 
-
 // p0_raisedEvent is emitted when the p0_raise transition fires.
 type p0_raisedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -138,11 +127,10 @@ func (e p0_raisedEvent) EventType() string {
 	return "p0_raised"
 }
 
-
 // p1_foldedEvent is emitted when the p1_fold transition fires.
 type p1_foldedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -150,11 +138,10 @@ func (e p1_foldedEvent) EventType() string {
 	return "p1_folded"
 }
 
-
 // p1_checkedEvent is emitted when the p1_check transition fires.
 type p1_checkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -162,11 +149,10 @@ func (e p1_checkedEvent) EventType() string {
 	return "p1_checked"
 }
 
-
 // p1_calledEvent is emitted when the p1_call transition fires.
 type p1_calledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -174,11 +160,10 @@ func (e p1_calledEvent) EventType() string {
 	return "p1_called"
 }
 
-
 // p1_raisedEvent is emitted when the p1_raise transition fires.
 type p1_raisedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -186,11 +171,10 @@ func (e p1_raisedEvent) EventType() string {
 	return "p1_raised"
 }
 
-
 // p2_foldedEvent is emitted when the p2_fold transition fires.
 type p2_foldedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -198,11 +182,10 @@ func (e p2_foldedEvent) EventType() string {
 	return "p2_folded"
 }
 
-
 // p2_checkedEvent is emitted when the p2_check transition fires.
 type p2_checkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -210,11 +193,10 @@ func (e p2_checkedEvent) EventType() string {
 	return "p2_checked"
 }
 
-
 // p2_calledEvent is emitted when the p2_call transition fires.
 type p2_calledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -222,11 +204,10 @@ func (e p2_calledEvent) EventType() string {
 	return "p2_called"
 }
 
-
 // p2_raisedEvent is emitted when the p2_raise transition fires.
 type p2_raisedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -234,11 +215,10 @@ func (e p2_raisedEvent) EventType() string {
 	return "p2_raised"
 }
 
-
 // p3_foldedEvent is emitted when the p3_fold transition fires.
 type p3_foldedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -246,11 +226,10 @@ func (e p3_foldedEvent) EventType() string {
 	return "p3_folded"
 }
 
-
 // p3_checkedEvent is emitted when the p3_check transition fires.
 type p3_checkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -258,11 +237,10 @@ func (e p3_checkedEvent) EventType() string {
 	return "p3_checked"
 }
 
-
 // p3_calledEvent is emitted when the p3_call transition fires.
 type p3_calledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -270,11 +248,10 @@ func (e p3_calledEvent) EventType() string {
 	return "p3_called"
 }
 
-
 // p3_raisedEvent is emitted when the p3_raise transition fires.
 type p3_raisedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -282,11 +259,10 @@ func (e p3_raisedEvent) EventType() string {
 	return "p3_raised"
 }
 
-
 // p4_foldedEvent is emitted when the p4_fold transition fires.
 type p4_foldedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -294,11 +270,10 @@ func (e p4_foldedEvent) EventType() string {
 	return "p4_folded"
 }
 
-
 // p4_checkedEvent is emitted when the p4_check transition fires.
 type p4_checkedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -306,11 +281,10 @@ func (e p4_checkedEvent) EventType() string {
 	return "p4_checked"
 }
 
-
 // p4_calledEvent is emitted when the p4_call transition fires.
 type p4_calledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -318,11 +292,10 @@ func (e p4_calledEvent) EventType() string {
 	return "p4_called"
 }
 
-
 // p4_raisedEvent is emitted when the p4_raise transition fires.
 type p4_raisedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -330,11 +303,10 @@ func (e p4_raisedEvent) EventType() string {
 	return "p4_raised"
 }
 
-
 // p0_skippedEvent is emitted when the p0_skip transition fires.
 type p0_skippedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -342,11 +314,10 @@ func (e p0_skippedEvent) EventType() string {
 	return "p0_skipped"
 }
 
-
 // p1_skippedEvent is emitted when the p1_skip transition fires.
 type p1_skippedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -354,11 +325,10 @@ func (e p1_skippedEvent) EventType() string {
 	return "p1_skipped"
 }
 
-
 // p2_skippedEvent is emitted when the p2_skip transition fires.
 type p2_skippedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -366,11 +336,10 @@ func (e p2_skippedEvent) EventType() string {
 	return "p2_skipped"
 }
 
-
 // p3_skippedEvent is emitted when the p3_skip transition fires.
 type p3_skippedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -378,16 +347,13 @@ func (e p3_skippedEvent) EventType() string {
 	return "p3_skipped"
 }
 
-
 // p4_skippedEvent is emitted when the p4_skip transition fires.
 type p4_skippedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e p4_skippedEvent) EventType() string {
 	return "p4_skipped"
 }
-
-

@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/hiringpipeline/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/hiringpipeline/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -371,7 +369,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "hiringpipeline(") {
 		id := ""
@@ -411,7 +408,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -432,7 +428,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -697,7 +692,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createHiringpipeline"] = resolvers["hiringpipeline_create"]
 
-
 	resolvers["hiringpipeline_screen_candidate"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ScreenCandidateInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -708,7 +702,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.ScreenCandidate(ctx, input)
 	}
 	resolvers["screenCandidate"] = resolvers["hiringpipeline_screen_candidate"]
-
 
 	resolvers["hiringpipeline_pass_screen"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PassScreenInput{}
@@ -721,7 +714,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["passScreen"] = resolvers["hiringpipeline_pass_screen"]
 
-
 	resolvers["hiringpipeline_fail_screen"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.FailScreenInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -732,7 +724,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.FailScreen(ctx, input)
 	}
 	resolvers["failScreen"] = resolvers["hiringpipeline_fail_screen"]
-
 
 	resolvers["hiringpipeline_pass_technical"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PassTechnicalInput{}
@@ -745,7 +736,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["passTechnical"] = resolvers["hiringpipeline_pass_technical"]
 
-
 	resolvers["hiringpipeline_fail_technical"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.FailTechnicalInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -756,7 +746,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.FailTechnical(ctx, input)
 	}
 	resolvers["failTechnical"] = resolvers["hiringpipeline_fail_technical"]
-
 
 	resolvers["hiringpipeline_pass_culture"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.PassCultureInput{}
@@ -769,7 +758,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["passCulture"] = resolvers["hiringpipeline_pass_culture"]
 
-
 	resolvers["hiringpipeline_fail_culture"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.FailCultureInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -780,7 +768,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.FailCulture(ctx, input)
 	}
 	resolvers["failCulture"] = resolvers["hiringpipeline_fail_culture"]
-
 
 	resolvers["hiringpipeline_merge_interviews"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.MergeInterviewsInput{}
@@ -793,7 +780,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["mergeInterviews"] = resolvers["hiringpipeline_merge_interviews"]
 
-
 	resolvers["hiringpipeline_extend_offer"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.ExtendOfferInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -804,7 +790,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.ExtendOffer(ctx, input)
 	}
 	resolvers["extendOffer"] = resolvers["hiringpipeline_extend_offer"]
-
 
 	resolvers["hiringpipeline_accept_offer"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.AcceptOfferInput{}
@@ -817,7 +802,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["acceptOffer"] = resolvers["hiringpipeline_accept_offer"]
 
-
 	resolvers["hiringpipeline_reject_offer"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.RejectOfferInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -828,9 +812,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.RejectOffer(ctx, input)
 	}
 	resolvers["rejectOffer"] = resolvers["hiringpipeline_reject_offer"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["hiringpipeline_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -844,7 +825,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["hiringpipeline_events"]
 	resolvers["hiringpipelineEvents"] = resolvers["hiringpipeline_events"]
-
 
 	return resolvers
 }

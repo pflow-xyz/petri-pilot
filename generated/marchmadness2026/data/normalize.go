@@ -127,7 +127,7 @@ func computeMomentum(t RawTeamData) float64 {
 		if total == 0 {
 			return 50
 		}
-		return float64(t.Wins) / float64(total) * 80 + t.Barthag*20
+		return float64(t.Wins)/float64(total)*80 + t.Barthag*20
 	}
 
 	// Exponential decay weighting: most recent = weight 1.0, 10th = weight 0.5

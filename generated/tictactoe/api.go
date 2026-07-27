@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/pkg/runtime/api"
 )
 
 // BuildRouter creates an HTTP router for the tic-tac-toe workflow.
@@ -35,10 +35,8 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	// Get aggregate state
 	r.GET("/api/tictactoe/{id}", "Get tic-tac-toe state", HandleGetState(app))
 
-
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
-
 
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
@@ -47,45 +45,22 @@ func BuildRouter(app *Application, debugBroker *DebugBroker) http.Handler {
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
 	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
 
-
 	// Event replay endpoints
 	r.GET("/api/tictactoe/{id}/events", "Get event history", HandleGetEvents(app))
 	r.GET("/api/tictactoe/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/tictactoe/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 
-
-
-
-
 	// GraphQL API
 	r.Handle("POST", "/graphql", "GraphQL API endpoint", GraphQLHandler(app))
 	r.GET("/playground", "GraphQL Playground", PlaygroundHandler())
-
 
 	// Debug WebSocket and eval endpoints
 	r.GET("/ws/debug", "Debug WebSocket connection", HandleDebugWebSocket(debugBroker))
 	r.GET("/api/debug/sessions", "List debug sessions", HandleListSessions(debugBroker))
 	r.POST("/api/debug/sessions/{id}/eval", "Evaluate code in browser session", HandleSessionEval(debugBroker))
 
-
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	// Transition endpoints
 	r.Transition("x_play_00", "/api/x_play_00", "X plays at (0,0)", HandleXPlay00(app))
@@ -136,9 +111,9 @@ func StaticFileHandler() http.HandlerFunc {
 	// Find frontend directory - try custom frontends first, then generated
 	frontendPath := ""
 	candidates := []string{
-		"frontends/tic-tac-toe",                    // Custom frontend (top priority)
-		"frontend",                                    // Running from service directory
-		"generated/tictactoe/frontend",         // Generated frontend from repo root
+		"frontends/tic-tac-toe",        // Custom frontend (top priority)
+		"frontend",                     // Running from service directory
+		"generated/tictactoe/frontend", // Generated frontend from repo root
 		filepath.Join("generated", "tictactoe", "frontend"), // Platform-safe
 	}
 
@@ -275,7 +250,6 @@ func HandleReady(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXPlay00 handles the x_play_00 transition.
 func HandleXPlay00(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -307,7 +281,6 @@ func HandleXPlay00(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXPlay01 handles the x_play_01 transition.
 func HandleXPlay01(app *Application) http.HandlerFunc {
@@ -341,7 +314,6 @@ func HandleXPlay01(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXPlay02 handles the x_play_02 transition.
 func HandleXPlay02(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -373,7 +345,6 @@ func HandleXPlay02(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXPlay10 handles the x_play_10 transition.
 func HandleXPlay10(app *Application) http.HandlerFunc {
@@ -407,7 +378,6 @@ func HandleXPlay10(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXPlay11 handles the x_play_11 transition.
 func HandleXPlay11(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -439,7 +409,6 @@ func HandleXPlay11(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXPlay12 handles the x_play_12 transition.
 func HandleXPlay12(app *Application) http.HandlerFunc {
@@ -473,7 +442,6 @@ func HandleXPlay12(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXPlay20 handles the x_play_20 transition.
 func HandleXPlay20(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -505,7 +473,6 @@ func HandleXPlay20(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXPlay21 handles the x_play_21 transition.
 func HandleXPlay21(app *Application) http.HandlerFunc {
@@ -539,7 +506,6 @@ func HandleXPlay21(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXPlay22 handles the x_play_22 transition.
 func HandleXPlay22(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +537,6 @@ func HandleXPlay22(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOPlay00 handles the o_play_00 transition.
 func HandleOPlay00(app *Application) http.HandlerFunc {
@@ -605,7 +570,6 @@ func HandleOPlay00(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOPlay01 handles the o_play_01 transition.
 func HandleOPlay01(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -637,7 +601,6 @@ func HandleOPlay01(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOPlay02 handles the o_play_02 transition.
 func HandleOPlay02(app *Application) http.HandlerFunc {
@@ -671,7 +634,6 @@ func HandleOPlay02(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOPlay10 handles the o_play_10 transition.
 func HandleOPlay10(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -703,7 +665,6 @@ func HandleOPlay10(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOPlay11 handles the o_play_11 transition.
 func HandleOPlay11(app *Application) http.HandlerFunc {
@@ -737,7 +698,6 @@ func HandleOPlay11(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOPlay12 handles the o_play_12 transition.
 func HandleOPlay12(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -769,7 +729,6 @@ func HandleOPlay12(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOPlay20 handles the o_play_20 transition.
 func HandleOPlay20(app *Application) http.HandlerFunc {
@@ -803,7 +762,6 @@ func HandleOPlay20(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOPlay21 handles the o_play_21 transition.
 func HandleOPlay21(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -835,7 +793,6 @@ func HandleOPlay21(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOPlay22 handles the o_play_22 transition.
 func HandleOPlay22(app *Application) http.HandlerFunc {
@@ -869,7 +826,6 @@ func HandleOPlay22(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXWinRow0 handles the x_win_row0 transition.
 func HandleXWinRow0(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -901,7 +857,6 @@ func HandleXWinRow0(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXWinRow1 handles the x_win_row1 transition.
 func HandleXWinRow1(app *Application) http.HandlerFunc {
@@ -935,7 +890,6 @@ func HandleXWinRow1(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXWinRow2 handles the x_win_row2 transition.
 func HandleXWinRow2(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -967,7 +921,6 @@ func HandleXWinRow2(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXWinCol0 handles the x_win_col0 transition.
 func HandleXWinCol0(app *Application) http.HandlerFunc {
@@ -1001,7 +954,6 @@ func HandleXWinCol0(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXWinCol1 handles the x_win_col1 transition.
 func HandleXWinCol1(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1033,7 +985,6 @@ func HandleXWinCol1(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXWinCol2 handles the x_win_col2 transition.
 func HandleXWinCol2(app *Application) http.HandlerFunc {
@@ -1067,7 +1018,6 @@ func HandleXWinCol2(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleXWinDiag handles the x_win_diag transition.
 func HandleXWinDiag(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1099,7 +1049,6 @@ func HandleXWinDiag(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleXWinAnti handles the x_win_anti transition.
 func HandleXWinAnti(app *Application) http.HandlerFunc {
@@ -1133,7 +1082,6 @@ func HandleXWinAnti(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOWinRow0 handles the o_win_row0 transition.
 func HandleOWinRow0(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1165,7 +1113,6 @@ func HandleOWinRow0(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOWinRow1 handles the o_win_row1 transition.
 func HandleOWinRow1(app *Application) http.HandlerFunc {
@@ -1199,7 +1146,6 @@ func HandleOWinRow1(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOWinRow2 handles the o_win_row2 transition.
 func HandleOWinRow2(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1231,7 +1177,6 @@ func HandleOWinRow2(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOWinCol0 handles the o_win_col0 transition.
 func HandleOWinCol0(app *Application) http.HandlerFunc {
@@ -1265,7 +1210,6 @@ func HandleOWinCol0(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOWinCol1 handles the o_win_col1 transition.
 func HandleOWinCol1(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1297,7 +1241,6 @@ func HandleOWinCol1(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOWinCol2 handles the o_win_col2 transition.
 func HandleOWinCol2(app *Application) http.HandlerFunc {
@@ -1331,7 +1274,6 @@ func HandleOWinCol2(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleOWinDiag handles the o_win_diag transition.
 func HandleOWinDiag(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1363,7 +1305,6 @@ func HandleOWinDiag(app *Application) http.HandlerFunc {
 		})
 	}
 }
-
 
 // HandleOWinAnti handles the o_win_anti transition.
 func HandleOWinAnti(app *Application) http.HandlerFunc {
@@ -1397,7 +1338,6 @@ func HandleOWinAnti(app *Application) http.HandlerFunc {
 	}
 }
 
-
 // HandleDraw handles the draw transition.
 func HandleDraw(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1430,140 +1370,133 @@ func HandleDraw(app *Application) http.HandlerFunc {
 	}
 }
 
-
-
-
-
-
 // HandleAdminStats wraps the admin stats handler.
 func HandleAdminStats(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
-adminStore, ok := app.store.(interface {
-GetStats(ctx context.Context) (*eventsource.Stats, error)
-})
-if !ok {
-api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
-return
-}
+		adminStore, ok := app.store.(interface {
+			GetStats(ctx context.Context) (*eventsource.Stats, error)
+		})
+		if !ok {
+			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+			return
+		}
 
-stats, err := adminStore.GetStats(ctx)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
-return
-}
+		stats, err := adminStore.GetStats(ctx)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+			return
+		}
 
-api.JSON(w, http.StatusOK, stats)
-}
+		api.JSON(w, http.StatusOK, stats)
+	}
 }
 
 // HandleAdminListInstances wraps the admin list instances handler.
 func HandleAdminListInstances(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
-place := r.URL.Query().Get("place")
-from := r.URL.Query().Get("from")
-to := r.URL.Query().Get("to")
-page := getIntQueryParam(r, "page", 1)
-perPage := getIntQueryParam(r, "per_page", 50)
+		place := r.URL.Query().Get("place")
+		from := r.URL.Query().Get("from")
+		to := r.URL.Query().Get("to")
+		page := getIntQueryParam(r, "page", 1)
+		perPage := getIntQueryParam(r, "per_page", 50)
 
-adminStore, ok := app.store.(interface {
-ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
-})
-if !ok {
-api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
-return
-}
+		adminStore, ok := app.store.(interface {
+			ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
+		})
+		if !ok {
+			api.Error(w, http.StatusInternalServerError, "UNSUPPORTED", "Admin operations not supported")
+			return
+		}
 
-instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
-return
-}
+		instances, total, err := adminStore.ListInstances(ctx, place, from, to, page, perPage)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+			return
+		}
 
-// Load state for each instance by replaying events
-// Note: This loads aggregates individually which may be slow for large lists.
-// The perPage parameter limits the number of instances processed.
-for i := range instances {
-agg, err := app.Load(ctx, instances[i].ID)
-if err != nil {
-// Log error but continue processing other instances
-// The state will remain as initialized by ListInstances
-continue
-}
-// Get the Petri net places (token distribution)
-instances[i].State = agg.Places()
-}
+		// Load state for each instance by replaying events
+		// Note: This loads aggregates individually which may be slow for large lists.
+		// The perPage parameter limits the number of instances processed.
+		for i := range instances {
+			agg, err := app.Load(ctx, instances[i].ID)
+			if err != nil {
+				// Log error but continue processing other instances
+				// The state will remain as initialized by ListInstances
+				continue
+			}
+			// Get the Petri net places (token distribution)
+			instances[i].State = agg.Places()
+		}
 
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"instances": instances,
-"total":     total,
-"page":      page,
-"per_page":  perPage,
-})
-}
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"instances": instances,
+			"total":     total,
+			"page":      page,
+			"per_page":  perPage,
+		})
+	}
 }
 
 // HandleAdminGetInstance wraps the admin get instance handler.
 func HandleAdminGetInstance(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
 
-agg, err := app.Load(ctx, id)
-if err != nil {
-api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
-return
-}
+		agg, err := app.Load(ctx, id)
+		if err != nil {
+			api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
 
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"id":      agg.ID(),
-"version": agg.Version(),
-"state":   agg.State(),
-})
-}
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"id":      agg.ID(),
+			"version": agg.Version(),
+			"state":   agg.State(),
+		})
+	}
 }
 
 // HandleAdminGetEvents wraps the admin get events handler.
 func HandleAdminGetEvents(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
-from := getIntQueryParam(r, "from", 0)
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
+		from := getIntQueryParam(r, "from", 0)
 
-events, err := app.store.Read(ctx, id, from)
-if err != nil {
-api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
-return
-}
+		events, err := app.store.Read(ctx, id, from)
+		if err != nil {
+			api.Error(w, http.StatusInternalServerError, "READ_FAILED", err.Error())
+			return
+		}
 
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"events": events,
-})
-}
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"events": events,
+		})
+	}
 }
 
 // HandleAdminDeleteInstance deletes an instance and all its events.
 func HandleAdminDeleteInstance(app *Application) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-ctx := r.Context()
-id := r.PathValue("id")
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := r.PathValue("id")
 
-if err := app.store.DeleteStream(ctx, id); err != nil {
-api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
-return
+		if err := app.store.DeleteStream(ctx, id); err != nil {
+			api.Error(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+			return
+		}
+
+		api.JSON(w, http.StatusOK, map[string]interface{}{
+			"deleted": true,
+			"id":      id,
+		})
+	}
 }
-
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"deleted": true,
-"id":      id,
-})
-}
-}
-
-
 
 // HandleGetEvents returns the event history for an aggregate.
 func HandleGetEvents(app *Application) http.HandlerFunc {
@@ -1650,17 +1583,13 @@ func HandleTruncate(app *Application) http.HandlerFunc {
 		}
 
 		api.JSON(w, http.StatusOK, map[string]interface{}{
-			"id":                    agg.ID(),
-			"version":               agg.Version(),
-			"state":                 agg.State(),
-			"enabled_transitions":   agg.EnabledTransitions(),
+			"id":                  agg.ID(),
+			"version":             agg.Version(),
+			"state":               agg.State(),
+			"enabled_transitions": agg.EnabledTransitions(),
 		})
 	}
 }
-
-
-
-
 
 // Helper functions
 
@@ -1682,7 +1611,6 @@ func getInt(s string, defaultVal int) int {
 	return intVal
 }
 
-
 // HandleGetSchema returns the model schema JSON for the schema viewer.
 func HandleGetSchema() http.HandlerFunc {
 	// Schema JSON is embedded at generation time (base64 encoded)
@@ -1699,4 +1627,3 @@ func HandleGetSchema() http.HandlerFunc {
 		w.Write(schemaJSON)
 	}
 }
-

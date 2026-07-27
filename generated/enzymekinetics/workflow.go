@@ -5,22 +5,22 @@ package enzymekinetics
 // Place constants
 const (
 	PlaceSubstrate = "substrate"
-	PlaceEnzyme = "enzyme"
-	PlaceComplex = "complex"
-	PlaceProduct = "product"
+	PlaceEnzyme    = "enzyme"
+	PlaceComplex   = "complex"
+	PlaceProduct   = "product"
 )
 
 // Transition constants
 const (
-	TransitionBind = "bind"
-	TransitionUnbind = "unbind"
+	TransitionBind     = "bind"
+	TransitionUnbind   = "unbind"
 	TransitionCatalyze = "catalyze"
 )
 
 // Event type constants
 const (
-	EventTypeBind = "Binded"
-	EventTypeUnbind = "Unbinded"
+	EventTypeBind     = "Binded"
+	EventTypeUnbind   = "Unbinded"
 	EventTypeCatalyze = "Catalyzeed"
 )
 
@@ -28,7 +28,7 @@ const (
 func InitialPlaces() map[string]int {
 	return map[string]int{
 		PlaceSubstrate: 100,
-		PlaceEnzyme: 10,
+		PlaceEnzyme:    10,
 	}
 }
 

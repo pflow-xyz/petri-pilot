@@ -4,28 +4,28 @@ package predatorprey
 
 // Place constants
 const (
-	PlacePrey = "prey"
+	PlacePrey     = "prey"
 	PlacePredator = "predator"
 )
 
 // Transition constants
 const (
 	TransitionPreyReproduce = "prey_reproduce"
-	TransitionPredation = "predation"
+	TransitionPredation     = "predation"
 	TransitionPredatorDeath = "predator_death"
 )
 
 // Event type constants
 const (
 	EventTypePreyReproduce = "PreyReproduceed"
-	EventTypePredation = "Predationed"
+	EventTypePredation     = "Predationed"
 	EventTypePredatorDeath = "PredatorDeathed"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
-		PlacePrey: 100,
+		PlacePrey:     100,
 		PlacePredator: 20,
 	}
 }

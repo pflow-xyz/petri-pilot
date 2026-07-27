@@ -80,7 +80,6 @@ func (r *Resolver) PredatorPreyList(ctx context.Context, place *string, page *in
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreatePredatorprey creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreatePredatorprey(ctx context.Context) (*AggregateState, err
 
 	return aggregateToState(agg), nil
 }
-
 
 // PreyReproduce executes the prey_reproduce transition.
 func (r *Resolver) PreyReproduce(ctx context.Context, input PreyReproduceInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) PreyReproduce(ctx context.Context, input PreyReproduceInput) 
 	}, nil
 }
 
-
 // Predation executes the predation transition.
 func (r *Resolver) Predation(ctx context.Context, input PredationInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -198,7 +194,6 @@ func (r *Resolver) Predation(ctx context.Context, input PredationInput) (*Transi
 	}, nil
 }
 
-
 // PredatorDeath executes the predator_death transition.
 func (r *Resolver) PredatorDeath(ctx context.Context, input PredatorDeathInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -225,8 +220,6 @@ func (r *Resolver) PredatorDeath(ctx context.Context, input PredatorDeathInput) 
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -293,12 +286,12 @@ type AggregateState struct {
 }
 
 type State struct {
-	Prey any `json:"prey"`
+	Prey     any `json:"prey"`
 	Predator any `json:"predator"`
 }
 
 type Places struct {
-	Prey int `json:"prey"`
+	Prey     int `json:"prey"`
 	Predator int `json:"predator"`
 }
 
@@ -318,7 +311,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -328,20 +320,16 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type PreyReproduceInput struct {
 	AggregateID string
 }
 
-
 type PredationInput struct {
 	AggregateID string
 }
 
-
 type PredatorDeathInput struct {
 	AggregateID string
 }
-

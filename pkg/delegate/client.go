@@ -40,7 +40,7 @@ func NewClient(owner, repo, token string) *Client {
 type AppRequest struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
-	Features    []string `json:"features,omitempty"` // auth, rbac, admin, events, e2e
+	Features    []string `json:"features,omitempty"`   // auth, rbac, admin, events, e2e
 	Complexity  string   `json:"complexity,omitempty"` // simple, medium, complex
 }
 
@@ -72,7 +72,7 @@ type PullRequest struct {
 type WorkflowRun struct {
 	ID         int64     `json:"id"`
 	Name       string    `json:"name"`
-	Status     string    `json:"status"` // queued, in_progress, completed
+	Status     string    `json:"status"`     // queued, in_progress, completed
 	Conclusion string    `json:"conclusion"` // success, failure, cancelled
 	HeadBranch string    `json:"head_branch"`
 	HTMLURL    string    `json:"html_url"`
@@ -81,8 +81,8 @@ type WorkflowRun struct {
 
 // AgentStatus summarizes Copilot agent activity.
 type AgentStatus struct {
-	ActiveRuns  []WorkflowRun  `json:"active_runs"`
-	OpenPRs     []PullRequest  `json:"open_prs"`
+	ActiveRuns   []WorkflowRun `json:"active_runs"`
+	OpenPRs      []PullRequest `json:"open_prs"`
 	RecentIssues []Issue       `json:"recent_issues"`
 }
 

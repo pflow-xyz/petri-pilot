@@ -533,4 +533,3 @@ func lightenColor(hex string, t float64) string {
 	b = int(float64(b) + (255-float64(b))*t)
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
-

@@ -96,8 +96,8 @@ const (
 
 // FieldReference defines a relationship to another entity.
 type FieldReference struct {
-	Entity   string `json:"entity"`             // Target entity ID
-	Field    string `json:"field,omitempty"`    // Target field (default: id)
+	Entity   string `json:"entity"`              // Target entity ID
+	Field    string `json:"field,omitempty"`     // Target field (default: id)
 	OnDelete string `json:"on_delete,omitempty"` // cascade, restrict, set_null
 }
 

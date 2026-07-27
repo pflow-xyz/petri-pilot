@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // PreyReproduceedEvent is emitted when the prey_reproduce transition fires.
 type PreyReproduceedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e PreyReproduceedEvent) EventType() string {
 	return "PreyReproduceed"
 }
 
-
 // PredationedEvent is emitted when the predation transition fires.
 type PredationedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,16 +28,13 @@ func (e PredationedEvent) EventType() string {
 	return "Predationed"
 }
 
-
 // PredatorDeathedEvent is emitted when the predator_death transition fires.
 type PredatorDeathedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e PredatorDeathedEvent) EventType() string {
 	return "PredatorDeathed"
 }
-
-

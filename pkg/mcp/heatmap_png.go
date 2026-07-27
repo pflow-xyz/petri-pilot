@@ -311,7 +311,7 @@ func autoGrid(n int) (int, int) {
 func viridis(t float64) string {
 	t = math.Max(0, math.Min(1, t))
 	anchors := []struct {
-		t          float64
+		t       float64
 		r, g, b int
 	}{
 		{0.0, 0x44, 0x01, 0x54},

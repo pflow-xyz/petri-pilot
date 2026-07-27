@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // HeatedEvent is emitted when the heat transition fires.
 type HeatedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e HeatedEvent) EventType() string {
 	return "Heated"
 }
 
-
 // CooledEvent is emitted when the cool transition fires.
 type CooledEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e CooledEvent) EventType() string {
 	return "Cooled"
 }
 
-
 // TurnOnedEvent is emitted when the turn_on transition fires.
 type TurnOnedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,16 +39,13 @@ func (e TurnOnedEvent) EventType() string {
 	return "TurnOned"
 }
 
-
 // TurnOffedEvent is emitted when the turn_off transition fires.
 type TurnOffedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e TurnOffedEvent) EventType() string {
 	return "TurnOffed"
 }
-
-

@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // BindedEvent is emitted when the bind transition fires.
 type BindedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e BindedEvent) EventType() string {
 	return "Binded"
 }
 
-
 // UnbindedEvent is emitted when the unbind transition fires.
 type UnbindedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,16 +28,13 @@ func (e UnbindedEvent) EventType() string {
 	return "Unbinded"
 }
 
-
 // CatalyzeedEvent is emitted when the catalyze transition fires.
 type CatalyzeedEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e CatalyzeedEvent) EventType() string {
 	return "Catalyzeed"
 }
-
-

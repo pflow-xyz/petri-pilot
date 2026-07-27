@@ -13,20 +13,19 @@ import (
 
 // State holds the aggregate state for coffeeshop.
 type State struct {
-	CoffeeBeans int `json:"coffee_beans"`
-	Milk int `json:"milk"`
-	Cups int `json:"cups"`
-	OrdersPending int `json:"orders_pending"`
-	EspressoReady int `json:"espresso_ready"`
-	LatteReady int `json:"latte_ready"`
+	CoffeeBeans     int `json:"coffee_beans"`
+	Milk            int `json:"milk"`
+	Cups            int `json:"cups"`
+	OrdersPending   int `json:"orders_pending"`
+	EspressoReady   int `json:"espresso_ready"`
+	LatteReady      int `json:"latte_ready"`
 	CappuccinoReady int `json:"cappuccino_ready"`
-	OrdersComplete int `json:"orders_complete"`
+	OrdersComplete  int `json:"orders_complete"`
 }
 
 // NewState creates a new State with initialized collections.
 func NewState() State {
-	return State{
-	}
+	return State{}
 }
 
 // Aggregate wraps a StateMachine with the coffeeshop state.
@@ -45,8 +44,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderEspresso,
 		EventType: EventTypeOrderEspresso,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceOrdersPending: 1,
 		},
@@ -54,8 +52,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderLatte,
 		EventType: EventTypeOrderLatte,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceOrdersPending: 1,
 		},
@@ -63,8 +60,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionOrderCappuccino,
 		EventType: EventTypeOrderCappuccino,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceOrdersPending: 1,
 		},
@@ -74,8 +70,8 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeMakeEspresso,
 		Inputs: map[string]int{
 			PlaceOrdersPending: 1,
-			PlaceCoffeeBeans: 20,
-			PlaceCups: 1,
+			PlaceCoffeeBeans:   20,
+			PlaceCups:          1,
 		},
 		Outputs: map[string]int{
 			PlaceEspressoReady: 1,
@@ -86,9 +82,9 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeMakeLatte,
 		Inputs: map[string]int{
 			PlaceOrdersPending: 1,
-			PlaceCoffeeBeans: 15,
-			PlaceMilk: 50,
-			PlaceCups: 1,
+			PlaceCoffeeBeans:   15,
+			PlaceMilk:          50,
+			PlaceCups:          1,
 		},
 		Outputs: map[string]int{
 			PlaceLatteReady: 1,
@@ -99,9 +95,9 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeMakeCappuccino,
 		Inputs: map[string]int{
 			PlaceOrdersPending: 1,
-			PlaceCoffeeBeans: 15,
-			PlaceMilk: 30,
-			PlaceCups: 1,
+			PlaceCoffeeBeans:   15,
+			PlaceMilk:          30,
+			PlaceCups:          1,
 		},
 		Outputs: map[string]int{
 			PlaceCappuccinoReady: 1,
@@ -140,8 +136,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRestockCoffeeBeans,
 		EventType: EventTypeRestockCoffeeBeans,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceCoffeeBeans: 500,
 		},
@@ -149,8 +144,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRestockMilk,
 		EventType: EventTypeRestockMilk,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceMilk: 500,
 		},
@@ -158,8 +152,7 @@ func NewAggregate(id string) *Aggregate {
 	sm.AddTransition(eventsource.Transition{
 		ID:        TransitionRestockCups,
 		EventType: EventTypeRestockCups,
-		Inputs: map[string]int{
-		},
+		Inputs:    map[string]int{},
 		Outputs: map[string]int{
 			PlaceCups: 100,
 		},

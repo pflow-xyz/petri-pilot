@@ -42,7 +42,7 @@ const (
 
 	// Real-time templates
 	TemplateRealtime = "realtime"
-	
+
 	// Workflow orchestration templates (Phase 12)
 	TemplateWorkflows = "workflows"
 
@@ -130,7 +130,7 @@ var templateInfo = map[string]struct {
 
 	// Real-time templates
 	TemplateRealtime: {File: "realtime.tmpl", Output: "realtime.go"},
-	
+
 	// Workflow orchestration templates (Phase 12)
 	TemplateWorkflows: {File: "workflows.tmpl", Output: "workflows.go"},
 
@@ -357,23 +357,23 @@ func InfraTemplateNames() []string {
 
 // NavigationTemplateNames returns template names for navigation files.
 func NavigationTemplateNames() []string {
-return []string{
-TemplateNavigation,
-}
+	return []string{
+		TemplateNavigation,
+	}
 }
 
 // AdminTemplateNames returns template names for admin dashboard files.
 func AdminTemplateNames() []string {
-return []string{
-TemplateAdmin,
-}
+	return []string{
+		TemplateAdmin,
+	}
 }
 
 // EventReplayTemplateNames returns template names for event replay files.
 func EventReplayTemplateNames() []string {
-return []string{
-TemplateAPIEvents,
-}
+	return []string{
+		TemplateAPIEvents,
+	}
 }
 
 // DebugTemplateNames returns template names for debug files.

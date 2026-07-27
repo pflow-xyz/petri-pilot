@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-
 // PickupLeft0edEvent is emitted when the pickup_left_0 transition fires.
 type PickupLeft0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -18,11 +17,10 @@ func (e PickupLeft0edEvent) EventType() string {
 	return "PickupLeft0ed"
 }
 
-
 // PickupLeft1edEvent is emitted when the pickup_left_1 transition fires.
 type PickupLeft1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -30,11 +28,10 @@ func (e PickupLeft1edEvent) EventType() string {
 	return "PickupLeft1ed"
 }
 
-
 // PickupLeft2edEvent is emitted when the pickup_left_2 transition fires.
 type PickupLeft2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -42,11 +39,10 @@ func (e PickupLeft2edEvent) EventType() string {
 	return "PickupLeft2ed"
 }
 
-
 // PickupLeft3edEvent is emitted when the pickup_left_3 transition fires.
 type PickupLeft3edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -54,11 +50,10 @@ func (e PickupLeft3edEvent) EventType() string {
 	return "PickupLeft3ed"
 }
 
-
 // PickupLeft4edEvent is emitted when the pickup_left_4 transition fires.
 type PickupLeft4edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -66,11 +61,10 @@ func (e PickupLeft4edEvent) EventType() string {
 	return "PickupLeft4ed"
 }
 
-
 // PickupRight0edEvent is emitted when the pickup_right_0 transition fires.
 type PickupRight0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -78,11 +72,10 @@ func (e PickupRight0edEvent) EventType() string {
 	return "PickupRight0ed"
 }
 
-
 // PickupRight1edEvent is emitted when the pickup_right_1 transition fires.
 type PickupRight1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -90,11 +83,10 @@ func (e PickupRight1edEvent) EventType() string {
 	return "PickupRight1ed"
 }
 
-
 // PickupRight2edEvent is emitted when the pickup_right_2 transition fires.
 type PickupRight2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -102,11 +94,10 @@ func (e PickupRight2edEvent) EventType() string {
 	return "PickupRight2ed"
 }
 
-
 // PickupRight3edEvent is emitted when the pickup_right_3 transition fires.
 type PickupRight3edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -114,11 +105,10 @@ func (e PickupRight3edEvent) EventType() string {
 	return "PickupRight3ed"
 }
 
-
 // PickupRight4edEvent is emitted when the pickup_right_4 transition fires.
 type PickupRight4edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -126,11 +116,10 @@ func (e PickupRight4edEvent) EventType() string {
 	return "PickupRight4ed"
 }
 
-
 // Release0edEvent is emitted when the release_0 transition fires.
 type Release0edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -138,11 +127,10 @@ func (e Release0edEvent) EventType() string {
 	return "Release0ed"
 }
 
-
 // Release1edEvent is emitted when the release_1 transition fires.
 type Release1edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -150,11 +138,10 @@ func (e Release1edEvent) EventType() string {
 	return "Release1ed"
 }
 
-
 // Release2edEvent is emitted when the release_2 transition fires.
 type Release2edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -162,11 +149,10 @@ func (e Release2edEvent) EventType() string {
 	return "Release2ed"
 }
 
-
 // Release3edEvent is emitted when the release_3 transition fires.
 type Release3edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
@@ -174,16 +160,13 @@ func (e Release3edEvent) EventType() string {
 	return "Release3ed"
 }
 
-
 // Release4edEvent is emitted when the release_4 transition fires.
 type Release4edEvent struct {
-	AggregateId string `json:"aggregate_id"`
-	Timestamp time.Time `json:"timestamp"`
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
 func (e Release4edEvent) EventType() string {
 	return "Release4ed"
 }
-
-

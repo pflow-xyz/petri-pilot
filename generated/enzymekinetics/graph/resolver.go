@@ -80,7 +80,6 @@ func (r *Resolver) EnzymeKineticsList(ctx context.Context, place *string, page *
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateEnzymekinetics creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateEnzymekinetics(ctx context.Context) (*AggregateState, e
 
 	return aggregateToState(agg), nil
 }
-
 
 // Bind executes the bind transition.
 func (r *Resolver) Bind(ctx context.Context, input BindInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) Bind(ctx context.Context, input BindInput) (*TransitionResult
 	}, nil
 }
 
-
 // Unbind executes the unbind transition.
 func (r *Resolver) Unbind(ctx context.Context, input UnbindInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -198,7 +194,6 @@ func (r *Resolver) Unbind(ctx context.Context, input UnbindInput) (*TransitionRe
 	}, nil
 }
 
-
 // Catalyze executes the catalyze transition.
 func (r *Resolver) Catalyze(ctx context.Context, input CatalyzeInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -225,8 +220,6 @@ func (r *Resolver) Catalyze(ctx context.Context, input CatalyzeInput) (*Transiti
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -306,16 +299,16 @@ type AggregateState struct {
 
 type State struct {
 	Substrate any `json:"substrate"`
-	Enzyme any `json:"enzyme"`
-	Complex any `json:"complex"`
-	Product any `json:"product"`
+	Enzyme    any `json:"enzyme"`
+	Complex   any `json:"complex"`
+	Product   any `json:"product"`
 }
 
 type Places struct {
 	Substrate int `json:"substrate"`
-	Enzyme int `json:"enzyme"`
-	Complex int `json:"complex"`
-	Product int `json:"product"`
+	Enzyme    int `json:"enzyme"`
+	Complex   int `json:"complex"`
+	Product   int `json:"product"`
 }
 
 type TransitionResult struct {
@@ -334,7 +327,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -344,20 +336,16 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type BindInput struct {
 	AggregateID string
 }
 
-
 type UnbindInput struct {
 	AggregateID string
 }
 
-
 type CatalyzeInput struct {
 	AggregateID string
 }
-

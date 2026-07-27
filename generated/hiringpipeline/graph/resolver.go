@@ -80,7 +80,6 @@ func (r *Resolver) HiringPipelineList(ctx context.Context, place *string, page *
 	}, nil
 }
 
-
 // Events returns the event history for an aggregate.
 func (r *Resolver) Events(ctx context.Context, aggregateID string, from *int) ([]*Event, error) {
 	store := r.App.GetStore()
@@ -124,7 +123,6 @@ func (r *Resolver) StateAtVersion(ctx context.Context, aggregateID string, versi
 	return state, nil
 }
 
-
 // Mutation resolvers
 
 // CreateHiringpipeline creates a new aggregate instance.
@@ -141,7 +139,6 @@ func (r *Resolver) CreateHiringpipeline(ctx context.Context) (*AggregateState, e
 
 	return aggregateToState(agg), nil
 }
-
 
 // ScreenCandidate executes the screen_candidate transition.
 func (r *Resolver) ScreenCandidate(ctx context.Context, input ScreenCandidateInput) (*TransitionResult, error) {
@@ -170,7 +167,6 @@ func (r *Resolver) ScreenCandidate(ctx context.Context, input ScreenCandidateInp
 	}, nil
 }
 
-
 // PassScreen executes the pass_screen transition.
 func (r *Resolver) PassScreen(ctx context.Context, input PassScreenInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -197,7 +193,6 @@ func (r *Resolver) PassScreen(ctx context.Context, input PassScreenInput) (*Tran
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // FailScreen executes the fail_screen transition.
 func (r *Resolver) FailScreen(ctx context.Context, input FailScreenInput) (*TransitionResult, error) {
@@ -226,7 +221,6 @@ func (r *Resolver) FailScreen(ctx context.Context, input FailScreenInput) (*Tran
 	}, nil
 }
 
-
 // PassTechnical executes the pass_technical transition.
 func (r *Resolver) PassTechnical(ctx context.Context, input PassTechnicalInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -253,7 +247,6 @@ func (r *Resolver) PassTechnical(ctx context.Context, input PassTechnicalInput) 
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // FailTechnical executes the fail_technical transition.
 func (r *Resolver) FailTechnical(ctx context.Context, input FailTechnicalInput) (*TransitionResult, error) {
@@ -282,7 +275,6 @@ func (r *Resolver) FailTechnical(ctx context.Context, input FailTechnicalInput) 
 	}, nil
 }
 
-
 // PassCulture executes the pass_culture transition.
 func (r *Resolver) PassCulture(ctx context.Context, input PassCultureInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -309,7 +301,6 @@ func (r *Resolver) PassCulture(ctx context.Context, input PassCultureInput) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // FailCulture executes the fail_culture transition.
 func (r *Resolver) FailCulture(ctx context.Context, input FailCultureInput) (*TransitionResult, error) {
@@ -338,7 +329,6 @@ func (r *Resolver) FailCulture(ctx context.Context, input FailCultureInput) (*Tr
 	}, nil
 }
 
-
 // MergeInterviews executes the merge_interviews transition.
 func (r *Resolver) MergeInterviews(ctx context.Context, input MergeInterviewsInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -365,7 +355,6 @@ func (r *Resolver) MergeInterviews(ctx context.Context, input MergeInterviewsInp
 		EnabledTransitions: enabled,
 	}, nil
 }
-
 
 // ExtendOffer executes the extend_offer transition.
 func (r *Resolver) ExtendOffer(ctx context.Context, input ExtendOfferInput) (*TransitionResult, error) {
@@ -394,7 +383,6 @@ func (r *Resolver) ExtendOffer(ctx context.Context, input ExtendOfferInput) (*Tr
 	}, nil
 }
 
-
 // AcceptOffer executes the accept_offer transition.
 func (r *Resolver) AcceptOffer(ctx context.Context, input AcceptOfferInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -422,7 +410,6 @@ func (r *Resolver) AcceptOffer(ctx context.Context, input AcceptOfferInput) (*Tr
 	}, nil
 }
 
-
 // RejectOffer executes the reject_offer transition.
 func (r *Resolver) RejectOffer(ctx context.Context, input RejectOfferInput) (*TransitionResult, error) {
 	data := make(map[string]any)
@@ -449,8 +436,6 @@ func (r *Resolver) RejectOffer(ctx context.Context, input RejectOfferInput) (*Tr
 		EnabledTransitions: enabled,
 	}, nil
 }
-
-
 
 // Helper functions
 
@@ -565,29 +550,29 @@ type AggregateState struct {
 }
 
 type State struct {
-	Applied any `json:"applied"`
-	PhoneScreen any `json:"phoneScreen"`
+	Applied            any `json:"applied"`
+	PhoneScreen        any `json:"phoneScreen"`
 	TechnicalInterview any `json:"technicalInterview"`
-	CultureInterview any `json:"cultureInterview"`
-	TechPassed any `json:"techPassed"`
-	CulturePassed any `json:"culturePassed"`
-	ReadyForOffer any `json:"readyForOffer"`
-	OfferExtended any `json:"offerExtended"`
-	Hired any `json:"hired"`
-	Rejected any `json:"rejected"`
+	CultureInterview   any `json:"cultureInterview"`
+	TechPassed         any `json:"techPassed"`
+	CulturePassed      any `json:"culturePassed"`
+	ReadyForOffer      any `json:"readyForOffer"`
+	OfferExtended      any `json:"offerExtended"`
+	Hired              any `json:"hired"`
+	Rejected           any `json:"rejected"`
 }
 
 type Places struct {
-	Applied int `json:"applied"`
-	PhoneScreen int `json:"phoneScreen"`
+	Applied            int `json:"applied"`
+	PhoneScreen        int `json:"phoneScreen"`
 	TechnicalInterview int `json:"technicalInterview"`
-	CultureInterview int `json:"cultureInterview"`
-	TechPassed int `json:"techPassed"`
-	CulturePassed int `json:"culturePassed"`
-	ReadyForOffer int `json:"readyForOffer"`
-	OfferExtended int `json:"offerExtended"`
-	Hired int `json:"hired"`
-	Rejected int `json:"rejected"`
+	CultureInterview   int `json:"cultureInterview"`
+	TechPassed         int `json:"techPassed"`
+	CulturePassed      int `json:"culturePassed"`
+	ReadyForOffer      int `json:"readyForOffer"`
+	OfferExtended      int `json:"offerExtended"`
+	Hired              int `json:"hired"`
+	Rejected           int `json:"rejected"`
 }
 
 type TransitionResult struct {
@@ -606,7 +591,6 @@ type AggregateList struct {
 	PerPage int               `json:"perPage"`
 }
 
-
 type Event struct {
 	ID        string `json:"id"`
 	StreamID  string `json:"streamId"`
@@ -616,60 +600,48 @@ type Event struct {
 	Data      string `json:"data"`
 }
 
-
 // Input types
 
 type ScreenCandidateInput struct {
 	AggregateID string
 }
 
-
 type PassScreenInput struct {
 	AggregateID string
 }
-
 
 type FailScreenInput struct {
 	AggregateID string
 }
 
-
 type PassTechnicalInput struct {
 	AggregateID string
 }
-
 
 type FailTechnicalInput struct {
 	AggregateID string
 }
 
-
 type PassCultureInput struct {
 	AggregateID string
 }
-
 
 type FailCultureInput struct {
 	AggregateID string
 }
 
-
 type MergeInterviewsInput struct {
 	AggregateID string
 }
-
 
 type ExtendOfferInput struct {
 	AggregateID string
 }
 
-
 type AcceptOfferInput struct {
 	AggregateID string
 }
 
-
 type RejectOfferInput struct {
 	AggregateID string
 }
-

@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/enzymekinetics/graph"
 	"github.com/pflow-xyz/go-pflow/eventsource"
+	"github.com/pflow-xyz/petri-pilot/generated/enzymekinetics/graph"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 
@@ -62,7 +62,6 @@ var playgroundHTML = "<!DOCTYPE html>\n" +
 	"</body>\n" +
 	"</html>\n"
 
-
 // graphQLApp wraps Application to implement the resolver interface.
 type graphQLApp struct {
 	app *Application
@@ -91,7 +90,6 @@ func (a *graphQLApp) HealthCheck(ctx context.Context) error {
 func (a *graphQLApp) GetStore() eventsource.Store {
 	return a.app.store
 }
-
 
 // graphQLHandler implements a simple GraphQL HTTP handler.
 type graphQLHandler struct {
@@ -211,7 +209,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle query for single aggregate
 	if !isMutation && containsString(query, "enzymekinetics(") {
 		id := ""
@@ -251,7 +248,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 		}
 	}
 
-
 	// Handle events query
 	if !isMutation && containsString(query, "events(") {
 		aggID := ""
@@ -272,7 +268,6 @@ func (h *graphQLHandler) executeGraphQL(ctx context.Context, query, operationNam
 			}
 		}
 	}
-
 
 	result["data"] = data
 	if len(errors) > 0 {
@@ -461,7 +456,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["createEnzymekinetics"] = resolvers["enzymekinetics_create"]
 
-
 	resolvers["enzymekinetics_bind"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.BindInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -472,7 +466,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Bind(ctx, input)
 	}
 	resolvers["bind"] = resolvers["enzymekinetics_bind"]
-
 
 	resolvers["enzymekinetics_unbind"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.UnbindInput{}
@@ -485,7 +478,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["unbind"] = resolvers["enzymekinetics_unbind"]
 
-
 	resolvers["enzymekinetics_catalyze"] = func(ctx context.Context, variables map[string]any) (any, error) {
 		input := graph.CatalyzeInput{}
 		if vars, ok := variables["input"].(map[string]any); ok {
@@ -496,9 +488,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 		return resolver.Catalyze(ctx, input)
 	}
 	resolvers["catalyze"] = resolvers["enzymekinetics_catalyze"]
-
-
-
 
 	// Events resolver (namespace for unified endpoint)
 	resolvers["enzymekinetics_events"] = func(ctx context.Context, variables map[string]any) (any, error) {
@@ -512,7 +501,6 @@ func GraphQLResolversMap(app *Application) map[string]serve.GraphQLResolver {
 	}
 	resolvers["events"] = resolvers["enzymekinetics_events"]
 	resolvers["enzymekineticsEvents"] = resolvers["enzymekinetics_events"]
-
 
 	return resolvers
 }

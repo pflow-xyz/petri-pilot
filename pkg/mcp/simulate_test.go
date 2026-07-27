@@ -11,12 +11,12 @@ import (
 
 func TestSimulateWithDetailedSteps(t *testing.T) {
 	tests := []struct {
-		name               string
-		modelJSON          string
-		steps              []SimulationStep
-		expectSuccess      bool
-		expectStepCount    int
-		checkSteps         func(t *testing.T, steps []StepResult)
+		name            string
+		modelJSON       string
+		steps           []SimulationStep
+		expectSuccess   bool
+		expectStepCount int
+		checkSteps      func(t *testing.T, steps []StepResult)
 	}{
 		{
 			name: "detailed step-by-step trace",

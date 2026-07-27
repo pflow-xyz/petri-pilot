@@ -53,9 +53,9 @@ func odeSweepTool() mcp.Tool {
 }
 
 type odeSweepResponse struct {
-	Transition  string           `json:"transition"`
-	Observable  string           `json:"observable"`
-	Values      []float64        `json:"values"`
+	Transition   string            `json:"transition"`
+	Observable   string            `json:"observable"`
+	Values       []float64         `json:"values"`
 	Trajectories []sweepTrajectory `json:"trajectories"`
 }
 
