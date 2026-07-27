@@ -430,7 +430,20 @@ func handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("validation error: %v", err)), nil
 	}
 
-	output, err := json.MarshalIndent(result, "", "  ")
+	// Conservation laws are cheap (no state exploration) and are the part of the
+	// answer that survives on models too large to analyse behaviourally, so
+	// validate reports them alongside the structural findings.
+	pInvariants, tInvariants := analyzeInvariants(model)
+
+	output, err := json.MarshalIndent(struct {
+		*goflowmetamodel.ValidationResult
+		PInvariants []string `json:"p_invariants"`
+		TInvariants []string `json:"t_invariants"`
+	}{
+		ValidationResult: result,
+		PInvariants:      pInvariants,
+		TInvariants:      tInvariants,
+	}, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 	}

@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/go-pflow/petri"
-	"github.com/pflow-xyz/go-pflow/reachability"
 	"github.com/pflow-xyz/go-pflow/verify"
+	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 )
 
 // verifyTool exposes declarative property checking.
@@ -303,39 +302,11 @@ func parseMarkingShorthand(s string) (map[string]int, error) {
 	return target, nil
 }
 
-// analyzeInvariants returns the model's minimal-support P- and T-invariants in
-// rendered form, for petri_analyze.
-//
-// P-invariants are conservation laws — weighted sums of places that are equal at
-// every reachable marking. They are proved algebraically from the incidence
-// matrix, so unlike the reachability figures alongside them they remain valid
-// when the state space is too large to explore. An empty list is meaningful: it
-// says the net has no semi-positive conservation law, not merely that none was
-// found.
-//
-// T-invariants are firing-count vectors that return the net to its starting
-// marking, characterising its cyclic behaviour.
+// analyzeInvariants returns the model's minimal-support P- and T-invariants,
+// delegating to pkg/validator so petri_validate and petri_analyze cannot drift
+// apart on what they report.
 func analyzeInvariants(model *goflowmetamodel.Model) (pInvariants, tInvariants []string) {
-	net := buildVerifyNet(model)
-
-	initial := make(reachability.Marking, len(net.Places))
-	for name, place := range net.Places {
-		initial[name] = int(place.GetTokenCount())
-	}
-
-	analyzer := reachability.NewInvariantAnalyzer(net)
-
-	pInvariants = []string{}
-	for _, inv := range analyzer.FindPInvariants(initial) {
-		pInvariants = append(pInvariants, inv.String())
-	}
-	sort.Strings(pInvariants)
-
-	tInvariants = []string{}
-	for _, inv := range analyzer.FindTInvariants() {
-		tInvariants = append(tInvariants, inv.String())
-	}
-	sort.Strings(tInvariants)
-
-	return pInvariants, tInvariants
+	opts := validator.DefaultOptions()
+	opts.EnableSensitivity = false
+	return validator.New(opts).Invariants(model)
 }

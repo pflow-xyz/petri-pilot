@@ -3,6 +3,7 @@ package validator
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/go-pflow/petri"
@@ -206,12 +207,64 @@ func (v *Validator) analyzeReachability(net *petri.PetriNet) (*metamodel.Analysi
 		StateCount:   result.StateCount,
 	}
 
-	// Convert deadlock states to string representation
-	for _, dl := range result.Deadlocks {
-		analysis.Deadlocks = append(analysis.Deadlocks, fmt.Sprintf("%v", dl))
+	// A covering witness proves unboundedness outright, and finding one does not
+	// require exhausting the state limit. Without this check an unbounded net
+	// usually truncates first and is reported as bounded, which is the wrong way
+	// round to be wrong.
+	if analysis.Bounded {
+		if w := reachability.NewAnalyzer(net).WithMaxStates(v.opts.MaxStates).FindUnboundedWitness(); w != nil {
+			analysis.Bounded = false
+		}
 	}
 
+	// Report the marking, not the graph node. This used to be fmt.Sprintf("%v",
+	// dl) on a *reachability.State, which dumped the whole struct including its
+	// edge slices — so the output carried a pointer address and changed between
+	// runs on an otherwise identical model.
+	for _, dl := range result.Deadlocks {
+		analysis.Deadlocks = append(analysis.Deadlocks, dl.Marking.String())
+	}
+	sort.Strings(analysis.Deadlocks)
+
 	return analysis, nil
+}
+
+// Invariants returns the model's minimal-support P- and T-invariants, rendered
+// for display.
+//
+// These live here rather than in a caller because they are model-level analysis
+// like everything else in this package, and both petri_validate and
+// petri_analyze need the same answer. A P-invariant is a conservation law that
+// holds at every reachable marking; because it is proved from the incidence
+// matrix rather than by exploration, it stays valid on models too large for the
+// reachability analysis above to finish. An empty result is itself a finding —
+// it says the net has no semi-positive conservation law.
+func (v *Validator) Invariants(model *metamodel.Model) (pInvariants, tInvariants []string) {
+	pInvariants, tInvariants = []string{}, []string{}
+
+	net, err := v.buildNet(model)
+	if err != nil {
+		return pInvariants, tInvariants
+	}
+
+	initial := make(reachability.Marking, len(net.Places))
+	for name, place := range net.Places {
+		initial[name] = int(place.GetTokenCount())
+	}
+
+	analyzer := reachability.NewInvariantAnalyzer(net)
+
+	for _, inv := range analyzer.FindPInvariants(initial) {
+		pInvariants = append(pInvariants, inv.String())
+	}
+	sort.Strings(pInvariants)
+
+	for _, inv := range analyzer.FindTInvariants() {
+		tInvariants = append(tInvariants, inv.String())
+	}
+	sort.Strings(tInvariants)
+
+	return pInvariants, tInvariants
 }
 
 func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *metamodel.AnalysisResult {

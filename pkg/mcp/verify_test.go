@@ -329,3 +329,74 @@ func TestAnalyzeInvariantsEmptyNotNull(t *testing.T) {
 		t.Errorf("expected an empty array for p_invariants, got:\n%s", raw)
 	}
 }
+
+// TestValidateSurfacesInvariants: petri_validate reports conservation laws too,
+// not just structural findings. They cost nothing (no state exploration) and are
+// the part of the answer that still holds on models too large to analyse.
+func TestValidateSurfacesInvariants(t *testing.T) {
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_validate"
+	req.Params.Arguments = map[string]any{"model": mutexModelJSON}
+
+	result, err := handleValidate(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handleValidate error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("tool error: %s", resultText(result))
+	}
+
+	var out struct {
+		Valid       bool     `json:"valid"`
+		PInvariants []string `json:"p_invariants"`
+		TInvariants []string `json:"t_invariants"`
+	}
+	if err := json.Unmarshal([]byte(resultText(result)), &out); err != nil {
+		t.Fatalf("unmarshal: %v\nraw: %s", err, resultText(result))
+	}
+
+	if !out.Valid {
+		t.Error("mutex model should be valid")
+	}
+
+	want := "busy1 + busy2 + sem == 1"
+	found := false
+	for _, inv := range out.PInvariants {
+		if inv == want {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("p_invariants = %v, want to include %q", out.PInvariants, want)
+	}
+}
+
+// TestValidateAndAnalyzeAgreeOnInvariants pins the reason both tools delegate to
+// one implementation: they must never report different laws for the same model.
+func TestValidateAndAnalyzeAgreeOnInvariants(t *testing.T) {
+	extract := func(handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), name string) []string {
+		req := mcp.CallToolRequest{}
+		req.Params.Name = name
+		req.Params.Arguments = map[string]any{"model": mutexModelJSON}
+
+		result, err := handler(context.Background(), req)
+		if err != nil || result.IsError {
+			t.Fatalf("%s failed: %v %s", name, err, resultText(result))
+		}
+		var out struct {
+			PInvariants []string `json:"p_invariants"`
+		}
+		if err := json.Unmarshal([]byte(resultText(result)), &out); err != nil {
+			t.Fatalf("%s unmarshal: %v", name, err)
+		}
+		return out.PInvariants
+	}
+
+	fromValidate := extract(handleValidate, "petri_validate")
+	fromAnalyze := extract(handleAnalyze, "petri_analyze")
+
+	if strings.Join(fromValidate, "|") != strings.Join(fromAnalyze, "|") {
+		t.Errorf("petri_validate and petri_analyze disagree:\n validate: %v\n analyze:  %v",
+			fromValidate, fromAnalyze)
+	}
+}

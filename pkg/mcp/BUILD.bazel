@@ -60,7 +60,6 @@ go_library(
         "@com_github_pflow_xyz_go_pflow//metamodel",
         "@com_github_pflow_xyz_go_pflow//mining",
         "@com_github_pflow_xyz_go_pflow//petri",
-        "@com_github_pflow_xyz_go_pflow//reachability",
         "@com_github_pflow_xyz_go_pflow//solver",
         "@com_github_pflow_xyz_go_pflow//tokenmodel",
         "@com_github_pflow_xyz_go_pflow//tokenmodel/dsl",

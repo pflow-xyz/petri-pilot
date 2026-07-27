@@ -18,9 +18,10 @@ go_library(
 
 go_test(
     name = "validator_test",
-    srcs = ["implementability_test.go"],
-    deps = [
-        ":validator",
-        "@com_github_pflow_xyz_go_pflow//metamodel",
+    srcs = [
+        "implementability_test.go",
+        "invariants_test.go",
     ],
+    embed = [":validator"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
 )
