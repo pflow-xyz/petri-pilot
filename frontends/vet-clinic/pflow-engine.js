@@ -9,6 +9,8 @@
  *   engine.fire(id, transition, data) — discrete event sourcing
  */
 
+import { expandColors, expandState } from './petri-colors.js';
+
 // ============================================================================
 // Data Structures (shared with petri-solver.js)
 // ============================================================================
@@ -249,7 +251,22 @@ function buildODEFunction(net, rates) {
 }
 
 export class ODEProblem {
+  /**
+   * Multi-color nets are unfolded first (expandColors), so mass action runs per
+   * color: a transition's flux depends only on the colors its input arcs name,
+   * and consumes only those. Summing the vectors would let a pool of blue
+   * tokens drive a red-only reaction.
+   *
+   * initialState is mapped through expandState. Results still report base
+   * names by default — see ODESolution.
+   */
   constructor(net, initialState, tspan, rates) {
+    const { net: expanded, colorMap } = expandColors(net);
+    if (colorMap !== null) {
+      initialState = expandState(net, initialState);
+      net = expanded;
+    }
+    this.colorMap = colorMap;
     this.net = net;
     this.u0 = initialState;
     this.tspan = tspan;
@@ -259,22 +276,57 @@ export class ODEProblem {
 }
 
 export class ODESolution {
-  constructor(t, u, stateLabels) {
+  /**
+   * On a color-unfolded problem `u` and `stateLabels` use the expanded
+   * per-color place names ("pool.red"); getFinalState and getState fold them
+   * back to per-place totals under the original names, and getVariable accepts
+   * either. Matches go-pflow's solver.Solution.
+   */
+  constructor(t, u, stateLabels, colorMap = null) {
     this.t = t;
     this.u = u;
     this.stateLabels = stateLabels;
+    this.colorMap = colorMap;
   }
 
+  /** A base name sums the colors; an expanded name picks one out. */
   getVariable(index) {
     const label = typeof index === 'number' ? this.stateLabels[index] : index;
-    return this.u.map(state => state[label]);
+    const labels = this.colorMap ? this.colorMap.lookup(label) : [label];
+    return this.u.map(state => {
+      let sum = 0;
+      for (const l of labels) sum += state[l] ?? 0;
+      return sum;
+    });
   }
 
+  /** Per-color series for a base place, index-aligned with colorMap.colors. */
+  getVariableByColor(place) {
+    const labels = this.colorMap ? this.colorMap.lookup(place) : [place];
+    return labels.map(l => this.u.map(state => state[l] ?? 0));
+  }
+
+  /** Keyed by the original place names; colors are summed. */
   getFinalState() {
+    const last = this.u[this.u.length - 1];
+    if (last === undefined) return last;
+    return this.colorMap ? this.colorMap.sumByBase(last) : last;
+  }
+
+  /** Keyed by expanded per-color place names. */
+  getFinalStateByColor() {
     return this.u[this.u.length - 1];
   }
 
+  /** Keyed by the original place names; colors are summed. */
   getState(index) {
+    const st = this.u[index];
+    if (st === undefined) return st;
+    return this.colorMap ? this.colorMap.sumByBase(st) : st;
+  }
+
+  /** Keyed by expanded per-color place names. */
+  getStateByColor(index) {
     return this.u[index];
   }
 }
@@ -369,7 +421,7 @@ export function solve(prob, solver = Tsit5(), options = {}) {
     }
   }
 
-  return new ODESolution(t, u, stateLabels);
+  return new ODESolution(t, u, stateLabels, prob.colorMap ?? null);
 }
 
 // ============================================================================
@@ -660,7 +712,17 @@ export class PflowEngine {
    */
   constructor(modelJson, options = {}) {
     this.modelJson = typeof modelJson === 'string' ? JSON.parse(modelJson) : modelJson;
-    this.net = loadModel(this.modelJson);
+
+    // Multi-color models are unfolded (expandColors), so the discrete engine
+    // fires per color: an arc naming red is satisfied by red tokens only, never
+    // by a summed pool. State.places is then keyed by the expanded names
+    // ("pool.red"), which is what go-pflow's event-sourced marking does too;
+    // colorMap recovers the mapping. rawNet keeps the model as authored, which
+    // the ODE path needs so its results can report base names.
+    this.rawNet = loadModel(this.modelJson);
+    const { net: expandedNet, colorMap } = expandColors(this.rawNet);
+    this.net = expandedNet;
+    this.colorMap = colorMap;
 
     // JSON-LD metadata (v2.1)
     this.context = this.modelJson['@context'] || null;
@@ -978,9 +1040,13 @@ export class PflowEngine {
 
   /** Run ODE simulation. Returns ODESolution. */
   ode(customRates = null, tspan = [0, 10], customState = null, solverOptions = {}) {
-    const initial = setState(this.net, customState);
-    const rates = setRates(this.net, customRates);
-    const prob = new ODEProblem(this.net, initial, tspan, rates);
+    // Built from rawNet, not the unfolded net, so ODEProblem does the
+    // unfolding itself and the returned ODESolution carries the colorMap that
+    // lets getFinalState/getVariable answer in the caller's own place names.
+    // customState is therefore in base names too, matching setState.
+    const initial = setState(this.rawNet, customState);
+    const rates = setRates(this.rawNet, customRates);
+    const prob = new ODEProblem(this.rawNet, initial, tspan, rates);
     return solve(prob, Tsit5(), solverOptions);
   }
 }
