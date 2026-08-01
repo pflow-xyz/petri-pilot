@@ -87,7 +87,36 @@ npm run test:headed  # Watch tests in browser
 
 ## Known Issues
 
-None currently tracked.
+### `pflow-engine.js` can't join the pflow-js lock as-is
+
+`frontends/vet-clinic/pflow-engine.js` is *derived* from pflow-xyz's
+`petri-solver.js` — a ~1000-line unified runtime that adds discrete
+event-sourcing on top of the ODE solver — rather than a copy of it. So it cannot
+be pinned the way bitwrap-io, stackedup-gg and modeldao-org pin their vendored
+modules (`scripts/pflow-js.sh` + `pflow-js.lock`, and in bitwrap-io's case a
+Bazel `git_override` against `@pflow_xyz//public:browser_modules`).
+
+That matters because the derivation has already inherited an upstream bug once.
+It summed the per-color token/weight vectors in **both** execution modes — the
+mass-action field *and* `canFire` / `_applyEvent` — so a transition whose arc
+named red would fire on a pool holding only blue. Fixed in `6bb0a8a` by adding
+`petri-colors.js` and unfolding in both paths, but nothing prevents the next
+upstream fix from missing this copy the same way.
+
+`frontends/vet-clinic/petri-colors.js` is currently a near-copy of pflow-xyz's,
+differing only in a header comment, so it is not byte-identical and therefore not
+lockable either.
+
+**To fix:** split `pflow-engine.js` into the part that is genuinely upstream (the
+Place/Transition/Arc/PetriNet types, `fromJSON`, `setState`, `setRates`,
+`buildODEFunction`, Tsit5, `solve`, `SVGPlotter`) and the part that is this
+repo's own (`PflowEngine`, `MemoryEventStore`, the event-sourcing layer). Import
+the first from a vendored, locked `petri-solver.js`; keep the second here. Then
+add both it and `petri-colors.js` to a `pflow-js.lock`.
+
+Same applies to `pflow-pilot/frontends/shared/pflow-engine.js`, which is
+byte-identical to this one — though that repo is archived and a candidate for
+retirement.
 
 ---
 
