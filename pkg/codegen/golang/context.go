@@ -1299,6 +1299,13 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 	inputArcMap := make(map[string]map[string]ArcContext)  // transition → place → arc
 	outputArcMap := make(map[string]map[string]ArcContext) // transition → place → arc
 
+	// Dedup keys in the order the model declares them. Ranging the maps below
+	// would emit arcs in Go's randomized map order, making generated code differ
+	// between runs for an identical model; declaration order keeps generation
+	// reproducible and is stable under edits to unrelated transitions.
+	inputArcOrder := make(map[string][]string)  // transition → place IDs, first-seen order
+	outputArcOrder := make(map[string][]string) // transition → place IDs, first-seen order
+
 	for _, arc := range arcs {
 		weight := arc.Weight
 		if weight == 0 {
@@ -1322,6 +1329,7 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 					Weight:      weight,
 					IsInhibitor: arc.IsInhibitor(),
 				}
+				inputArcOrder[arc.To] = append(inputArcOrder[arc.To], arc.From)
 			}
 		}
 
@@ -1343,21 +1351,22 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 					Weight:      weight,
 					IsInhibitor: false,
 				}
+				outputArcOrder[arc.From] = append(outputArcOrder[arc.From], arc.To)
 			}
 		}
 	}
 
-	// Flatten deduped maps into slices
+	// Flatten deduped maps into slices, following declaration order.
 	inputArcs := make(map[string][]ArcContext)
-	for transID, placeMap := range inputArcMap {
-		for _, ac := range placeMap {
-			inputArcs[transID] = append(inputArcs[transID], ac)
+	for transID, order := range inputArcOrder {
+		for _, placeID := range order {
+			inputArcs[transID] = append(inputArcs[transID], inputArcMap[transID][placeID])
 		}
 	}
 	outputArcs := make(map[string][]ArcContext)
-	for transID, placeMap := range outputArcMap {
-		for _, ac := range placeMap {
-			outputArcs[transID] = append(outputArcs[transID], ac)
+	for transID, order := range outputArcOrder {
+		for _, placeID := range order {
+			outputArcs[transID] = append(outputArcs[transID], outputArcMap[transID][placeID])
 		}
 	}
 

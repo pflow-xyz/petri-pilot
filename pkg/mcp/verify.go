@@ -96,7 +96,19 @@ func handleVerify(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError("no properties given — supply at least one, e.g. [\"deadlock-free\"]"), nil
 	}
 
-	net := buildVerifyNet(parsed.Model)
+	// pflow.xyz-format models go to the verifier as the colored petri net
+	// go-pflow parsed — verify.New does its own color unfolding and lets
+	// properties address base places as per-color sums. Routing through the
+	// scalar metamodel here would strand base-name properties: the expanded
+	// model only has "pool.red"-style places, and the ColorMap that maps
+	// "pool" onto them exists only on this path.
+	net, _, isPflow, perr := parsePflowNet(modelJSON)
+	if perr != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model: %v", perr)), nil
+	}
+	if !isPflow {
+		net = buildVerifyNet(parsed.Model)
+	}
 
 	v := verify.New(net)
 	if raw := request.GetString("max_states", ""); raw != "" {
@@ -135,7 +147,13 @@ func buildVerifyNet(model *goflowmetamodel.Model) *petri.PetriNet {
 		if weight == 0 {
 			weight = 1
 		}
-		builder = builder.Arc(arc.From, arc.To, float64(weight))
+		if arc.IsInhibitor() {
+			// Previously dropped: an inhibitor arc silently became a normal
+			// consuming arc, changing the model being verified.
+			builder = builder.InhibitorArc(arc.From, arc.To, float64(weight))
+		} else {
+			builder = builder.Arc(arc.From, arc.To, float64(weight))
+		}
 	}
 
 	return builder.Done()

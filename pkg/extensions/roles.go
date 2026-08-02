@@ -83,22 +83,24 @@ func (r *RoleExtension) RoleByID(id string) *Role {
 }
 
 // FlattenHierarchy returns all roles that a given role inherits (including itself).
+//
+// Order is depth-first from roleID: the role itself, then each parent in the
+// order it is declared in Inherits. The result reaches code generation (it is
+// emitted as the AllRolesFor literal in permissions.go), so it must not depend
+// on Go's map iteration order.
 func (r *RoleExtension) FlattenHierarchy(roleID string) []string {
-	result := make(map[string]bool)
-	r.collectInheritedRoles(roleID, result)
-
-	flat := make([]string, 0, len(result))
-	for id := range result {
-		flat = append(flat, id)
-	}
+	seen := make(map[string]bool)
+	var flat []string
+	r.collectInheritedRoles(roleID, seen, &flat)
 	return flat
 }
 
-func (r *RoleExtension) collectInheritedRoles(roleID string, collected map[string]bool) {
-	if collected[roleID] {
+func (r *RoleExtension) collectInheritedRoles(roleID string, seen map[string]bool, order *[]string) {
+	if seen[roleID] {
 		return // Already processed (prevents cycles)
 	}
-	collected[roleID] = true
+	seen[roleID] = true
+	*order = append(*order, roleID)
 
 	role := r.RoleByID(roleID)
 	if role == nil {
@@ -106,7 +108,7 @@ func (r *RoleExtension) collectInheritedRoles(roleID string, collected map[strin
 	}
 
 	for _, parent := range role.Inherits {
-		r.collectInheritedRoles(parent, collected)
+		r.collectInheritedRoles(parent, seen, order)
 	}
 }
 

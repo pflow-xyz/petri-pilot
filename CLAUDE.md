@@ -91,9 +91,13 @@ permit behavior never seen?), and per-trace diagnostics naming the activities th
 could not be replayed, worst-fitting traces first.
 
 **Dependency note:** both tools need the go-pflow `verify` package. `go.mod`
-currently carries a temporary `replace` pointing at the sibling `../go-pflow`
-checkout. **Before releasing, tag go-pflow and swap that replace for a version
-bump on the `require` line** — a `replace` must not ship in a released module.
+carries a temporary `replace` pointing at the sibling `../go-pflow` checkout,
+because petri-pilot tracks unreleased go-pflow work — currently the
+`metamodel` composition layer (`Bundle`/`Subnet`/`Link`/`Flatten`). The `require`
+line still names the last released tag, so **check both**: `require` tells you
+the floor, the sibling checkout tells you what you're actually compiling.
+**Before releasing, tag go-pflow and swap that replace for a version bump on the
+`require` line** — a `replace` must not ship in a released module.
 
 ### 2. Generate Code
 
@@ -108,6 +112,39 @@ For just a backend from a Petri net model:
 ```
 petri_codegen(model='...', language='go', package='ordertracker')
 ```
+
+For a dependency-free, single-file state-machine core to embed in an existing
+codebase — no API, no persistence, just marking/enablement/firing plus a demo
+driver (`pkg/codegen/core`, seeded from pflow-polyglot's forms):
+
+```
+petri_codegen(model='...', language='rust')                    # also: python, javascript, go-core
+petri_codegen(model='...', language='rust', form='contract')   # also: interpreter, lambda, generated (default)
+petri_codegen(model='...', language='lean')                    # proof form
+```
+
+The four core forms follow pflow-polyglot's FORMS.md: **generated** (arcs
+unrolled into straight-line conditionals), **interpreter** (net as runtime
+data + one generic engine), **lambda** (pure per-transition functions in a
+fixed schedule), **contract** (public entry points that refuse with a reason;
+the caller owns sequencing). All print the identical canonical trace under
+the same greedy driver.
+
+`language='lean'` is the **proof form**: the generator model-checks the net
+at generation time (BFS; refuses unbounded or >4096-state nets) and bakes its
+findings — state count, per-place bounds, deadlock set — into Lean 4
+`theorem`s discharged by `decide` (or `native_decide` past 128 states). The
+Lean kernel re-derives the analyzer's claims by running the same search at
+compile time, so a wrong finding is a file that does not compile — two
+independent implementations must agree before `main` exists.
+
+Core mode supports token places only (weights, capacities, inhibitor and read
+arcs included); models with data places, expression guards, or bindings get a
+descriptive error naming each offending element — those need the application
+generator. Output is deterministic and gated by execution-parity tests
+(`pkg/codegen/core/core_test.go`) that run every form x language cell — 17
+programs, lean included when on PATH — and diff each trace against
+pflow-polyglot's golden.
 
 For just a frontend:
 
@@ -276,6 +313,13 @@ Layout:
 - After editing `go.mod`, run `bazel mod tidy`; after adding/moving `.go` files, run
   `bazel run //:gazelle`. Generated apps under `generated/` are part of the main module
   (single-module architecture), so Gazelle picks them up automatically.
+- **Editing the sibling `../go-pflow` while the local `replace` is active.** Gazelle's
+  `go_deps.from_file` reads the `replace` and *materializes a copy* of `../go-pflow`
+  under the output base — it is not a symlink. Bazel does notice edits and re-fetches,
+  but the invalidation can land mid-build, so the first `bazel build` after a go-pflow
+  edit sometimes aborts; **just run it again**. It does not silently compile stale code.
+  `go build`/`go test` have no such lag — they read the sibling directly. So when the
+  two disagree, believe `go test` and re-run Bazel.
 
 ### Generating Bazel-ready apps (`-bazel`)
 

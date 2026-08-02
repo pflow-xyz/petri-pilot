@@ -46,6 +46,14 @@ go_binary(
 
 go_test(
     name = "petri-pilot_test",
-    srcs = ["args_test.go"],
+    srcs = [
+        "args_test.go",
+        "freeze_test.go",
+    ],
+    data = glob(["testdata/**"]),
     embed = [":petri-pilot_lib"],
+    deps = [
+        "//pkg/codegen/golang",
+        "//services",
+    ],
 )

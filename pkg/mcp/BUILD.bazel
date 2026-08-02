@@ -43,6 +43,7 @@ go_library(
     deps = [
         "//internal/llm",
         "//internal/version",
+        "//pkg/codegen/core",
         "//pkg/codegen/esmodules",
         "//pkg/codegen/golang",
         "//pkg/codegen/zkgo",
@@ -59,6 +60,7 @@ go_library(
         "@com_github_pflow_xyz_go_pflow//eventlog",
         "@com_github_pflow_xyz_go_pflow//metamodel",
         "@com_github_pflow_xyz_go_pflow//mining",
+        "@com_github_pflow_xyz_go_pflow//parser",
         "@com_github_pflow_xyz_go_pflow//petri",
         "@com_github_pflow_xyz_go_pflow//solver",
         "@com_github_pflow_xyz_go_pflow//tokenmodel",
@@ -77,6 +79,7 @@ go_test(
         "alt_views_test.go",
         "amm_test.go",
         "bench_test.go",
+        "codegen_core_test.go",
         "conformance_test.go",
         "diff_visual_test.go",
         "explain_test.go",

@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "core",
+    srcs = [
+        "core.go",
+        "modelcheck.go",
+    ],
+    embedsrcs = [
+        "templates/go/contract.tmpl",
+        "templates/go/generated.tmpl",
+        "templates/go/interpreter.tmpl",
+        "templates/go/lambda.tmpl",
+        "templates/javascript/contract.tmpl",
+        "templates/javascript/generated.tmpl",
+        "templates/javascript/interpreter.tmpl",
+        "templates/javascript/lambda.tmpl",
+        "templates/lean/proof.tmpl",
+        "templates/python/contract.tmpl",
+        "templates/python/generated.tmpl",
+        "templates/python/interpreter.tmpl",
+        "templates/python/lambda.tmpl",
+        "templates/rust/contract.tmpl",
+        "templates/rust/generated.tmpl",
+        "templates/rust/interpreter.tmpl",
+        "templates/rust/lambda.tmpl",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/core",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)
+
+go_test(
+    name = "core_test",
+    srcs = [
+        "core_test.go",
+        "coverage_test.go",
+    ],
+    args = ["-test.short"],  # keep: TestExecutionParity shells out to system toolchains (non-hermetic)
+    embed = [":core"],
+    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+)

@@ -7,14 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	goflowparser "github.com/pflow-xyz/go-pflow/parser"
+	"github.com/pflow-xyz/go-pflow/petri"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/internal/version"
+	"github.com/pflow-xyz/petri-pilot/pkg/codegen/core"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo"
@@ -311,13 +315,16 @@ func extendTool() mcp.Tool {
 
 func codegenTool() mcp.Tool {
 	return mcp.NewTool("petri_codegen",
-		mcp.WithDescription("Generate executable code from a validated Petri net model. Produces event-sourced application code with state machine, events, and API handlers."),
+		mcp.WithDescription("Generate executable code from a validated Petri net model. Language 'go' produces a full event-sourced application (state machine, events, API handlers); 'zk-go' produces gnark ZK circuits; 'go-core', 'rust', 'python', and 'javascript' produce a dependency-free single-file state-machine core (token places only, no expression guards) for embedding in an existing codebase; 'lean' produces the proof form — the generator model-checks the net and emits Lean 4 theorems the kernel re-derives at compile time."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithString("language",
-			mcp.Description("Target language: go, javascript, python (default: go)"),
+			mcp.Description("Target language: go (application), zk-go (ZK circuits), go-core, rust, python, javascript (state-machine core), lean (proof form). Default: go"),
+		),
+		mcp.WithString("form",
+			mcp.Description("Core-mode implementation form: generated (default; arcs unrolled into straight-line code), interpreter (net as runtime data + generic engine), lambda (pure per-transition functions in a fixed schedule), contract (public entry points that refuse when not enabled). Ignored for 'go', 'zk-go', and 'lean' (always proof)."),
 		),
 		mcp.WithString("package",
 			mcp.Description("Package/module name for generated code"),
@@ -1115,9 +1122,17 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	pkgName := request.GetString("package", model.Name)
 	extensionsJSON := request.GetString("extensions", "")
 
-	// Supported languages: go, zk-go
-	if language != "go" && language != "golang" && language != "zk-go" {
-		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (supported: 'go', 'zk-go')", language)), nil
+	// Core-mode languages emit a dependency-free single-file state machine
+	// (pkg/codegen/core); "go" and "zk-go" keep their application/circuit
+	// generators.
+	coreLangs := map[string]string{
+		"go-core": "go", "rust": "rust", "python": "python",
+		"javascript": "javascript", "js": "javascript", "lean": "lean",
+	}
+	coreLang, isCore := coreLangs[language]
+
+	if !isCore && language != "go" && language != "golang" && language != "zk-go" {
+		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (supported: 'go', 'zk-go', 'go-core', 'rust', 'python', 'javascript', 'lean')", language)), nil
 	}
 
 	// Validate first
@@ -1131,6 +1146,33 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	if !result.Valid {
 		errJSON, _ := json.MarshalIndent(result.Errors, "", "  ")
 		return mcp.NewToolResultError(fmt.Sprintf("model validation failed, fix errors before generating code:\n%s", errJSON)), nil
+	}
+
+	// Core mode: emit the single-file state machine and return. The
+	// implementability check below is application-oriented (events, data
+	// flow); core mode's subset check lives in core.Normalize instead.
+	if isCore {
+		if pkgName == model.Name {
+			// Core files default to a runnable program; embedders pass an
+			// explicit package name.
+			pkgName = "main"
+		}
+		form := request.GetString("form", "")
+		coreFiles, err := core.Generate(model, core.Options{Language: coreLang, Form: form, PackageName: pkgName})
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("core code generation failed: %v", err)), nil
+		}
+		if form == "" {
+			form = core.Languages[coreLang].Forms[0]
+		}
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Generated %d core file(s) [%s/%s]:\n\n", len(coreFiles), coreLang, form))
+		for _, file := range coreFiles {
+			sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
+			sb.WriteString(string(file.Content))
+			sb.WriteString("\n\n")
+		}
+		return mcp.NewToolResultText(sb.String()), nil
 	}
 
 	// Check implementability
@@ -1750,33 +1792,31 @@ func titleCase(s string) string {
 
 // --- Helpers ---
 
-// pflowPlace is for parsing pflow.xyz format where places is an object
-type pflowPlace struct {
-	Initial  []int `json:"initial"`
-	Capacity []int `json:"capacity"`
-	Offset   int   `json:"offset"`
-	X        int   `json:"x"`
-	Y        int   `json:"y"`
-}
-
-type pflowTransition struct {
-	Role string `json:"role"`
-	X    int    `json:"x"`
-	Y    int    `json:"y"`
-}
-
-type pflowArc struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
-	Weight []int  `json:"weight"`
-}
-
-type pflowModel struct {
+// pflowProbe detects pflow.xyz format: places as an object keyed by name.
+// Deliberately loose — initial/capacity/weight may be scalars or per-color
+// arrays, and arcs may carry inhibitTransition — go-pflow's parser handles
+// all of that; this struct only answers "is it that format?".
+type pflowProbe struct {
 	Name        string                     `json:"name"`
 	Description string                     `json:"description"`
-	Places      map[string]pflowPlace      `json:"places"`
-	Transitions map[string]pflowTransition `json:"transitions"`
-	Arcs        []pflowArc                 `json:"arcs"`
+	Places      map[string]json.RawMessage `json:"places"`
+}
+
+// parsePflowNet returns the go-pflow petri net for a pflow.xyz-format model,
+// or ok=false when the input is some other format. The returned net keeps
+// its color vectors and inhibitor flags — callers that can consume a
+// petri.PetriNet directly (verify) should, rather than round-tripping
+// through the scalar metamodel.
+func parsePflowNet(jsonStr string) (*petri.PetriNet, *pflowProbe, bool, error) {
+	var probe pflowProbe
+	if err := json.Unmarshal([]byte(jsonStr), &probe); err != nil || len(probe.Places) == 0 {
+		return nil, nil, false, nil
+	}
+	net, err := goflowparser.FromJSON([]byte(jsonStr))
+	if err != nil {
+		return nil, nil, true, fmt.Errorf("pflow.xyz model: %w", err)
+	}
+	return net, &probe, true, nil
 }
 
 // schemaV2 represents the v2.0 schema format with nested net and extensions.
@@ -1833,48 +1873,60 @@ func parseModelV2(input string) (*ParseResult, error) {
 }
 
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
-	// First try pflow.xyz format (places as object with string keys)
-	var pflow pflowModel
-	if err := json.Unmarshal([]byte(jsonStr), &pflow); err == nil && len(pflow.Places) > 0 {
-		model := &goflowmetamodel.Model{
-			Name:        pflow.Name,
-			Description: pflow.Description,
+	// First try pflow.xyz format (places as object with string keys). This
+	// path goes through go-pflow's own parser and colored-net unfolding
+	// rather than a hand-rolled conversion: the previous converter kept only
+	// Initial[0] and Weight[0] — silently truncating multi-color models to
+	// their first color — and dropped inhibitor flags entirely.
+	if net, probe, isPflow, err := parsePflowNet(jsonStr); isPflow {
+		if err != nil {
+			return nil, err
 		}
+		// Multi-color nets are unfolded to per-color places so the metamodel
+		// (whose Initial/Weight are scalars) represents them exactly.
+		net, _ = net.ExpandColors()
 
-		// Convert places
-		for id, p := range pflow.Places {
-			initial := 0
-			if len(p.Initial) > 0 {
-				initial = p.Initial[0]
-			}
+		model := &goflowmetamodel.Model{
+			Name:        probe.Name,
+			Description: probe.Description,
+		}
+		placeIDs := make([]string, 0, len(net.Places))
+		for id := range net.Places {
+			placeIDs = append(placeIDs, id)
+		}
+		sort.Strings(placeIDs)
+		for _, id := range placeIDs {
+			pl := net.Places[id]
 			model.Places = append(model.Places, goflowmetamodel.Place{
 				ID:      id,
-				Initial: initial,
-				X:       p.X,
-				Y:       p.Y,
+				Initial: int(pl.GetTokenCount()),
+				X:       int(pl.X),
+				Y:       int(pl.Y),
 			})
 		}
-
-		// Convert transitions
-		for id, t := range pflow.Transitions {
+		transIDs := make([]string, 0, len(net.Transitions))
+		for id := range net.Transitions {
+			transIDs = append(transIDs, id)
+		}
+		sort.Strings(transIDs)
+		for _, id := range transIDs {
+			tr := net.Transitions[id]
 			model.Transitions = append(model.Transitions, goflowmetamodel.Transition{
 				ID: id,
-				X:  t.X,
-				Y:  t.Y,
+				X:  int(tr.X),
+				Y:  int(tr.Y),
 			})
 		}
-
-		// Convert arcs
-		for _, a := range pflow.Arcs {
-			weight := 1
-			if len(a.Weight) > 0 {
-				weight = a.Weight[0]
-			}
-			model.Arcs = append(model.Arcs, goflowmetamodel.Arc{
+		for _, a := range net.Arcs {
+			arc := goflowmetamodel.Arc{
 				From:   a.Source,
 				To:     a.Target,
-				Weight: weight,
-			})
+				Weight: int(a.GetWeightSum()),
+			}
+			if a.InhibitTransition {
+				arc.Type = goflowmetamodel.InhibitorArc
+			}
+			model.Arcs = append(model.Arcs, arc)
 		}
 
 		return model, nil

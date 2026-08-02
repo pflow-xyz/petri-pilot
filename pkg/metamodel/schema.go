@@ -2,7 +2,11 @@
 // This is a local fork of go-pflow/metamodel, extended for petri-pilot's needs.
 package metamodel
 
-import goflowmodel "github.com/pflow-xyz/go-pflow/metamodel"
+import (
+	"sort"
+
+	goflowmodel "github.com/pflow-xyz/go-pflow/metamodel"
+)
 
 // Kind discriminates between token-counting and data-holding states.
 type Kind string
@@ -399,15 +403,25 @@ func (s *Schema) ToModel() *goflowmodel.Model {
 }
 
 // mapToBindings converts map[string]string to []goflowmodel.Binding.
+//
+// Sorted by name: bindings reach code generation through this slice, so an
+// unordered walk would make generated output differ run to run for the same
+// model.
 func mapToBindings(m map[string]string) []goflowmodel.Binding {
 	if len(m) == 0 {
 		return nil
 	}
-	var result []goflowmodel.Binding
-	for name, typ := range m {
+	names := make([]string, 0, len(m))
+	for name := range m {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	result := make([]goflowmodel.Binding, 0, len(names))
+	for _, name := range names {
 		result = append(result, goflowmodel.Binding{
 			Name: name,
-			Type: typ,
+			Type: m[name],
 		})
 	}
 	return result

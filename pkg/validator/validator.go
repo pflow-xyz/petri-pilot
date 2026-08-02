@@ -190,7 +190,13 @@ func (v *Validator) buildNet(model *metamodel.Model) (*petri.PetriNet, error) {
 		if weight == 0 {
 			weight = 1
 		}
-		builder = builder.Arc(arc.From, arc.To, float64(weight))
+		if arc.IsInhibitor() {
+			// Previously dropped: analysis ran on a net where the inhibitor
+			// consumed tokens instead of gating.
+			builder = builder.InhibitorArc(arc.From, arc.To, float64(weight))
+		} else {
+			builder = builder.Arc(arc.From, arc.To, float64(weight))
+		}
 	}
 
 	return builder.Done(), nil

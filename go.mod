@@ -57,3 +57,8 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+// Development-only: petri-pilot tracks unreleased go-pflow work (the metamodel
+// composition layer). Swap this for a version bump on the require line above
+// before releasing — a replace must not ship in a released module.
+replace github.com/pflow-xyz/go-pflow => ../go-pflow

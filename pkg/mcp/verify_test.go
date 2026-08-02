@@ -400,3 +400,52 @@ func TestValidateAndAnalyzeAgreeOnInvariants(t *testing.T) {
 			fromValidate, fromAnalyze)
 	}
 }
+
+// TestColoredPflowModelNotTruncated is the regression for the pflow.xyz
+// format converter keeping only Initial[0]/Weight[0]: a colored model was
+// silently truncated to its first color, so a transition requiring a BLUE
+// token from a red-only pool verified as fireable. The converter now routes
+// through go-pflow's parser and colored-net unfolding.
+func TestColoredPflowModelNotTruncated(t *testing.T) {
+	model := `{"token":["red","blue"],
+	  "places":{"pool":{"initial":[1,0]},"out":{"initial":[0,0]}},
+	  "transitions":{"take":{}},
+	  "arcs":[{"source":"pool","target":"take","weight":[0,1]},
+	          {"source":"take","target":"out","weight":[0,1]}]}`
+
+	out := callVerify(t, model, `["unreachable:out=1"]`)
+	if !out.OK {
+		t.Errorf("take needs a blue token and none exists — out=1 must be unreachable: %s",
+			out.Verdicts[0].Detail)
+	}
+
+	// And the positive direction: give it a blue token and out=1 is reachable.
+	model2 := `{"token":["red","blue"],
+	  "places":{"pool":{"initial":[1,2]},"out":{"initial":[0,0]}},
+	  "transitions":{"take":{}},
+	  "arcs":[{"source":"pool","target":"take","weight":[0,1]},
+	          {"source":"take","target":"out","weight":[0,1]}]}`
+	out = callVerify(t, model2, `["reachable:out=1"]`)
+	if !out.OK {
+		t.Errorf("with blue tokens available, out=1 must be reachable: %s", out.Verdicts[0].Detail)
+	}
+}
+
+// TestPflowInhibitorArcPreserved is the regression for inhibitor flags being
+// dropped twice over: the pflow.xyz converter had no inhibitTransition field,
+// and buildVerifyNet turned inhibitor arcs into normal consuming arcs.
+func TestPflowInhibitorArcPreserved(t *testing.T) {
+	// t is inhibited by gate (weight 1). gate holds a token, so t can never
+	// fire and out stays empty. With the inhibitor dropped, t consumed from
+	// src happily and out=1 was reachable.
+	model := `{"places":{"gate":{"initial":1},"src":{"initial":1},"out":{"initial":0}},
+	  "transitions":{"t":{}},
+	  "arcs":[{"source":"src","target":"t","weight":1},
+	          {"source":"t","target":"out","weight":1},
+	          {"source":"gate","target":"t","weight":1,"inhibitTransition":true}]}`
+
+	out := callVerify(t, model, `["unreachable:out=1"]`)
+	if !out.OK {
+		t.Errorf("t is inhibited by gate=1 — out=1 must be unreachable: %s", out.Verdicts[0].Detail)
+	}
+}

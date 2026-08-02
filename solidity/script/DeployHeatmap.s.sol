@@ -17,10 +17,12 @@ contract DeployHeatmap is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
 
-        // Genesis root = MiMC(empty board, X turn, game_active) — same as before
+        // Genesis root = MiMC(initial marking) for the current 180,253-constraint
+        // circuit (commit with move_tokens place + draw transition). The prior
+        // deployment used 0x133e015b… for the 176,891-constraint circuit.
         uint256 genesisRoot = vm.envOr(
             "GENESIS_ROOT",
-            uint256(0x133e015bd26233707d7a1778a30a0f8de5e0b684c8e88705d770f1ba5cb3d27c)
+            uint256(0x108cf6be8f6be38351e4cea5584cc7af42851246275830b28ebd5a5e5406ca56)
         );
         uint256 numTransitions = vm.envOr("NUM_TRANSITIONS", uint256(9));
         bool enforceOptimal = vm.envOr("ENFORCE_OPTIMAL", true);
