@@ -101,11 +101,37 @@ the floor, the sibling checkout tells you what you're actually compiling.
 
 ### 2. Generate Code
 
-For a complete full-stack application with entities, roles, and pages:
+For a composed application where every entity is its own Petri net (the
+entities compile into a metamodel.Bundle — one subnet per entity, cross-entity
+FieldReferences validated, declared fusions become atomic cross-entity
+commands with coordinators; see pkg/bundle):
 
 ```
-petri_application(spec='{"name":"order-tracker","entities":[...],"roles":[...],"pages":[...],"workflows":[...]}')
+petri_application(spec='{"name":"shop","entities":[...]}',
+                  fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
+                  output_dir='generated/shop')
 ```
+
+For a raw bundle document (subnets + token/data/event/guard links):
+
+```
+petri_bundle(bundle='{"name":"shop","subnets":[{"id":"order","model":{...}}],"links":[...]}', output_dir='...')
+```
+
+CLI equivalent — `*.bundle.json` routes to the composed generator
+(`model_ref` resolves relative to the document):
+
+```
+petri-pilot codegen services/bundles/shop.bundle.json -o generated/shop
+```
+
+The generated layout is one Go subpackage per entity (own State, Aggregate,
+event log) plus a root package: bundle.go (composition tables), flatmodel.go
+(embedded flattened model), app.go (coordinators — each fused transition
+fires atomically across member entities via eventsource.MultiAppender, HTTP
+POST /fire/<transition>, refusals are 409 and append nothing). generated/shop
+is the reference app; cmd/petri-pilot/bundle_freeze_test.go diffs the
+generator's output against it byte-for-byte.
 
 For just a backend from a Petri net model:
 

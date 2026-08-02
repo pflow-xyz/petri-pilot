@@ -17,6 +17,7 @@ go_library(
         "//generated",
         "//internal/llm",
         "//internal/version",
+        "//pkg/bundle",
         "//pkg/codegen/esmodules",
         "//pkg/codegen/golang",
         "//pkg/delegate",
@@ -48,11 +49,13 @@ go_test(
     name = "petri-pilot_test",
     srcs = [
         "args_test.go",
+        "bundle_freeze_test.go",
         "freeze_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":petri-pilot_lib"],
     deps = [
+        "//pkg/bundle",
         "//pkg/codegen/golang",
         "//services",
     ],

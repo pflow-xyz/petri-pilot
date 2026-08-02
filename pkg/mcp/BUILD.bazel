@@ -43,6 +43,7 @@ go_library(
     deps = [
         "//internal/llm",
         "//internal/version",
+        "//pkg/bundle",
         "//pkg/codegen/core",
         "//pkg/codegen/esmodules",
         "//pkg/codegen/golang",

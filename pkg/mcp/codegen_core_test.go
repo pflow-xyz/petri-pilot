@@ -103,6 +103,92 @@ func TestCodegenFormsAndLean(t *testing.T) {
 	}
 }
 
+// petri_application composes entities into one bundle; a fused pair of
+// actions must surface as a coordinator-backed composed app, and the
+// reference must be reported, not dropped.
+func TestApplicationComposesEntities(t *testing.T) {
+	spec := `{
+	  "name": "shopdemo",
+	  "entities": [
+	    {"id": "order",
+	     "fields": [{"id": "item_id", "type": "reference", "reference": {"entity": "inventory", "on_delete": "restrict"}}],
+	     "states": [{"id": "draft", "initial": true}, {"id": "placed"}],
+	     "actions": [{"id": "place_order", "from_states": ["draft"], "to_state": "placed",
+	                  "effects": [{"field": "item_id", "value": "item_id"}]}]},
+	    {"id": "inventory",
+	     "fields": [{"id": "stock", "type": "int64"}],
+	     "states": [{"id": "available", "initial": true}, {"id": "reserved"}],
+	     "actions": [{"id": "reserve_stock", "from_states": ["available"], "to_state": "reserved",
+	                  "effects": [{"field": "stock", "value": "amount", "op": "subtract"}]}]}
+	  ]
+	}`
+	fusions := `[{"id": "order_reserves_stock", "members": [
+	  {"entity": "order", "action": "place_order"},
+	  {"entity": "inventory", "action": "reserve_stock"}]}]`
+
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_application"
+	req.Params.Arguments = map[string]any{"spec": spec, "fusions": fusions}
+
+	result, err := handleApplication(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("tool returned error: %s", resultText(result))
+	}
+	text := resultText(result)
+	for _, want := range []string{
+		"2 entities composed into one bundle",
+		"entity order:", "entity inventory:",
+		"links: 1",
+		"reference: order.item_id -> inventory (on_delete=restrict)",
+		"app.go", "flatmodel.go", "order/aggregate.go", "inventory/aggregate.go",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output missing %q:\n%s", want, text)
+		}
+	}
+}
+
+// petri_bundle takes a raw bundle document with inline models.
+func TestBundleToolGeneratesComposedApp(t *testing.T) {
+	doc := `{
+	  "name": "duo",
+	  "subnets": [
+	    {"id": "a", "model": {"name": "a",
+	      "places": [{"id": "p", "kind": "token", "initial": 1}, {"id": "q", "kind": "token"}],
+	      "transitions": [{"id": "go"}],
+	      "arcs": [{"from": "p", "to": "go"}, {"from": "go", "to": "q"}]}},
+	    {"id": "b", "model": {"name": "b",
+	      "places": [{"id": "x", "kind": "token", "initial": 1}, {"id": "y", "kind": "token"}],
+	      "transitions": [{"id": "sync"}],
+	      "arcs": [{"from": "x", "to": "sync"}, {"from": "sync", "to": "y"}]}}
+	  ],
+	  "links": [{"id": "handshake", "kind": "event",
+	    "from": {"subnet": "a", "transition": "go"},
+	    "to": {"subnet": "b", "transition": "sync"}}]
+	}`
+
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "petri_bundle"
+	req.Params.Arguments = map[string]any{"bundle": doc}
+
+	result, err := handleBundle(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("tool returned error: %s", resultText(result))
+	}
+	text := resultText(result)
+	for _, want := range []string{"2 subnets, 1 links", "FireHandshake", "=== app.go ==="} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output missing %q", want)
+		}
+	}
+}
+
 func TestCodegenRejectsUnknownLanguage(t *testing.T) {
 	result := callCodegen(t, "cobol")
 	if !result.IsError {

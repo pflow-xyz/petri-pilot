@@ -15,6 +15,7 @@ import (
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/internal/llm"
 	"github.com/pflow-xyz/petri-pilot/internal/version"
+	bundlepkg "github.com/pflow-xyz/petri-pilot/pkg/bundle"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
@@ -512,6 +513,51 @@ Examples:
 	fmt.Fprintf(os.Stderr, "Refined model saved to: %s\n", outputPath)
 }
 
+// cmdCodegenBundle generates a composed application from a bundle document.
+// Module path: explicit via PETRI_PILOT_MODULE, else derived for in-repo
+// generated/ output, else app/<name>.
+func cmdCodegenBundle(bundlePath, output string, includeTests bool) {
+	b, err := bundlepkg.LoadFile(bundlePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading bundle: %v\n", err)
+		os.Exit(1)
+	}
+
+	modulePath := os.Getenv("PETRI_PILOT_MODULE")
+	if modulePath == "" {
+		clean := filepath.ToSlash(filepath.Clean(output))
+		if idx := strings.Index(clean, "generated/"); idx >= 0 {
+			modulePath = "github.com/pflow-xyz/petri-pilot/" + clean[idx:]
+		} else {
+			modulePath = "app/" + bundlepkg.PackageNameFor(b.Name)
+		}
+	}
+
+	gen, err := golang.New(golang.Options{ModulePath: modulePath, IncludeTests: includeTests})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
+		os.Exit(1)
+	}
+	files, err := gen.GenerateBundleFiles(b)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating bundle app: %v\n", err)
+		os.Exit(1)
+	}
+	for _, file := range files {
+		p := filepath.Join(output, file.Name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.WriteFile(p, file.Content, 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", file.Name, err)
+			os.Exit(1)
+		}
+		fmt.Println(p)
+	}
+	fmt.Printf("Generated composed app %q: %d subnets, %d files\n", b.Name, len(b.Subnets), len(files))
+}
+
 func cmdCodegen(args []string) {
 	fs := flag.NewFlagSet("codegen", flag.ExitOnError)
 	output := fs.String("o", "./generated", "Output directory (or file path for -api-only)")
@@ -561,6 +607,14 @@ Examples:
 	}
 
 	modelPath := fs.Arg(0)
+
+	// Bundle documents generate the composed multi-entity layout: one Go
+	// subpackage per subnet plus root coordinators. Everything below this
+	// block is the single-net path, untouched.
+	if strings.HasSuffix(modelPath, ".bundle.json") {
+		cmdCodegenBundle(modelPath, *output, *includeTests)
+		return
+	}
 
 	// Read model file
 	data, err := os.ReadFile(modelPath)

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/pflow-xyz/go-pflow/petri"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/internal/version"
+	"github.com/pflow-xyz/petri-pilot/pkg/bundle"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/core"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
@@ -72,6 +74,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
 	s.AddTool(applicationTool(), handleApplication)
+	s.AddTool(bundleTool(), handleBundle)
 	s.AddTool(docsTool(), handleDocs)
 	s.AddTool(migrateTool(), handleMigrate)
 
@@ -398,19 +401,35 @@ func migrateTool() mcp.Tool {
 
 func applicationTool() mcp.Tool {
 	return mcp.NewTool("petri_application",
-		mcp.WithDescription("Generate a complete full-stack application from an Application specification. This accepts the high-level Application DSL with entities, roles, pages, and workflows."),
+		mcp.WithDescription("Generate a composed application from an Application specification: every entity becomes its own Petri net (subnet), the app is their composition. Cross-entity field references are validated; declared fusions become atomic cross-entity commands with coordinators. Pass output_dir to write the generated Go application to disk."),
 		mcp.WithString("spec",
 			mcp.Required(),
-			mcp.Description("Complete Application specification as JSON (with entities, roles, pages, workflows)"),
+			mcp.Description("Application specification as JSON (entities with fields/states/actions; roles/pages/workflows accepted)"),
 		),
-		mcp.WithString("backend",
-			mcp.Description("Backend language: go, javascript (default: go)"),
+		mcp.WithString("fusions",
+			mcp.Description("Optional JSON array of cross-entity rendezvous: [{\"id\":\"order_reserves_stock\",\"members\":[{\"entity\":\"order\",\"action\":\"place_order\"},{\"entity\":\"inventory\",\"action\":\"reserve_stock\"}]}] — fused actions fire together atomically"),
 		),
-		mcp.WithString("frontend",
-			mcp.Description("Frontend framework: esm (ES modules), none (default: esm)"),
+		mcp.WithString("output_dir",
+			mcp.Description("Directory to write the generated application into; omitted = report the file list only"),
 		),
-		mcp.WithString("database",
-			mcp.Description("Database: postgres, sqlite (default: sqlite)"),
+		mcp.WithString("module_path",
+			mcp.Description("Go module/import path of the generated app root (default: app/<name>)"),
+		),
+	)
+}
+
+func bundleTool() mcp.Tool {
+	return mcp.NewTool("petri_bundle",
+		mcp.WithDescription("Generate a composed application from a raw bundle document: subnets (inline Petri net models) joined by token/data/event/guard links. The bundle is validated and flattened; each subnet becomes its own Go package with its own aggregate and event log, and fused transitions get atomic coordinators."),
+		mcp.WithString("bundle",
+			mcp.Required(),
+			mcp.Description("Bundle document JSON: {name, subnets: [{id, net_type, model}], links: [{id, kind, from: {subnet, transition|place}, to: ...}]} (model_ref is CLI-only)"),
+		),
+		mcp.WithString("output_dir",
+			mcp.Description("Directory to write the generated application into; omitted = return file contents inline"),
+		),
+		mcp.WithString("module_path",
+			mcp.Description("Go module/import path of the generated app root (default: app/<name>)"),
 		),
 	)
 }
@@ -2197,246 +2216,132 @@ func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		return mcp.NewToolResultError(fmt.Sprintf("missing spec parameter: %v", err)), nil
 	}
 
-	// Parse Application spec
 	var app metamodel.Application
 	if err := json.Unmarshal([]byte(specJSON), &app); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid application spec JSON: %v", err)), nil
 	}
-
-	backend := request.GetString("backend", "go")
-	frontend := request.GetString("frontend", "esm")
-	database := request.GetString("database", "sqlite")
-
-	// Validate application spec
 	if len(app.Entities) == 0 {
 		return mcp.NewToolResultError("application spec must contain at least one entity"), nil
 	}
 
+	// Entities compile into ONE composed bundle — one subnet per entity —
+	// rather than the retired behavior of N independent, unrelated nets.
+	// Cross-entity FieldReferences are validated and reported instead of
+	// silently dropped.
+	input := bundle.ApplicationInput{Name: app.Name}
+	for _, e := range app.Entities {
+		converted, err := e.ToExtensions()
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("entity %q: %v", e.ID, err)), nil
+		}
+		input.Entities = append(input.Entities, converted)
+	}
+
+	if fusionsJSON := request.GetString("fusions", ""); fusionsJSON != "" {
+		if err := json.Unmarshal([]byte(fusionsJSON), &input.Fusions); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid fusions JSON: %v", err)), nil
+		}
+	}
+
+	compiled, err := bundle.CompileApplication(input)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("compiling application bundle: %v", err)), nil
+	}
+
+	gen, err := golang.New(golang.Options{
+		ModulePath:   request.GetString("module_path", "app/"+bundle.PackageNameFor(app.Name)),
+		IncludeTests: true,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("creating generator: %v", err)), nil
+	}
+	files, err := gen.GenerateBundleFiles(compiled.Bundle)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("generating application: %v", err)), nil
+	}
+
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Generating full-stack application '%s':\n", app.Name))
-	sb.WriteString(fmt.Sprintf("- Backend: %s\n", backend))
-	sb.WriteString(fmt.Sprintf("- Frontend: %s\n", frontend))
-	sb.WriteString(fmt.Sprintf("- Database: %s\n", database))
-	sb.WriteString(fmt.Sprintf("- Entities: %d\n", len(app.Entities)))
-	if len(app.Roles) > 0 {
-		sb.WriteString(fmt.Sprintf("- Roles: %d\n", len(app.Roles)))
+	sb.WriteString(fmt.Sprintf("Application '%s': %d entities composed into one bundle\n\n", app.Name, len(app.Entities)))
+	for _, sn := range compiled.Bundle.Subnets {
+		sb.WriteString(fmt.Sprintf("- entity %s: %d places, %d transitions\n", sn.ID, len(sn.Model.Places), len(sn.Model.Transitions)))
 	}
-	if len(app.Pages) > 0 {
-		sb.WriteString(fmt.Sprintf("- Pages: %d\n", len(app.Pages)))
+	if len(compiled.Bundle.Links) > 0 {
+		sb.WriteString(fmt.Sprintf("- links: %d (fused cross-entity commands get atomic coordinators)\n", len(compiled.Bundle.Links)))
 	}
-	if len(app.Workflows) > 0 {
-		sb.WriteString(fmt.Sprintf("- Workflows: %d\n", len(app.Workflows)))
+	for _, ref := range compiled.References {
+		sb.WriteString(fmt.Sprintf("- reference: %s.%s -> %s (on_delete=%s) — enforced by the generated app\n",
+			ref.FromEntity, ref.FromField, ref.ToEntity, ref.OnDelete))
+	}
+	if len(app.Roles) > 0 || len(app.Pages) > 0 || len(app.Workflows) > 0 {
+		sb.WriteString("- roles/pages/workflows: accepted, not yet wired into bundle output (single-net generator still supports them)\n")
 	}
 	sb.WriteString("\n")
 
-	// Generate code for each entity
-	for i, entity := range app.Entities {
-		sb.WriteString(fmt.Sprintf("=== Entity %d: %s ===\n", i+1, entity.ID))
-
-		// Convert Entity to metamodel.Schema then to goflowmetamodel.Model
-		metaSchema := entity.ToSchema()
-		model := metaSchema.ToModel()
-
-		sb.WriteString(fmt.Sprintf("- States: %d\n", len(entity.States)))
-		sb.WriteString(fmt.Sprintf("- Actions: %d\n", len(entity.Actions)))
-		sb.WriteString(fmt.Sprintf("- Fields: %d\n", len(entity.Fields)))
-
-		// Display access rules
-		if len(entity.Access) > 0 {
-			sb.WriteString(fmt.Sprintf("- Access rules: %d\n", len(entity.Access)))
-			for _, rule := range entity.Access {
-				roles := "any authenticated"
-				if len(rule.Roles) > 0 {
-					roles = strings.Join(rule.Roles, ", ")
-				}
-				sb.WriteString(fmt.Sprintf("  * %s: %s", rule.Action, roles))
-				if rule.Guard != "" {
-					sb.WriteString(fmt.Sprintf(" (guard: %s)", rule.Guard))
-				}
-				sb.WriteString("\n")
+	if outputDir := request.GetString("output_dir", ""); outputDir != "" {
+		for _, file := range files {
+			p := filepath.Join(outputDir, file.Name)
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("creating %s: %v", filepath.Dir(p), err)), nil
+			}
+			if err := os.WriteFile(p, file.Content, 0o644); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("writing %s: %v", file.Name, err)), nil
 			}
 		}
-
-		// Generate backend code if requested
-		if backend == "go" {
-			sb.WriteString("\n--- Backend Code ---\n")
-
-			// Build access rule contexts
-			var accessRules []golang.AccessRuleContext
-			for _, rule := range entity.Access {
-				accessRules = append(accessRules, golang.AccessRuleContext{
-					TransitionID: rule.Action,
-					Roles:        rule.Roles,
-					Guard:        rule.Guard,
-				})
-			}
-
-			// Build role contexts
-			var roles []golang.RoleContext
-			for _, role := range app.Roles {
-				roles = append(roles, golang.RoleContext{
-					ID:          role.ID,
-					Name:        role.Name,
-					Description: role.Description,
-					Inherits:    role.Inherits,
-				})
-			}
-
-			// Build webhook contexts
-			var webhooks []golang.WebhookContext
-			for _, wh := range app.Webhooks {
-				var retryPolicy *golang.WebhookRetryPolicyContext
-				if wh.RetryPolicy != nil {
-					retryPolicy = &golang.WebhookRetryPolicyContext{
-						MaxAttempts: wh.RetryPolicy.MaxAttempts,
-						BackoffMs:   wh.RetryPolicy.BackoffMs,
-					}
-				}
-				webhooks = append(webhooks, golang.WebhookContext{
-					ID:          wh.ID,
-					URL:         wh.URL,
-					Events:      wh.Events,
-					Secret:      wh.Secret,
-					Enabled:     wh.Enabled,
-					RetryPolicy: retryPolicy,
-				})
-			}
-
-			// Build workflow contexts (Phase 12)
-			var workflows []golang.WorkflowContext
-			for _, wf := range app.Workflows {
-				// Only include workflows that trigger on this entity
-				if wf.Trigger.Entity == entity.ID || wf.Trigger.Entity == "" {
-					trigger := golang.WorkflowTriggerContext{
-						Type:   wf.Trigger.Type,
-						Entity: wf.Trigger.Entity,
-						Action: wf.Trigger.Action,
-						Cron:   wf.Trigger.Cron,
-					}
-
-					var steps []golang.WorkflowStepContext
-					for _, step := range wf.Steps {
-						steps = append(steps, golang.WorkflowStepContext{
-							ID:         step.ID,
-							PascalName: toPascalCase(step.ID),
-							Type:       step.Type,
-							Entity:     step.Entity,
-							Action:     step.Action,
-							Condition:  step.Condition,
-							Duration:   step.Duration,
-							Input:      step.Input,
-							OnSuccess:  step.OnSuccess,
-							OnFailure:  step.OnFailure,
-						})
-					}
-
-					workflows = append(workflows, golang.WorkflowContext{
-						ID:          wf.ID,
-						Name:        wf.Name,
-						Description: wf.Description,
-						PascalName:  toPascalCase(wf.ID),
-						CamelName:   toCamelCase(wf.ID),
-						TriggerType: wf.Trigger.Type,
-						Trigger:     trigger,
-						Steps:       steps,
-					})
-				}
-			}
-
-			gen, err := golang.New(golang.Options{
-				PackageName:          entity.ID,
-				IncludeTests:         true,
-				IncludeInfra:         true,
-				IncludeAuth:          len(entity.Access) > 0 || len(app.Roles) > 0,
-				IncludeObservability: false,
-				IncludeDeploy:        false,
-				IncludeRealtime:      false,
-			})
-			if err != nil {
-				sb.WriteString(fmt.Sprintf("Error creating backend generator: %v\n", err))
-				continue
-			}
-
-			// Generate files with access control, workflows, and webhooks context
-			files, err := generateBackendWithAccessControl(gen, model, accessRules, roles, workflows, webhooks)
-			if err != nil {
-				sb.WriteString(fmt.Sprintf("Error generating backend: %v\n", err))
-				continue
-			}
-
-			sb.WriteString(fmt.Sprintf("Generated %d backend files\n", len(files)))
-			for _, file := range files {
-				sb.WriteString(fmt.Sprintf("  - %s\n", file.Name))
-			}
-			if len(workflows) > 0 {
-				sb.WriteString(fmt.Sprintf("  - Workflows: %d\n", len(workflows)))
-			}
+		sb.WriteString(fmt.Sprintf("Wrote %d files to %s\n", len(files), outputDir))
+	} else {
+		sb.WriteString(fmt.Sprintf("Generated %d files (pass output_dir to write them):\n", len(files)))
+		for _, file := range files {
+			sb.WriteString("  " + file.Name + "\n")
 		}
-
-		// Generate frontend code if requested
-		if frontend == "esm" {
-			sb.WriteString("\n--- Frontend Code ---\n")
-
-			// Build page contexts from application pages
-			var pageContexts []esmodules.PageContext
-			for _, page := range app.Pages {
-				// Only include pages for this entity
-				if page.Layout.Entity == entity.ID || page.Layout.Entity == "" {
-					pageContexts = append(pageContexts, esmodules.PageContext{
-						ID:            page.ID,
-						Title:         page.Name,
-						Path:          page.Path,
-						Icon:          page.Icon,
-						LayoutType:    page.Layout.Type,
-						EntityID:      page.Layout.Entity,
-						RequiredRoles: page.Access,
-						ComponentName: toPascalCase(page.ID),
-					})
-				}
-			}
-
-			gen, err := esmodules.New(esmodules.Options{
-				ProjectName: app.Name + "-" + entity.ID,
-				APIBaseURL:  "http://localhost:8080",
-			})
-			if err != nil {
-				sb.WriteString(fmt.Sprintf("Error creating frontend generator: %v\n", err))
-				continue
-			}
-
-			// Generate files with page contexts
-			files, err := generateFrontendWithPages(gen, model, pageContexts)
-			if err != nil {
-				sb.WriteString(fmt.Sprintf("Error generating frontend: %v\n", err))
-				continue
-			}
-
-			sb.WriteString(fmt.Sprintf("Generated %d frontend files\n", len(files)))
-			for _, file := range files {
-				sb.WriteString(fmt.Sprintf("  - %s\n", file.Name))
-			}
-		}
-
-		sb.WriteString("\n")
-	}
-
-	sb.WriteString("✅ Application generation complete!\n")
-	sb.WriteString("\nGenerated components:\n")
-	sb.WriteString("- Event-sourced aggregates\n")
-	sb.WriteString("- State machines with guards\n")
-	sb.WriteString("- HTTP API handlers\n")
-	if len(app.Roles) > 0 {
-		sb.WriteString("- Role-based access control middleware\n")
-	}
-	if len(app.Pages) > 0 {
-		sb.WriteString("- Frontend routing and navigation\n")
-		sb.WriteString("- Page components (list, detail, form)\n")
 	}
 
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
-// Helper to generate backend with access control, workflows, and webhooks
+func handleBundle(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	docJSON, err := request.RequireString("bundle")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("missing bundle parameter: %v", err)), nil
+	}
+
+	b, err := bundle.Load([]byte(docJSON), nil)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("loading bundle: %v", err)), nil
+	}
+
+	gen, err := golang.New(golang.Options{
+		ModulePath:   request.GetString("module_path", "app/"+bundle.PackageNameFor(b.Name)),
+		IncludeTests: true,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("creating generator: %v", err)), nil
+	}
+	files, err := gen.GenerateBundleFiles(b)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("generating bundle app: %v", err)), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Bundle '%s': %d subnets, %d links\n\n", b.Name, len(b.Subnets), len(b.Links)))
+	if outputDir := request.GetString("output_dir", ""); outputDir != "" {
+		for _, file := range files {
+			p := filepath.Join(outputDir, file.Name)
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("creating %s: %v", filepath.Dir(p), err)), nil
+			}
+			if err := os.WriteFile(p, file.Content, 0o644); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("writing %s: %v", file.Name, err)), nil
+			}
+		}
+		sb.WriteString(fmt.Sprintf("Wrote %d files to %s\n", len(files), outputDir))
+	} else {
+		for _, file := range files {
+			sb.WriteString(fmt.Sprintf("=== %s ===\n%s\n\n", file.Name, file.Content))
+		}
+	}
+	return mcp.NewToolResultText(sb.String()), nil
+}
+
 func generateBackendWithAccessControl(gen *golang.Generator, model *goflowmetamodel.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext, webhooks []golang.WebhookContext) ([]golang.GeneratedFile, error) {
 	// Build context with access rules, workflows, and webhooks
 	ctx, err := golang.NewContext(model, golang.ContextOptions{

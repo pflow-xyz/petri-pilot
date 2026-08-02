@@ -126,3 +126,21 @@ func LoadFile(path string) (*metamodel.Bundle, error) {
 		return &m, nil
 	})
 }
+
+// PackageNameFor derives a Go-package-safe name from an application or
+// bundle name: lowercased, identifier characters only.
+func PackageNameFor(name string) string {
+	var b []rune
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_':
+			b = append(b, r)
+		case r >= 'A' && r <= 'Z':
+			b = append(b, r+('a'-'A'))
+		}
+	}
+	if len(b) == 0 {
+		return "app"
+	}
+	return string(b)
+}

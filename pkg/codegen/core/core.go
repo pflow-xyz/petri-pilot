@@ -375,7 +375,7 @@ func Generate(m *metamodel.Model, opts Options) ([]GeneratedFile, error) {
 	}
 
 	tmplPath := "templates/" + lang + "/" + form + ".tmpl"
-	tmpl, err := template.New(form + ".tmpl").Funcs(funcs).ParseFS(templates, tmplPath)
+	tmpl, err := template.New(form+".tmpl").Funcs(funcs).ParseFS(templates, tmplPath)
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
