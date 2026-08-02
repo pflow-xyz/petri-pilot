@@ -25,24 +25,24 @@ import (
 // SubnetDoc is one subnet in a bundle document. Exactly one of Model
 // (inline) or ModelRef (file path, resolved by the loader) must be set.
 type SubnetDoc struct {
-	ID       string             `json:"id"`
-	NetType  metamodel.NetType  `json:"net_type,omitempty"`
-	Model    *metamodel.Model   `json:"model,omitempty"`
-	ModelRef string             `json:"model_ref,omitempty"`
-	Ports    []metamodel.Port   `json:"ports,omitempty"`
+	ID       string            `json:"id"`
+	NetType  metamodel.NetType `json:"net_type,omitempty"`
+	Model    *metamodel.Model  `json:"model,omitempty"`
+	ModelRef string            `json:"model_ref,omitempty"`
+	Ports    []metamodel.Port  `json:"ports,omitempty"`
 }
 
 // Doc is the on-disk bundle document. It mirrors metamodel.Bundle but allows
 // subnet models by reference — something the upstream JSON form cannot
 // express (Subnet.Model must be inline there).
 type Doc struct {
-	Name        string                    `json:"name"`
-	Description string                    `json:"description,omitempty"`
-	Subnets     []SubnetDoc               `json:"subnets"`
-	Links       []metamodel.Link          `json:"links,omitempty"`
-	Constraints []metamodel.Constraint    `json:"constraints,omitempty"`
-	Namespace   *bool                     `json:"namespace,omitempty"`
-	ArcMerge    metamodel.ArcMergePolicy  `json:"arc_merge,omitempty"`
+	Name        string                   `json:"name"`
+	Description string                   `json:"description,omitempty"`
+	Subnets     []SubnetDoc              `json:"subnets"`
+	Links       []metamodel.Link         `json:"links,omitempty"`
+	Constraints []metamodel.Constraint   `json:"constraints,omitempty"`
+	Namespace   *bool                    `json:"namespace,omitempty"`
+	ArcMerge    metamodel.ArcMergePolicy `json:"arc_merge,omitempty"`
 }
 
 // Resolver turns a model_ref into a model. LoadFile wires a file-relative

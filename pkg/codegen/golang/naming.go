@@ -21,9 +21,12 @@ func ToPascalCase(s string) string {
 		return ""
 	}
 
-	// Replace separators with spaces for splitting
+	// Replace separators with spaces for splitting. Dots appear in
+	// bundle-namespaced event IDs ("order.place_order"); they separate
+	// words in the identifier and survive only in the wire-format string.
 	s = strings.ReplaceAll(s, "_", " ")
 	s = strings.ReplaceAll(s, "-", " ")
+	s = strings.ReplaceAll(s, ".", " ")
 
 	words := strings.Fields(s)
 	var result strings.Builder
@@ -84,11 +87,64 @@ func ToEventTypeName(id string) string {
 
 // ToEventStructName creates an event struct name from an event type.
 // e.g., "OrderValidated" -> "OrderValidatedEvent"
+//
+// Bundle-namespaced event types carry dots ("order.place_order") — legal on
+// the wire, illegal in an identifier — so the type is identifier-sanitized
+// first. Types that are already identifiers pass through byte-identical,
+// which is what keeps every existing generated app stable.
 func ToEventStructName(eventType string) string {
+	eventType = IdentifierFrom(eventType)
 	if strings.HasSuffix(eventType, "Event") {
 		return eventType
 	}
 	return eventType + "Event"
+}
+
+// IdentifierFrom makes a Go identifier out of a wire-format name.
+// An input that is already a valid identifier is returned unchanged —
+// byte-identical, which is what keeps existing generated apps stable.
+// Otherwise the input splits at non-identifier characters and underscores,
+// and the segments join with their first letter capitalized and interior
+// case preserved: "order.place_order" -> "OrderPlaceOrder".
+func IdentifierFrom(s string) string {
+	isIdentRune := func(r rune) bool {
+		return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
+	}
+	clean := true
+	for _, r := range s {
+		if !isIdentRune(r) {
+			clean = false
+			break
+		}
+	}
+	if clean {
+		return s
+	}
+
+	var b strings.Builder
+	segment := func(seg string) {
+		for _, part := range strings.Split(seg, "_") {
+			if part == "" {
+				continue
+			}
+			runes := []rune(part)
+			runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+			b.WriteString(string(runes))
+		}
+	}
+	start := 0
+	for i, r := range s {
+		if !isIdentRune(r) {
+			if i > start {
+				segment(s[start:i])
+			}
+			start = i + len(string(r))
+		}
+	}
+	if start < len(s) {
+		segment(s[start:])
+	}
+	return b.String()
 }
 
 // SanitizePackageName converts a model name to a valid Go package name.

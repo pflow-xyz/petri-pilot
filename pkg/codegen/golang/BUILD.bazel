@@ -4,6 +4,8 @@ go_library(
     name = "golang",
     srcs = [
         "bazel.go",
+        "bundle_context.go",
+        "bundle_generator.go",
         "context.go",
         "generator.go",
         "naming.go",
@@ -52,6 +54,8 @@ go_library(
         "templates/bazel_module.tmpl",
         "templates/bazel_version.tmpl",
         "templates/bazelrc.tmpl",
+        "templates/bundle_root.tmpl",
+        "templates/flatmodel.tmpl",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/golang",
     visibility = ["//visibility:public"],
@@ -67,6 +71,7 @@ go_test(
     srcs = [
         "bazel_test.go",
         "bindings_test.go",
+        "bundle_context_test.go",
         "format_test.go",
     ],
     embed = [":golang"],

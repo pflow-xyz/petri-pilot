@@ -189,10 +189,11 @@ type Templates struct {
 	templates *template.Template
 }
 
-// NewTemplates creates a new Templates instance with all embedded templates parsed.
-func NewTemplates() (*Templates, error) {
-	// Define custom template functions
-	funcMap := template.FuncMap{
+// templateFuncMap is the function set shared by every codegen template —
+// the entity-level set parsed in NewTemplates and the bundle-level templates
+// rendered against BundleContext.
+func templateFuncMap() template.FuncMap {
+	return template.FuncMap{
 		"pascal":      ToPascalCase,
 		"camel":       ToCamelCase,
 		"constName":   ToConstName,
@@ -206,6 +207,11 @@ func NewTemplates() (*Templates, error) {
 		"lower":       strings.ToLower,
 		"upper":       strings.ToUpper,
 	}
+}
+
+// NewTemplates creates a new Templates instance with all embedded templates parsed.
+func NewTemplates() (*Templates, error) {
+	funcMap := templateFuncMap()
 
 	// Parse all templates from embedded filesystem
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.tmpl")
