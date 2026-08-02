@@ -62,34 +62,28 @@ type {{.StructName}} struct {
 
 {{- if .UsesMetamodelRuntime}}
 
-// Bindings holds parameters for action execution.
-// Contains all unique fields across all event types.
+// Bindings holds parameters for action execution — the model's declared
+// binding vocabulary (transition bindings plus data-arc keys and values).
 type Bindings struct {
 	AggregateID string    `json:"aggregate_id"`
 	Timestamp   time.Time `json:"timestamp"`
-	From        string    `json:"from,omitempty"`
-	To          string    `json:"to,omitempty"`
-	Owner       string    `json:"owner,omitempty"`
-	Spender     string    `json:"spender,omitempty"`
-	Caller      string    `json:"caller,omitempty"`
-	Amount      U256JSON  `json:"amount,omitempty"`
+{{- range .BindingFields}}
+	{{.FieldName}} {{if .IsNumeric}}U256JSON{{else}}{{.GoType}}{{end}} `json:"{{.Name}},omitempty"`
+{{- end}}
 }
 
-// ToMetamodel converts Bindings to metamodel.Bindings.
+// ToMetamodel converts Bindings to metamodel.Bindings. Numeric fields are
+// narrowed to int64 for guard evaluation (may overflow for large values).
 func (b *Bindings) ToMetamodel() metamodel.Bindings {
-	var amount int64
-	if b.Amount.U256 != nil {
-		// Convert to int64 for guard evaluation (may overflow for large values)
-		amount = int64(b.Amount.U256.Uint64())
-	}
 	return metamodel.Bindings{
 		"aggregate_id": b.AggregateID,
-		"from":         b.From,
-		"to":           b.To,
-		"owner":        b.Owner,
-		"spender":      b.Spender,
-		"caller":       b.Caller,
-		"amount":       amount,
+{{- range .BindingFields}}
+{{- if .IsNumeric}}
+		"{{.Name}}": b.{{.FieldName}}.Int64(),
+{{- else}}
+		"{{.Name}}": b.{{.FieldName}},
+{{- end}}
+{{- end}}
 	}
 }
 {{- end}}

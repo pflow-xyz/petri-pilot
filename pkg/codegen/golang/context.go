@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
@@ -40,7 +41,11 @@ type Context struct {
 	// ORM-specific data (for models with DataState places)
 	Collections []CollectionContext
 	DataArcs    []DataArcContext
-	Guards      []GuardContext
+	// BindingFields is the model's parameter vocabulary — the fields of the
+	// generated Bindings struct. Derived, not hardcoded; see
+	// buildBindingFieldContexts.
+	BindingFields []BindingFieldContext
+	Guards        []GuardContext
 
 	// Access control (Phase 11)
 	AccessRules []AccessRuleContext
@@ -782,6 +787,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	ormSpec := bridge.ExtractORMSpec(enriched)
 	ctx.Collections = buildCollectionContexts(ormSpec.Collections)
 	ctx.DataArcs = buildDataArcContexts(ormSpec.Operations)
+	ctx.BindingFields = buildBindingFieldContexts(enriched.Transitions, ctx.DataArcs)
 	ctx.Guards = buildGuardContexts(enriched.Transitions, ormSpec.Collections)
 
 	// Populate data arcs, guard info, and event data on transitions
@@ -1674,6 +1680,81 @@ func buildDataArcContexts(operations []bridge.OperationSpec) []DataArcContext {
 	}
 
 	return result
+}
+
+// BindingFieldContext is one field of the generated Bindings struct — the
+// model's parameter vocabulary. Previously the struct was hardcoded to the
+// ERC-20 field set in aggregate.tmpl; it is now derived from the model:
+// declared Transition.Bindings plus the key/value binding names on data arcs.
+type BindingFieldContext struct {
+	Name      string // metamodel binding key, e.g. "from"
+	FieldName string // Go field name, e.g. "From"
+	GoType    string // "string" or "U256JSON"
+	IsNumeric bool
+}
+
+// isNumericBindingType reports whether a declared binding type is numeric.
+// Unknown types default to string — the safe JSON shape.
+func isNumericBindingType(t string) bool {
+	switch t {
+	case "int", "int64", "uint64", "float64", "number", "u256", "uint256":
+		return true
+	}
+	return false
+}
+
+// buildBindingFieldContexts unions the binding names a model actually uses:
+// every declared transition binding, every data-arc map key (string-typed by
+// construction), and every data-arc value binding (numeric when the
+// collection's value type is). aggregate_id and timestamp are implicit on
+// every Bindings struct and excluded here. Sorted by name so generation is
+// deterministic.
+func buildBindingFieldContexts(transitions []metamodel.Transition, dataArcs []DataArcContext) []BindingFieldContext {
+	numeric := map[string]bool{}
+	seen := map[string]bool{}
+
+	note := func(name string, isNumeric bool) {
+		if name == "" || name == "aggregate_id" || name == "timestamp" {
+			return
+		}
+		seen[name] = true
+		if isNumeric {
+			numeric[name] = true
+		}
+	}
+
+	for _, t := range transitions {
+		for _, b := range t.Bindings {
+			note(b.Name, isNumericBindingType(b.Type) || b.Value)
+		}
+	}
+	for _, a := range dataArcs {
+		for _, k := range a.Keys {
+			note(k, false)
+		}
+		note(a.ValueBinding, a.IsNumeric)
+	}
+
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	fields := make([]BindingFieldContext, 0, len(names))
+	for _, name := range names {
+		goType := "string"
+		if numeric[name] {
+			goType = "U256JSON"
+		}
+		fields = append(fields, BindingFieldContext{
+			Name:      name,
+			FieldName: ToPascalCase(name),
+			GoType:    goType,
+			IsNumeric: numeric[name],
+		})
+	}
+	return fields
 }
 
 func buildGuardContexts(transitions []metamodel.Transition, collections []bridge.CollectionSpec) []GuardContext {
