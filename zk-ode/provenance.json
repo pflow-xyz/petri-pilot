@@ -5,7 +5,7 @@
       "name": "ttt_heatmap",
       "circuit": "zk-ode.TTTHeatmapCircuit",
       "verifierSource": "solidity/src/TTTHeatmapVerifier.sol",
-      "verifierSourceSHA256": "44d9e815b97b1e919c16925f0be553b187925740c924020e7f30d1fb451fdd5a",
+      "verifierSourceSHA256": "6eca37d44e508049b552e968470ec92a85bef192692cd99e5906e6c7c69c2491",
       "deployment": {
         "address": "0x97a6Bb8FBBbBb81BF36456829A6a41e29030f351",
         "chainId": 84532,
