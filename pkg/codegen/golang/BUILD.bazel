@@ -66,6 +66,7 @@ go_test(
     name = "golang_test",
     srcs = [
         "bazel_test.go",
+        "bindings_test.go",
         "format_test.go",
     ],
     embed = [":golang"],

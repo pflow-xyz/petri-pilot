@@ -4,18 +4,25 @@ go_library(
     name = "metamodel",
     srcs = [
         "application.go",
+        "convert.go",
         "runtime.go",
         "schema.go",
         "views.go",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/metamodel",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
+    deps = [
+        "//pkg/extensions",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
 )
 
 go_test(
     name = "metamodel_test",
-    srcs = ["schema_test.go"],
+    srcs = [
+        "convert_test.go",
+        "schema_test.go",
+    ],
     embed = [":metamodel"],
     deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],
 )
