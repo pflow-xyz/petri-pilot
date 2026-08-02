@@ -12,6 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # go.mod carries a temporary `replace ../go-pflow` while petri-pilot
+      # tracks unreleased go-pflow work (see CLAUDE.md). CI must provide the
+      # sibling checkout that the replace points at.
+      - name: Check out go-pflow sibling (go.mod replace)
+        uses: actions/checkout@v4
+        with:
+          repository: pflow-xyz/go-pflow
+          path: .go-pflow-sibling
+
+      - name: Link sibling to ../go-pflow
+        run: ln -sfn "$PWD/.go-pflow-sibling" ../go-pflow
+
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -29,6 +42,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # go.mod carries a temporary `replace ../go-pflow` while petri-pilot
+      # tracks unreleased go-pflow work (see CLAUDE.md). CI must provide the
+      # sibling checkout that the replace points at.
+      - name: Check out go-pflow sibling (go.mod replace)
+        uses: actions/checkout@v4
+        with:
+          repository: pflow-xyz/go-pflow
+          path: .go-pflow-sibling
+
+      - name: Link sibling to ../go-pflow
+        run: ln -sfn "$PWD/.go-pflow-sibling" ../go-pflow
+
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -69,6 +95,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # go.mod carries a temporary `replace ../go-pflow` while petri-pilot
+      # tracks unreleased go-pflow work (see CLAUDE.md). CI must provide the
+      # sibling checkout that the replace points at.
+      - name: Check out go-pflow sibling (go.mod replace)
+        uses: actions/checkout@v4
+        with:
+          repository: pflow-xyz/go-pflow
+          path: .go-pflow-sibling
+
+      - name: Link sibling to ../go-pflow
+        run: ln -sfn "$PWD/.go-pflow-sibling" ../go-pflow
+
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -87,6 +126,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # go.mod carries a temporary `replace ../go-pflow` while petri-pilot
+      # tracks unreleased go-pflow work (see CLAUDE.md). CI must provide the
+      # sibling checkout that the replace points at.
+      - name: Check out go-pflow sibling (go.mod replace)
+        uses: actions/checkout@v4
+        with:
+          repository: pflow-xyz/go-pflow
+          path: .go-pflow-sibling
+
+      - name: Link sibling to ../go-pflow
+        run: ln -sfn "$PWD/.go-pflow-sibling" ../go-pflow
+
 
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
