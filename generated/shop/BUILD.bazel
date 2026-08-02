@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "shop",
+    srcs = [
+        "app.go",
+        "bundle.go",
+        "flatmodel.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/shop",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/shop/inventory",
+        "//generated/shop/order",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "shop_test",
+    srcs = ["app_test.go"],
+    embed = [":shop"],
+    deps = [
+        "//generated/shop/inventory",
+        "//generated/shop/order",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)

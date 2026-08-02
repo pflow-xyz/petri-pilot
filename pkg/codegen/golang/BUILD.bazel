@@ -56,6 +56,8 @@ go_library(
         "templates/bazelrc.tmpl",
         "templates/bundle_root.tmpl",
         "templates/flatmodel.tmpl",
+        "templates/bundle_app.tmpl",
+        "templates/bundle_app_test.tmpl",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/golang",
     visibility = ["//visibility:public"],

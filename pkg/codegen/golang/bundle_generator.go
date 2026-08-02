@@ -12,13 +12,17 @@ import (
 // Bundle template names. These render against *BundleContext, unlike the
 // entity-level templates which render against *Context.
 const (
-	TemplateBundleRoot = "bundle_root"
-	TemplateFlatModel  = "flatmodel"
+	TemplateBundleRoot    = "bundle_root"
+	TemplateFlatModel     = "flatmodel"
+	TemplateBundleApp     = "bundle_app"
+	TemplateBundleAppTest = "bundle_app_test"
 )
 
 var bundleTemplateOutputs = map[string]string{
-	TemplateBundleRoot: "bundle.go",
-	TemplateFlatModel:  "flatmodel.go",
+	TemplateBundleRoot:    "bundle.go",
+	TemplateFlatModel:     "flatmodel.go",
+	TemplateBundleApp:     "app.go",
+	TemplateBundleAppTest: "app_test.go",
 }
 
 // GenerateBundleFiles generates a composed application from a bundle: one Go
@@ -65,11 +69,16 @@ func (g *Generator) GenerateBundleFiles(b *metamodel.Bundle) ([]GeneratedFile, e
 
 	// Root package: composition metadata + the embedded flattened model.
 	rootTmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS,
-		"templates/bundle_root.tmpl", "templates/flatmodel.tmpl")
+		"templates/bundle_root.tmpl", "templates/flatmodel.tmpl",
+		"templates/bundle_app.tmpl", "templates/bundle_app_test.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("parsing bundle templates: %w", err)
 	}
-	for _, name := range []string{TemplateBundleRoot, TemplateFlatModel} {
+	rootTemplates := []string{TemplateBundleRoot, TemplateFlatModel, TemplateBundleApp}
+	if g.opts.IncludeTests {
+		rootTemplates = append(rootTemplates, TemplateBundleAppTest)
+	}
+	for _, name := range rootTemplates {
 		var buf bytes.Buffer
 		if err := rootTmpl.ExecuteTemplate(&buf, name+".tmpl", bc); err != nil {
 			return nil, fmt.Errorf("rendering %s: %w", name, err)

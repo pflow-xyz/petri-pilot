@@ -1,0 +1,16 @@
+{
+  "name": "shop",
+  "description": "Two-entity composition: placing an order reserves stock in the same atomic step.",
+  "subnets": [
+    {"id": "order", "net_type": "workflow", "model_ref": "order.json"},
+    {"id": "inventory", "net_type": "workflow", "model_ref": "inventory.json"}
+  ],
+  "links": [
+    {
+      "id": "order_reserves_stock",
+      "kind": "event",
+      "from": {"subnet": "order", "transition": "place_order"},
+      "to": {"subnet": "inventory", "transition": "reserve_stock"}
+    }
+  ]
+}

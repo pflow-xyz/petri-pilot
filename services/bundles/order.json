@@ -1,0 +1,19 @@
+{
+  "name": "order",
+  "description": "Order lifecycle: draft -> placed -> shipped",
+  "places": [
+    {"id": "draft", "kind": "token", "initial": 1},
+    {"id": "placed", "kind": "token"},
+    {"id": "shipped", "kind": "token"}
+  ],
+  "transitions": [
+    {"id": "place_order", "event": "order.place_order"},
+    {"id": "ship", "event": "order.ship"}
+  ],
+  "arcs": [
+    {"from": "draft", "to": "place_order"},
+    {"from": "place_order", "to": "placed"},
+    {"from": "placed", "to": "ship"},
+    {"from": "ship", "to": "shipped"}
+  ]
+}

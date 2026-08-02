@@ -35,6 +35,8 @@ type CoordinatorMember struct {
 	PackageName     string
 	LocalTransition string // the transition's name inside its entity
 	EventID         string // the event this member appends to its own log
+	ConstName       string // the entity package's transition constant
+	VarName         string // Go-safe local variable base name
 }
 
 // CoordinatorContext is one fused transition: a cross-entity command.
@@ -218,6 +220,8 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 				PackageName:     pkgBySubnet[subnet],
 				LocalTransition: local,
 				EventID:         eventOf(subnet, local),
+				ConstName:       ToConstName("Transition", local),
+				VarName:         ToCamelCase(IdentifierFrom(subnet)),
 			})
 			if coord.Initiator == "" && !hasIncoming[m] {
 				coord.Initiator = subnet
