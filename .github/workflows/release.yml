@@ -26,8 +26,11 @@ jobs:
           repository: pflow-xyz/go-pflow
           path: .go-pflow-sibling
 
-      - name: Link sibling to ../go-pflow
-        run: ln -sfn "$PWD/.go-pflow-sibling" ../go-pflow
+      - name: Move sibling to ../go-pflow
+        # A real directory outside the workspace, exactly like a local
+        # checkout — a symlink into the workspace confuses Bazel's go_deps
+        # materialization (and gazelle would otherwise walk it).
+        run: rm -rf ../go-pflow && mv "$PWD/.go-pflow-sibling" ../go-pflow
 
 
       - name: Set up Go
