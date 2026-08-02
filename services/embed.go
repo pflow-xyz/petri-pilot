@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-//go:embed *.json
+//go:embed *.json bundles/*.json
 var FS embed.FS
 
 // List returns the names of all embedded service models (without .json extension).

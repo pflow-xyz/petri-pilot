@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	metamodel "github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/bundle"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
+	"github.com/pflow-xyz/petri-pilot/services"
 )
 
 // TestBundleCodegenMatchesCommittedShop regenerates the shop bundle and
@@ -18,7 +21,24 @@ import (
 // template change that alters output fails here until generated/shop is
 // deliberately regenerated in the same commit.
 func TestBundleCodegenMatchesCommittedShop(t *testing.T) {
-	b, err := bundle.LoadFile(filepath.Join("..", "..", "services", "bundles", "shop.bundle.json"))
+	// The bundle document comes from the embedded services FS, so this test
+	// is hermetic under Bazel; only the committed generated/ tree is a disk
+	// read (supplied as runfiles data).
+	doc, err := services.FS.ReadFile("bundles/shop.bundle.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := bundle.Load(doc, func(ref string) (*metamodel.Model, error) {
+		raw, err := services.FS.ReadFile("bundles/" + ref)
+		if err != nil {
+			return nil, err
+		}
+		var m metamodel.Model
+		if err := json.Unmarshal(raw, &m); err != nil {
+			return nil, err
+		}
+		return &m, nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,6 +58,12 @@ func TestBundleCodegenMatchesCommittedShop(t *testing.T) {
 	}
 
 	root := filepath.Join("..", "..", "generated", "shop")
+	if _, err := os.Stat(root); err != nil {
+		// Bazel sandbox: the committed tree is not in runfiles. The go test
+		// CI job runs this comparison; under Bazel the generation half above
+		// still ran.
+		t.Skipf("committed tree not available: %v", err)
+	}
 	for _, f := range files {
 		committed, err := os.ReadFile(filepath.Join(root, f.Name))
 		if err != nil {

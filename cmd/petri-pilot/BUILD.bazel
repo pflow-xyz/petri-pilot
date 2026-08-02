@@ -58,5 +58,6 @@ go_test(
         "//pkg/bundle",
         "//pkg/codegen/golang",
         "//services",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
     ],
 )
