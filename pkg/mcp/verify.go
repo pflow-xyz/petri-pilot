@@ -147,11 +147,19 @@ func buildVerifyNet(model *goflowmetamodel.Model) *petri.PetriNet {
 		if weight == 0 {
 			weight = 1
 		}
-		if arc.IsInhibitor() {
+		switch {
+		case arc.IsInhibitor():
 			// Previously dropped: an inhibitor arc silently became a normal
 			// consuming arc, changing the model being verified.
 			builder = builder.InhibitorArc(arc.From, arc.To, float64(weight))
-		} else {
+		case arc.IsRead():
+			// A read arc is a REVERSED inhibitor in petri's vocabulary: an
+			// inhibitor transition -> place is enabled only while the place
+			// holds at least the weight and consumes nothing (go-pflow's
+			// metapetri bridge uses the same encoding). Verifying it as a
+			// normal arc would prove properties of a different net.
+			builder = builder.InhibitorArc(arc.To, arc.From, float64(weight))
+		default:
 			builder = builder.Arc(arc.From, arc.To, float64(weight))
 		}
 	}

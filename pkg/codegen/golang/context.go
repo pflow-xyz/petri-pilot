@@ -75,65 +75,8 @@ type Context struct {
 	// Debug configuration
 	Debug *DebugContext
 
-	// SLA configuration
-	SLA *SLAConfigContext
-
-	// Prediction configuration
-	Prediction *PredictionContext
-
 	// GraphQL configuration
 	GraphQL *GraphQLContext
-
-	// Blobstore configuration
-	Blobstore *BlobstoreContext
-
-	// Timers configuration
-	Timers []TimerContext
-
-	// Notifications configuration
-	Notifications []NotificationContext
-
-	// Relationships configuration
-	Relationships []RelationshipContext
-
-	// Computed fields configuration
-	Computed []ComputedFieldContext
-
-	// Indexes configuration
-	Indexes []IndexContext
-
-	// Approvals configuration
-	Approvals map[string]*ApprovalChainContext
-
-	// Templates configuration
-	Templates []TemplateContext
-
-	// Batch operations configuration
-	Batch *BatchContext
-
-	// Inbound webhooks configuration
-	InboundWebhooks []InboundWebhookContext
-
-	// Documents configuration
-	Documents []DocumentContext
-
-	// Comments configuration
-	Comments *CommentsContext
-
-	// Tags configuration
-	Tags *TagsContext
-
-	// Activity configuration
-	Activity *ActivityContext
-
-	// Favorites configuration
-	Favorites *FavoritesContext
-
-	// Export configuration
-	Export *ExportContext
-
-	// Soft delete configuration
-	SoftDelete *SoftDeleteContext
 
 	// Original model for reference
 	Model *metamodel.Model
@@ -238,208 +181,11 @@ type DebugContext struct {
 	Eval    bool
 }
 
-// SLAConfigContext provides template-friendly access to SLA configuration.
-type SLAConfigContext struct {
-	Default       string            // Default SLA duration string (e.g., "5m")
-	ByPriority    map[string]string // Priority -> duration string
-	WarningAt     float64           // Warning threshold (0.0-1.0), default 0.8
-	CriticalAt    float64           // Critical threshold (0.0-1.0), default 0.95
-	OnBreach      string            // Breach action: "alert", "log", "webhook"
-	HasPriorities bool              // True if priority-based SLAs defined
-}
-
-// PredictionContext provides template-friendly access to prediction configuration.
-type PredictionContext struct {
-	Enabled   bool    // Enable ODE-based prediction
-	TimeHours float64 // Default simulation duration in hours
-	RateScale float64 // Rate scaling factor for numerical stability
-}
-
 // GraphQLContext provides template-friendly access to GraphQL configuration.
 type GraphQLContext struct {
 	Enabled    bool   // Enable GraphQL API
 	Path       string // GraphQL endpoint path (default: "/graphql")
 	Playground bool   // Enable GraphQL Playground
-}
-
-// BlobstoreContext provides template-friendly access to blobstore configuration.
-type BlobstoreContext struct {
-	Enabled      bool     // Enable blobstore for binary/JSON attachments
-	MaxSize      int64    // Maximum blob size in bytes
-	AllowedTypes []string // Allowed content types
-}
-
-// TimerContext provides template-friendly access to timer configuration.
-type TimerContext struct {
-	ID         string // Timer ID
-	Transition string // Transition to fire
-	After      string // Duration after entering state
-	Cron       string // Cron expression
-	From       string // Place that triggers the timer
-	Condition  string // Condition expression
-	Repeat     bool   // Whether to repeat
-	PascalName string // e.g., "SendReminder"
-}
-
-// NotificationContext provides template-friendly access to notification configuration.
-type NotificationContext struct {
-	ID         string            // Notification ID
-	On         string            // Trigger (transition or place)
-	Channel    string            // email, sms, slack, webhook, in_app
-	To         string            // Recipient expression
-	Template   string            // Template ID or inline
-	Subject    string            // Subject line
-	Webhook    string            // Webhook URL
-	Condition  string            // Condition expression
-	Data       map[string]string // Additional data
-	PascalName string            // e.g., "ApprovalNotification"
-}
-
-// RelationshipContext provides template-friendly access to relationship configuration.
-type RelationshipContext struct {
-	Name         string // Relationship name
-	Type         string // hasMany, hasOne, belongsTo
-	Target       string // Target model name
-	ForeignKey   string // Foreign key field
-	Cascade      string // Cascade behavior
-	PascalName   string // e.g., "LineItems"
-	TargetPascal string // e.g., "OrderItem"
-	IsHasMany    bool
-	IsHasOne     bool
-	IsBelongsTo  bool
-}
-
-// ComputedFieldContext provides template-friendly access to computed field configuration.
-type ComputedFieldContext struct {
-	Name        string   // Field name
-	Type        string   // Result type
-	Expr        string   // Expression
-	GoType      string   // Go type
-	DependsOn   []string // Dependencies
-	Persisted   bool     // Whether to store
-	Description string   // Description
-	PascalName  string   // e.g., "TotalAmount"
-}
-
-// IndexContext provides template-friendly access to index configuration.
-type IndexContext struct {
-	Name       string   // Index name
-	Fields     []string // Fields to index
-	Type       string   // Index type
-	Unique     bool     // Unique index
-	PascalName string   // e.g., "ByStatusCreatedAt"
-}
-
-// ApprovalChainContext provides template-friendly access to approval chain configuration.
-type ApprovalChainContext struct {
-	ID            string                 // Approval chain ID
-	Levels        []ApprovalLevelContext // Approval levels
-	EscalateAfter string                 // Escalation duration
-	OnReject      string                 // Rejection transition
-	OnApprove     string                 // Final approval transition
-	Parallel      bool                   // Parallel approvals
-	PascalName    string                 // e.g., "PurchaseRequest"
-}
-
-// ApprovalLevelContext provides template-friendly access to approval level configuration.
-type ApprovalLevelContext struct {
-	Role       string // Required role
-	User       string // Specific user expression
-	Condition  string // Level condition
-	Required   int    // Approvals required
-	Transition string // Custom transition
-	Level      int    // Level number (1-indexed)
-}
-
-// TemplateContext provides template-friendly access to preset template configuration.
-type TemplateContext struct {
-	ID          string         // Template ID
-	Name        string         // Display name
-	Description string         // Description
-	Data        map[string]any // Pre-filled data
-	Roles       []string       // Allowed roles
-	Default     bool           // Is default
-	PascalName  string         // e.g., "StandardOrder"
-	DataJSON    string         // JSON-encoded data
-}
-
-// BatchContext provides template-friendly access to batch operations configuration.
-type BatchContext struct {
-	Enabled     bool     // Enable batch operations
-	Transitions []string // Allowed transitions
-	MaxSize     int      // Maximum batch size
-}
-
-// InboundWebhookContext provides template-friendly access to inbound webhook configuration.
-type InboundWebhookContext struct {
-	ID         string            // Webhook ID
-	Path       string            // URL path
-	Secret     string            // Validation secret
-	Transition string            // Transition to fire
-	Map        map[string]string // Field mapping
-	Condition  string            // Processing condition
-	Method     string            // HTTP method
-	PascalName string            // e.g., "StripePayment"
-}
-
-// DocumentContext provides template-friendly access to document generation configuration.
-type DocumentContext struct {
-	ID          string // Document ID
-	Name        string // Display name
-	Template    string // Template file
-	Format      string // Output format
-	Trigger     string // Trigger transition
-	StoreTo     string // Storage blob field
-	Filename    string // Filename expression
-	Description string // Description
-	PascalName  string // e.g., "Invoice"
-}
-
-// CommentsContext provides template-friendly access to comments configuration.
-type CommentsContext struct {
-	Enabled    bool     // Enable comments
-	Roles      []string // Allowed roles
-	Moderation bool     // Require moderation
-	MaxLength  int      // Maximum length
-}
-
-// TagsContext provides template-friendly access to tags configuration.
-type TagsContext struct {
-	Enabled    bool     // Enable tags
-	Predefined []string // Predefined tags
-	FreeForm   bool     // Allow free-form tags
-	MaxTags    int      // Maximum tags per instance
-	Colors     bool     // Enable colors
-}
-
-// ActivityContext provides template-friendly access to activity feed configuration.
-type ActivityContext struct {
-	Enabled       bool     // Enable activity feed
-	IncludeEvents []string // Events to include
-	ExcludeEvents []string // Events to exclude
-	MaxItems      int      // Maximum items
-}
-
-// FavoritesContext provides template-friendly access to favorites configuration.
-type FavoritesContext struct {
-	Enabled      bool // Enable favorites
-	Notify       bool // Notify on changes
-	MaxFavorites int  // Maximum favorites
-}
-
-// ExportContext provides template-friendly access to export configuration.
-type ExportContext struct {
-	Enabled bool     // Enable export
-	Formats []string // Allowed formats
-	MaxRows int      // Maximum rows
-	Roles   []string // Allowed roles
-}
-
-// SoftDeleteContext provides template-friendly access to soft delete configuration.
-type SoftDeleteContext struct {
-	Enabled       bool     // Enable soft delete
-	RetentionDays int      // Retention period
-	RestoreRoles  []string // Roles that can restore
 }
 
 // PlaceContext provides template-friendly access to place data.
@@ -517,7 +263,14 @@ type ArcContext struct {
 	ConstName   string // e.g., "PlaceReceived"
 	Weight      int    // Token weight (default 1)
 	IsInhibitor bool   // True if this is an inhibitor arc (blocks if place has tokens)
+	IsRead      bool   // True if this is a read arc (requires tokens, consumes none)
 }
+
+// IsReadOnly reports an arc that only tests the marking. Anything emitting a
+// consuming input MUST skip these: a read arc rendered as an Input steals a
+// token on every firing, and since Apply replays every event, the marking
+// drifts further from the truth with each one.
+func (a ArcContext) IsReadOnly() bool { return a.IsInhibitor || a.IsRead }
 
 // BindingContext provides template-friendly access to transition bindings.
 // Bindings are operational data needed for state computation (arcnet pattern).
@@ -1322,18 +1075,30 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 	// Inputs: arcs where arc.To == transition.ID (place -> transition)
 	// Outputs: arcs where arc.From == transition.ID (transition -> place)
 	// Note: Data state places are excluded from token counting - guards handle those
-	// Inhibitor arcs are included in inputs but marked with IsInhibitor=true
-	// Use nested maps keyed by transition ID → place ID to deduplicate arcs.
-	// Duplicate arcs accumulate weights (two weight-1 arcs = one weight-2 arc).
-	inputArcMap := make(map[string]map[string]ArcContext)  // transition → place → arc
-	outputArcMap := make(map[string]map[string]ArcContext) // transition → place → arc
+	// Inhibitor and read arcs are included in inputs but flagged, since neither
+	// consumes; the templates must not emit them as consuming Inputs.
+	// Use nested maps keyed by transition ID → arc key to deduplicate arcs.
+	// Duplicate NORMAL arcs accumulate weights (two weight-1 arcs = one
+	// weight-2 arc).
+	//
+	// The key carries the arc TYPE as well as the place. Keying on the place
+	// alone would fold a read arc and a consuming arc over the same place into
+	// one entry, and whichever came first would decide whether the other
+	// consumes — a normal arc silently demoted to a test, or a read arc
+	// promoted to token theft.
+	inputArcMap := make(map[string]map[string]ArcContext)  // transition → key → arc
+	outputArcMap := make(map[string]map[string]ArcContext) // transition → key → arc
 
 	// Dedup keys in the order the model declares them. Ranging the maps below
 	// would emit arcs in Go's randomized map order, making generated code differ
 	// between runs for an identical model; declaration order keeps generation
 	// reproducible and is stable under edits to unrelated transitions.
-	inputArcOrder := make(map[string][]string)  // transition → place IDs, first-seen order
-	outputArcOrder := make(map[string][]string) // transition → place IDs, first-seen order
+	inputArcOrder := make(map[string][]string)  // transition → arc keys, first-seen order
+	outputArcOrder := make(map[string][]string) // transition → arc keys, first-seen order
+
+	// arcKey is type-then-place; a normal arc's key is "|<place>", so keys for
+	// models without read/inhibitor arcs are unchanged in content and order.
+	arcKey := func(typ metamodel.ArcType, place string) string { return string(typ) + "|" + place }
 
 	for _, arc := range arcs {
 		weight := arc.Weight
@@ -1348,39 +1113,91 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 			if inputArcMap[arc.To] == nil {
 				inputArcMap[arc.To] = make(map[string]ArcContext)
 			}
-			if existing, ok := inputArcMap[arc.To][arc.From]; ok {
-				existing.Weight += weight
-				inputArcMap[arc.To][arc.From] = existing
+			key := arcKey(arc.Type, arc.From)
+			if existing, ok := inputArcMap[arc.To][key]; ok {
+				switch {
+				case arc.IsRead():
+					// A read arc is a lower bound, so two of them mean the
+					// stricter one: summing would demand tokens neither arc
+					// asked for.
+					if weight > existing.Weight {
+						existing.Weight = weight
+					}
+				case arc.IsInhibitor():
+					// An inhibitor is an upper bound: the lower threshold is
+					// the stricter one.
+					if weight < existing.Weight {
+						existing.Weight = weight
+					}
+				default:
+					existing.Weight += weight
+				}
+				inputArcMap[arc.To][key] = existing
 			} else {
-				inputArcMap[arc.To][arc.From] = ArcContext{
+				inputArcMap[arc.To][key] = ArcContext{
 					PlaceID:     arc.From,
 					ConstName:   "Place" + scopes.place.Stem(arc.From),
 					Weight:      weight,
 					IsInhibitor: arc.IsInhibitor(),
+					IsRead:      arc.IsRead(),
 				}
-				inputArcOrder[arc.To] = append(inputArcOrder[arc.To], arc.From)
+				inputArcOrder[arc.To] = append(inputArcOrder[arc.To], key)
 			}
 		}
 
 		// If arc goes from something that's not a place to a place,
 		// it's an output from a transition
 		// Skip data state places - they don't use token counting
-		// Note: Inhibitor arcs don't have outputs (they're read-only)
-		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] && !arc.IsInhibitor() {
+		// Note: read-only arcs (inhibitor, read) never produce outputs
+		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] && !arc.IsReadOnly() {
 			if outputArcMap[arc.From] == nil {
 				outputArcMap[arc.From] = make(map[string]ArcContext)
 			}
-			if existing, ok := outputArcMap[arc.From][arc.To]; ok {
+			key := arcKey(arc.Type, arc.To)
+			if existing, ok := outputArcMap[arc.From][key]; ok {
 				existing.Weight += weight
-				outputArcMap[arc.From][arc.To] = existing
+				outputArcMap[arc.From][key] = existing
 			} else {
-				outputArcMap[arc.From][arc.To] = ArcContext{
+				outputArcMap[arc.From][key] = ArcContext{
 					PlaceID:     arc.To,
 					ConstName:   "Place" + scopes.place.Stem(arc.To),
 					Weight:      weight,
 					IsInhibitor: false,
 				}
-				outputArcOrder[arc.From] = append(outputArcOrder[arc.From], arc.To)
+				outputArcOrder[arc.From] = append(outputArcOrder[arc.From], key)
+			}
+		}
+
+		// A read-only arc pointing transition -> place is pflow-xyz's
+		// long-standing spelling of a guard, and pkg/codegen/core lowers it to
+		// exactly the same Reads entry a forward read arc gets. Here it used to
+		// match neither branch above — not an input (source is not a place),
+		// not an output (read-only) — so the full-app generator DROPPED the
+		// precondition and emitted an aggregate that fires without it, while
+		// core mode, petri_verify and the validator all enforce it.
+		//
+		// Normalising it into the transition's read set makes the two
+		// generators agree. The forward key is reused so the two spellings of
+		// one condition dedup against each other.
+		if !placeIDs[arc.From] && placeIDs[arc.To] && !dataPlaceIDs[arc.To] && arc.IsReadOnly() {
+			if inputArcMap[arc.From] == nil {
+				inputArcMap[arc.From] = make(map[string]ArcContext)
+			}
+			key := arcKey(metamodel.ReadArc, arc.To)
+			if existing, ok := inputArcMap[arc.From][key]; ok {
+				// Two reads of one place mean the stricter lower bound.
+				if weight > existing.Weight {
+					existing.Weight = weight
+					inputArcMap[arc.From][key] = existing
+				}
+			} else {
+				inputArcMap[arc.From][key] = ArcContext{
+					PlaceID:   arc.To,
+					ConstName: "Place" + scopes.place.Stem(arc.To),
+					Weight:    weight,
+					IsRead:    true,
+				}
+				inputArcOrder[arc.From] = append(inputArcOrder[arc.From], key)
 			}
 		}
 	}
@@ -1388,14 +1205,14 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 	// Flatten deduped maps into slices, following declaration order.
 	inputArcs := make(map[string][]ArcContext)
 	for transID, order := range inputArcOrder {
-		for _, placeID := range order {
-			inputArcs[transID] = append(inputArcs[transID], inputArcMap[transID][placeID])
+		for _, key := range order {
+			inputArcs[transID] = append(inputArcs[transID], inputArcMap[transID][key])
 		}
 	}
 	outputArcs := make(map[string][]ArcContext)
 	for transID, order := range outputArcOrder {
-		for _, placeID := range order {
-			outputArcs[transID] = append(outputArcs[transID], outputArcMap[transID][placeID])
+		for _, key := range order {
+			outputArcs[transID] = append(outputArcs[transID], outputArcMap[transID][key])
 		}
 	}
 
@@ -2147,11 +1964,6 @@ func (c *Context) HasExplicitEvents() bool {
 	return c.Model != nil && len(c.Model.Events) > 0
 }
 
-// HasSLAs returns true if the model has SLA configuration.
-func (c *Context) HasSLAs() bool {
-	return c.SLA != nil
-}
-
 // HasTransitionSLAs returns true if any transition has SLA timing.
 func (c *Context) HasTransitionSLAs() bool {
 	for _, t := range c.Transitions {
@@ -2172,11 +1984,6 @@ func (c *Context) HasClearsHistoryTransitions() bool {
 	return false
 }
 
-// HasPrediction returns true if the model has prediction configuration enabled.
-func (c *Context) HasPrediction() bool {
-	return c.Prediction != nil && c.Prediction.Enabled
-}
-
 // HasGraphQL returns true if the model has GraphQL enabled.
 func (c *Context) HasGraphQL() bool {
 	return c.GraphQL != nil && c.GraphQL.Enabled
@@ -2187,11 +1994,6 @@ func (c *Context) HasPlayground() bool {
 	return c.HasGraphQL() && c.GraphQL.Playground
 }
 
-// HasBlobstore returns true if the model has blobstore enabled.
-func (c *Context) HasBlobstore() bool {
-	return c.Blobstore != nil && c.Blobstore.Enabled
-}
-
 // HasTimeFields returns true if any entity field uses time.Time type.
 func (c *Context) HasTimeFields() bool {
 	for _, f := range c.EntityFields {
@@ -2200,95 +2002,6 @@ func (c *Context) HasTimeFields() bool {
 		}
 	}
 	return false
-}
-
-// HasTimers returns true if the model has timers configured.
-func (c *Context) HasTimers() bool {
-	return len(c.Timers) > 0
-}
-
-// HasNotifications returns true if the model has notifications configured.
-func (c *Context) HasNotifications() bool {
-	return len(c.Notifications) > 0
-}
-
-// HasRelationships returns true if the model has relationships configured.
-func (c *Context) HasRelationships() bool {
-	return len(c.Relationships) > 0
-}
-
-// HasComputed returns true if the model has computed fields configured.
-func (c *Context) HasComputed() bool {
-	return len(c.Computed) > 0
-}
-
-// HasIndexes returns true if the model has indexes configured.
-func (c *Context) HasIndexes() bool {
-	return len(c.Indexes) > 0
-}
-
-// HasApprovals returns true if the model has approval chains configured.
-func (c *Context) HasApprovals() bool {
-	return len(c.Approvals) > 0
-}
-
-// HasTemplates returns true if the model has templates configured.
-func (c *Context) HasTemplates() bool {
-	return len(c.Templates) > 0
-}
-
-// HasBatch returns true if batch operations are enabled.
-func (c *Context) HasBatch() bool {
-	return c.Batch != nil && c.Batch.Enabled
-}
-
-// HasInboundWebhooks returns true if the model has inbound webhooks configured.
-func (c *Context) HasInboundWebhooks() bool {
-	return len(c.InboundWebhooks) > 0
-}
-
-// HasDocuments returns true if the model has document generation configured.
-func (c *Context) HasDocuments() bool {
-	return len(c.Documents) > 0
-}
-
-// HasComments returns true if comments are enabled.
-func (c *Context) HasComments() bool {
-	return c.Comments != nil && c.Comments.Enabled
-}
-
-// HasTags returns true if tags are enabled.
-func (c *Context) HasTags() bool {
-	return c.Tags != nil && c.Tags.Enabled
-}
-
-// HasActivity returns true if activity feed is enabled.
-func (c *Context) HasActivity() bool {
-	return c.Activity != nil && c.Activity.Enabled
-}
-
-// HasFavorites returns true if favorites are enabled.
-func (c *Context) HasFavorites() bool {
-	return c.Favorites != nil && c.Favorites.Enabled
-}
-
-// HasExport returns true if export is enabled.
-func (c *Context) HasExport() bool {
-	return c.Export != nil && c.Export.Enabled
-}
-
-// HasSoftDelete returns true if soft delete is enabled.
-func (c *Context) HasSoftDelete() bool {
-	return c.SoftDelete != nil && c.SoftDelete.Enabled
-}
-
-// HasAnyFeatures returns true if any of the higher-level features are enabled.
-func (c *Context) HasAnyFeatures() bool {
-	return c.HasTimers() || c.HasNotifications() || c.HasRelationships() ||
-		c.HasComputed() || c.HasIndexes() || c.HasApprovals() ||
-		c.HasTemplates() || c.HasBatch() || c.HasInboundWebhooks() ||
-		c.HasDocuments() || c.HasComments() || c.HasTags() ||
-		c.HasActivity() || c.HasFavorites() || c.HasExport() || c.HasSoftDelete()
 }
 
 // ResourcePlaces returns only the places marked as resources for prediction.

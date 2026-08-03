@@ -55,7 +55,13 @@ stateDiagram-v2
 
 {{range $t := .Transitions}}
 {{- range $t.Inputs}}
+{{- if .IsRead}}
+    {{.ConstName}} --> t_{{$t.ConstName}}: read >= {{.Weight}}
+{{- else if .IsInhibitor}}
+    {{.ConstName}} --> t_{{$t.ConstName}}: inhibit >= {{.Weight}}
+{{- else}}
     {{.ConstName}} --> t_{{$t.ConstName}}{{if gt .Weight 1}}: {{.Weight}}{{end}}
+{{- end}}
 {{- end}}
 {{- range $t.Outputs}}
     t_{{$t.ConstName}} --> {{.ConstName}}{{if gt .Weight 1}}: {{.Weight}}{{end}}
@@ -81,7 +87,12 @@ flowchart TD
 
 {{range $t := .Transitions}}
 {{- range $t.Inputs}}
+{{- if .IsReadOnly}}
+{{- /* dotted: these arcs test the marking and move no tokens */}}
+    {{.ConstName}} -.->|{{if .IsRead}}read >= {{.Weight}}{{else}}inhibit >= {{.Weight}}{{end}}| t_{{$t.ConstName}}
+{{- else}}
     {{.ConstName}} -->{{if gt .Weight 1}}|{{.Weight}}|{{end}} t_{{$t.ConstName}}
+{{- end}}
 {{- end}}
 {{- range $t.Outputs}}
     t_{{$t.ConstName}} -->{{if gt .Weight 1}}|{{.Weight}}|{{end}} {{.ConstName}}
@@ -238,16 +249,7 @@ curl -X POST http://localhost:8080/api/<transition> \
 | {{.Label}} | `{{.Path}}` | {{if .Icon}}{{.Icon}}{{else}}-{{end}} | {{if .Roles}}{{range $i, $r := .Roles}}{{if $i}}, {{end}}`{{$r}}`{{end}}{{else}}*{{end}} |
 {{end}}
 {{end}}
-{{if .Indexes}}
 
-## Indexes
-
-| Name | Type | Fields |
-|------|------|--------|
-{{range .Indexes -}}
-| `{{.Name}}` | {{.Type}} | {{range $i, $f := .Fields}}{{if $i}}, {{end}}`{{$f}}`{{end}} |
-{{end}}
-{{end}}
 
 ## Configuration
 

@@ -35,6 +35,7 @@ go_test(
     srcs = [
         "core_test.go",
         "coverage_test.go",
+        "readarc_test.go",
     ],
     args = ["-test.short"],  # keep: TestExecutionParity shells out to system toolchains (non-hermetic)
     embed = [":core"],

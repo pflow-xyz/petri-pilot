@@ -154,3 +154,47 @@ func TestSimulateUsesStepBindings(t *testing.T) {
 		t.Errorf("amount=5 should satisfy the guard: %s", allowed.Steps[0].Error)
 	}
 }
+
+// TestSimulateHonoursReadArcs is the fifth of the same family, and the one
+// with a cumulative failure mode: a read arc gates firing but consumes
+// nothing, so simulating N firings must leave the read place untouched. A
+// single-step simulation passes even when the arc is treated as consuming —
+// which is exactly how the gap survived.
+func TestSimulateHonoursReadArcs(t *testing.T) {
+	m := &metamodel.Model{
+		Name: "readarc",
+		Places: []metamodel.Place{
+			{ID: "ready", Kind: metamodel.TokenKind, Initial: 1},
+			{ID: "gate", Kind: metamodel.TokenKind, Initial: 2},
+			{ID: "done", Kind: metamodel.TokenKind},
+		},
+		Transitions: []metamodel.Transition{{ID: "go"}, {ID: "reset"}},
+		Arcs: []metamodel.Arc{
+			{From: "ready", To: "go", Weight: 1},
+			{From: "gate", To: "go", Weight: 2, Type: metamodel.ReadArc},
+			{From: "go", To: "done", Weight: 1},
+			{From: "done", To: "reset", Weight: 1},
+			{From: "reset", To: "ready", Weight: 1},
+		},
+	}
+
+	res := fire(t, m, "go", "reset", "go", "reset", "go")
+	for i, step := range res.Steps {
+		if !step.Enabled {
+			t.Fatalf("step %d (%s) disabled: %s", i, step.Transition, step.Error)
+		}
+		if got := step.StateAfter["gate"]; got != 2 {
+			t.Fatalf("step %d: gate = %d, want 2 — a read arc consumes nothing", i, got)
+		}
+	}
+
+	// And it is a real precondition: one token does not satisfy a weight-2 read.
+	m.Places[1].Initial = 1
+	res = fire(t, m, "go")
+	if res.Steps[0].Enabled {
+		t.Error("a weight-2 read arc must not be satisfied by 1 token")
+	}
+	if !strings.Contains(res.Steps[0].Error, "read condition not met") {
+		t.Errorf("reason %q should distinguish an unmet read from consumed tokens", res.Steps[0].Error)
+	}
+}

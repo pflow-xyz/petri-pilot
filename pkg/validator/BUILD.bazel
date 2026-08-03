@@ -21,6 +21,7 @@ go_test(
     srcs = [
         "implementability_test.go",
         "invariants_test.go",
+        "readarc_test.go",
     ],
     embed = [":validator"],
     deps = ["@com_github_pflow_xyz_go_pflow//metamodel"],

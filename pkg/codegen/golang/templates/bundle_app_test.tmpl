@@ -18,7 +18,7 @@ import (
 
 	"github.com/pflow-xyz/go-pflow/eventsource"
 
-{{- range .Entities}}
+{{- range .TestEntities}}
 	"{{$.ModulePath}}/{{.PackageName}}"
 {{- end}}
 )

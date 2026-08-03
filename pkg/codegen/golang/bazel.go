@@ -119,13 +119,6 @@ func computeBazelBuild(ctx *Context, opts Options) *BazelBuildContext {
 	if ctx.UsesMetamodelRuntime() {
 		deps = append(deps, "@com_github_holiman_uint256//:uint256")
 	}
-	if ctx.HasPrediction() {
-		deps = append(deps,
-			"@com_github_pflow_xyz_go_pflow//petri",
-			"@com_github_pflow_xyz_go_pflow//solver",
-		)
-	}
-
 	b.Deps = sortBazelLabels(dedupe(deps))
 	b.TestDeps = []string{"@com_github_pflow_xyz_go_pflow//eventsource"}
 

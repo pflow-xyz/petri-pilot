@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-{{- if or .HasAdmin .HasEventSourcing .HasPrediction}}
+{{- if or .HasAdmin .HasEventSourcing}}
 	"strconv"
 {{- end}}
 	"strings"
@@ -26,7 +26,7 @@ import (
 )
 
 // BuildRouter creates an HTTP router for the {{.ModelName}} workflow.
-func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}{{if .HasBlobstore}}, blobStore *BlobStore{{end}}{{if .HasTimers}}, timerManager *TimerManager{{end}}{{if .HasNotifications}}, notificationManager *NotificationManager{{end}}{{if .HasComments}}, commentStore *CommentStore{{end}}{{if .HasTags}}, tagStore *TagStore{{end}}{{if .HasFavorites}}, favoriteStore *FavoriteStore{{end}}{{if .HasActivity}}, activityStore *ActivityStore{{end}}{{if .HasExport}}, exportHandler *ExportHandler{{end}}{{if .HasBatch}}, batchHandler *BatchHandler{{end}}{{if .HasInboundWebhooks}}, webhookHandler *WebhookHandler{{end}}{{if .HasTemplates}}, templateStore *TemplateStore{{end}}{{if .HasIndexes}}, searchHandler *SearchHandler{{end}}{{if .HasApprovals}}, approvalStore *ApprovalStore{{end}}{{if .HasRelationships}}, relationshipStore *RelationshipStore{{end}}{{if .HasDocuments}}, documentGenerator *DocumentGenerator{{end}}{{if .HasSoftDelete}}, softDeleteStore *SoftDeleteStore{{end}}) http.Handler {
+func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middleware, sessions SessionStore{{end}}{{if .HasNavigation}}, navigation *Navigation{{end}}{{if .HasDebug}}, debugBroker *DebugBroker{{end}}) http.Handler {
 	r := api.NewRouter()
 {{if .HasAccessControl}}
 	// Apply auth middleware to extract user from token (optional, doesn't require auth)
@@ -59,14 +59,10 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{if .HasAdmin}}
 	// Admin endpoints
 	r.GET("/admin/stats", "Admin statistics", HandleAdminStats(app))
-	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app{{if .HasSoftDelete}}, softDeleteStore{{end}}))
+	r.GET("/admin/instances", "List instances", HandleAdminListInstances(app))
 	r.GET("/admin/instances/{id}", "Get instance detail", HandleAdminGetInstance(app))
 	r.GET("/admin/instances/{id}/events", "Get instance events", HandleAdminGetEvents(app))
 	r.DELETE("/admin/instances/{id}", "Delete instance permanently", HandleAdminDeleteInstance(app))
-{{- if .HasSoftDelete}}
-	r.POST("/admin/instances/{id}/archive", "Archive instance (soft delete)", HandleAdminArchiveInstance(softDeleteStore))
-	r.POST("/admin/instances/{id}/restore", "Restore archived instance", HandleAdminRestoreInstance(softDeleteStore))
-{{- end}}
 {{end}}
 {{if .HasEventSourcing}}
 	// Event replay endpoints
@@ -74,15 +70,7 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	r.GET("/api/{{.APISlug}}/{id}/at/{version}", "Get state at version", HandleGetStateAtVersion(app))
 	r.POST("/api/{{.APISlug}}/{id}/truncate", "Truncate event history to version", HandleTruncate(app))
 {{end}}
-{{if .HasSLAs}}
-	// SLA status endpoint
-	r.GET("/api/{{.APISlug}}/{id}/sla", "Get SLA status", HandleGetSLA(app))
-{{end}}
-{{if .HasPrediction}}
-	// Prediction endpoints
-	r.GET("/api/{{.APISlug}}/predict", "Run simulation prediction", HandlePredict(app))
-	r.GET("/api/{{.APISlug}}/runout", "Get runout predictions", HandleRunout(app))
-{{end}}
+
 {{if .HasSnapshots}}
 	r.POST("/api/{{.APISlug}}/{id}/snapshot", "Create snapshot", HandleCreateSnapshot(app))
 	r.POST("/api/{{.APISlug}}/{id}/replay", "Replay from snapshot", HandleReplay(app))
@@ -107,84 +95,7 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 	// Guest login endpoint (debug mode without access control)
 	r.POST("/api/debug/login", "Create debug guest session", HandleDebugGuestLogin())
 {{end}}
-{{if .HasBlobstore}}
-	// Blob storage endpoints
-	r.POST("/api/blobs", "Upload a new blob", blobStore.HandleUpload)
-	r.GET("/api/blobs", "List user's blobs", blobStore.HandleList)
-	r.GET("/api/blobs/{id}", "Get blob data", blobStore.HandleGet)
-	r.GET("/api/blobs/{id}/meta", "Get blob metadata", blobStore.HandleGetMeta)
-	r.Handle("PATCH", "/api/blobs/{id}", "Transfer blob ownership", blobStore.HandleTransfer)
-	r.Handle("DELETE", "/api/blobs/{id}", "Delete a blob", blobStore.HandleDelete)
-{{end}}
-{{if .HasTimers}}
-	// Timer management endpoints
-	r.GET("/api/timers", "List all timers", timerManager.HandleListTimers)
-{{end}}
-{{if .HasNotifications}}
-	// Notification endpoints
-	r.GET("/api/notifications", "List notifications", notificationManager.HandleListNotifications)
-{{end}}
-{{if .HasComments}}
-	// Comment endpoints
-	r.GET("/api/{{.APISlug}}/{id}/comments", "List comments", commentStore.HandleListComments)
-	r.POST("/api/{{.APISlug}}/{id}/comments", "Add comment", commentStore.HandleAddComment)
-	r.Handle("DELETE", "/api/comments/{commentId}", "Delete comment", commentStore.HandleDeleteComment)
-{{end}}
-{{if .HasTags}}
-	// Tag endpoints
-	r.GET("/api/{{.APISlug}}/{id}/tags", "List entity tags", tagStore.HandleListTags)
-	r.POST("/api/{{.APISlug}}/{id}/tags", "Add tag", tagStore.HandleAddTag)
-	r.Handle("DELETE", "/api/{{.APISlug}}/{id}/tags/{name}", "Remove tag", tagStore.HandleRemoveTag)
-{{end}}
-{{if .HasFavorites}}
-	// Favorites endpoints
-	r.GET("/api/favorites", "List user favorites", favoriteStore.HandleListFavorites)
-	r.POST("/api/{{.APISlug}}/{id}/favorite", "Toggle favorite", favoriteStore.HandleToggleFavorite)
-{{end}}
-{{if .HasActivity}}
-	// Activity feed endpoints
-	r.GET("/api/{{.APISlug}}/{id}/activity", "Get entity activity", activityStore.HandleGetActivity)
-{{end}}
-{{if .HasExport}}
-	// Export endpoints
-	r.GET("/api/export", "Export data", exportHandler.HandleExport)
-{{end}}
-{{if .HasBatch}}
-	// Batch operation endpoints
-	r.POST("/api/batch", "Execute batch operation", batchHandler.HandleBatch)
-{{end}}
-{{if .HasInboundWebhooks}}
-	// Inbound webhook endpoints
-	r.POST("/api/webhooks", "Inbound webhook", webhookHandler.Handle)
-{{end}}
-{{if .HasTemplates}}
-	// Template endpoints
-	r.GET("/api/templates", "List templates", templateStore.HandleListTemplates)
-	r.GET("/api/templates/{id}", "Get template", templateStore.HandleGetTemplate)
-{{end}}
-{{if .HasIndexes}}
-	// Search endpoints
-	r.GET("/api/search", "Search entities", searchHandler.HandleSearch)
-{{end}}
-{{if .HasApprovals}}
-	// Approval chain endpoints
-	r.POST("/api/approvals/{id}/vote", "Vote on approval", approvalStore.HandleVote)
-{{end}}
-{{if .HasRelationships}}
-	// Relationship endpoints
-	r.GET("/api/{{.APISlug}}/{id}/related/{name}", "Get related entities", relationshipStore.HandleGetRelated)
-	r.POST("/api/{{.APISlug}}/{id}/related/{name}", "Create link", relationshipStore.HandleLink)
-{{end}}
-{{if .HasDocuments}}
-	// Document generation endpoints
-	r.GET("/api/documents", "List documents", documentGenerator.HandleListDocuments)
-	r.POST("/api/documents/{docId}", "Generate document", documentGenerator.HandleGenerate)
-{{end}}
-{{if .HasSoftDelete}}
-	// Soft delete endpoints
-	r.Handle("DELETE", "/api/{{.APISlug}}/{id}", "Soft delete entity", softDeleteStore.HandleSoftDelete)
-	r.POST("/api/{{.APISlug}}/{id}/restore", "Restore deleted entity", softDeleteStore.HandleRestore)
-{{end}}
+
 	// Transition endpoints
 {{- range .Routes}}
 	{{- if $.TransitionRequiresAuth .TransitionID}}
@@ -437,81 +348,6 @@ func HandleGetViews() http.HandlerFunc {
 }
 {{- end}}
 
-{{- if .HasSLAs}}
-// HandleGetSLA returns the SLA status for an aggregate.
-func HandleGetSLA(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		id := r.PathValue("id")
-		if id == "" {
-			api.Error(w, http.StatusBadRequest, "MISSING_ID", "aggregate ID is required")
-			return
-		}
-
-		agg, err := app.GetState(ctx, id)
-		if err != nil {
-			api.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
-			return
-		}
-
-		state := agg.State().(State)
-
-		// Get priority from query param or state
-		priority := r.URL.Query().Get("priority")
-		if priority == "" {
-			priority = state.Priority
-		}
-		if priority == "" {
-			priority = "normal"
-		}
-
-		slaResponse := CalculateSLAStatus(state.StartedAt, priority)
-		api.JSON(w, http.StatusOK, slaResponse)
-	}
-}
-{{- end}}
-
-{{- if .HasPrediction}}
-// HandlePredict runs ODE simulation and returns predicted resource levels.
-func HandlePredict(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		hoursStr := r.URL.Query().Get("hours")
-		hours := PredictionConfig.TimeHours
-		if hoursStr != "" {
-			if h, err := strconv.ParseFloat(hoursStr, 64); err == nil && h > 0 {
-				hours = h
-			}
-		}
-
-		// Get current token counts
-		currentTokens := GetCurrentInventory()
-
-		result, err := RunSimulation(currentTokens, hours)
-		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
-			return
-		}
-
-		api.JSON(w, http.StatusOK, result)
-	}
-}
-
-// HandleRunout returns predicted runout times for resources.
-func HandleRunout(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		currentTokens := GetCurrentInventory()
-
-		result, err := RunSimulation(currentTokens, PredictionConfig.TimeHours)
-		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "SIMULATION_FAILED", err.Error())
-			return
-		}
-
-		api.JSON(w, http.StatusOK, result.RunoutTime)
-	}
-}
-{{- end}}
-
 {{if .HasNavigation}}
 // HandleNavigation returns the navigation menu, filtered by user roles.
 func HandleNavigation(nav *Navigation) http.HandlerFunc {
@@ -590,11 +426,7 @@ api.JSON(w, http.StatusOK, stats)
 }
 
 // HandleAdminListInstances wraps the admin list instances handler.
-{{- if .HasSoftDelete}}
-func HandleAdminListInstances(app *Application, softDeleteStore *SoftDeleteStore) http.HandlerFunc {
-{{- else}}
 func HandleAdminListInstances(app *Application) http.HandlerFunc {
-{{- end}}
 return func(w http.ResponseWriter, r *http.Request) {
 ctx := r.Context()
 
@@ -603,9 +435,6 @@ from := r.URL.Query().Get("from")
 to := r.URL.Query().Get("to")
 page := getIntQueryParam(r, "page", 1)
 perPage := getIntQueryParam(r, "per_page", 50)
-{{- if .HasSoftDelete}}
-showArchived := r.URL.Query().Get("archived") == "true"
-{{- end}}
 
 adminStore, ok := app.store.(interface {
 ListInstances(ctx context.Context, place, from, to string, page, perPage int) ([]eventsource.Instance, int, error)
@@ -620,24 +449,6 @@ if err != nil {
 api.Error(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
 return
 }
-
-{{- if .HasSoftDelete}}
-// Filter out archived instances unless explicitly requested
-var filteredInstances []eventsource.Instance
-var archivedInstances []eventsource.Instance
-for _, inst := range instances {
-if softDeleteStore.IsDeleted(inst.ID) {
-archivedInstances = append(archivedInstances, inst)
-} else {
-filteredInstances = append(filteredInstances, inst)
-}
-}
-if showArchived {
-instances = archivedInstances
-} else {
-instances = filteredInstances
-}
-{{- end}}
 
 // Load state for each instance by replaying events
 // Note: This loads aggregates individually which may be slow for large lists.
@@ -658,9 +469,6 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 "total":     total,
 "page":      page,
 "per_page":  perPage,
-{{- if .HasSoftDelete}}
-"has_soft_delete": true,
-{{- end}}
 })
 }
 }
@@ -721,43 +529,6 @@ api.JSON(w, http.StatusOK, map[string]interface{}{
 })
 }
 }
-
-{{- if .HasSoftDelete}}
-// HandleAdminArchiveInstance soft-deletes an instance (marks as archived).
-func HandleAdminArchiveInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-id := r.PathValue("id")
-userID := getSoftDeleteUserID(r)
-
-if err := softDeleteStore.SoftDelete(id, userID); err != nil {
-api.Error(w, http.StatusInternalServerError, "ARCHIVE_FAILED", err.Error())
-return
-}
-
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"archived": true,
-"id":       id,
-})
-}
-}
-
-// HandleAdminRestoreInstance restores a soft-deleted instance.
-func HandleAdminRestoreInstance(softDeleteStore *SoftDeleteStore) http.HandlerFunc {
-return func(w http.ResponseWriter, r *http.Request) {
-id := r.PathValue("id")
-
-if err := softDeleteStore.Restore(id); err != nil {
-api.Error(w, http.StatusInternalServerError, "RESTORE_FAILED", err.Error())
-return
-}
-
-api.JSON(w, http.StatusOK, map[string]interface{}{
-"restored": true,
-"id":       id,
-})
-}
-}
-{{- end}}
 {{end}}
 
 {{if .HasEventSourcing}}
@@ -963,7 +734,7 @@ func HandleReplay(app *Application) http.HandlerFunc {
 }
 {{end}}
 
-{{if or .HasAdmin .HasEventSourcing .HasPrediction}}
+{{if or .HasAdmin .HasEventSourcing}}
 // Helper functions
 
 func getIntQueryParam(r *http.Request, name string, defaultVal int) int {

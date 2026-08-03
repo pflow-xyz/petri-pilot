@@ -8,6 +8,7 @@ go_library(
         "frommodel.go",
         "runtime.go",
         "schema.go",
+        "validation.go",
         "views.go",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/metamodel",
@@ -22,6 +23,8 @@ go_test(
     name = "metamodel_test",
     srcs = [
         "convert_test.go",
+        "readarc_test.go",
+        "readonly_parity_test.go",
         "schema_test.go",
     ],
     embed = [":metamodel"],

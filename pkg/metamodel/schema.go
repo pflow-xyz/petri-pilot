@@ -109,7 +109,13 @@ type Action struct {
 	Bindings map[string]string `json:"bindings,omitempty"`
 }
 
-// ArcType discriminates between normal and inhibitor arcs.
+// ArcType discriminates between normal, inhibitor and read arcs.
+//
+// The values MUST stay in step with go-pflow's metamodel.ArcType: a Schema is
+// routinely built from a go-pflow Model (SchemaFromModel) and handed back
+// (ToModel), and the conversion is a plain string cast. A type this fork does
+// not know would be executed as a normal consuming arc, which is exactly the
+// silent token theft go-pflow added IsKnownArcType to prevent.
 type ArcType string
 
 const (
@@ -119,25 +125,57 @@ const (
 	// InhibitorArc prevents firing if the source place has tokens.
 	// Inhibitor arcs are read-only - they don't consume or produce tokens.
 	InhibitorArc ArcType = "inhibitor"
+
+	// ReadArc permits firing only while the source state holds at least the
+	// arc's Weight in tokens, and consumes NOTHING. It is the dual of
+	// InhibitorArc: a threshold test rather than a flow.
+	//
+	// This is how go-pflow lowers a ">= n" / "> n" guard link structurally, so
+	// read arcs arrive here from flattened compositions, not only from
+	// hand-authored models.
+	ReadArc ArcType = "read"
 )
+
+// arcTypes lists every ArcType this build understands. It exists so an unknown
+// type is a hard error rather than something quietly executed as a normal arc.
+var arcTypes = map[ArcType]bool{
+	NormalArc:    true,
+	InhibitorArc: true,
+	ReadArc:      true,
+}
+
+// IsKnownArcType reports whether t is an arc type this build can execute.
+func IsKnownArcType(t ArcType) bool { return arcTypes[t] }
 
 // Arc connects states and actions, defining state transformation flow.
 // Semantics depend on the connected state's Kind:
 //   - TokenState: arc weight is 1, decrement on input, increment on output
 //   - DataState: Keys specify map access path, Value specifies the binding name
 //   - InhibitorArc: prevents firing if source has tokens (read-only)
+//   - ReadArc: requires Weight tokens in the source, consumes none (read-only)
 type Arc struct {
 	Source string   `json:"source"`           // state or action ID
 	Target string   `json:"target"`           // state or action ID
 	Keys   []string `json:"keys,omitempty"`   // for DataState: binding names for map keys
 	Value  string   `json:"value,omitempty"`  // for DataState: binding name for value (default: "amount")
 	Weight int      `json:"weight,omitempty"` // for TokenState: arc weight (default: 1)
-	Type   ArcType  `json:"type,omitempty"`   // arc type: "" (normal) or "inhibitor"
+	Type   ArcType  `json:"type,omitempty"`   // arc type: "" (normal), "inhibitor" or "read"
 }
 
 // IsInhibitor returns true if this is an inhibitor arc.
 func (a *Arc) IsInhibitor() bool {
 	return a.Type == InhibitorArc
+}
+
+// IsRead returns true if this is a read arc.
+func (a *Arc) IsRead() bool {
+	return a.Type == ReadArc
+}
+
+// IsReadOnly returns true if this arc only tests the marking: it moves no
+// tokens, so every place that consumes must skip it.
+func (a *Arc) IsReadOnly() bool {
+	return a.IsInhibitor() || a.IsRead()
 }
 
 // Constraint represents a property that must hold across all snapshots.

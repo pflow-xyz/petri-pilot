@@ -53,10 +53,39 @@ So `ship` currently succeeds with no stock reserved. The model says otherwise.
 behaviour deliberately, so the gap stays visible; when it is closed that test
 fails and should be inverted.
 
+### fulfillment
+
+```bash
+petri-pilot codegen services/bundles/fulfillment.bundle.json -o generated/fulfillment
+```
+
+Three subnets, and one transition that is **both** fused and guarded — the
+shape neither `examples/shop` (fused) nor `warehouse` (guarded) has:
+
+- an **event link** fusing `order.place_order` with `inventory.reserve_stock`;
+- a **guard link** gating *that same fused transition* on `credit.cleared > 0`.
+
+`credit` fires nothing. That is the point. The coordinator has to assemble a
+marking for an entity that is not a member, decide from it, fire the two that
+are, and **fence the non-member in the same atomic append** — an ordering the
+`fused+guarded` branch of `bundle_app.tmpl` had always emitted and nothing had
+ever run. `crosslink_test.go` exercises it: the command succeeds only when
+credit is cleared, appends nothing anywhere on refusal, writes no event to the
+entity it merely reads, loses to a writer that moves `credit` between the read
+and the append, and leaves all three logs independently replayable (the
+`onlyStream` harness from warehouse).
+
+Adding it found one defect: the generated `app_test.go` imported every entity
+package, which does not compile when an entity is a read-only participant
+rather than a fusion member. `BundleContext.TestEntities` now filters to
+members. shop and warehouse are byte-identical across that fix — every entity
+in both is also a member, which is exactly why the bug survived.
+
 ## Regenerating
 
 ```bash
 make build
 ./petri-pilot codegen services/bundles/warehouse.bundle.json -o generated/warehouse
+./petri-pilot codegen services/bundles/fulfillment.bundle.json -o generated/fulfillment
 go test ./generated/...
 ```

@@ -35,7 +35,10 @@ go_library(
 
 go_test(
     name = "esmodules_test",
-    srcs = ["context_test.go"],
+    srcs = [
+        "context_test.go",
+        "readarc_test.go",
+    ],
     embed = [":esmodules"],
     deps = [
         "//pkg/extensions",

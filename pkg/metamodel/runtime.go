@@ -21,6 +21,16 @@ var (
 	ErrGuardEvaluation    = errors.New("metamodel: guard evaluation error")
 	ErrActionNotEnabled   = errors.New("metamodel: action not enabled")
 
+	// ErrUnknownArcType is returned when a schema carries an arc type this
+	// build does not understand. Executing it would mean guessing, and every
+	// reader that guesses picks "normal consuming arc" — turning a constraint
+	// into token theft. Refusing is the only safe default.
+	ErrUnknownArcType = errors.New("metamodel: unknown arc type")
+
+	// ErrReadArcDirection is returned when a read arc runs action -> state.
+	// A read arc tests a marking, and an action holds no tokens.
+	ErrReadArcDirection = errors.New("metamodel: read arc must run state -> action")
+
 	// Constraint errors
 	ErrConstraintViolated   = errors.New("metamodel: constraint violated")
 	ErrConstraintEvaluation = errors.New("metamodel: constraint evaluation error")
@@ -369,6 +379,10 @@ func (r *Runtime) DataMap(stateID string) map[string]any {
 // For TokenState inputs: checks token count >= weight (default 1)
 // For DataState inputs: always enabled (data transformation doesn't consume)
 // For inhibitor arcs: blocks if source has any tokens (inhibitor semantics)
+// For read arcs: requires token count >= weight, and consumes nothing
+//
+// An arc whose type this build does not know disables the action: see
+// ErrUnknownArcType.
 func (r *Runtime) Enabled(actionID string) bool {
 	a := r.Schema.ActionByID(actionID)
 	if a == nil {
@@ -377,23 +391,48 @@ func (r *Runtime) Enabled(actionID string) bool {
 
 	// Check all input arcs from TokenStates
 	for _, arc := range r.Schema.InputArcs(actionID) {
+		if !IsKnownArcType(arc.Type) {
+			return false
+		}
 		st := r.Schema.StateByID(arc.Source)
 		if st != nil && st.IsToken() {
-			if arc.IsInhibitor() {
-				// Inhibitor arc: blocked if source has ANY tokens
-				if r.Tokens(arc.Source) > 0 {
+			switch {
+			case arc.IsInhibitor():
+				// Inhibitor arc: blocked once the source reaches the arc's
+				// weight, which is a THRESHOLD, not a flag. Testing for "any
+				// tokens" ignored the weight, so this runtime disabled
+				// firings that go-pflow's eventsource (and therefore every
+				// app generated from the same model) allows: with weight 3
+				// and 2 tokens present, the generated app fires and
+				// petri_simulate reported the transition dead.
+				if r.Tokens(arc.Source) >= arcThreshold(arc.Weight) {
 					return false
 				}
-			} else {
-				// Normal arc: need sufficient tokens
-				weight := arc.Weight
-				if weight == 0 {
-					weight = 1
-				}
-				if r.Tokens(arc.Source) < weight {
+			default:
+				// Normal and read arcs alike need sufficient tokens; only the
+				// normal one goes on to consume them.
+				if r.Tokens(arc.Source) < arcThreshold(arc.Weight) {
 					return false
 				}
 			}
+		}
+	}
+
+	// A read-only arc pointing action -> state is pflow-xyz's long-standing
+	// spelling of a guard, and both pkg/codegen/core and the petri.PetriNet
+	// encoding in pkg/validator read it as a read arc: the state must hold the
+	// weight, and nothing is consumed. Ignoring it here let petri_simulate fire
+	// a transition that the generated app and every verification refuse.
+	for _, arc := range r.Schema.OutputArcs(actionID) {
+		if !IsKnownArcType(arc.Type) {
+			return false
+		}
+		if !arc.IsReadOnly() {
+			continue
+		}
+		st := r.Schema.StateByID(arc.Target)
+		if st != nil && st.IsToken() && r.Tokens(arc.Target) < arcThreshold(arc.Weight) {
+			return false
 		}
 	}
 
@@ -461,6 +500,12 @@ func (r *Runtime) EnabledActions() []string {
 // Previously no guard was evaluated at all, which made petri_simulate report a
 // transition as fired when the model forbids it.
 func (r *Runtime) Execute(actionID string) error {
+	// Reported before enablement so the caller learns WHY: an unknown arc
+	// type also makes Enabled false, and "not enabled" would send them
+	// looking at the marking for a problem that is in the schema.
+	if err := r.checkArcTypes(actionID); err != nil {
+		return err
+	}
 	if !r.Enabled(actionID) {
 		return ErrActionNotEnabled
 	}
@@ -475,8 +520,13 @@ func (r *Runtime) Execute(actionID string) error {
 
 	// Process input arcs
 	for _, arc := range r.Schema.InputArcs(actionID) {
-		// Skip inhibitor arcs - they are read-only
-		if arc.IsInhibitor() {
+		// Skip inhibitor and read arcs - they only test the marking.
+		//
+		// Read arcs are the reason this is IsReadOnly rather than
+		// IsInhibitor: consuming from a read place steals a token on EVERY
+		// firing, so the marking drifts further from the truth with each one
+		// while any single-fire test still looks right.
+		if arc.IsReadOnly() {
 			continue
 		}
 		st := r.Schema.StateByID(arc.Source)
@@ -491,6 +541,12 @@ func (r *Runtime) Execute(actionID string) error {
 
 	// Process output arcs
 	for _, arc := range r.Schema.OutputArcs(actionID) {
+		// A read-only arc moves no tokens in either direction. One pointing
+		// action -> state is malformed (ValidateArcs rejects a reversed read),
+		// but producing tokens for it would be worse than ignoring it.
+		if arc.IsReadOnly() {
+			continue
+		}
 		st := r.Schema.StateByID(arc.Target)
 		if st != nil && st.IsToken() {
 			weight := arc.Weight
@@ -523,6 +579,10 @@ func (r *Runtime) ExecuteWithBindings(actionID string, bindings Bindings) error 
 	a := r.Schema.ActionByID(actionID)
 	if a == nil {
 		return ErrActionNotFound
+	}
+
+	if err := r.checkArcTypes(actionID); err != nil {
+		return err
 	}
 
 	// Evaluate guard if present and evaluator is set.
@@ -563,12 +623,43 @@ func (r *Runtime) ExecuteWithBindings(actionID string, bindings Bindings) error 
 	return nil
 }
 
+// arcThreshold normalises an arc weight to the token count it tests for.
+//
+// An unweighted arc means one token, never zero: a zero-threshold read is
+// vacuous and a zero-threshold inhibitor is unsatisfiable. This matches
+// go-pflow's eventsource readThreshold/inhibitThreshold, so the same model
+// gates identically here and in generated code.
+func arcThreshold(weight int) int {
+	if weight < 1 {
+		return 1
+	}
+	return weight
+}
+
+// checkArcTypes reports an arc touching this action whose type this build
+// cannot execute. Enabled already refuses such an action; this exists so the
+// execution paths can say what is actually wrong.
+func (r *Runtime) checkArcTypes(actionID string) error {
+	for _, arc := range r.Schema.InputArcs(actionID) {
+		if !IsKnownArcType(arc.Type) {
+			return fmt.Errorf("%w %q: arc %s -> %s", ErrUnknownArcType, arc.Type, arc.Source, arc.Target)
+		}
+	}
+	for _, arc := range r.Schema.OutputArcs(actionID) {
+		if !IsKnownArcType(arc.Type) {
+			return fmt.Errorf("%w %q: arc %s -> %s", ErrUnknownArcType, arc.Type, arc.Source, arc.Target)
+		}
+	}
+	return nil
+}
+
 // applyArcs processes input and output arcs for an action.
 func (r *Runtime) applyArcs(actionID string, bindings Bindings) {
 	// Process input arcs (consume from source states)
 	for _, arc := range r.Schema.InputArcs(actionID) {
-		// Skip inhibitor arcs - they are read-only and don't consume tokens
-		if arc.IsInhibitor() {
+		// Skip inhibitor and read arcs - they only test the marking and
+		// consume nothing.
+		if arc.IsReadOnly() {
 			continue
 		}
 
@@ -591,6 +682,10 @@ func (r *Runtime) applyArcs(actionID string, bindings Bindings) {
 
 	// Process output arcs (produce at target states)
 	for _, arc := range r.Schema.OutputArcs(actionID) {
+		// Read-only arcs move no tokens in either direction.
+		if arc.IsReadOnly() {
+			continue
+		}
 		st := r.Schema.StateByID(arc.Target)
 		if st == nil {
 			continue

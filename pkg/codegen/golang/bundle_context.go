@@ -748,6 +748,31 @@ func (b *BundleContext) FirstPlainCommand() *CommandContext {
 	return nil
 }
 
+// TestEntities lists the entities the generated app test actually names: the
+// ones that are a MEMBER of some cross-entity command.
+//
+// It is not the same as Entities. A command can have a read-only PARTICIPANT —
+// an entity its condition observes but that fires nothing, which is what a
+// GuardLink onto a third subnet produces. That entity's package is never
+// referenced by the test body, so importing it does not compile. Ranging over
+// Entities happened to work only while every entity in every committed bundle
+// was also a fusion member.
+func (b *BundleContext) TestEntities() []EntityContext {
+	member := make(map[string]bool)
+	for _, c := range b.Commands {
+		for _, m := range c.Members {
+			member[m.SubnetID] = true
+		}
+	}
+	out := make([]EntityContext, 0, len(b.Entities))
+	for _, e := range b.Entities {
+		if member[e.SubnetID] {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // HasConditions reports whether any command carries a cross-entity condition.
 // It gates the guard-evaluator import in the generated app: a bundle whose
 // links are all event links decides everything from member markings alone and

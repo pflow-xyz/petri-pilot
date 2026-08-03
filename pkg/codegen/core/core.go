@@ -183,6 +183,15 @@ func Normalize(m *metamodel.Model, pkgName string) (Model, error) {
 	}
 
 	for _, a := range m.Arcs {
+		// An unknown arc type must not reach the switch below: every branch
+		// there ends in Inputs or Outputs, so an unrecognised constraint would
+		// be compiled into a program that CONSUMES from the place it was meant
+		// only to test — in every language, silently.
+		if !metamodel.IsKnownArcType(a.Type) {
+			return out, fmt.Errorf("arc %s -> %s has unknown type %q; refusing to generate code that would treat it as a normal consuming arc",
+				a.From, a.To, a.Type)
+		}
+
 		srcPlace, srcIsPlace := placeByID[a.From]
 		dstPlace, dstIsPlace := placeByID[a.To]
 		switch {
@@ -192,11 +201,23 @@ func Normalize(m *metamodel.Model, pkgName string) (Model, error) {
 				return out, fmt.Errorf("arc %s -> %s: unknown transition %q", a.From, a.To, a.To)
 			}
 			w := WeightedArc{Place: a.From, Weight: weight(a.Weight)}
-			if a.IsInhibitor() {
+			switch {
+			case a.IsRead():
+				// Capacity is only consulted for outputs, but the reversed
+				// inhibitor spelling below carries it on its Reads entry, so
+				// carry it here too: the two spellings of one net must
+				// normalize to the same struct, or a test comparing them
+				// fails on a field neither semantics uses.
+				w.Capacity = srcPlace.Capacity
+				// go-pflow's structural lowering of ">= n": tokens(p) >= w and
+				// nothing consumed. The same clause pflow-xyz reaches with a
+				// reversed inhibitor below, by a different spelling.
+				t.Reads = append(t.Reads, w)
+			case a.IsInhibitor():
 				// Blocks while tokens(p) >= weight — go-pflow's
 				// tokens(P) < weight rule (compat/bridge.go).
 				t.Inhibits = append(t.Inhibits, w)
-			} else {
+			default:
 				t.Inputs = append(t.Inputs, w)
 			}
 			_ = srcPlace
@@ -204,6 +225,12 @@ func Normalize(m *metamodel.Model, pkgName string) (Model, error) {
 			t, ok := transByID[a.From]
 			if !ok {
 				return out, fmt.Errorf("arc %s -> %s: unknown transition %q", a.From, a.To, a.From)
+			}
+			if a.IsRead() {
+				// A read arc tests a marking, and a transition holds no
+				// tokens. Emitting it as an output would MINT tokens in the
+				// place the model meant to test.
+				return out, fmt.Errorf("read arc %s -> %s must run place -> transition", a.From, a.To)
 			}
 			w := WeightedArc{Place: a.To, Weight: weight(a.Weight), Capacity: dstPlace.Capacity}
 			if a.IsInhibitor() {

@@ -1555,11 +1555,22 @@ function schemaToPflowModel(schema) {
   // Create arcs - omit weights if all are 1 (cleaner visualization)
   const allWeightsAreOne = (schema.arcs || []).every(a => (a.weight || 1) === 1)
   ;(schema.arcs || []).forEach(a => {
+    // A read arc has no representation of its own in the pflow-xyz wire format,
+    // but the format already has the semantics: an inhibitor pointing
+    // transition -> place is enabled only while the place holds at least the
+    // weight, and consumes nothing. That is a read arc, so the encoding is a
+    // REVERSAL, not an approximation — the same one go-pflow's metapetri
+    // bridge and pkg/validator use.
+    //
+    // Emitted as a plain arc (source -> target, inhibit false), the browser
+    // viewer drew, and the browser simulator fired, a net that CONSUMES from
+    // the place the model only tests.
+    const isRead = a.type === 'read'
     const arc = {
       '@type': 'Arrow',
-      source: a.from,
-      target: a.to,
-      inhibit: a.type === 'inhibitor'
+      source: isRead ? a.to : a.from,
+      target: isRead ? a.from : a.to,
+      inhibit: isRead || a.type === 'inhibitor'
     }
     if (!allWeightsAreOne) {
       arc.weight = [a.weight || 1]

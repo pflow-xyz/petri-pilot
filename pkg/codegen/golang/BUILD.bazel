@@ -72,9 +72,12 @@ go_test(
         "bindings_test.go",
         "bundle_context_test.go",
         "command_refusal_test.go",
+        "dead_gates_test.go",
         "flat_ids_test.go",
         "format_test.go",
         "marking_guard_test.go",
+        "readarc_test.go",
+        "reversed_readonly_test.go",
         "transition_arcs_test.go",
     ],
     args = ["-test.short"],  # keep: TestGenerateBundleFilesCompiles shells out to the go toolchain (non-hermetic)

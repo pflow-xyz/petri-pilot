@@ -190,11 +190,20 @@ func (v *Validator) buildNet(model *metamodel.Model) (*petri.PetriNet, error) {
 		if weight == 0 {
 			weight = 1
 		}
-		if arc.IsInhibitor() {
+		switch {
+		case arc.IsInhibitor():
 			// Previously dropped: analysis ran on a net where the inhibitor
 			// consumed tokens instead of gating.
 			builder = builder.InhibitorArc(arc.From, arc.To, float64(weight))
-		} else {
+		case arc.IsRead():
+			// petri has no read arc, but it already has the semantics: an
+			// inhibitor pointing transition -> place is enabled only while the
+			// place holds at least the weight, and consumes nothing. So this
+			// is a reversal, not an approximation — the same encoding
+			// go-pflow's metapetri bridge uses. Left as a normal arc, analysis
+			// would run on a net that consumes what the model only tests.
+			builder = builder.InhibitorArc(arc.To, arc.From, float64(weight))
+		default:
 			builder = builder.Arc(arc.From, arc.To, float64(weight))
 		}
 	}

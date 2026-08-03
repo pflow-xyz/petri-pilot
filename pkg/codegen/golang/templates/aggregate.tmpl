@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-{{- if or .UsesMetamodelRuntime .HasSLAs .HasTimeFields}}
+{{- if or .UsesMetamodelRuntime .HasTimeFields}}
 	"time"
 {{- end}}
 
@@ -20,10 +20,6 @@ import (
 
 // State holds the aggregate state for {{.ModelName}}.
 type State struct {
-{{- if .HasSLAs}}
-	StartedAt time.Time `json:"started_at"`
-	Priority  string    `json:"priority,omitempty"`
-{{- end}}
 {{- /* Domain fields from entity definitions */}}
 {{- range .EntityFields}}
 	{{.FieldName}} {{.Type}} `json:"{{.JSONName}},omitempty"`{{if .Description}} // {{.Description}}{{end}}
@@ -41,9 +37,6 @@ type State struct {
 // NewState creates a new State with initialized collections.
 func NewState() State {
 	return State{
-{{- if .HasSLAs}}
-		StartedAt: time.Now(),
-{{- end}}
 {{- range .Collections}}
 		{{.FieldName}}: {{.Initializer}},
 {{- end}}
@@ -110,7 +103,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventType{{.FuncName}},
 		Inputs: map[string]int{
 {{- range .Inputs}}
-{{- if not .IsInhibitor}}
+{{- if not .IsReadOnly}}
 			{{.ConstName}}: {{.Weight}},
 {{- end}}
 {{- end}}
@@ -123,10 +116,24 @@ func NewAggregate(id string) *Aggregate {
 {{- $hasInhibitors := false}}
 {{- range .Inputs}}{{if .IsInhibitor}}{{$hasInhibitors = true}}{{end}}{{end}}
 {{- if $hasInhibitors}}
-		Inhibitors: map[string]bool{
+		Inhibitors: map[string]int{
 {{- range .Inputs}}
 {{- if .IsInhibitor}}
-			{{.ConstName}}: true,
+			{{.ConstName}}: {{.Weight}},
+{{- end}}
+{{- end}}
+		},
+{{- end}}
+{{- $hasReads := false}}
+{{- range .Inputs}}{{if .IsRead}}{{$hasReads = true}}{{end}}{{end}}
+{{- if $hasReads}}
+		// Read arcs: the place must hold the threshold, and NOTHING is taken.
+		// Emitting these as Inputs would consume from a place the model only
+		// tests, on every firing and again on every replay.
+		Reads: map[string]int{
+{{- range .Inputs}}
+{{- if .IsRead}}
+			{{.ConstName}}: {{.Weight}},
 {{- end}}
 {{- end}}
 		},

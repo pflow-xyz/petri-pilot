@@ -184,10 +184,30 @@ func determineDisabledReason(runtime *pilotmeta.Runtime, metaSchema *pilotmeta.S
 		return "transition has no input arcs"
 	}
 
+	// Output-side read-only arcs gate too (pflow-xyz spells a guard as an
+	// inhibitor pointing action -> state), so they must be walked here or a
+	// transition disabled solely by one reports the wrong reason.
+	arcs := append(append([]pilotmeta.Arc{}, inputArcs...), metaSchema.OutputArcs(transitionID)...)
+
 	var missingTokens []string
 	var blockedBy []string
-	for _, arc := range inputArcs {
-		st := metaSchema.StateByID(arc.Source)
+	var unmetReads []string
+	for _, arc := range arcs {
+		reversed := arc.Source == transitionID
+		if reversed && !arc.IsReadOnly() {
+			continue
+		}
+		if !pilotmeta.IsKnownArcType(arc.Type) {
+			// Enabled refuses the whole action for this, so say so instead of
+			// reporting a marking problem the caller cannot fix.
+			return fmt.Sprintf("arc %s -> %s has unknown type %q; this build cannot execute it",
+				arc.Source, arc.Target, arc.Type)
+		}
+		place := arc.Source
+		if reversed {
+			place = arc.Target
+		}
+		st := metaSchema.StateByID(place)
 		if st == nil || !st.IsToken() {
 			continue
 		}
@@ -195,27 +215,44 @@ func determineDisabledReason(runtime *pilotmeta.Runtime, metaSchema *pilotmeta.S
 		if weight == 0 {
 			weight = 1
 		}
-		have := runtime.Tokens(arc.Source)
-		if arc.IsInhibitor() {
+		have := runtime.Tokens(place)
+		if arc.IsInhibitor() && !reversed {
 			// An inhibitor blocks while the place holds at least its weight.
 			if have >= weight {
-				blockedBy = append(blockedBy, fmt.Sprintf("%s (%d tokens)", arc.Source, have))
+				blockedBy = append(blockedBy, fmt.Sprintf("%s (%d tokens)", place, have))
+			}
+			continue
+		}
+		if arc.IsReadOnly() {
+			// A read arc is a lower bound like a normal arc, but naming it as
+			// "insufficient tokens" would send the reader looking for the
+			// firing that took them: nothing consumes a read place. A REVERSED
+			// inhibitor is pflow-xyz's spelling of exactly this arc.
+			if have < weight {
+				unmetReads = append(unmetReads, fmt.Sprintf("%s (have %d, need %d)", place, have, weight))
 			}
 			continue
 		}
 		if have < weight {
-			missingTokens = append(missingTokens, fmt.Sprintf("%s (have %d, need %d)", arc.Source, have, weight))
+			missingTokens = append(missingTokens, fmt.Sprintf("%s (have %d, need %d)", place, have, weight))
 		}
 	}
 
-	switch {
-	case len(blockedBy) > 0 && len(missingTokens) > 0:
-		return fmt.Sprintf("inhibited by: %s; insufficient tokens in: %s",
-			strings.Join(blockedBy, ", "), strings.Join(missingTokens, ", "))
-	case len(blockedBy) > 0:
-		return fmt.Sprintf("inhibited by: %s", strings.Join(blockedBy, ", "))
-	case len(missingTokens) > 0:
-		return fmt.Sprintf("insufficient tokens in: %s", strings.Join(missingTokens, ", "))
+	// Assembled as clauses so a transition blocked several ways reports all of
+	// them: fixing only the one that happened to be named leaves it disabled.
+	var clauses []string
+	if len(blockedBy) > 0 {
+		clauses = append(clauses, "inhibited by: "+strings.Join(blockedBy, ", "))
+	}
+	if len(missingTokens) > 0 {
+		clauses = append(clauses, "insufficient tokens in: "+strings.Join(missingTokens, ", "))
+	}
+	if len(unmetReads) > 0 {
+		clauses = append(clauses, "read condition not met (nothing is consumed from these): "+
+			strings.Join(unmetReads, ", "))
+	}
+	if len(clauses) > 0 {
+		return strings.Join(clauses, "; ")
 	}
 
 	return "insufficient tokens in input places"

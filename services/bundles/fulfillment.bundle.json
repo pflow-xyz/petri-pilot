@@ -1,0 +1,24 @@
+{
+  "name": "fulfillment",
+  "description": "Three subnets, and one transition that is BOTH fused and guarded. An event link fuses placing an order with reserving stock, so those two entities fire atomically. A guard link then gates that same fused step on a THIRD entity's marking — credit must be cleared — which no member fires. The coordinator therefore has to assemble a marking for an entity it only reads, decide, and fence that sibling in the same atomic append as the two member events.",
+  "subnets": [
+    {"id": "order", "net_type": "workflow", "model_ref": "order.json"},
+    {"id": "inventory", "net_type": "workflow", "model_ref": "inventory.json"},
+    {"id": "credit", "net_type": "workflow", "model_ref": "credit.json"}
+  ],
+  "links": [
+    {
+      "id": "order_reserves_stock",
+      "kind": "event",
+      "from": {"subnet": "order", "transition": "place_order"},
+      "to": {"subnet": "inventory", "transition": "reserve_stock"}
+    },
+    {
+      "id": "placing_requires_cleared_credit",
+      "kind": "guard",
+      "from": {"subnet": "order", "transition": "place_order"},
+      "to": {"subnet": "credit", "place": "cleared"},
+      "condition": "> 0"
+    }
+  ]
+}

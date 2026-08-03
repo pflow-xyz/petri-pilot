@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "fulfillment",
+    srcs = [
+        "app.go",
+        "bundle.go",
+        "flatmodel.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/fulfillment",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/fulfillment/credit",
+        "//generated/fulfillment/inventory",
+        "//generated/fulfillment/order",
+        "//pkg/dsl",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "fulfillment_test",
+    srcs = [
+        "app_test.go",
+        "crosslink_test.go",
+    ],
+    embed = [":fulfillment"],
+    deps = [
+        "//generated/fulfillment/credit",
+        "//generated/fulfillment/inventory",
+        "//generated/fulfillment/order",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)
