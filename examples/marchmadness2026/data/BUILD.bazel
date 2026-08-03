@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "data",
+    srcs = [
+        "cache.go",
+        "fetch.go",
+        "historical.go",
+        "normalize.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples/marchmadness2026/data",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@org_golang_x_net//html",
+        "@org_modernc_sqlite//:sqlite",
+    ],
+)

@@ -177,13 +177,60 @@ func (a *Aggregate) Places() map[string]int {
 	return places
 }
 
+{{- if .HasCrossEntity}}
+
+// crossEntityCommands maps a transition this entity declares to the
+// composition-root command that owns it. A composition gave these transitions
+// a firing rule this aggregate cannot evaluate — it replays only its own log —
+// so they are not firable here at all: the root reads every entity the rule
+// mentions, decides, and appends to all of them atomically.
+//
+// Refusing is the whole point. Firing the part of the rule this entity CAN see
+// is what let a guarded transition succeed with its cross-entity precondition
+// unmet.
+var crossEntityCommands = map[string]string{
+{{- range .CrossEntity}}
+	{{.ConstName}}: "{{.Command}}", // {{.Reason}}
+{{- end}}
+}
+
+// CrossEntityCommand reports the composition-root command that owns a
+// transition, and whether one does. Callers that route commands (an HTTP
+// layer, a CLI) use it to send the caller to the right entry point instead of
+// reporting a state error for something that is not a state problem.
+func CrossEntityCommand(transitionID string) (string, bool) {
+	command, ok := crossEntityCommands[transitionID]
+	return command, ok
+}
+{{- end}}
+
 // EnabledTransitions returns transitions that can fire.
 func (a *Aggregate) EnabledTransitions() []string {
+{{- if .HasCrossEntity}}
+	// Cross-entity commands are filtered out here as well as in CanFire: a
+	// caller that lists what it may do and then does it must not be told
+	// something is available that Fire will refuse.
+	all := a.sm.EnabledTransitions()
+	enabled := make([]string, 0, len(all))
+	for _, id := range all {
+		if _, ok := crossEntityCommands[id]; ok {
+			continue
+		}
+		enabled = append(enabled, id)
+	}
+	return enabled
+{{- else}}
 	return a.sm.EnabledTransitions()
+{{- end}}
 }
 
 // CanFire checks if a transition can fire.
 func (a *Aggregate) CanFire(transitionID string) bool {
+{{- if .HasCrossEntity}}
+	if _, ok := crossEntityCommands[transitionID]; ok {
+		return false
+	}
+{{- end}}
 	return a.sm.CanFire(transitionID)
 }
 
@@ -202,35 +249,90 @@ func (a *Aggregate) CheckGuard(transitionID string, bindings *Bindings) (bool, e
 
 func (a *Aggregate) evaluateGuard{{pascal .TransitionID}}(bindings *Bindings) (bool, error) {
 	// Guard: {{.Expression}}
-	state := a.sm.TypedState()
 	mb := bindings.ToMetamodel()
+{{- if .Collections}}
 
 	// Add state data to bindings for evaluation
+	state := a.sm.TypedState()
 {{- range .Collections}}
 	mb["{{.}}"] = state.{{pascal .}}
 {{- end}}
+{{- end}}
 
-	return dsl.Evaluate("{{.Expression}}", mb, nil)
+{{- if .UsesMarking}}
+	// This guard reads the marking (tokens/sum/count/minOf/maxOf), so the
+	// current token counts are supplied as guard functions. Without them the
+	// expression fails with "unknown function: tokens".
+	return dsl.Evaluate({{printf "%q" .Expression}}, mb, dsl.MakeAggregates(a.Places()))
+{{- else}}
+	return dsl.Evaluate({{printf "%q" .Expression}}, mb, nil)
+{{- end}}
 }
 {{- end}}
 {{- end}}
 
 // Fire executes a transition and returns the resulting event.
 func (a *Aggregate) Fire(transitionID string, data any) (*eventsource.Event, error) {
+{{- if .HasCrossEntity}}
+	if command, ok := crossEntityCommands[transitionID]; ok {
+		return nil, fmt.Errorf("transition %s is owned by cross-entity command %q: fire it on the composition root", transitionID, command)
+	}
+	return a.fireLocal(transitionID, data)
+}
+
+// fireLocal is Fire without the cross-entity check: the firing rule as this
+// aggregate alone can see it. Only the composition root may reach it, and only
+// after evaluating the parts of the rule that span entities.
+func (a *Aggregate) fireLocal(transitionID string, data any) (*eventsource.Event, error) {
+{{- end}}
 {{- if .HasGuards}}
-	// Check guard if bindings are provided
-	if bindings, ok := data.(*Bindings); ok {
-		passed, err := a.CheckGuard(transitionID, bindings)
-		if err != nil {
-			return nil, fmt.Errorf("guard evaluation failed: %w", err)
-		}
-		if !passed {
-			return nil, fmt.Errorf("guard condition not satisfied for %s", transitionID)
-		}
+	// The guard is part of the firing rule, so it is checked on every path.
+	// This used to run only when data type-asserted to *Bindings, which made
+	// enforcement a coin flip on the caller's dynamic type — firing with nil
+	// data (what a coordinator or a bare test does) skipped the guard entirely.
+	// A guard over the marking needs no bindings at all, so an empty set is the
+	// right fallback rather than a reason to skip.
+	bindings, ok := data.(*Bindings)
+	if !ok {
+		bindings = &Bindings{}
+	}
+	passed, err := a.CheckGuard(transitionID, bindings)
+	if err != nil {
+		return nil, fmt.Errorf("guard evaluation failed: %w", err)
+	}
+	if !passed {
+		return nil, fmt.Errorf("guard condition not satisfied for %s", transitionID)
 	}
 {{- end}}
 	return a.sm.Fire(transitionID, data)
 }
+{{- if .HasCrossEntity}}
+
+// FireComposed fires a transition on behalf of the composition root, which has
+// already evaluated the parts of the firing rule that span entities. witness is
+// merged into the event's metadata: it is the foreign token counts and stream
+// versions the root relied on, recorded so a reader of THIS log alone can audit
+// the decision without the sibling logs existing.
+//
+// Replay never consults it. Applying an event updates state from the event's
+// own data, exactly as it did before witnesses existed, which is what keeps a
+// single entity's history sufficient to rebuild that entity.
+func (a *Aggregate) FireComposed(transitionID string, data any, witness map[string]string) (*eventsource.Event, error) {
+	event, err := a.fireLocal(transitionID, data)
+	if err != nil {
+		return nil, err
+	}
+	if len(witness) > 0 {
+		if event.Metadata == nil {
+			event.Metadata = make(map[string]string, len(witness))
+		}
+		for k, v := range witness {
+			event.Metadata[k] = v
+		}
+	}
+	return event, nil
+}
+{{- end}}
 
 // Apply applies an event to update the aggregate state.
 func (a *Aggregate) Apply(event *eventsource.Event) error {
@@ -350,7 +452,7 @@ func buildSchema() *metamodel.Schema {
 {{- range .Transitions}}
 	s.AddAction(metamodel.Action{
 		ID:    "{{.ID}}",
-		Guard: "{{.Guard}}",
+		Guard: {{printf "%q" .Guard}},
 	})
 {{- end}}
 
@@ -417,7 +519,7 @@ func (app *Application) Create(ctx context.Context) (string, error) {
 
 // Load loads an aggregate from the event store.
 func (app *Application) Load(ctx context.Context, id string) (*Aggregate, error) {
-	events, err := app.store.Read(ctx, id, 0)
+	events, err := app.store.Read(ctx, {{$.StreamExpr "id"}}, 0)
 	if err != nil {
 		return nil, fmt.Errorf("reading events: %w", err)
 	}
@@ -434,6 +536,14 @@ func (app *Application) Load(ctx context.Context, id string) (*Aggregate, error)
 
 // Execute fires a transition on an aggregate and persists the event.
 func (app *Application) Execute(ctx context.Context, id, transitionID string, data any) (*Aggregate, error) {
+{{- if .HasCrossEntity}}
+	// Checked before the load: this is not a state problem, and reporting it
+	// as one ("cannot fire from current state") would send the caller looking
+	// for tokens to add rather than to the composition root.
+	if command, ok := crossEntityCommands[transitionID]; ok {
+		return nil, fmt.Errorf("transition %s is owned by cross-entity command %q: fire it on the composition root", transitionID, command)
+	}
+{{- end}}
 	// Load current state
 	agg, err := app.Load(ctx, id)
 	if err != nil {
@@ -453,7 +563,7 @@ func (app *Application) Execute(ctx context.Context, id, transitionID string, da
 
 	// Persist event (this assigns the event version)
 	// The expected version should match the current stream version (-1 for new streams)
-	_, err = app.store.Append(ctx, id, agg.Version(), []*eventsource.Event{event})
+	_, err = app.store.Append(ctx, {{$.StreamExpr "id"}}, agg.Version(), []*eventsource.Event{event})
 	if err != nil {
 		return nil, fmt.Errorf("persisting event: %w", err)
 	}
@@ -486,7 +596,7 @@ func (app *Application) ResetStream(ctx context.Context, id string) (*Aggregate,
 // Events after the target version are removed. This enables "undo and redo differently" workflows.
 func (app *Application) TruncateTo(ctx context.Context, id string, targetVersion int) (*Aggregate, error) {
 	// Read all events
-	events, err := app.store.Read(ctx, id, 0)
+	events, err := app.store.Read(ctx, {{$.StreamExpr "id"}}, 0)
 	if err != nil {
 		return nil, fmt.Errorf("reading events: %w", err)
 	}
@@ -511,7 +621,7 @@ func (app *Application) TruncateTo(ctx context.Context, id string, targetVersion
 
 	// Re-append the events we want to keep
 	if len(eventsToKeep) > 0 {
-		if _, err := app.store.Append(ctx, id, -1, eventsToKeep); err != nil {
+		if _, err := app.store.Append(ctx, {{$.StreamExpr "id"}}, -1, eventsToKeep); err != nil {
 			return nil, fmt.Errorf("re-appending events: %w", err)
 		}
 	}

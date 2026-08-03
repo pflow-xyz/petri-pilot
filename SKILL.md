@@ -13,7 +13,8 @@ petri-pilot is an MCP server that lets LLMs design, validate, simulate, and gene
 - **Simulation**: Fire transitions and trace state changes before generating code
 - **Code generation**: Produce Go backends with SQLite, event sourcing, and REST APIs
 - **Frontend generation**: Generate vanilla ES modules frontends (no React/npm bloat)
-- **Full-stack apps**: Generate complete applications from high-level entity/role/page specs
+- **Full-stack apps**: Generate complete applications from high-level entity/role/page specs — every entity becomes its own Petri net, composed into one model
+- **Composition**: Build a large model by linking small ones (token/data/event/guard links), with typed subnets and a legality check; cross-entity actions fire atomically
 - **Service management**: Start, stop, and monitor generated services
 - **Model operations**: Diff, extend, migrate, visualize, and document models
 

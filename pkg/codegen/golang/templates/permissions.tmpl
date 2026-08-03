@@ -177,7 +177,7 @@ func CheckAccess{{pascal .TransitionID}}(user *User, state map[string]any) error
 		bindings[k] = v
 	}
 
-	allowed, err := EvaluateGuard("{{.Guard}}", bindings)
+	allowed, err := EvaluateGuard({{printf "%q" .Guard}}, bindings)
 	if err != nil {
 		return fmt.Errorf("guard evaluation error: %w", err)
 	}

@@ -42,3 +42,22 @@ func (e *Evaluator) EvaluateConstraint(expr string, tokens map[string]int) (bool
 
 // Ensure Evaluator implements metamodel.GuardEvaluator
 var _ metamodel.GuardEvaluator = (*Evaluator)(nil)
+
+// Aggregates exposes the marking-aware guard functions — tokens, sum, count,
+// minOf, maxOf — to transition guards, implementing metamodel.MarkingAggregator.
+//
+// These were previously reachable only from constraint/invariant evaluation, so
+// a transition guard that read the marking silently failed to resolve.
+func (e *Evaluator) Aggregates(tokens map[string]int) map[string]metamodel.GuardFunc {
+	aggregates := MakeAggregates(Marking(tokens))
+
+	out := make(map[string]metamodel.GuardFunc, len(aggregates))
+	for name, fn := range aggregates {
+		fn := fn // capture loop variable
+		out[name] = func(args ...any) (any, error) { return fn(args...) }
+	}
+	return out
+}
+
+// Ensure Evaluator also provides marking-aware guard functions.
+var _ metamodel.MarkingAggregator = (*Evaluator)(nil)

@@ -1,9 +1,0 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
-
-go_library(
-    name = "graph",
-    srcs = ["resolver.go"],
-    importpath = "github.com/pflow-xyz/petri-pilot/generated/thermostat/graph",
-    visibility = ["//visibility:public"],
-    deps = ["@com_github_pflow_xyz_go_pflow//eventsource"],
-)

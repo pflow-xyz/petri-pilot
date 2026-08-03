@@ -27,10 +27,24 @@ type EntityContext struct {
 	SubnetID    string
 	PackageName string // Go package / directory name
 	Ctx         *Context
+
+	// CrossEntity lists this entity's transitions that a command owns.
+	CrossEntity []CrossEntityTransition
 }
 
-// CoordinatorMember is one entity's participation in a fused transition.
-type CoordinatorMember struct {
+// CommandRead is one place a command's guard reads, resolved to the entity
+// that owns it.
+type CommandRead struct {
+	SubnetID    string
+	PackageName string
+	LocalPlace  string // the place's ID inside its entity
+	FlatPlaceID string // the ID the guard expression names
+	PlaceConst  string // the entity package's place constant
+	VarName     string // the participant variable this place is read from
+}
+
+// CommandMember is one entity's participation in a command.
+type CommandMember struct {
 	SubnetID        string
 	PackageName     string
 	LocalTransition string // the transition's name inside its entity
@@ -39,29 +53,75 @@ type CoordinatorMember struct {
 	VarName         string // Go-safe local variable base name
 }
 
-// CoordinatorContext is one fused transition: a cross-entity command.
-type CoordinatorContext struct {
+// CommandParticipant is one entity a command touches: a member that fires, a
+// read-only sibling the guard consults, or both.
+//
+// Read-only siblings are participants and not bystanders because the command
+// must FENCE them: the marking it evaluated has to still be the marking when
+// the append lands, or the decision was made against a history that no longer
+// exists. The fence is a zero-event StreamAppend at the version read, carried
+// in the same atomic MultiAppend as the member events.
+type CommandParticipant struct {
+	SubnetID    string
+	PackageName string
+	VarName     string // local variable base, e.g. "inventory" -> inventoryAgg
+	IsMember    bool
+	Member      CommandMember
+	Reads       []CommandRead
+}
+
+// CommandContext is one cross-entity command: a transition the composition
+// gave a firing rule that no single entity can evaluate. See crossentity.go
+// for why both link kinds land in one table.
+type CommandContext struct {
 	FlatID    string // transition ID in the flattened model
 	Name      string // Go-safe pascal name
+	Kind      string // "fused", "guarded", or "fused+guarded"
 	Initiator string // subnet that owns the HTTP route
-	Members   []CoordinatorMember
+	Guard     string // the flattened expression guard, "" when there is none
+
+	// Condition is what the coordinator actually evaluates: the expression
+	// guard conjoined with a marking condition for every read-only arc that
+	// reaches into an entity the transition does not fire with. "" means the
+	// command is enabled purely by its members' own markings.
+	//
+	// Structural arcs are restated as conditions rather than kept as arcs
+	// because the coordinator holds aggregates, not a net — it has no marking
+	// to fire against, only per-entity token counts to test.
+	Condition string
+
+	Members      []CommandMember
+	Reads        []CommandRead
+	Participants []CommandParticipant
 }
+
+// IsFused reports whether an EventLink fused this command's members.
+func (c CommandContext) IsFused() bool { return len(c.Members) > 1 }
 
 // BundleContext is everything the bundle templates render from.
 type BundleContext struct {
-	AppName      string
-	PackageName  string // root package name
-	ModulePath   string
-	Entities     []EntityContext
-	Coordinators []CoordinatorContext
+	AppName     string
+	PackageName string // root package name
+	ModulePath  string
+	Entities    []EntityContext
 
-	// FlatModelJSON is the flattened model, embedded in the generated app —
-	// the single runtime source of truth for enablement and guards.
+	// Commands is the single cross-entity command table: every transition
+	// the composition took away from its entity, whether by fusion or by a
+	// cross-entity guard. One table, because the coordinator does the same
+	// three things for both — assemble a marking, decide, append atomically —
+	// and two tables would let the guarded half quietly not get built, which
+	// is exactly how the guard hole survived.
+	Commands []CommandContext
+
+	// FlatModelJSON is the flattened model, embedded in the generated app.
 	FlatModelJSON string
 
 	// Warnings carries FlattenMap.Warnings for surfacing in tool output.
 	Warnings []string
 }
+
+// HasCommands reports whether the bundle produced any cross-entity command.
+func (b *BundleContext) HasCommands() bool { return len(b.Commands) > 0 }
 
 // entityPackageName makes a subnet ID into a Go package name.
 func entityPackageName(subnetID string) string {
@@ -118,9 +178,14 @@ func memberRef(member string) (subnet, local string, err error) {
 	return member[:i], member[i+1:], nil
 }
 
-// NewBundleContext validates and flattens the bundle, builds one entity
-// context per subnet from that subnet's own model, and derives the
-// coordinator table for fused transitions from the FlattenMap.
+// NewBundleContext validates and flattens the bundle, derives the cross-entity
+// command table from the flattened model, and builds one entity context per
+// subnet with the commands' transitions marked as taken over.
+//
+// Order matters: commands are computed before the entity contexts, because an
+// entity has to be generated KNOWING which of its transitions it may no longer
+// fire. Building entities first and annotating them afterwards is how the
+// coordinator and the entity API came to disagree in the first place.
 func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext, error) {
 	flat, fm, err := b.FlattenWithMap()
 	if err != nil {
@@ -142,7 +207,6 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 		bc.Warnings = append(bc.Warnings, w.Message)
 	}
 
-	// Entities, sorted by subnet ID for deterministic output.
 	subnets := append([]metamodel.Subnet(nil), b.Subnets...)
 	sort.Slice(subnets, func(i, j int) bool { return subnets[i].ID < subnets[j].ID })
 	pkgBySubnet := map[string]string{}
@@ -154,10 +218,36 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 		}
 		seenPkg[pkg] = true
 		pkgBySubnet[sn.ID] = pkg
+	}
 
+	commands, err := buildCommands(b, flat, fm, pkgBySubnet)
+	if err != nil {
+		return nil, err
+	}
+	bc.Commands = commands
+
+	// Which of each entity's own transitions a command now owns.
+	crossBySubnet := map[string][]CrossEntityTransition{}
+	for _, c := range commands {
+		for _, m := range c.Members {
+			crossBySubnet[m.SubnetID] = append(crossBySubnet[m.SubnetID], CrossEntityTransition{
+				TransitionID: m.LocalTransition,
+				Command:      c.FlatID,
+				Reason:       c.Kind,
+			})
+		}
+	}
+
+	for _, sn := range subnets {
+		pkg := pkgBySubnet[sn.ID]
+		cross := crossBySubnet[sn.ID]
 		ctx, err := NewContext(sn.Model, ContextOptions{
 			ModulePath:  opts.ModulePath,
 			PackageName: pkg,
+			// Must match app.go's StreamID(entity, id), or the entity API and
+			// the coordinator address different streams for one aggregate.
+			StreamPrefix:           sn.ID + "/",
+			CrossEntityTransitions: cross,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("entity %q: %w", sn.ID, err)
@@ -166,10 +256,74 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 			SubnetID:    sn.ID,
 			PackageName: pkg,
 			Ctx:         ctx,
+			CrossEntity: cross,
 		})
 	}
 
-	// Transitions with an incoming EventLink can never be a coordinator's
+	// Constants are allocated by each entity's own identScope, so they can only
+	// be resolved once the entity contexts exist. Reading them back rather than
+	// re-deriving them is what keeps a coordinator's reference to a place or
+	// transition equal to the constant that package actually declares.
+	ctxBySubnet := map[string]*Context{}
+	for _, e := range bc.Entities {
+		ctxBySubnet[e.SubnetID] = e.Ctx
+	}
+	if err := resolveCommandConstants(bc.Commands, ctxBySubnet); err != nil {
+		return nil, err
+	}
+
+	return bc, nil
+}
+
+// buildCommands derives the cross-entity command table from the flattened
+// model. A transition belongs in it when the composition gave it a firing rule
+// its own entity cannot evaluate, which happens three ways:
+//
+//   - an EventLink FUSED it with transitions in other entities, so firing it
+//     must append to several logs at once;
+//   - flattening attached a read-only ARC to a place another entity owns —
+//     what a GuardLink lowers to whenever the condition is structural
+//     (">= n" becomes a read arc, "< n" an inhibitor);
+//   - flattening left an expression GUARD, which is what a GuardLink lowers to
+//     when the condition is not structural.
+//
+// All three are listed because all three are the same failure if missed: the
+// entity fires the part of the rule it can see. The arc case is the one that
+// actually bit — the lowering moved from expressions to arcs in go-pflow, and
+// a command table keyed only on Transition.Guard silently stopped seeing the
+// warehouse guard link at all.
+func buildCommands(b *metamodel.Bundle, flat *metamodel.Model, fm *metamodel.FlattenMap, pkgBySubnet map[string]string) ([]CommandContext, error) {
+	// Reverse the FlattenMap: flat ID -> owning subnet(s) and local ID. Built
+	// from the map rather than by splitting flat IDs, which the identity
+	// short-circuit (one subnet, no links) would break. A place can have
+	// several owners: a TokenLink wires one flat place out of several subnets'.
+	transitionOwner := map[string][2]string{}
+	for subnet, locals := range fm.Transition {
+		for local, flatID := range locals {
+			transitionOwner[flatID] = [2]string{subnet, local}
+		}
+	}
+	placeOwners := map[string][][2]string{}
+	for subnet, locals := range fm.Place {
+		for local, flatID := range locals {
+			placeOwners[flatID] = append(placeOwners[flatID], [2]string{subnet, local})
+		}
+	}
+	for id := range placeOwners {
+		owners := placeOwners[id]
+		sort.Slice(owners, func(i, j int) bool { return owners[i][0] < owners[j][0] })
+	}
+	flatPlaceIDs := make([]string, 0, len(flat.Places))
+	for _, p := range flat.Places {
+		flatPlaceIDs = append(flatPlaceIDs, p.ID)
+	}
+	sort.Strings(flatPlaceIDs)
+	isFlatPlace := make(map[string]bool, len(flatPlaceIDs))
+	for _, id := range flatPlaceIDs {
+		isFlatPlace[id] = true
+	}
+
+	// Transitions with an incoming EventLink can never be a command's
 	// initiator — mirrors upstream's initiator rule (compose_fuse.go).
 	hasIncoming := map[string]bool{}
 	for _, l := range b.Links {
@@ -197,43 +351,412 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 		return transition
 	}
 
-	flatIDs := make([]string, 0, len(fm.FusedGroups))
-	for flatID := range fm.FusedGroups {
-		flatIDs = append(flatIDs, flatID)
-	}
-	sort.Strings(flatIDs)
-	for _, flatID := range flatIDs {
-		members := append([]string(nil), fm.FusedGroups[flatID]...)
-		sort.Strings(members)
+	names := newIdentScope()
+	var commands []CommandContext
 
-		coord := CoordinatorContext{
-			FlatID: flatID,
-			Name:   ToPascalCase(Ident(Snake(flatID))),
+	// Flattened-model order, which Flatten derives from subnet order — stable
+	// for a given bundle document.
+	for _, t := range flat.Transitions {
+		members := fm.FusedGroups[t.ID]
+
+		refs := append([]string(nil), members...)
+		if len(refs) == 0 {
+			owner, ok := transitionOwner[t.ID]
+			if !ok {
+				// Not in the flatten map at all: nothing local to own it, so
+				// there is no entity to take it away from either.
+				continue
+			}
+			refs = []string{owner[0] + "/" + owner[1]}
 		}
-		for _, m := range members {
-			subnet, local, err := memberRef(m)
+		sort.Strings(refs)
+
+		memberSubnets := map[string]bool{}
+		for _, ref := range refs {
+			subnet, _, err := memberRef(ref)
 			if err != nil {
 				return nil, err
 			}
-			coord.Members = append(coord.Members, CoordinatorMember{
+			memberSubnets[subnet] = true
+		}
+
+		foreign, err := foreignConditions(t, flat, placeOwners, memberSubnets)
+		if err != nil {
+			return nil, err
+		}
+		var guardRefs []string
+		guardIsForeign := false
+		if t.Guard != "" {
+			guardRefs, guardIsForeign, err = guardPlaceRefs(t, placeOwners, flatPlaceIDs, memberSubnets)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if len(members) == 0 && len(foreign) == 0 && !guardIsForeign {
+			// Nothing reaches outside this transition's own entities. A
+			// subnet-local guard stays local: the entity's own aggregate
+			// already evaluates it, and lifting it to a command would take a
+			// transition away from an entity that can perfectly well decide it.
+			continue
+		}
+
+		cmd := CommandContext{
+			FlatID: t.ID,
+			Name:   names.Stem(t.ID),
+			Guard:  t.Guard,
+		}
+
+		wanted := make([]string, 0, len(foreign))
+		conditions := make([]string, 0, len(foreign)+1)
+		for _, f := range foreign {
+			wanted = append(wanted, f.place)
+			conditions = append(conditions, f.expr)
+		}
+		if guardIsForeign {
+			wanted = append(wanted, guardRefs...)
+			conditions = append(conditions, "("+t.Guard+")")
+		}
+		cmd.Condition = strings.Join(conditions, " && ")
+
+		switch {
+		case len(members) > 0 && cmd.Condition != "":
+			cmd.Kind = "fused+guarded"
+		case len(members) > 0:
+			cmd.Kind = "fused"
+		default:
+			cmd.Kind = "guarded"
+		}
+
+		for _, ref := range refs {
+			subnet, local, err := memberRef(ref)
+			if err != nil {
+				return nil, err
+			}
+			cmd.Members = append(cmd.Members, CommandMember{
 				SubnetID:        subnet,
 				PackageName:     pkgBySubnet[subnet],
 				LocalTransition: local,
 				EventID:         eventOf(subnet, local),
-				ConstName:       ToConstName("Transition", local),
 				VarName:         ToCamelCase(IdentifierFrom(subnet)),
 			})
-			if coord.Initiator == "" && !hasIncoming[m] {
-				coord.Initiator = subnet
+			if cmd.Initiator == "" && !hasIncoming[ref] {
+				cmd.Initiator = subnet
 			}
 		}
-		if coord.Initiator == "" {
-			// Link cycle: every member has an incoming link. Upstream
-			// resolves to the smallest member; members is sorted.
-			coord.Initiator, _, _ = memberRef(members[0])
+		if cmd.Initiator == "" {
+			// Link cycle: every member has an incoming link. Upstream resolves
+			// to the smallest member; refs is sorted.
+			cmd.Initiator, _, _ = memberRef(refs[0])
 		}
-		bc.Coordinators = append(bc.Coordinators, coord)
+
+		reads, err := resolveReads(t, wanted, placeOwners, pkgBySubnet)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Reads = reads
+		cmd.Participants = buildParticipants(cmd)
+		commands = append(commands, cmd)
+	}
+	return commands, nil
+}
+
+// foreignCondition is one arc that reaches out of a command's member entities,
+// re-expressed as a condition over the marking.
+type foreignCondition struct {
+	place string
+	expr  string
+}
+
+// foreignConditions finds the arcs a flattened transition has to places none of
+// its member entities own, and states each as a marking condition the
+// coordinator can evaluate.
+//
+// Restating an arc as tokens(p) >= w is not a reinterpretation: a read arc IS
+// the assertion "at least w tokens, consume none", and an inhibitor IS "fewer
+// than w". The coordinator holds aggregates rather than a net, so a condition
+// over the marking is the form it can actually check.
+//
+// An arc that MOVES tokens across entities is refused instead. Honouring it
+// would mean writing to an entity that appends no event — a state change with
+// no history — and quietly dropping it is how a constraint becomes fiction.
+func foreignConditions(t metamodel.Transition, flat *metamodel.Model, placeOwners map[string][][2]string, memberSubnets map[string]bool) ([]foreignCondition, error) {
+	ownedByMember := func(place string) bool {
+		for _, owner := range placeOwners[place] {
+			if memberSubnets[owner[0]] {
+				return true
+			}
+		}
+		return false
 	}
 
-	return bc, nil
+	var out []foreignCondition
+	for i := range flat.Arcs {
+		a := &flat.Arcs[i]
+		var place string
+		switch {
+		case a.To == t.ID:
+			place = a.From
+		case a.From == t.ID:
+			place = a.To
+		default:
+			continue
+		}
+		if ownedByMember(place) {
+			continue
+		}
+		if !a.IsReadOnly() {
+			return nil, fmt.Errorf(
+				"transition %q: arc %s->%s crosses into an entity that does not fire with it and MOVES tokens; "+
+					"a coordinator can test another entity's marking but cannot change it without appending an event to that entity's log. "+
+					"Fuse the transitions with an event link, or make the arc read-only",
+				t.ID, a.From, a.To)
+		}
+		if a.From == t.ID {
+			return nil, fmt.Errorf(
+				"transition %q: read-only arc %s->%s points away from the transition; "+
+					"a cross-entity precondition must be place->transition",
+				t.ID, a.From, a.To)
+		}
+		weight := a.Weight
+		if weight < 1 {
+			// Matches eventsource's readThreshold/inhibitThreshold: an
+			// unweighted read-only arc tests for one token, not zero, or it
+			// would be vacuous (read) or unsatisfiable (inhibitor).
+			weight = 1
+		}
+		if a.IsInhibitor() {
+			out = append(out, foreignCondition{place: place, expr: fmt.Sprintf("tokens(%q) < %d", place, weight)})
+			continue
+		}
+		out = append(out, foreignCondition{place: place, expr: fmt.Sprintf("tokens(%q) >= %d", place, weight)})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].place != out[j].place {
+			return out[i].place < out[j].place
+		}
+		return out[i].expr < out[j].expr
+	})
+	return out, nil
+}
+
+// guardPlaceRefs is the read set of an expression guard, and whether that set
+// reaches outside the entities the transition fires with.
+//
+// The "reaches outside" answer is what decides whether the guard becomes a
+// command at all. A guard over the transition's own entity's places is already
+// enforced by that entity's aggregate, and lifting it to the composition root
+// would take a transition away from an entity fully able to decide it.
+//
+// When it does reach outside, two things are REFUSED at generation time,
+// both about silence. An unresolvable reference would evaluate against a
+// marking with no entry for it: tokens() returns 0 and the guard quietly
+// decides on a fact nobody stated. A PREFIX reference — sum("inventory") —
+// names a SET of places rather than one, and the coordinator assembles its
+// marking place by named place, so it has no way to enumerate the set; across
+// entities it could not anyway, knowing one aggregate id per entity. Both
+// produce a wrong answer rather than an error, which is the worst kind.
+//
+// The read set comes from metamodel.PlaceRefs, the read-only twin of the
+// rewriter that produced these references during flattening. Sharing that
+// regexp is deliberate: a second pattern would eventually disagree, and the
+// disagreement would drop a dependency the guard still has.
+func guardPlaceRefs(t metamodel.Transition, placeOwners map[string][][2]string, flatPlaceIDs []string, memberSubnets map[string]bool) (refs []string, foreign bool, err error) {
+	refs = metamodel.PlaceRefs(t.Guard)
+
+	// Classify first: an unresolvable reference is only this function's
+	// problem once something else has established the guard is cross-entity.
+	var unresolved []string
+	for _, ref := range refs {
+		owners := placeOwners[ref]
+		if len(owners) == 0 {
+			unresolved = append(unresolved, ref)
+			continue
+		}
+		for _, o := range owners {
+			if !memberSubnets[o[0]] {
+				foreign = true
+			}
+		}
+	}
+
+	for _, ref := range unresolved {
+		var spanned, spannedForeign []string
+		for _, id := range flatPlaceIDs {
+			if !strings.HasPrefix(id, ref) {
+				continue
+			}
+			spanned = append(spanned, id)
+			for _, o := range placeOwners[id] {
+				if !memberSubnets[o[0]] {
+					spannedForeign = append(spannedForeign, id)
+					break
+				}
+			}
+		}
+		if len(spannedForeign) > 0 {
+			return nil, false, fmt.Errorf(
+				"transition %q: guard %q references %q, which is a place-ID PREFIX spanning %v, not a place. "+
+					"A coordinator assembles its marking one named place at a time and resolves one aggregate id per entity, "+
+					"so it cannot evaluate a prefix that ranges over another entity's places; name them explicitly with tokens()",
+				t.ID, t.Guard, ref, spannedForeign)
+		}
+		if foreign {
+			if len(spanned) > 0 {
+				return nil, false, fmt.Errorf(
+					"transition %q: cross-entity guard %q references %q, which is a place-ID PREFIX spanning %v, not a place; "+
+						"the coordinator evaluates the whole expression and cannot enumerate a prefix",
+					t.ID, t.Guard, ref, spanned)
+			}
+			return nil, false, fmt.Errorf(
+				"transition %q: cross-entity guard %q references unknown place %q; "+
+					"an unresolved reference reads as zero tokens, which decides the guard silently",
+				t.ID, t.Guard, ref)
+		}
+	}
+	return refs, foreign, nil
+}
+
+// resolveReads maps the flat place IDs a command's condition names onto the
+// entities that own them, deduplicated and sorted.
+func resolveReads(t metamodel.Transition, wanted []string, placeOwners map[string][][2]string, pkgBySubnet map[string]string) ([]CommandRead, error) {
+	seen := map[string]bool{}
+	var reads []CommandRead
+	for _, ref := range wanted {
+		if seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		owners := placeOwners[ref]
+		switch len(owners) {
+		case 0:
+			return nil, fmt.Errorf("transition %q: place %q has no owning subnet in the flatten map", t.ID, ref)
+		case 1:
+		default:
+			// A TokenLink wired this place out of several subnets'. Each of
+			// them holds its own copy in its own aggregate, and the
+			// coordinator has no rule for which copy is authoritative.
+			var subnets []string
+			for _, o := range owners {
+				subnets = append(subnets, o[0])
+			}
+			return nil, fmt.Errorf(
+				"transition %q: place %q is wired across subnets %v, so its token count is not a single aggregate's to report; "+
+					"a cross-entity precondition must name a place one entity owns",
+				t.ID, ref, subnets)
+		}
+		reads = append(reads, CommandRead{
+			SubnetID:    owners[0][0],
+			PackageName: pkgBySubnet[owners[0][0]],
+			LocalPlace:  owners[0][1],
+			FlatPlaceID: ref,
+			VarName:     ToCamelCase(IdentifierFrom(owners[0][0])),
+		})
+	}
+	sort.Slice(reads, func(i, j int) bool { return reads[i].FlatPlaceID < reads[j].FlatPlaceID })
+	return reads, nil
+}
+
+// buildParticipants merges a command's members and its guard's read entities
+// into one per-entity list, sorted by subnet ID so the generated code does not
+// depend on link ordering.
+func buildParticipants(cmd CommandContext) []CommandParticipant {
+	index := map[string]int{}
+	var out []CommandParticipant
+	at := func(subnet, pkg, varName string) *CommandParticipant {
+		if i, ok := index[subnet]; ok {
+			return &out[i]
+		}
+		index[subnet] = len(out)
+		out = append(out, CommandParticipant{SubnetID: subnet, PackageName: pkg, VarName: varName})
+		return &out[len(out)-1]
+	}
+	for _, m := range cmd.Members {
+		p := at(m.SubnetID, m.PackageName, m.VarName)
+		p.IsMember = true
+		p.Member = m
+	}
+	for _, r := range cmd.Reads {
+		p := at(r.SubnetID, r.PackageName, r.VarName)
+		p.Reads = append(p.Reads, r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SubnetID < out[j].SubnetID })
+	return out
+}
+
+// resolveCommandConstants fills in the Go constant each command member and
+// read refers to, taken from the entity context that allocated it.
+func resolveCommandConstants(commands []CommandContext, ctxBySubnet map[string]*Context) error {
+	transConst := func(subnet, local string) (string, error) {
+		ctx, ok := ctxBySubnet[subnet]
+		if !ok {
+			return "", fmt.Errorf("command references unknown subnet %q", subnet)
+		}
+		for _, t := range ctx.Transitions {
+			if t.ID == local {
+				return t.ConstName, nil
+			}
+		}
+		return "", fmt.Errorf("subnet %q declares no transition %q", subnet, local)
+	}
+	placeConst := func(subnet, local string) (string, error) {
+		ctx, ok := ctxBySubnet[subnet]
+		if !ok {
+			return "", fmt.Errorf("command references unknown subnet %q", subnet)
+		}
+		for _, p := range ctx.Places {
+			if p.ID == local {
+				return p.ConstName, nil
+			}
+		}
+		return "", fmt.Errorf("subnet %q declares no place %q", subnet, local)
+	}
+
+	for ci := range commands {
+		c := &commands[ci]
+		for mi := range c.Members {
+			name, err := transConst(c.Members[mi].SubnetID, c.Members[mi].LocalTransition)
+			if err != nil {
+				return fmt.Errorf("command %q: %w", c.FlatID, err)
+			}
+			c.Members[mi].ConstName = name
+		}
+		for ri := range c.Reads {
+			name, err := placeConst(c.Reads[ri].SubnetID, c.Reads[ri].LocalPlace)
+			if err != nil {
+				return fmt.Errorf("command %q: %w", c.FlatID, err)
+			}
+			c.Reads[ri].PlaceConst = name
+		}
+		c.Participants = buildParticipants(*c)
+	}
+	return nil
+}
+
+// FirstPlainCommand returns the first command with no cross-entity condition —
+// one whose enablement depends only on the members' own markings, so a
+// generated test can fire it from the initial marking and know it must
+// succeed. A guarded command's condition may well be false initially (that is
+// usually its point), so it is not a safe subject for a "this must fire" test.
+//
+// Returns nil when every command is guarded.
+func (b *BundleContext) FirstPlainCommand() *CommandContext {
+	for i := range b.Commands {
+		if b.Commands[i].Condition == "" {
+			return &b.Commands[i]
+		}
+	}
+	return nil
+}
+
+// HasConditions reports whether any command carries a cross-entity condition.
+// It gates the guard-evaluator import in the generated app: a bundle whose
+// links are all event links decides everything from member markings alone and
+// must not import an evaluator it never calls.
+func (b *BundleContext) HasConditions() bool {
+	for _, c := range b.Commands {
+		if c.Condition != "" {
+			return true
+		}
+	}
+	return false
 }

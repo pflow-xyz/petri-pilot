@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "engine",
@@ -9,5 +9,15 @@ go_library(
         "//pkg/dsl",
         "//pkg/metamodel",
         "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)
+
+go_test(
+    name = "engine_test",
+    srcs = ["marking_guard_test.go"],
+    embed = [":engine"],
+    deps = [
+        "//pkg/dsl",
+        "//pkg/metamodel",
     ],
 )

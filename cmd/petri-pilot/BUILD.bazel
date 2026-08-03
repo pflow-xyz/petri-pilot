@@ -14,7 +14,7 @@ go_library(
     importpath = "github.com/pflow-xyz/petri-pilot/cmd/petri-pilot",
     visibility = ["//visibility:private"],
     deps = [
-        "//generated",
+        "//examples:generated",
         "//internal/llm",
         "//internal/version",
         "//pkg/bundle",

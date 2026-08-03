@@ -43,12 +43,22 @@ type Options struct {
 	// IncludeRealtime generates SSE and WebSocket handlers if true.
 	IncludeRealtime bool
 
+	// StreamPrefix namespaces the aggregate's event stream as "<entity>/".
+	// Set by the bundle generator so an entity's own API addresses the same
+	// stream the composed app's coordinator does; empty for single-net apps.
+	StreamPrefix string
+
 	// IncludeBazel generates Bazel build files (BUILD.bazel, and for standalone
 	// modules MODULE.bazel/.bazelrc/.bazelversion) alongside the Go output.
 	IncludeBazel bool
 
 	// AsSubmodule skips go.mod generation, treating output as part of parent module.
 	AsSubmodule bool
+
+	// CrossEntityTransitions lists transitions of this model that a bundle
+	// composition owns, so the entity API refuses them (see crossentity.go).
+	// Set only by the bundle generator; empty for single-net apps.
+	CrossEntityTransitions []CrossEntityTransition
 }
 
 // GeneratedFile represents a generated file's content.
@@ -198,8 +208,10 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 
 	// Build template context
 	ctx, err := NewContext(model, ContextOptions{
-		ModulePath:  g.opts.ModulePath,
-		PackageName: packageName,
+		ModulePath:             g.opts.ModulePath,
+		PackageName:            packageName,
+		StreamPrefix:           g.opts.StreamPrefix,
+		CrossEntityTransitions: g.opts.CrossEntityTransitions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)
@@ -235,16 +247,6 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
 
-	// Include workflows template if context has workflows (Phase 12)
-	if ctx.HasWorkflows() {
-		templateNames = append(templateNames, WorkflowTemplateNames()...)
-	}
-
-	// Include webhooks template if context has webhooks
-	if ctx.HasWebhooks() {
-		templateNames = append(templateNames, WebhookTemplateNames()...)
-	}
-
 	// Include views template if context has views (Phase 13)
 	if ctx.HasViews() {
 		templateNames = append(templateNames, ViewTemplateNames()...)
@@ -274,29 +276,9 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 		templateNames = append(templateNames, DebugTemplateNames()...)
 	}
 
-	// Include SLA template if context has SLA configuration
-	if ctx.HasSLAs() {
-		templateNames = append(templateNames, SLATemplateNames()...)
-	}
-
-	// Include prediction template if context has prediction configuration
-	if ctx.HasPrediction() {
-		templateNames = append(templateNames, PredictionTemplateNames()...)
-	}
-
 	// Include GraphQL templates if context has GraphQL enabled
 	if ctx.HasGraphQL() {
 		templateNames = append(templateNames, GraphQLTemplateNames()...)
-	}
-
-	// Include blobstore template if context has blobstore enabled
-	if ctx.HasBlobstore() {
-		templateNames = append(templateNames, BlobstoreTemplateNames()...)
-	}
-
-	// Include features template if any higher-level features are enabled
-	if ctx.HasAnyFeatures() {
-		templateNames = append(templateNames, FeaturesTemplateNames()...)
 	}
 
 	// Include safemath template if using metamodel runtime (for U256 support)
@@ -332,6 +314,10 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 			Name:    outName,
 			Content: formatted,
 		})
+	}
+
+	if err := checkGeneratedPackage(files); err != nil {
+		return nil, err
 	}
 
 	return files, nil
@@ -391,13 +377,6 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
 
-	// Include templates based on context features
-	if ctx.HasWorkflows() {
-		templateNames = append(templateNames, WorkflowTemplateNames()...)
-	}
-	if ctx.HasWebhooks() {
-		templateNames = append(templateNames, WebhookTemplateNames()...)
-	}
 	if ctx.HasViews() {
 		templateNames = append(templateNames, ViewTemplateNames()...)
 	}
@@ -414,20 +393,8 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 	if ctx.HasDebug() {
 		templateNames = append(templateNames, DebugTemplateNames()...)
 	}
-	if ctx.HasSLAs() {
-		templateNames = append(templateNames, SLATemplateNames()...)
-	}
-	if ctx.HasPrediction() {
-		templateNames = append(templateNames, PredictionTemplateNames()...)
-	}
 	if ctx.HasGraphQL() {
 		templateNames = append(templateNames, GraphQLTemplateNames()...)
-	}
-	if ctx.HasBlobstore() {
-		templateNames = append(templateNames, BlobstoreTemplateNames()...)
-	}
-	if ctx.HasAnyFeatures() {
-		templateNames = append(templateNames, FeaturesTemplateNames()...)
 	}
 	if ctx.UsesMetamodelRuntime() {
 		templateNames = append(templateNames, SafemathTemplateNames()...)
@@ -455,6 +422,10 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 			Name:    outName,
 			Content: formatted,
 		})
+	}
+
+	if err := checkGeneratedPackage(files); err != nil {
+		return nil, err
 	}
 
 	return files, nil

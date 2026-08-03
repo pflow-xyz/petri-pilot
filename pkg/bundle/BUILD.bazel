@@ -16,9 +16,13 @@ go_library(
 
 go_test(
     name = "bundle_test",
-    srcs = ["compile_test.go"],
+    srcs = [
+        "compile_test.go",
+        "guardlink_e2e_test.go",
+    ],
     embed = [":bundle"],
     deps = [
+        "//pkg/codegen/golang",
         "//pkg/extensions",
         "@com_github_pflow_xyz_go_pflow//metamodel",
     ],

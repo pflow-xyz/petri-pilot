@@ -109,7 +109,7 @@ commands with coordinators; see pkg/bundle):
 ```
 petri_application(spec='{"name":"shop","entities":[...]}',
                   fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
-                  output_dir='generated/shop')
+                  output_dir='examples/shop')
 ```
 
 For a raw bundle document (subnets + token/data/event/guard links):
@@ -122,14 +122,14 @@ CLI equivalent — `*.bundle.json` routes to the composed generator
 (`model_ref` resolves relative to the document):
 
 ```
-petri-pilot codegen services/bundles/shop.bundle.json -o generated/shop
+petri-pilot codegen services/bundles/shop.bundle.json -o examples/shop
 ```
 
 The generated layout is one Go subpackage per entity (own State, Aggregate,
 event log) plus a root package: bundle.go (composition tables), flatmodel.go
 (embedded flattened model), app.go (coordinators — each fused transition
 fires atomically across member entities via eventsource.MultiAppender, HTTP
-POST /fire/<transition>, refusals are 409 and append nothing). generated/shop
+POST /fire/<transition>, refusals are 409 and append nothing). examples/shop
 is the reference app; cmd/petri-pilot/bundle_freeze_test.go diffs the
 generator's output against it byte-for-byte.
 
@@ -272,6 +272,122 @@ When adding schema features:
 - Conditional generation: `{{if .HasFeature}}...{{end}}`
 - Access context fields directly: `{{.ModelName}}`, `{{.Routes}}`
 - Helper methods: `{{.TransitionRequiresAuth "id"}}`
+- **Interpolate model strings with `{{printf "%q" .Field}}`, never `"{{.Field}}"`.**
+  Guard expressions routinely contain double quotes (`tokens("stock") > 0`), and
+  the raw form emitted code that did not compile. `%q` is byte-identical for
+  quote-free values, so committed apps are unaffected.
+- **Only declare a variable inside the branch that uses it.** `evaluateGuardX`
+  declared `state` unconditionally while consuming it only in the collections
+  loop, so any guard referencing no collection produced
+  `declared and not used: state`.
+
+## Cross-entity commands (bundles)
+
+In a composed app each entity is its own Petri net with its own aggregate and
+its own event log, and an aggregate replays **only that log**. So a transition
+whose firing rule reaches outside its entity cannot be decided there. Those
+transitions become **cross-entity commands**: they live on the composition root
+(`App.Fire<Name>`, `POST /fire/<flat transition id>`) and the entity package
+refuses them outright.
+
+Three flattened shapes qualify (`buildCommands`, `pkg/codegen/golang/bundle_context.go`):
+
+| Shape | Produced by | Detected via |
+|---|---|---|
+| fused transition | EventLink | `FlattenMap.FusedGroups` |
+| read/inhibitor arc into a non-member entity | GuardLink with a structural condition (`> 0`, `== 0`, …) | the flattened arcs |
+| expression guard naming a non-member entity's place | GuardLink with a non-structural condition (`!= n`) | `metamodel.PlaceRefs` on `Transition.Guard` |
+
+**Do not key the command table on `Transition.Guard` alone.** go-pflow lowers
+most guard links *structurally* — `> 0` becomes a read arc and `Guard` stays
+empty. A table that only read `Guard` saw nothing for warehouse, and
+`order.ship` shipped with no stock reserved.
+
+A guard reading only its **own** entity's places stays local: the entity
+aggregate already evaluates it, and lifting it would refuse something the
+entity can decide alone.
+
+**Refusal is total.** `CanFire` returns false, `EnabledTransitions` omits it,
+`Fire`/`Execute` return an error naming the command. Reporting a transition
+enabled and then refusing it is an Enabled/Execute divergence, and here it
+would be invisible to any single-entity test. `Aggregate.FireComposed` is the
+root's only way in.
+
+**What the coordinator does**, in order: load every participating aggregate →
+assemble a marking from the places the condition names → evaluate the condition
+(`dsl.Evaluate` + `dsl.MakeAggregates`) → `FireComposed` each member → append
+member events **and a zero-event read fence per read-only sibling** in one
+`MultiAppend`. The fence carries the version the sibling was read at, so a
+sibling that moved between the read and the append fails the whole thing.
+
+**Witness.** Each appended event carries `petri.command` and `petri.witness`
+metadata: the foreign token counts and the `{stream, version}` of every
+participant. Three replay modes follow, and only the first is used at runtime:
+
+- **ReplayPure** (default) — fold an entity's own events into its own state,
+  ignoring the witness. This is what keeps one log sufficient to rebuild one
+  entity. `generated/warehouse`'s `TestReplayIsPureAfterGuardedCommand` replays
+  against a store that errors on every other stream; if it ever needs a sibling,
+  the design has failed.
+- **ReplayWitness** — re-check a decision from the embedded witness alone, after
+  the sibling logs are gone.
+- **ReplayAudit** (offline) — replay each sibling truncated to the recorded
+  version and confirm the recorded counts. The only mode that catches a witness
+  that was never true.
+
+**Generation refuses** rather than emitting a coordinator that decides wrongly:
+a cross-entity guard naming an unknown place (reads as zero tokens, so it
+decides silently), a **prefix** reference like `sum("inventory")` (names a set;
+the coordinator knows one aggregate id per entity), a place wired across subnets
+by a TokenLink (no single aggregate owns its count), and a cross-entity arc that
+**moves** tokens (would change an entity's state with no event behind it).
+
+The embedded `flatmodel.go` is **documentation**, not the rule — nothing loads
+it to decide enablement. Saying otherwise is what hid the gap.
+
+## Guards and the marking
+
+A guard may read its action's parameters *and* the current marking:
+
+```
+amount > 0                      # parameters only
+tokens("available") > 0         # marking only — what a composed GuardLink lowers to
+tokens("stock") >= amount       # both
+```
+
+Marking-aware functions are `tokens`, `sum`, `count`, `minOf`, `maxOf`
+(`dsl.MakeAggregates`). Note `sum`/`count` match place IDs by **prefix**;
+`tokens` matches exactly.
+
+Wiring, all three of which have to line up:
+
+| Layer | Mechanism |
+|---|---|
+| Runtime | `metamodel.MarkingAggregator`, an optional interface on `GuardEvaluator`; `dsl.Evaluator` implements it |
+| Codegen | `GuardContext.UsesMarking` selects the `dsl.MakeAggregates(a.Places())` form in `aggregate.tmpl` |
+| Composition | go-pflow's `Bundle.Flatten` lowers a GuardLink to `tokens("<flat place>") <cond>` unless the condition is `== 0`, which becomes an inhibitor arc |
+
+**`Execute` vs `ExecuteWithBindings`.** `Execute` takes no bindings, so it
+enforces only the marking-decidable part of a guard; a parameter guard is left
+unenforced rather than failing the call. `ExecuteWithBindings` enforces the whole
+guard. `Enabled` follows the same rule, so it and `Execute` agree — previously
+`Enabled` ignored guards entirely and would offer a transition that `Execute`
+then refused. Use `EnabledWithBindings` when parameters decide it.
+
+**There are two Runtimes; use this one.** `go-pflow/tokenmodel` also has a
+`Runtime`, and it is not equivalent: its enablement check is hardcoded to
+`< 1` (so **arc weights are ignored**), it ignores **inhibitor arcs** entirely,
+it moves exactly one token per arc whatever the weight says, and it never
+evaluates a **guard**. `petri_simulate` used to run on it and would therefore
+report firing sequences the model forbids; it now runs on `pkg/metamodel`
+(`pkg/mcp/simulate.go`), and `pkg/mcp/simulate_firingrule_test.go` pins all four
+behaviours. Anything that executes a net on behalf of a user belongs on
+`pkg/metamodel`.
+
+**Prefer the `== 0` (inhibitor) form when you can.** It is structural, so
+`reachability` and `verify` see it. An expression-lowered guard is invisible to
+both — go-pflow's `Validate` warns `W_GUARD_OPAQUE` — so it silently weakens
+every static claim about the net.
 
 ## Building (Go + Bazel)
 
@@ -337,7 +453,7 @@ Layout:
   that file is supplied as a `data` runfile (`services` `exports_files` it) so the test is
   hermetic.
 - After editing `go.mod`, run `bazel mod tidy`; after adding/moving `.go` files, run
-  `bazel run //:gazelle`. Generated apps under `generated/` are part of the main module
+  `bazel run //:gazelle`. Apps under `examples/` and `generated/` are part of the main module
   (single-module architecture), so Gazelle picks them up automatically.
 - **Editing the sibling `../go-pflow` while the local `replace` is active.** Gazelle's
   `go_deps.from_file` reads the `replace` and *materializes a copy* of `../go-pflow`
@@ -376,7 +492,7 @@ Mechanics worth knowing (`pkg/codegen/golang/bazel.go`):
   doesn't fail on *unused* deps, only missing ones, so the list errs toward complete.
 - The generated submodule `BUILD.bazel` is byte-compatible with what
   `bazel run //:gazelle` produces (only `glob`-vs-explicit `srcs` differs), so the
-  two never fight. After regenerating, `bazel build //generated/<app>/...` works as-is.
+  two never fight. After regenerating, `bazel build //examples/<app>/...` (or `//generated/<app>/...`) works as-is.
 
 ### E2E Tests
 
@@ -509,7 +625,7 @@ gh run list --branch main --status success --limit 5
 
 ## Generated File Structure
 
-**IMPORTANT:** This project uses a single-module architecture. The `generated/` directory contains subpackages (NOT standalone modules). Never create a `go.mod` file inside `generated/` - all generated apps are part of the main `github.com/pflow-xyz/petri-pilot` module.
+**IMPORTANT:** This project uses a single-module architecture. `examples/` and `generated/` contain subpackages (NOT standalone modules). Never create a `go.mod` inside either — every app is part of the main `github.com/pflow-xyz/petri-pilot` module.
 
 When using the CLI to regenerate apps, always use the `-submodule` flag:
 ```bash
@@ -623,6 +739,37 @@ Generated code imports from:
 - `github.com/pflow-xyz/petri-pilot/pkg/runtime/api`
 - `github.com/pflow-xyz/petri-pilot/pkg/runtime/eventstore`
 - `github.com/pflow-xyz/petri-pilot/pkg/runtime/aggregate`
+
+## Element IDs → Go identifiers
+
+A flattened bundle model names elements `orders/ship`, `fused:a/t+b/t`,
+`wire:b/ready` — none of `/`, `:`, `+` is legal in a Go identifier. Two rules
+keep that compilable, both in `pkg/codegen/golang`:
+
+1. **`ToPascalCase` splits on every non-alphanumeric rune** (`naming.go`), not on
+   an enumerated `_ - .` set, so a new namespacing separator in go-pflow cannot
+   silently emit uncompilable code.
+2. **Sanitizing is many-to-one, so every derived identifier is allocated from an
+   `identScope`** (`identifiers.go`): `orders/ship_now` and `orders_ship/now`
+   both stem to `OrdersShipNow`, and the second gets `OrdersShipNow2`. Scopes are
+   per-model and shared by every builder — an arc, a state field and the place
+   they name must resolve to the same identifier. Places, transitions and event
+   structs have separate scopes; the event scope is keyed by **event type**, not
+   transition, because several transitions may share one event struct
+   (tic-tac-toe's nine `x_play_*` all emit `XPlayed`).
+
+Never derive an identifier from a raw ID inside a template — take the field the
+context already allocated (`ConstName`, `FieldName`, `FuncName`, `HandlerName`,
+`EventName`). `{{pascal .ID}}` bypasses the scope.
+
+**Why this is enforced rather than trusted:** `go/format` accepts a const block
+that declares the same identifier twice, and `formatGo` was the only validity
+gate — so a collision used to *pass* generation and fail later at `go build`
+with "redeclared in this block", pointing at generated code instead of at the
+model. `checkGeneratedPackage` (`check.go`) now type-checks each generated
+package (grouped by directory) after generation. Imports are stubbed, since the
+generated module does not exist on disk yet, so only diagnostics decidable from
+the files alone — redeclarations — are reported.
 
 ## Common Issues
 
@@ -947,17 +1094,17 @@ services/my-app.json
 Generate as a submodule (no separate go.mod):
 
 ```bash
-./petri-pilot codegen -submodule -pkg myapp -o generated/myapp services/my-app.json
+./petri-pilot codegen -submodule -pkg myapp -o examples/myapp services/my-app.json
 ```
 
 ### 3. Register the Service
 
-Add an import to `generated/imports.go`:
+Add an import to `examples/imports.go`:
 
 ```go
 import (
     // ... existing imports
-    _ "github.com/pflow-xyz/petri-pilot/generated/myapp"
+    _ "github.com/pflow-xyz/petri-pilot/examples/myapp"
 )
 ```
 

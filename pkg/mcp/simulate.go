@@ -18,7 +18,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/pflow-xyz/go-pflow/metamodel"
-	pflowTokenmodel "github.com/pflow-xyz/go-pflow/tokenmodel"
+	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
+	pilotmeta "github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 )
 
 // SimulationStep represents a single step in a simulation.
@@ -62,12 +63,19 @@ type StepResult struct {
 }
 
 // simulate executes a simulation given a model and a list of steps.
+//
+// It runs on petri-pilot's own Runtime rather than go-pflow's tokenmodel one.
+// That is not a preference: tokenmodel.Runtime ignores arc weights (its
+// enablement check is hardcoded to "< 1"), ignores inhibitor arcs entirely,
+// moves exactly one token per arc whatever the weight says, and never evaluates
+// a guard — so it would report firing sequences the model forbids, which is the
+// one thing a simulator must not do.
 func simulate(model *metamodel.Model, steps []SimulationStep) SimulationResult {
-	// Convert to go-pflow tokenmodel
-	metaSchema := metamodel.ToTokenModel(model)
+	metaSchema := pilotmeta.SchemaFromModel(model)
 
-	// Create runtime
-	runtime := pflowTokenmodel.NewRuntime(metaSchema)
+	runtime := pilotmeta.NewRuntime(metaSchema)
+	// Guards are part of the firing rule, so the simulator needs an evaluator.
+	runtime.GuardEvaluator = dsl.NewEvaluator()
 
 	result := SimulationResult{
 		Success: true,
@@ -113,7 +121,7 @@ func simulate(model *metamodel.Model, steps []SimulationStep) SimulationResult {
 }
 
 // executeStep executes a single simulation step and returns its result.
-func executeStep(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema, step SimulationStep) StepResult {
+func executeStep(runtime *pilotmeta.Runtime, metaSchema *pilotmeta.Schema, step SimulationStep) StepResult {
 	stepResult := StepResult{
 		Transition: step.Transition,
 	}
@@ -140,8 +148,13 @@ func executeStep(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.S
 
 	stepResult.Enabled = true
 
-	// Execute the transition
-	if err := runtime.Execute(step.Transition); err != nil {
+	// Execute the transition, passing the step's bindings so parameter guards
+	// and data arcs see them. (They used to be parsed and then discarded.)
+	bindings := pilotmeta.Bindings{}
+	for k, v := range step.Bindings {
+		bindings[k] = v
+	}
+	if err := runtime.ExecuteWithBindings(step.Transition, bindings); err != nil {
 		stepResult.Error = fmt.Sprintf("execution error: %v", err)
 		stepResult.StateAfter = captureMarking(runtime, metaSchema)
 		return stepResult
@@ -154,7 +167,7 @@ func executeStep(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.S
 }
 
 // captureMarking captures the current marking (token counts) of all places.
-func captureMarking(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema) map[string]int {
+func captureMarking(runtime *pilotmeta.Runtime, metaSchema *pilotmeta.Schema) map[string]int {
 	marking := make(map[string]int)
 	for _, state := range metaSchema.States {
 		if state.IsToken() {
@@ -165,23 +178,43 @@ func captureMarking(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmode
 }
 
 // determineDisabledReason determines why a transition is disabled.
-func determineDisabledReason(runtime *pflowTokenmodel.Runtime, metaSchema *pflowTokenmodel.Schema, transitionID string) string {
+func determineDisabledReason(runtime *pilotmeta.Runtime, metaSchema *pilotmeta.Schema, transitionID string) string {
 	inputArcs := metaSchema.InputArcs(transitionID)
 	if len(inputArcs) == 0 {
 		return "transition has no input arcs"
 	}
 
 	var missingTokens []string
+	var blockedBy []string
 	for _, arc := range inputArcs {
 		st := metaSchema.StateByID(arc.Source)
-		if st != nil && st.IsToken() {
-			if runtime.Tokens(arc.Source) < 1 {
-				missingTokens = append(missingTokens, arc.Source)
+		if st == nil || !st.IsToken() {
+			continue
+		}
+		weight := arc.Weight
+		if weight == 0 {
+			weight = 1
+		}
+		have := runtime.Tokens(arc.Source)
+		if arc.IsInhibitor() {
+			// An inhibitor blocks while the place holds at least its weight.
+			if have >= weight {
+				blockedBy = append(blockedBy, fmt.Sprintf("%s (%d tokens)", arc.Source, have))
 			}
+			continue
+		}
+		if have < weight {
+			missingTokens = append(missingTokens, fmt.Sprintf("%s (have %d, need %d)", arc.Source, have, weight))
 		}
 	}
 
-	if len(missingTokens) > 0 {
+	switch {
+	case len(blockedBy) > 0 && len(missingTokens) > 0:
+		return fmt.Sprintf("inhibited by: %s; insufficient tokens in: %s",
+			strings.Join(blockedBy, ", "), strings.Join(missingTokens, ", "))
+	case len(blockedBy) > 0:
+		return fmt.Sprintf("inhibited by: %s", strings.Join(blockedBy, ", "))
+	case len(missingTokens) > 0:
 		return fmt.Sprintf("insufficient tokens in: %s", strings.Join(missingTokens, ", "))
 	}
 

@@ -3,6 +3,7 @@ package golang
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -14,6 +15,10 @@ import (
 
 // Context holds all data needed for code generation templates.
 type Context struct {
+	// StreamPrefix namespaces the aggregate's event stream in bundle mode
+	// ("<entity>/"); empty for single-net apps. See ContextOptions.
+	StreamPrefix string
+
 	// Package configuration
 	PackageName      string
 	ModulePath       string
@@ -27,6 +32,10 @@ type Context struct {
 	// Places and transitions
 	Places      []PlaceContext
 	Transitions []TransitionContext
+
+	// CrossEntity lists the transitions a bundle composition owns (see
+	// crossentity.go). Nil for single-net apps.
+	CrossEntity []CrossEntityContext
 
 	// Inferred types
 	Events      []EventContext
@@ -53,12 +62,6 @@ type Context struct {
 
 	// Views (Phase 13)
 	Views []ViewContext
-
-	// Workflow orchestration (Phase 12)
-	Workflows []WorkflowContext
-
-	// Webhook integrations
-	Webhooks []WebhookContext
 
 	// Navigation (Phase 14)
 	Navigation *NavigationContext
@@ -142,40 +145,6 @@ type Context struct {
 	Bazel *BazelBuildContext
 }
 
-// WorkflowContext provides template-friendly access to workflow orchestration data.
-type WorkflowContext struct {
-	ID          string
-	Name        string
-	Description string
-	PascalName  string // e.g., "TaskNotification"
-	CamelName   string // e.g., "taskNotification"
-	TriggerType string // event, schedule, manual
-	Trigger     WorkflowTriggerContext
-	Steps       []WorkflowStepContext
-}
-
-// WorkflowTriggerContext provides template-friendly access to workflow trigger data.
-type WorkflowTriggerContext struct {
-	Type   string // event, schedule, manual
-	Entity string // Entity ID for event triggers
-	Action string // Action ID for event triggers
-	Cron   string // Cron expression for schedule triggers
-}
-
-// WorkflowStepContext provides template-friendly access to workflow step data.
-type WorkflowStepContext struct {
-	ID         string
-	PascalName string
-	Type       string            // action, condition, parallel, wait
-	Entity     string            // Entity ID for action steps
-	Action     string            // Action ID for action steps
-	Condition  string            // Guard expression for condition steps
-	Duration   string            // Duration for wait steps (e.g., "5m", "1h")
-	Input      map[string]string // Input field mappings
-	OnSuccess  string            // Next step ID on success
-	OnFailure  string            // Next step ID on failure
-}
-
 // ViewContext provides template-friendly access to view definitions.
 type ViewContext struct {
 	ID          string
@@ -208,7 +177,6 @@ type AccessRuleContext struct {
 	TransitionID string   // Transition this rule applies to
 	Roles        []string // Required roles
 	Guard        string   // Optional guard expression
-	GuardGoCode  string   // Generated Go code for guard evaluation
 	HasGuard     bool     // True if guard expression is present
 }
 
@@ -222,22 +190,6 @@ type RoleContext struct {
 	AllRoles        []string // Flattened inheritance (this role + all inherited)
 	DynamicGrant    string   // Expression to dynamically grant role (e.g., "balances[user.login] > 0")
 	HasDynamicGrant bool     // True if DynamicGrant is set
-}
-
-// WebhookContext provides template-friendly access to webhook configuration.
-type WebhookContext struct {
-	ID          string
-	URL         string
-	Events      []string
-	Secret      string
-	Enabled     bool
-	RetryPolicy *WebhookRetryPolicyContext
-}
-
-// WebhookRetryPolicyContext provides template-friendly access to retry policy.
-type WebhookRetryPolicyContext struct {
-	MaxAttempts int
-	BackoffMs   int
 }
 
 // NavigationContext provides template-friendly access to navigation configuration.
@@ -700,21 +652,89 @@ type DataArcContext struct {
 type GuardContext struct {
 	TransitionID string   // Transition this guard belongs to
 	Expression   string   // Original guard expression
-	GoCode       string   // Generated Go code (placeholder for complex guards)
 	Collections  []string // Collections referenced by the guard
+
+	// UsesMarking is true when the guard calls a marking-aware function
+	// (tokens, sum, count, minOf, maxOf). Those need the current token counts
+	// passed to the evaluator; without them the expression fails to resolve at
+	// runtime with "unknown function: tokens". A composed GuardLink lowers to
+	// exactly this shape, so it is what makes cross-subnet gating work in
+	// generated code.
+	UsesMarking bool
+}
+
+// markingFuncNames are the guard functions that need the marking.
+// Kept in step with dsl.MakeAggregates.
+var markingFuncNames = []string{"tokens", "sum", "count", "minOf", "maxOf"}
+
+// guardUsesMarking reports whether an expression calls a marking-aware function.
+func guardUsesMarking(expr string) bool {
+	for _, name := range markingFuncNames {
+		if callsFunction(expr, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// callsFunction reports whether expr contains a call to name, requiring the
+// opening paren and rejecting matches that are part of a longer identifier so
+// "accounts(" does not count as "count(".
+func callsFunction(expr, name string) bool {
+	for i := 0; i+len(name) < len(expr); i++ {
+		if expr[i:i+len(name)] != name {
+			continue
+		}
+		if i > 0 && isIdentRune(expr[i-1]) {
+			continue // part of a longer name
+		}
+		rest := strings.TrimLeft(expr[i+len(name):], " \t")
+		if strings.HasPrefix(rest, "(") {
+			return true
+		}
+	}
+	return false
+}
+
+func isIdentRune(c byte) bool {
+	return c == '_' ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
+}
+
+// StreamExpr renders the Go expression naming an aggregate's event stream.
+//
+// In bundle mode it prefixes with the entity name, matching the coordinator's
+// StreamID(entity, id); otherwise it is the bare id, so single-net apps generate
+// exactly what they always did.
+func (c *Context) StreamExpr(idVar string) string {
+	if c.StreamPrefix == "" {
+		return idVar
+	}
+	return fmt.Sprintf("%q+%s", c.StreamPrefix, idVar)
 }
 
 // Options for creating a new context.
 type ContextOptions struct {
 	ModulePath  string
 	PackageName string
+
+	// StreamPrefix namespaces this aggregate's event stream, as "<entity>/".
+	// Set only in bundle mode: a composed app's coordinator addresses member
+	// streams as "<entity>/<id>", and without the same prefix here the entity
+	// API and the coordinator would read and write DIFFERENT logs for the same
+	// aggregate. Empty for single-net apps, whose streams stay bare ids.
+	StreamPrefix string
+
+	// CrossEntityTransitions lists this model's transitions that a bundle
+	// composition has taken over. See crossentity.go. Empty for single-net
+	// apps, which then generate exactly as they did before it existed.
+	CrossEntityTransitions []CrossEntityTransition
+
 	// Access control (Phase 11)
 	AccessRules []AccessRuleContext
 	Roles       []RoleContext
-	// Workflow orchestration (Phase 12)
-	Workflows []WorkflowContext
-	// Webhook integrations
-	Webhooks []WebhookContext
 }
 
 // NewContext creates a Context from a model with computed template data.
@@ -741,6 +761,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	apiSlug := sanitizeAPISlug(enriched.Name)
 
 	ctx := &Context{
+		StreamPrefix:     opts.StreamPrefix,
 		PackageName:      packageName,
 		ModulePath:       modulePath,
 		LocalReplacePath: localReplacePath,
@@ -750,12 +771,15 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 		Model:            enriched,
 		AccessRules:      opts.AccessRules,
 		Roles:            opts.Roles,
-		Workflows:        opts.Workflows,
-		Webhooks:         opts.Webhooks,
 	}
 
+	// Identifier stems are allocated once per model and shared by every builder
+	// below, so an arc and the place it points at agree on the disambiguated
+	// name. See identScope.
+	scopes := newIdentScopes()
+
 	// Build place contexts
-	ctx.Places = buildPlaceContexts(enriched.Places)
+	ctx.Places = buildPlaceContexts(enriched.Places, scopes.place)
 
 	// Build place ID set for quick lookups and track data state places
 	placeIDs := make(map[string]bool)
@@ -769,19 +793,19 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 
 	// Build transition contexts with arc information
 	// Data state places are excluded from token counting (guards handle those)
-	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, enriched.Events, placeIDs, dataPlaceIDs)
+	ctx.Transitions = buildTransitionContexts(enriched.Transitions, enriched.Arcs, enriched.Events, placeIDs, dataPlaceIDs, scopes)
 
 	// Build event contexts from bridge inference
 	eventDefs := metamodel.InferEvents(enriched)
-	ctx.Events = buildEventContexts(eventDefs)
+	ctx.Events = buildEventContexts(eventDefs, scopes.event)
 
 	// Build route contexts from bridge inference
 	apiRoutes := metamodel.InferAPIRoutes(enriched)
-	ctx.Routes = buildRouteContexts(apiRoutes)
+	ctx.Routes = buildRouteContexts(apiRoutes, scopes.transition)
 
 	// Build state field contexts from bridge inference
 	stateFields := metamodel.InferAggregateState(enriched)
-	ctx.StateFields = buildStateFieldContexts(stateFields)
+	ctx.StateFields = buildStateFieldContexts(stateFields, scopes.place)
 
 	// Build ORM-specific contexts
 	ormSpec := bridge.ExtractORMSpec(enriched)
@@ -789,6 +813,8 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	ctx.DataArcs = buildDataArcContexts(ormSpec.Operations)
 	ctx.BindingFields = buildBindingFieldContexts(enriched.Transitions, ctx.DataArcs)
 	ctx.Guards = buildGuardContexts(enriched.Transitions, ormSpec.Collections)
+
+	ctx.CrossEntity = buildCrossEntityContexts(opts.CrossEntityTransitions, ctx.Transitions)
 
 	// Populate data arcs, guard info, and event data on transitions
 	for i := range ctx.Transitions {
@@ -908,7 +934,6 @@ func buildAccessRuleContextsFromEntities(ext *extensions.EntityExtension) []Acce
 				TransitionID: rule.Action,
 				Roles:        rule.Roles,
 				Guard:        rule.Guard,
-				GuardGoCode:  GuardExpressionToGo(rule.Guard, "state", "bindings"),
 				HasGuard:     rule.Guard != "",
 			})
 		}
@@ -1155,7 +1180,6 @@ func buildAccessRuleContexts(rules []bridge.AccessRuleSpec) []AccessRuleContext 
 			TransitionID: r.TransitionID,
 			Roles:        r.Roles,
 			Guard:        r.Guard,
-			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
 			HasGuard:     r.HasGuard,
 		}
 	}
@@ -1218,7 +1242,6 @@ func buildAccessRuleContextsFromModel(rules []metamodel.AccessRule) []AccessRule
 			TransitionID: r.Transition,
 			Roles:        r.Roles,
 			Guard:        r.Guard,
-			GuardGoCode:  GuardExpressionToGo(r.Guard, "state", "bindings"),
 			HasGuard:     r.Guard != "",
 		}
 	}
@@ -1260,7 +1283,7 @@ func buildViewContexts(views []metamodel.View) []ViewContext {
 	return result
 }
 
-func buildPlaceContexts(places []metamodel.Place) []PlaceContext {
+func buildPlaceContexts(places []metamodel.Place, scope *identScope) []PlaceContext {
 	result := make([]PlaceContext, len(places))
 	for i, p := range places {
 		isToken := p.IsToken()
@@ -1281,15 +1304,15 @@ func buildPlaceContexts(places []metamodel.Place) []PlaceContext {
 			Exported:    p.Exported,
 			Capacity:    p.Capacity,
 			Resource:    p.Resource,
-			ConstName:   ToConstName("Place", p.ID),
-			FieldName:   ToFieldName(p.ID),
-			VarName:     ToVarName(p.ID),
+			ConstName:   "Place" + scope.Stem(p.ID),
+			FieldName:   scope.Stem(p.ID),
+			VarName:     lowerFirst(scope.Stem(p.ID)),
 		}
 	}
 	return result
 }
 
-func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamodel.Arc, events []metamodel.Event, placeIDs, dataPlaceIDs map[string]bool) []TransitionContext {
+func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamodel.Arc, events []metamodel.Event, placeIDs, dataPlaceIDs map[string]bool, scopes *identScopes) []TransitionContext {
 	// Build event lookup map for deriving bindings from event fields
 	eventByID := make(map[string]metamodel.Event, len(events))
 	for _, e := range events {
@@ -1331,7 +1354,7 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 			} else {
 				inputArcMap[arc.To][arc.From] = ArcContext{
 					PlaceID:     arc.From,
-					ConstName:   ToConstName("Place", arc.From),
+					ConstName:   "Place" + scopes.place.Stem(arc.From),
 					Weight:      weight,
 					IsInhibitor: arc.IsInhibitor(),
 				}
@@ -1353,7 +1376,7 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 			} else {
 				outputArcMap[arc.From][arc.To] = ArcContext{
 					PlaceID:     arc.To,
-					ConstName:   ToConstName("Place", arc.To),
+					ConstName:   "Place" + scopes.place.Stem(arc.To),
 					Weight:      weight,
 					IsInhibitor: false,
 				}
@@ -1378,10 +1401,16 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 
 	result := make([]TransitionContext, len(transitions))
 	for i, t := range transitions {
+		stem := scopes.transition.Stem(t.ID)
 		eventType := t.EventType
 		if eventType == "" {
-			eventType = ToEventTypeName(t.ID)
+			eventType = eventTypeFromStem(stem)
 		}
+		// Keyed by the event type, not the transition: several transitions
+		// sharing one EventType share one generated struct (tic-tac-toe's nine
+		// x_play_* transitions all emit XPlayed). Only two *different* event
+		// types that sanitize to the same identifier need separating.
+		eventName := scopes.event.Unique(eventType, ToEventStructName(eventType))
 
 		// Build binding contexts from explicit bindings or event fields
 		var bindings []BindingContext
@@ -1436,10 +1465,10 @@ func buildTransitionContexts(transitions []metamodel.Transition, arcs []metamode
 			HasSLATiming:  hasSLATiming,
 			Rate:          t.Rate,
 			ClearsHistory: t.ClearsHistory,
-			ConstName:     ToConstName("Transition", t.ID),
-			HandlerName:   ToHandlerName(t.ID),
-			EventName:     ToEventStructName(eventType),
-			FuncName:      ToPascalCase(t.ID),
+			ConstName:     "Transition" + stem,
+			HandlerName:   "Handle" + stem,
+			EventName:     eventName,
+			FuncName:      stem,
 		}
 	}
 	return result
@@ -1491,7 +1520,9 @@ func sanitizeAPISlug(name string) string {
 	return result
 }
 
-func buildEventContexts(eventDefs []metamodel.EventDef) []EventContext {
+// eventScope is the scope the transition contexts already allocated from, so an
+// event and the transition that emits it name the same struct.
+func buildEventContexts(eventDefs []metamodel.EventDef, eventScope *identScope) []EventContext {
 	result := make([]EventContext, len(eventDefs))
 	for i, e := range eventDefs {
 		fields := make([]EventFieldContext, len(e.Fields))
@@ -1505,7 +1536,7 @@ func buildEventContexts(eventDefs []metamodel.EventDef) []EventContext {
 
 		result[i] = EventContext{
 			Type:         e.Type,
-			StructName:   ToEventStructName(e.Type),
+			StructName:   eventScope.Unique(e.Type, ToEventStructName(e.Type)),
 			TransitionID: e.TransitionID,
 			Fields:       fields,
 		}
@@ -1513,7 +1544,7 @@ func buildEventContexts(eventDefs []metamodel.EventDef) []EventContext {
 	return result
 }
 
-func buildRouteContexts(apiRoutes []metamodel.APIRoute) []RouteContext {
+func buildRouteContexts(apiRoutes []metamodel.APIRoute, transScope *identScope) []RouteContext {
 	result := make([]RouteContext, len(apiRoutes))
 	for i, r := range apiRoutes {
 		result[i] = RouteContext{
@@ -1521,19 +1552,21 @@ func buildRouteContexts(apiRoutes []metamodel.APIRoute) []RouteContext {
 			Path:         r.Path,
 			Description:  r.Description,
 			TransitionID: r.TransitionID,
-			HandlerName:  ToHandlerName(r.TransitionID),
+			HandlerName:  "Handle" + transScope.Stem(r.TransitionID),
 			EventType:    r.EventType,
 		}
 	}
 	return result
 }
 
-func buildStateFieldContexts(stateFields []metamodel.StateField) []StateFieldContext {
+// stateFields are named by place ID, so they share the place scope: the State
+// struct field and the PlaceContext field name have to be the same identifier.
+func buildStateFieldContexts(stateFields []metamodel.StateField, placeScope *identScope) []StateFieldContext {
 	result := make([]StateFieldContext, len(stateFields))
 	for i, f := range stateFields {
 		result[i] = StateFieldContext{
 			Name:      f.Name,
-			FieldName: ToPascalCase(f.Name),
+			FieldName: placeScope.Stem(f.Name),
 			Type:      ToTypeName(f.Type),
 			IsToken:   f.IsToken,
 			Persisted: f.Persisted,
@@ -1782,8 +1815,8 @@ func buildGuardContexts(transitions []metamodel.Transition, collections []bridge
 		result = append(result, GuardContext{
 			TransitionID: t.ID,
 			Expression:   t.Guard,
-			GoCode:       GuardExpressionToGo(t.Guard, "state", "bindings"),
 			Collections:  referencedCollections,
+			UsesMarking:  guardUsesMarking(t.Guard),
 		})
 	}
 
@@ -1838,6 +1871,12 @@ func (c *Context) HasDataPlaces() bool {
 		}
 	}
 	return false
+}
+
+// HasCrossEntity reports whether a bundle composition owns any of this
+// model's transitions.
+func (c *Context) HasCrossEntity() bool {
+	return len(c.CrossEntity) > 0
 }
 
 // HasGuards returns true if any transition has a guard condition.
@@ -1945,11 +1984,6 @@ func (c *Context) UsesMetamodelRuntime() bool {
 	return c.HasDataPlaces() || c.HasGuards()
 }
 
-// HasWorkflows returns true if the context has any workflows defined.
-func (c *Context) HasWorkflows() bool {
-	return len(c.Workflows) > 0
-}
-
 // HasAccessControl returns true if any access rules or roles are defined.
 func (c *Context) HasAccessControl() bool {
 	return len(c.AccessRules) > 0 || len(c.Roles) > 0
@@ -1997,11 +2031,6 @@ func (c *Context) TransitionHasDynamicRoles(transitionID string) bool {
 		}
 	}
 	return false
-}
-
-// HasWebhooks returns true if the context has any webhooks defined.
-func (c *Context) HasWebhooks() bool {
-	return len(c.Webhooks) > 0
 }
 
 // HasViews returns true if the context has any views defined.
@@ -2273,57 +2302,6 @@ func (c *Context) ResourcePlaces() []PlaceContext {
 	return result
 }
 
-// buildSLAContext converts metamodel.SLAConfig to SLAConfigContext.
-func buildSLAContext(sla *metamodel.SLAConfig) *SLAConfigContext {
-	if sla == nil {
-		return nil
-	}
-
-	ctx := &SLAConfigContext{
-		Default:    sla.Default,
-		ByPriority: sla.ByPriority,
-		WarningAt:  sla.WarningAt,
-		CriticalAt: sla.CriticalAt,
-		OnBreach:   sla.OnBreach,
-	}
-
-	// Set default thresholds if not specified
-	if ctx.WarningAt == 0 {
-		ctx.WarningAt = 0.8 // Default: 80%
-	}
-	if ctx.CriticalAt == 0 {
-		ctx.CriticalAt = 0.95 // Default: 95%
-	}
-
-	// Check if priorities are defined
-	ctx.HasPriorities = len(sla.ByPriority) > 0
-
-	return ctx
-}
-
-// buildPredictionContext converts metamodel.PredictionConfig to PredictionContext.
-func buildPredictionContext(pred *metamodel.PredictionConfig) *PredictionContext {
-	if pred == nil {
-		return nil
-	}
-
-	ctx := &PredictionContext{
-		Enabled:   pred.Enabled,
-		TimeHours: pred.TimeHours,
-		RateScale: pred.RateScale,
-	}
-
-	// Set default values if not specified
-	if ctx.TimeHours == 0 {
-		ctx.TimeHours = 8.0 // Default: 8 hours
-	}
-	if ctx.RateScale == 0 {
-		ctx.RateScale = 0.0001 // Default: from go-pflow
-	}
-
-	return ctx
-}
-
 // buildGraphQLContext converts metamodel.GraphQL to GraphQLContext.
 func buildGraphQLContext(gql *metamodel.GraphQLConfig) *GraphQLContext {
 	if gql == nil {
@@ -2342,392 +2320,4 @@ func buildGraphQLContext(gql *metamodel.GraphQLConfig) *GraphQLContext {
 	}
 
 	return ctx
-}
-
-// buildBlobstoreContext converts metamodel.Blobstore to BlobstoreContext.
-func buildBlobstoreContext(bs *metamodel.BlobstoreConfig) *BlobstoreContext {
-	if bs == nil {
-		return nil
-	}
-
-	ctx := &BlobstoreContext{
-		Enabled:      bs.Enabled,
-		MaxSize:      bs.MaxSize,
-		AllowedTypes: bs.AllowedTypes,
-	}
-
-	// Set default values if not specified
-	if ctx.MaxSize == 0 {
-		ctx.MaxSize = 10 * 1024 * 1024 // Default: 10MB
-	}
-	if len(ctx.AllowedTypes) == 0 {
-		ctx.AllowedTypes = []string{"application/json", "*/*"}
-	}
-
-	return ctx
-}
-
-// buildTimersContext converts metamodel.Timer slice to TimerContext slice.
-func buildTimersContext(timers []metamodel.Timer) []TimerContext {
-	if len(timers) == 0 {
-		return nil
-	}
-	result := make([]TimerContext, len(timers))
-	for i, t := range timers {
-		id := t.ID
-		if id == "" {
-			id = t.Transition
-		}
-		result[i] = TimerContext{
-			ID:         id,
-			Transition: t.Transition,
-			After:      t.After,
-			Cron:       t.Cron,
-			From:       t.From,
-			Condition:  t.Condition,
-			Repeat:     t.Repeat,
-			PascalName: ToPascalCase(t.Transition),
-		}
-	}
-	return result
-}
-
-// buildNotificationsContext converts metamodel.Notification slice to NotificationContext slice.
-func buildNotificationsContext(notifications []metamodel.Notification) []NotificationContext {
-	if len(notifications) == 0 {
-		return nil
-	}
-	result := make([]NotificationContext, len(notifications))
-	for i, n := range notifications {
-		id := n.ID
-		if id == "" {
-			id = n.On + "_" + n.Channel
-		}
-		result[i] = NotificationContext{
-			ID:         id,
-			On:         n.On,
-			Channel:    n.Channel,
-			To:         n.To,
-			Template:   n.Template,
-			Subject:    n.Subject,
-			Webhook:    n.Webhook,
-			Condition:  n.Condition,
-			Data:       n.Data,
-			PascalName: ToPascalCase(id),
-		}
-	}
-	return result
-}
-
-// buildRelationshipsContext converts metamodel.Relationship slice to RelationshipContext slice.
-func buildRelationshipsContext(relationships []metamodel.Relationship) []RelationshipContext {
-	if len(relationships) == 0 {
-		return nil
-	}
-	result := make([]RelationshipContext, len(relationships))
-	for i, r := range relationships {
-		result[i] = RelationshipContext{
-			Name:         r.Name,
-			Type:         r.Type,
-			Target:       r.Target,
-			ForeignKey:   r.ForeignKey,
-			Cascade:      r.Cascade,
-			PascalName:   ToPascalCase(r.Name),
-			TargetPascal: ToPascalCase(r.Target),
-			IsHasMany:    r.Type == "hasMany",
-			IsHasOne:     r.Type == "hasOne",
-			IsBelongsTo:  r.Type == "belongsTo",
-		}
-	}
-	return result
-}
-
-// buildComputedContext converts metamodel.ComputedField slice to ComputedFieldContext slice.
-func buildComputedContext(computed []metamodel.ComputedField) []ComputedFieldContext {
-	if len(computed) == 0 {
-		return nil
-	}
-	result := make([]ComputedFieldContext, len(computed))
-	for i, c := range computed {
-		goType := "any"
-		switch c.Type {
-		case "string":
-			goType = "string"
-		case "number":
-			goType = "float64"
-		case "boolean":
-			goType = "bool"
-		case "array":
-			goType = "[]any"
-		}
-		result[i] = ComputedFieldContext{
-			Name:        c.Name,
-			Type:        c.Type,
-			Expr:        c.Expr,
-			GoType:      goType,
-			DependsOn:   c.DependsOn,
-			Persisted:   c.Persisted,
-			Description: c.Description,
-			PascalName:  ToPascalCase(c.Name),
-		}
-	}
-	return result
-}
-
-// buildIndexesContext converts metamodel.Index slice to IndexContext slice.
-func buildIndexesContext(indexes []metamodel.Index) []IndexContext {
-	if len(indexes) == 0 {
-		return nil
-	}
-	result := make([]IndexContext, len(indexes))
-	for i, idx := range indexes {
-		name := idx.Name
-		if name == "" {
-			name = "idx_" + indexes[i].Fields[0]
-		}
-		result[i] = IndexContext{
-			Name:       name,
-			Fields:     idx.Fields,
-			Type:       idx.Type,
-			Unique:     idx.Unique,
-			PascalName: ToPascalCase(name),
-		}
-	}
-	return result
-}
-
-// buildApprovalsContext converts schema approval chains to ApprovalChainContext map.
-func buildApprovalsContext(approvals map[string]*metamodel.ApprovalChain) map[string]*ApprovalChainContext {
-	if len(approvals) == 0 {
-		return nil
-	}
-	result := make(map[string]*ApprovalChainContext)
-	for id, chain := range approvals {
-		levels := make([]ApprovalLevelContext, len(chain.Levels))
-		for j, lvl := range chain.Levels {
-			levels[j] = ApprovalLevelContext{
-				Role:       lvl.Role,
-				User:       lvl.User,
-				Condition:  lvl.Condition,
-				Required:   lvl.Required,
-				Transition: lvl.Transition,
-				Level:      j + 1,
-			}
-			if levels[j].Required == 0 {
-				levels[j].Required = 1
-			}
-		}
-		result[id] = &ApprovalChainContext{
-			ID:            id,
-			Levels:        levels,
-			EscalateAfter: chain.EscalateAfter,
-			OnReject:      chain.OnReject,
-			OnApprove:     chain.OnApprove,
-			Parallel:      chain.Parallel,
-			PascalName:    ToPascalCase(id),
-		}
-	}
-	return result
-}
-
-// buildTemplatesContext converts metamodel.Template slice to TemplateContext slice.
-func buildTemplatesContext(templates []metamodel.Template) []TemplateContext {
-	if len(templates) == 0 {
-		return nil
-	}
-	result := make([]TemplateContext, len(templates))
-	for i, t := range templates {
-		dataJSON := "{}"
-		if t.Data != nil {
-			// Simple JSON encoding for templates
-			dataJSON = "{}"
-		}
-		result[i] = TemplateContext{
-			ID:          t.ID,
-			Name:        t.Name,
-			Description: t.Description,
-			Data:        t.Data,
-			Roles:       t.Roles,
-			Default:     t.Default,
-			PascalName:  ToPascalCase(t.ID),
-			DataJSON:    dataJSON,
-		}
-	}
-	return result
-}
-
-// buildBatchContext converts metamodel.BatchConfig to BatchContext.
-func buildBatchContext(batch *metamodel.BatchConfig) *BatchContext {
-	if batch == nil {
-		return nil
-	}
-	maxSize := batch.MaxSize
-	if maxSize == 0 {
-		maxSize = 100
-	}
-	return &BatchContext{
-		Enabled:     batch.Enabled,
-		Transitions: batch.Transitions,
-		MaxSize:     maxSize,
-	}
-}
-
-// buildInboundWebhooksContext converts metamodel.InboundWebhook slice to InboundWebhookContext slice.
-func buildInboundWebhooksContext(webhooks []metamodel.InboundWebhook) []InboundWebhookContext {
-	if len(webhooks) == 0 {
-		return nil
-	}
-	result := make([]InboundWebhookContext, len(webhooks))
-	for i, w := range webhooks {
-		id := w.ID
-		if id == "" {
-			id = w.Transition
-		}
-		method := w.Method
-		if method == "" {
-			method = "POST"
-		}
-		result[i] = InboundWebhookContext{
-			ID:         id,
-			Path:       w.Path,
-			Secret:     w.Secret,
-			Transition: w.Transition,
-			Map:        w.Map,
-			Condition:  w.Condition,
-			Method:     method,
-			PascalName: ToPascalCase(id),
-		}
-	}
-	return result
-}
-
-// buildDocumentsContext converts metamodel.Document slice to DocumentContext slice.
-func buildDocumentsContext(documents []metamodel.Document) []DocumentContext {
-	if len(documents) == 0 {
-		return nil
-	}
-	result := make([]DocumentContext, len(documents))
-	for i, d := range documents {
-		format := d.Format
-		if format == "" {
-			format = "pdf"
-		}
-		result[i] = DocumentContext{
-			ID:          d.ID,
-			Name:        d.Name,
-			Template:    d.Template,
-			Format:      format,
-			Trigger:     d.Trigger,
-			StoreTo:     d.StoreTo,
-			Filename:    d.Filename,
-			Description: d.Description,
-			PascalName:  ToPascalCase(d.ID),
-		}
-	}
-	return result
-}
-
-// buildCommentsContext converts metamodel.CommentsConfig to CommentsContext.
-func buildCommentsContext(comments *metamodel.CommentsConfig) *CommentsContext {
-	if comments == nil {
-		return nil
-	}
-	maxLength := comments.MaxLength
-	if maxLength == 0 {
-		maxLength = 2000
-	}
-	return &CommentsContext{
-		Enabled:    comments.Enabled,
-		Roles:      comments.Roles,
-		Moderation: comments.Moderation,
-		MaxLength:  maxLength,
-	}
-}
-
-// buildTagsContext converts metamodel.TagsConfig to TagsContext.
-func buildTagsContext(tags *metamodel.TagsConfig) *TagsContext {
-	if tags == nil {
-		return nil
-	}
-	maxTags := tags.MaxTags
-	if maxTags == 0 {
-		maxTags = 10
-	}
-	freeForm := tags.FreeForm
-	if !freeForm && len(tags.Predefined) == 0 {
-		freeForm = true // Default to free-form if no predefined tags
-	}
-	return &TagsContext{
-		Enabled:    tags.Enabled,
-		Predefined: tags.Predefined,
-		FreeForm:   freeForm,
-		MaxTags:    maxTags,
-		Colors:     tags.Colors,
-	}
-}
-
-// buildActivityContext converts metamodel.ActivityConfig to ActivityContext.
-func buildActivityContext(activity *metamodel.ActivityConfig) *ActivityContext {
-	if activity == nil {
-		return nil
-	}
-	maxItems := activity.MaxItems
-	if maxItems == 0 {
-		maxItems = 100
-	}
-	return &ActivityContext{
-		Enabled:       activity.Enabled,
-		IncludeEvents: activity.IncludeEvents,
-		ExcludeEvents: activity.ExcludeEvents,
-		MaxItems:      maxItems,
-	}
-}
-
-// buildFavoritesContext converts metamodel.FavoritesConfig to FavoritesContext.
-func buildFavoritesContext(favorites *metamodel.FavoritesConfig) *FavoritesContext {
-	if favorites == nil {
-		return nil
-	}
-	maxFavorites := favorites.MaxFavorites
-	if maxFavorites == 0 {
-		maxFavorites = 100
-	}
-	return &FavoritesContext{
-		Enabled:      favorites.Enabled,
-		Notify:       favorites.Notify,
-		MaxFavorites: maxFavorites,
-	}
-}
-
-// buildExportContext converts metamodel.ExportConfig to ExportContext.
-func buildExportContext(export *metamodel.ExportConfig) *ExportContext {
-	if export == nil {
-		return nil
-	}
-	formats := export.Formats
-	if len(formats) == 0 {
-		formats = []string{"csv", "json"}
-	}
-	maxRows := export.MaxRows
-	if maxRows == 0 {
-		maxRows = 10000
-	}
-	return &ExportContext{
-		Enabled: export.Enabled,
-		Formats: formats,
-		MaxRows: maxRows,
-		Roles:   export.Roles,
-	}
-}
-
-// buildSoftDeleteContext converts metamodel.SoftDeleteConfig to SoftDeleteContext.
-func buildSoftDeleteContext(softDelete *metamodel.SoftDeleteConfig) *SoftDeleteContext {
-	if softDelete == nil {
-		return nil
-	}
-	return &SoftDeleteContext{
-		Enabled:       softDelete.Enabled,
-		RetentionDays: softDelete.RetentionDays,
-		RestoreRoles:  softDelete.RestoreRoles,
-	}
 }

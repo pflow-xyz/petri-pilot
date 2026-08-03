@@ -25,7 +25,7 @@ Petri-pilot currently provides:
 | Introspection support | ✅ Working | `buildIntrospection()` |
 | Interactive playground | ✅ Working | `/graphql/i` |
 | Model-driven schema generation | ✅ Working | `templates/graphql_*.tmpl` |
-| Generated resolvers | ✅ Working | `generated/*/graphql.go` |
+| Generated resolvers | ✅ Working | `examples/*/graphql.go` |
 
 ## Target State (go-pflow)
 

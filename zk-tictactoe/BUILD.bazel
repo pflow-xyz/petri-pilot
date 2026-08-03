@@ -17,7 +17,7 @@ go_library(
     importpath = "github.com/pflow-xyz/petri-pilot/zk-tictactoe",
     visibility = ["//visibility:public"],
     deps = [
-        "//generated/tictactoe",
+        "//examples/tictactoe",
         "//pkg/serve",
         "@com_github_consensys_gnark//frontend",
         "@com_github_consensys_gnark//std/hash/mimc",

@@ -57,7 +57,7 @@ func hasFile(files []GeneratedFile, name string) bool {
 
 func TestBazel_SubmoduleEmitsBuildFile(t *testing.T) {
 	gen, err := New(Options{
-		ModulePath:   "github.com/pflow-xyz/petri-pilot/generated/order",
+		ModulePath:   "github.com/pflow-xyz/petri-pilot/examples/order",
 		PackageName:  "order",
 		AsSubmodule:  true,
 		IncludeBazel: true,
@@ -78,7 +78,7 @@ func TestBazel_SubmoduleEmitsBuildFile(t *testing.T) {
 	for _, want := range []string{
 		`go_library(`,
 		`name = "order"`,
-		`importpath = "github.com/pflow-xyz/petri-pilot/generated/order"`,
+		`importpath = "github.com/pflow-xyz/petri-pilot/examples/order"`,
 		`srcs = glob(["*.go"], exclude = ["*_test.go"]),  # keep`,
 		`"//pkg/runtime/api"`,
 		`"@com_github_pflow_xyz_go_pflow//eventsource"`,
@@ -151,7 +151,7 @@ func TestBazel_StandaloneEmitsModuleFiles(t *testing.T) {
 func TestBazel_GraphSubpackageGatedOnGraphQL(t *testing.T) {
 	// Without GraphQL: no graph/BUILD.bazel and no graph dep.
 	gen, _ := New(Options{
-		ModulePath:   "github.com/pflow-xyz/petri-pilot/generated/order",
+		ModulePath:   "github.com/pflow-xyz/petri-pilot/examples/order",
 		PackageName:  "order",
 		AsSubmodule:  true,
 		IncludeBazel: true,
@@ -170,7 +170,7 @@ func TestBazel_GraphSubpackageGatedOnGraphQL(t *testing.T) {
 
 func TestBazel_NotEmittedWhenDisabled(t *testing.T) {
 	gen, _ := New(Options{
-		ModulePath:   "github.com/pflow-xyz/petri-pilot/generated/order",
+		ModulePath:   "github.com/pflow-xyz/petri-pilot/examples/order",
 		PackageName:  "order",
 		AsSubmodule:  true,
 		IncludeBazel: false,

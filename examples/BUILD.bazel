@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "generated",
+    srcs = ["imports.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//examples/coffeeshop",
+        "//examples/diningphilosophers",
+        "//examples/enzymekinetics",
+        "//examples/galtonboard",
+        "//examples/hiringpipeline",
+        "//examples/knapsack",
+        "//examples/loanapproval",
+        "//examples/marchmadness2026",
+        "//examples/predatorprey",
+        "//examples/producerconsumer",
+        "//examples/stoplight",
+        "//examples/tcphandshake",
+        "//examples/texasholdem",
+        "//examples/thermostat",
+        "//examples/tictactoe",
+    ],
+)

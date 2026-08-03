@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "diningphilosophers",
+    srcs = [
+        "aggregate.go",
+        "api.go",
+        "api_events.go",
+        "config.go",
+        "debug.go",
+        "events.go",
+        "graphql.go",
+        "service.go",
+        "workflow.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples/diningphilosophers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//examples/diningphilosophers/graph",
+        "//pkg/runtime/api",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)
+
+go_test(
+    name = "diningphilosophers_test",
+    srcs = ["workflow_test.go"],
+    embed = [":diningphilosophers"],
+    deps = ["@com_github_pflow_xyz_go_pflow//eventsource"],
+)

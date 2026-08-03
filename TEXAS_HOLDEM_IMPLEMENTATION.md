@@ -86,7 +86,7 @@ User Action → Build Petri Net → Solve ODE → Display Expected Values
 To make the frontend fully functional:
 
 1. **Register Texas Hold'em Service**
-   - The backend exists in `generated/texas-holdem/`
+   - The backend exists in `examples/texas-holdem/`
    - Need to create `service.go` to register with serve framework
    - Import in `cmd/petri-pilot/serve_import.go`
 
@@ -121,15 +121,15 @@ Manual testing checklist:
 
 Complete documentation available in:
 - `frontends/texas-holdem/README.md` - Frontend usage and API
-- `generated/texas-holdem/README.md` - Backend API reference
+- `examples/texas-holdem/README.md` - Backend API reference
 - `e2e/tests/texas-holdem.test.js` - Test examples
 
 ### 🔗 References
 
 - **tic-tac-toe implementation**: `frontends/tic-tac-toe/` (reference pattern)
 - **pflow.xyz solver**: https://github.com/pflow-xyz/pflow-xyz
-- **Backend API**: `generated/texas-holdem/api.go`
-- **Petri net workflow**: `generated/texas-holdem/workflow.go`
+- **Backend API**: `examples/texas-holdem/api.go`
+- **Petri net workflow**: `examples/texas-holdem/workflow.go`
 
 ## Summary
 

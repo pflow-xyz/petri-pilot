@@ -281,6 +281,35 @@ type GuardEvaluator interface {
 	EvaluateConstraint(expr string, tokens map[string]int) (bool, error)
 }
 
+// MarkingAggregator is an optional interface a GuardEvaluator may implement to
+// expose marking-aware functions — tokens(), sum(), count() and friends — to
+// *transition* guards.
+//
+// Without it those functions are only available to constraint/invariant
+// evaluation, so a guard like `tokens("inventory/available") > 0` silently
+// fails to resolve. That matters because it is exactly the shape a composed
+// GuardLink lowers to (go-pflow's metamodel.Bundle emits it for any condition
+// an inhibitor arc cannot express), so the guard would be a no-op at runtime
+// and the composition would be less restrictive than the model says.
+//
+// It is an optional interface rather than a method on GuardEvaluator so that
+// existing implementations keep compiling, and because pkg/metamodel cannot
+// import pkg/dsl — the dependency runs the other way.
+type MarkingAggregator interface {
+	// Aggregates returns marking-aware guard functions for the given token counts.
+	Aggregates(tokens map[string]int) map[string]GuardFunc
+}
+
+// markingFuncs returns the marking-aware guard functions for the current state,
+// or nil when the evaluator does not provide them.
+func (r *Runtime) markingFuncs() map[string]GuardFunc {
+	ma, ok := r.GuardEvaluator.(MarkingAggregator)
+	if !ok || r.Snapshot == nil {
+		return nil
+	}
+	return ma.Aggregates(r.Snapshot.Tokens)
+}
+
 // Runtime holds the execution state of a schema.
 type Runtime struct {
 	Schema           *Schema
@@ -368,7 +397,44 @@ func (r *Runtime) Enabled(actionID string) bool {
 		}
 	}
 
-	return true
+	// A guard is part of the firing rule, so a transition whose guard is false
+	// is not enabled. Leaving it out made Enabled and Execute disagree:
+	// EnabledTransitions would offer a transition that then refused with
+	// ErrGuardNotSatisfied, so any UI or planner driven off enablement would
+	// present actions that cannot be taken.
+	//
+	// Enabled takes no bindings, so — exactly as in Execute — only the part of
+	// a guard decidable from the marking is enforced. An expression needing
+	// parameters cannot be judged here, and an evaluation error means
+	// "undecidable", not "refused"; use EnabledWithBindings when parameters
+	// matter.
+	return r.guardAllows(a, Bindings{})
+}
+
+// EnabledWithBindings is Enabled with action parameters supplied, so guards over
+// bindings are decided rather than skipped.
+func (r *Runtime) EnabledWithBindings(actionID string, bindings Bindings) bool {
+	if !r.Enabled(actionID) {
+		return false
+	}
+	a := r.Schema.ActionByID(actionID)
+	if a == nil {
+		return false
+	}
+	return r.guardAllows(a, bindings)
+}
+
+// guardAllows reports whether an action's guard permits firing. A guard that
+// cannot be evaluated from what is available does not block.
+func (r *Runtime) guardAllows(a *Action, bindings Bindings) bool {
+	if a.Guard == "" || r.GuardEvaluator == nil {
+		return true
+	}
+	ok, err := r.GuardEvaluator.Evaluate(a.Guard, bindings, r.markingFuncs())
+	if err != nil {
+		return true // undecidable here, not refused
+	}
+	return ok
 }
 
 // EnabledActions returns all actions that can execute.
@@ -385,9 +451,26 @@ func (r *Runtime) EnabledActions() []string {
 // Execute runs an action.
 // For TokenStates: consumes/produces tokens (Petri net semantics)
 // For DataStates: no automatic transformation (use ExecuteWithBindings for data)
+//
+// Guards: Execute takes no bindings, so it enforces the part of a guard that can
+// be decided from the marking alone — tokens("p") > 0 and the other aggregate
+// functions. A guard referring to action parameters cannot be decided here (the
+// caller supplied none), so it is left unenforced rather than failing the call;
+// use ExecuteWithBindings when parameters matter.
+//
+// Previously no guard was evaluated at all, which made petri_simulate report a
+// transition as fired when the model forbids it.
 func (r *Runtime) Execute(actionID string) error {
 	if !r.Enabled(actionID) {
 		return ErrActionNotEnabled
+	}
+
+	if a := r.Schema.ActionByID(actionID); a != nil && a.Guard != "" && r.GuardEvaluator != nil {
+		// An evaluation error means the expression referenced something this
+		// bindings-free path cannot supply; that is not a refusal.
+		if ok, err := r.GuardEvaluator.Evaluate(a.Guard, Bindings{}, r.markingFuncs()); err == nil && !ok {
+			return ErrGuardNotSatisfied
+		}
 	}
 
 	// Process input arcs
@@ -442,9 +525,12 @@ func (r *Runtime) ExecuteWithBindings(actionID string, bindings Bindings) error 
 		return ErrActionNotFound
 	}
 
-	// Evaluate guard if present and evaluator is set
+	// Evaluate guard if present and evaluator is set.
+	//
+	// Marking-aware functions are supplied alongside the bindings, so a guard
+	// may read token counts — tokens("p") > 0 — as well as its parameters.
 	if a.Guard != "" && r.GuardEvaluator != nil {
-		ok, err := r.GuardEvaluator.Evaluate(a.Guard, bindings, nil)
+		ok, err := r.GuardEvaluator.Evaluate(a.Guard, bindings, r.markingFuncs())
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrGuardEvaluation, err)
 		}

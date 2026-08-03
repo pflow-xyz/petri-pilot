@@ -2,13 +2,18 @@
 
 package {{.PackageName}}
 
-{{- if .Coordinators}}
+{{- if .HasCommands}}
 
 import (
+{{- if .FirstPlainCommand}}
 	"bytes"
+{{- end}}
 	"context"
+{{- if .FirstPlainCommand}}
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
+{{- end}}
 	"testing"
 
 	"github.com/pflow-xyz/go-pflow/eventsource"
@@ -18,11 +23,45 @@ import (
 {{- end}}
 )
 
-{{$first := index .Coordinators 0}}
-// TestCoordinatorAtomicAppend fires the {{$first.FlatID}} coordinator once
+// TestCrossEntityTransitionsAreRefusedByEntities pins the boundary: every
+// transition a command owns is unreachable through its entity's own API.
+//
+// Both halves matter. CanFire must say false — an entity that offers a
+// transition and then refuses it has an Enabled/Execute divergence, and here
+// the divergence would be invisible to any single-entity test. Fire must
+// refuse — a fused member fired standalone advances one entity's marking with
+// no rendezvous, and a guarded one fires with its cross-entity precondition
+// unchecked, which is exactly the hole this table closes.
+func TestCrossEntityTransitionsAreRefusedByEntities(t *testing.T) {
+{{- range $c := .Commands}}
+{{- range $c.Members}}
+	{
+		agg := {{.PackageName}}.NewAggregate("refuse-1")
+		if agg.CanFire({{.PackageName}}.{{.ConstName}}) {
+			t.Errorf("{{.SubnetID}}: CanFire(%s) is true, but {{$c.FlatID}} owns it", {{.PackageName}}.{{.ConstName}})
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == {{.PackageName}}.{{.ConstName}} {
+				t.Errorf("{{.SubnetID}}: EnabledTransitions offers %s, which only {{$c.FlatID}} may fire", id)
+			}
+		}
+		if _, err := agg.Fire({{.PackageName}}.{{.ConstName}}, nil); err == nil {
+			t.Errorf("{{.SubnetID}}: Fire(%s) succeeded standalone; {{$c.FlatID}} must be the only way in", {{.PackageName}}.{{.ConstName}})
+		}
+		app := {{.PackageName}}.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", {{.PackageName}}.{{.ConstName}}, nil); err == nil {
+			t.Errorf("{{.SubnetID}}: Execute(%s) succeeded standalone", {{.PackageName}}.{{.ConstName}})
+		}
+	}
+{{- end}}
+{{- end}}
+}
+{{- with $first := .FirstPlainCommand}}
+
+// TestCommandAtomicAppend fires the {{$first.FlatID}} command once
 // and asserts one event landed in EVERY member entity's log — the composed
 // firing is one atomic step.
-func TestCoordinatorAtomicAppend(t *testing.T) {
+func TestCommandAtomicAppend(t *testing.T) {
 	store := eventsource.NewMemoryStore()
 	app, err := NewApp(store)
 	if err != nil {
@@ -31,7 +70,7 @@ func TestCoordinatorAtomicAppend(t *testing.T) {
 	ctx := context.Background()
 
 	ids := map[string]string{
-{{- range $first.Members}}
+{{- range $first.Participants}}
 		"{{.SubnetID}}": "test-1",
 {{- end}}
 	}
@@ -48,21 +87,53 @@ func TestCoordinatorAtomicAppend(t *testing.T) {
 		if events[0].Type != "{{.EventID}}" {
 			t.Errorf("{{.SubnetID}} event type = %q, want %q", events[0].Type, "{{.EventID}}")
 		}
+		if events[0].Metadata[MetadataCommand] != "{{$first.FlatID}}" {
+			t.Errorf("{{.SubnetID}} event is not attributed to its command: %v", events[0].Metadata)
+		}
 	}
 {{- end}}
 }
 
-// TestCoordinatorReplayParity replays each member's own log and asserts the
-// aggregate reaches the marking the fused firing implies — each entity's
-// history is independently sufficient.
-func TestCoordinatorReplayParity(t *testing.T) {
+// singleStreamStore fails any read outside one stream. It is how
+// TestReplayIsPure turns "replay does not consult siblings" from an assertion
+// about the code into an assertion the test can actually make.
+type singleStreamStore struct {
+	eventsource.Store
+	allowed string
+}
+
+func (s singleStreamStore) Read(ctx context.Context, streamID string, fromVersion int) ([]*eventsource.Event, error) {
+	if streamID != s.allowed {
+		return nil, fmt.Errorf("replay read stream %q; only %q is available", streamID, s.allowed)
+	}
+	return s.Store.Read(ctx, streamID, fromVersion)
+}
+
+func (s singleStreamStore) ReadAll(ctx context.Context, filter eventsource.EventFilter) ([]*eventsource.Event, error) {
+	return nil, fmt.Errorf("replay called ReadAll; only stream %q is available", s.allowed)
+}
+
+// TestReplayIsPure is the load-bearing claim of the whole composition: an
+// entity's own event log is sufficient to rebuild that entity, even for a
+// command that was decided by reading other entities.
+//
+// The witness recorded in each event's metadata is evidence, not input. If
+// rebuilding state ever needed it — or needed a sibling stream — then no
+// entity could be restored without the whole system, backups would have to be
+// consistent across entities, and replay would stop being a pure fold. This
+// test fires a real cross-entity command and then replays each member against
+// a store that refuses every other stream.
+func TestReplayIsPure(t *testing.T) {
 	store := eventsource.NewMemoryStore()
-	app, _ := NewApp(store)
+	app, err := NewApp(store)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 
 	ids := map[string]string{
-{{- range $first.Members}}
-		"{{.SubnetID}}": "replay-1",
+{{- range $first.Participants}}
+		"{{.SubnetID}}": "pure-1",
 {{- end}}
 	}
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
@@ -71,32 +142,61 @@ func TestCoordinatorReplayParity(t *testing.T) {
 
 {{- range $first.Members}}
 	{
-		agg := {{.PackageName}}.NewAggregate("replay-1")
-		events, _ := store.Read(ctx, StreamID("{{.SubnetID}}", "replay-1"), 0)
-		for _, e := range events {
-			if err := agg.Apply(e); err != nil {
-				t.Fatalf("{{.SubnetID}} replay: %v", err)
+		isolated := {{.PackageName}}.NewApplication(singleStreamStore{Store: store, allowed: StreamID("{{.SubnetID}}", "pure-1")})
+		agg, err := isolated.Load(ctx, "pure-1")
+		if err != nil {
+			t.Fatalf("{{.SubnetID}}: replay is not pure — %v", err)
+		}
+		places := agg.Places()
+		initial := {{.PackageName}}.InitialPlaces()
+		same := true
+		for id, n := range initial {
+			if places[id] != n {
+				same = false
 			}
 		}
-		// The member transition consumed its input marking: it must not be
-		// fireable again from the replayed state.
-		if agg.CanFire({{.PackageName}}.{{.ConstName}}) {
-			t.Errorf("{{.SubnetID}}: %s still enabled after replay — state did not advance", {{.PackageName}}.{{.ConstName}})
+		if same {
+			t.Errorf("{{.SubnetID}}: replaying its own log alone left the initial marking %v; the command's effect was not reconstructed", places)
 		}
 	}
 {{- end}}
 }
 
-// TestCoordinatorRefusalAppendsNothing fires the coordinator twice; the
-// second firing must refuse (the marking moved on) and must leave every log
-// exactly as the first firing left it.
-func TestCoordinatorRefusalAppendsNothing(t *testing.T) {
+// TestCommandReplayParity replays each member's own log and asserts the
+// aggregate reaches the marking the command implies — each entity's history is
+// independently sufficient.
+func TestCommandReplayParity(t *testing.T) {
 	store := eventsource.NewMemoryStore()
 	app, _ := NewApp(store)
 	ctx := context.Background()
 
 	ids := map[string]string{
-{{- range $first.Members}}
+{{- range $first.Participants}}
+		"{{.SubnetID}}": "replay-1",
+{{- end}}
+	}
+	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// Firing again must refuse: the members' markings moved on. This is the
+	// replay claim stated as behaviour — the second attempt reads the same
+	// logs and reaches the same conclusion the first firing left behind.
+	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err == nil {
+		t.Error("second firing succeeded — the replayed state did not advance")
+	}
+}
+
+// TestCommandRefusalAppendsNothing fires the command twice; the second firing
+// must refuse (the marking moved on) and must leave every log exactly as the
+// first firing left it.
+func TestCommandRefusalAppendsNothing(t *testing.T) {
+	store := eventsource.NewMemoryStore()
+	app, _ := NewApp(store)
+	ctx := context.Background()
+
+	ids := map[string]string{
+{{- range $first.Participants}}
 		"{{.SubnetID}}": "twice-1",
 {{- end}}
 	}
@@ -122,15 +222,15 @@ func TestCoordinatorRefusalAppendsNothing(t *testing.T) {
 {{- end}}
 }
 
-// TestCoordinatorHTTP drives the coordinator through its HTTP surface.
-func TestCoordinatorHTTP(t *testing.T) {
+// TestCommandHTTP drives the command through its HTTP surface.
+func TestCommandHTTP(t *testing.T) {
 	store := eventsource.NewMemoryStore()
 	app, _ := NewApp(store)
 	srv := httptest.NewServer(app.Handler())
 	defer srv.Close()
 
 	body, _ := json.Marshal(map[string]any{"ids": map[string]string{
-{{- range $first.Members}}
+{{- range $first.Participants}}
 		"{{.SubnetID}}": "http-1",
 {{- end}}
 	}})
@@ -154,4 +254,5 @@ func TestCoordinatorHTTP(t *testing.T) {
 		t.Fatalf("refused firing status = %d, want 409", resp2.StatusCode)
 	}
 }
+{{- end}}
 {{- end}}

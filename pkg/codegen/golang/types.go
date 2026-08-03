@@ -206,20 +206,6 @@ func IsNestedMap(typ string) bool {
 	return strings.HasPrefix(innerValue, "map[")
 }
 
-// GuardExpressionToGo converts a guard expression to Go code.
-// Handles common patterns like:
-//   - "balances[from] >= amount" -> "state.Balances[bindings.From] >= bindings.Amount"
-//   - "owner != address(0)" -> `bindings.Owner != ""`
-func GuardExpressionToGo(expr string, statePrefix, bindingsPrefix string) string {
-	if expr == "" {
-		return "true"
-	}
-
-	// This is a simplified conversion - a full implementation would need a parser
-	// For now, we just return the expression as a comment and a placeholder
-	return "/* " + expr + " */ true"
-}
-
 // DataAccessToGo generates Go code for a data access pattern.
 // This is used in templates to generate map access code.
 type DataAccessInfo struct {

@@ -2342,61 +2342,6 @@ func handleBundle(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
-func generateBackendWithAccessControl(gen *golang.Generator, model *goflowmetamodel.Model, accessRules []golang.AccessRuleContext, roles []golang.RoleContext, workflows []golang.WorkflowContext, webhooks []golang.WebhookContext) ([]golang.GeneratedFile, error) {
-	// Build context with access rules, workflows, and webhooks
-	ctx, err := golang.NewContext(model, golang.ContextOptions{
-		PackageName: model.Name,
-		AccessRules: accessRules,
-		Roles:       roles,
-		Workflows:   workflows,
-		Webhooks:    webhooks,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate files manually to inject access control context
-	var files []golang.GeneratedFile
-
-	// Get template names
-	templates := gen.GetTemplates()
-	templateNames := []string{
-		golang.TemplateGoMod,
-		golang.TemplateMain,
-		golang.TemplateWorkflow,
-		golang.TemplateEvents,
-		golang.TemplateAggregate,
-		golang.TemplateAPI,
-		golang.TemplateOpenAPI,
-		golang.TemplateTest,
-		golang.TemplateMigrations,
-	}
-
-	// Add auth templates if we have access rules or roles
-	if len(accessRules) > 0 || len(roles) > 0 {
-		templateNames = append(templateNames, golang.TemplateAuth, golang.TemplateMiddleware)
-	}
-
-	// Add workflows template if we have workflows (Phase 12)
-	if len(workflows) > 0 {
-		templateNames = append(templateNames, golang.TemplateWorkflows)
-	}
-
-	for _, name := range templateNames {
-		content, err := templates.Execute(name, ctx)
-		if err != nil {
-			return nil, fmt.Errorf("executing template %s: %w", name, err)
-		}
-
-		files = append(files, golang.GeneratedFile{
-			Name:    templates.OutputFileName(name),
-			Content: content,
-		})
-	}
-
-	return files, nil
-}
-
 // Helper to generate frontend with pages
 func generateFrontendWithPages(gen *esmodules.Generator, model *goflowmetamodel.Model, pages []esmodules.PageContext) ([]esmodules.GeneratedFile, error) {
 	// Build context with pages

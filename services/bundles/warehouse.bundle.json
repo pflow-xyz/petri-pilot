@@ -1,0 +1,23 @@
+{
+  "name": "warehouse",
+  "description": "Exercises two link kinds at once. An event link fuses placing an order with reserving stock, so the two fire atomically. A guard link then gates shipping on stock actually being reserved — a cross-subnet precondition that is checked but consumes nothing, which lowers to a marking expression rather than an arc.",
+  "subnets": [
+    {"id": "order", "net_type": "workflow", "model_ref": "order.json"},
+    {"id": "inventory", "net_type": "workflow", "model_ref": "inventory.json"}
+  ],
+  "links": [
+    {
+      "id": "order_reserves_stock",
+      "kind": "event",
+      "from": {"subnet": "order", "transition": "place_order"},
+      "to": {"subnet": "inventory", "transition": "reserve_stock"}
+    },
+    {
+      "id": "ship_requires_reserved_stock",
+      "kind": "guard",
+      "from": {"subnet": "order", "transition": "ship"},
+      "to": {"subnet": "inventory", "place": "reserved"},
+      "condition": "> 0"
+    }
+  ]
+}

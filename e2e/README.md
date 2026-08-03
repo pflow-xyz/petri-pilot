@@ -18,7 +18,7 @@ e2e/
 ## Running Tests
 
 ```bash
-cd generated/<app-name>
+cd examples/<app-name>
 npm install
 npx playwright install
 npm test           # API tests

@@ -162,7 +162,7 @@ pkg/serve/           Multi-model HTTP server
 pkg/validator/       Model analysis
 services/            Example models (tic-tac-toe, coffeeshop, knapsack, texas-holdem)
 frontends/           Custom frontends for demos
-generated/           Output from codegen (derived, not source)
+examples/           Output from codegen (derived, not source)
 ```
 
 ## License

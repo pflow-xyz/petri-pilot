@@ -115,7 +115,7 @@ func NewService() (serve.Service, error) {
 		{
 			TransitionID: "{{.TransitionID}}",
 			Roles:        []string{ {{- range .Roles}}"{{.}}", {{end}} },
-			Guard:        "{{.Guard}}",
+			Guard:        {{printf "%q" .Guard}},
 		},
 		{{- end}}
 	}

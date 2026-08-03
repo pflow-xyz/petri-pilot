@@ -21,14 +21,15 @@ func ToPascalCase(s string) string {
 		return ""
 	}
 
-	// Replace separators with spaces for splitting. Dots appear in
-	// bundle-namespaced event IDs ("order.place_order"); they separate
-	// words in the identifier and survive only in the wire-format string.
-	s = strings.ReplaceAll(s, "_", " ")
-	s = strings.ReplaceAll(s, "-", " ")
-	s = strings.ReplaceAll(s, ".", " ")
-
-	words := strings.Fields(s)
+	// Every non-alphanumeric rune is a word separator. Underscores, dashes and
+	// dots are the familiar ones; a flattened bundle model also produces IDs
+	// like "orders/ship", "fused:a/t+b/t" and "wire:b/ready", and none of
+	// "/", ":" or "+" may survive into a Go identifier. Splitting on the whole
+	// class rather than an enumerated set means a new namespacing separator in
+	// go-pflow cannot silently emit uncompilable code here.
+	words := strings.FieldsFunc(s, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
 	var result strings.Builder
 
 	for _, word := range words {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/pflow-xyz/petri-pilot/generated/tictactoe"
+	"github.com/pflow-xyz/petri-pilot/examples/tictactoe"
 	"github.com/pflow-xyz/petri-pilot/pkg/serve"
 )
 

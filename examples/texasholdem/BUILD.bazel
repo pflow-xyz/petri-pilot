@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "texasholdem",
+    srcs = [
+        "aggregate.go",
+        "api.go",
+        "api_events.go",
+        "auth.go",
+        "config.go",
+        "debug.go",
+        "events.go",
+        "graphql.go",
+        "middleware.go",
+        "permissions.go",
+        "service.go",
+        "workflow.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples/texasholdem",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//examples/texasholdem/graph",
+        "//pkg/dsl",
+        "//pkg/runtime/api",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@org_golang_x_oauth2//:oauth2",
+        "@org_golang_x_oauth2//github",
+    ],
+)
+
+go_test(
+    name = "texasholdem_test",
+    srcs = ["workflow_test.go"],
+    embed = [":texasholdem"],
+    deps = ["@com_github_pflow_xyz_go_pflow//eventsource"],
+)

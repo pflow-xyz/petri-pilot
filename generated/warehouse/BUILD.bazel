@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "warehouse",
+    srcs = [
+        "app.go",
+        "bundle.go",
+        "flatmodel.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/warehouse",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/warehouse/inventory",
+        "//generated/warehouse/order",
+        "//pkg/dsl",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "warehouse_test",
+    srcs = [
+        "app_test.go",
+        "crossentity_adversarial_test.go",
+        "crosslink_test.go",
+        "streamid_test.go",
+    ],
+    embed = [":warehouse"],
+    deps = [
+        "//generated/warehouse/inventory",
+        "//generated/warehouse/order",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)

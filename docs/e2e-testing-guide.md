@@ -13,7 +13,7 @@ Generated applications include test infrastructure for:
 
 ```bash
 # Navigate to generated app
-cd generated/order-processing
+cd examples/order-processing
 
 # Install dependencies
 npm install
@@ -39,7 +39,7 @@ DEBUG=true npm test
 Each generated app includes:
 
 ```
-generated/<app-name>/
+examples/<app-name>/
 ├── e2e/
 │   ├── api.test.ts          # Backend API tests
 │   ├── app.test.ts          # Frontend E2E tests

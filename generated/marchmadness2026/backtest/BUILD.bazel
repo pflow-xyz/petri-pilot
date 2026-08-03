@@ -1,9 +1,0 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
-
-go_library(
-    name = "backtest",
-    srcs = ["backtest.go"],
-    importpath = "github.com/pflow-xyz/petri-pilot/generated/marchmadness2026/backtest",
-    visibility = ["//visibility:public"],
-    deps = ["//generated/marchmadness2026/data"],
-)

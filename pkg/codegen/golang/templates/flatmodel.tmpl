@@ -11,10 +11,16 @@ import (
 
 // flatModelJSON is the flattened composition of every entity net — places
 // and transitions after link fusion, with fused transitions carrying one
-// Emits entry per member entity. It is the runtime source of truth for
-// enablement and guards: entity aggregates replay their own logs, but a
-// cross-entity command is checked against THIS model before any log is
-// touched.
+// Emits entry per member entity.
+//
+// It is DOCUMENTATION, not the runtime rule. Nothing loads it to decide
+// whether something may fire. Enablement lives in two places and only two:
+// each entity's aggregate for the local part of a firing rule, and app.go's
+// generated command methods for the cross-entity part, where the guards below
+// were compiled into the code that evaluates them.
+//
+// Saying otherwise (as this comment used to) hid a real gap for a while: the
+// guards were here, so they looked enforced, and no code read them.
 const flatModelJSON = {{printf "%q" .FlatModelJSON}}
 
 var (

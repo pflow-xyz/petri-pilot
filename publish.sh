@@ -181,7 +181,7 @@ fi
 echo -e "${YELLOW}==> Staging changes...${NC}"
 git status --short
 
-# Stage changes (exclude generated/ and other artifacts)
+# Stage changes (excluding build artifacts)
 git add -A
 
 # Check if there's anything to commit

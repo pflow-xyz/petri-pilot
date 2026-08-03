@@ -526,10 +526,16 @@ func cmdCodegenBundle(bundlePath, output string, includeTests bool) {
 	modulePath := os.Getenv("PETRI_PILOT_MODULE")
 	if modulePath == "" {
 		clean := filepath.ToSlash(filepath.Clean(output))
-		if idx := strings.Index(clean, "generated/"); idx >= 0 {
-			modulePath = "github.com/pflow-xyz/petri-pilot/" + clean[idx:]
-		} else {
-			modulePath = "app/" + bundlepkg.PackageNameFor(b.Name)
+		// Both in-repo trees are subpackages of the main module: examples/ holds
+		// the frozen reference apps, generated/ the current generator output.
+		// Anything else is someone else's project, so fall back to a standalone
+		// module path.
+		modulePath = "app/" + bundlepkg.PackageNameFor(b.Name)
+		for _, tree := range []string{"examples/", "generated/"} {
+			if idx := strings.Index(clean, tree); idx >= 0 {
+				modulePath = "github.com/pflow-xyz/petri-pilot/" + clean[idx:]
+				break
+			}
 		}
 	}
 

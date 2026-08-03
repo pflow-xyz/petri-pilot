@@ -76,10 +76,10 @@ func TestNewBundleContext(t *testing.T) {
 		}
 	}
 
-	if len(bc.Coordinators) != 1 {
-		t.Fatalf("coordinators = %+v, want 1", bc.Coordinators)
+	if len(bc.Commands) != 1 {
+		t.Fatalf("commands = %+v, want 1", bc.Commands)
 	}
-	coord := bc.Coordinators[0]
+	coord := bc.Commands[0]
 	if coord.Initiator != "order" {
 		t.Errorf("initiator = %q, want order (no incoming EventLink)", coord.Initiator)
 	}
@@ -116,8 +116,8 @@ func TestBundleContextIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(bc.Entities) != 1 || len(bc.Coordinators) != 0 {
-		t.Fatalf("entities=%d coordinators=%d", len(bc.Entities), len(bc.Coordinators))
+	if len(bc.Entities) != 1 || len(bc.Commands) != 0 {
+		t.Fatalf("entities=%d commands=%d", len(bc.Entities), len(bc.Commands))
 	}
 	if !strings.Contains(bc.FlatModelJSON, `"shut"`) {
 		t.Error("identity flatten lost the transition")

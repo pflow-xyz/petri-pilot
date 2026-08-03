@@ -43,12 +43,6 @@ const (
 	// Real-time templates
 	TemplateRealtime = "realtime"
 
-	// Workflow orchestration templates (Phase 12)
-	TemplateWorkflows = "workflows"
-
-	// Webhook integration templates
-	TemplateWebhooks = "webhooks"
-
 	// Views templates (Phase 13)
 	TemplateViews = "views"
 
@@ -64,23 +58,11 @@ const (
 	// Debug templates
 	TemplateDebug = "debug"
 
-	// SLA templates
-	TemplateSLA = "sla"
-
-	// Prediction templates
-	TemplatePrediction = "prediction"
-
 	// GraphQL templates
 	TemplateGraphQLSchema   = "graphql_schema"
 	TemplateGraphQLResolver = "graphql_resolver"
 	TemplateGraphQLServer   = "graphql_server"
 	TemplateGqlgenConfig    = "gqlgen_config"
-
-	// Blobstore templates
-	TemplateBlobstore = "blobstore"
-
-	// Features templates (all higher-level abstractions)
-	TemplateFeatures = "features"
 
 	// Safemath templates (uint256 arithmetic)
 	TemplateSafemath = "safemath"
@@ -131,12 +113,6 @@ var templateInfo = map[string]struct {
 	// Real-time templates
 	TemplateRealtime: {File: "realtime.tmpl", Output: "realtime.go"},
 
-	// Workflow orchestration templates (Phase 12)
-	TemplateWorkflows: {File: "workflows.tmpl", Output: "workflows.go"},
-
-	// Webhook integration templates
-	TemplateWebhooks: {File: "webhooks.tmpl", Output: "webhooks.go"},
-
 	// Views templates (Phase 13)
 	TemplateViews: {File: "views.tmpl", Output: "views.go"},
 
@@ -152,23 +128,11 @@ var templateInfo = map[string]struct {
 	// Debug templates
 	TemplateDebug: {File: "debug.tmpl", Output: "debug.go"},
 
-	// SLA templates
-	TemplateSLA: {File: "sla.tmpl", Output: "sla.go"},
-
-	// Prediction templates
-	TemplatePrediction: {File: "prediction.tmpl", Output: "prediction.go"},
-
 	// GraphQL templates
 	TemplateGraphQLSchema:   {File: "graphql_schema.tmpl", Output: "graph/schema.graphqls"},
 	TemplateGraphQLResolver: {File: "graphql_resolver.tmpl", Output: "graph/resolver.go"},
 	TemplateGraphQLServer:   {File: "graphql_server.tmpl", Output: "graphql.go"},
 	TemplateGqlgenConfig:    {File: "gqlgen_config.tmpl", Output: "gqlgen.yml"},
-
-	// Blobstore templates
-	TemplateBlobstore: {File: "blobstore.tmpl", Output: "blobstore.go"},
-
-	// Features templates
-	TemplateFeatures: {File: "features.tmpl", Output: "features.go"},
 
 	// Safemath templates
 	TemplateSafemath: {File: "safemath.tmpl", Output: "safemath.go"},
@@ -326,20 +290,6 @@ func RealtimeTemplateNames() []string {
 	}
 }
 
-// WorkflowTemplateNames returns template names for workflow orchestration files.
-func WorkflowTemplateNames() []string {
-	return []string{
-		TemplateWorkflows,
-	}
-}
-
-// WebhookTemplateNames returns template names for webhook integration files.
-func WebhookTemplateNames() []string {
-	return []string{
-		TemplateWebhooks,
-	}
-}
-
 // ViewTemplateNames returns template names for view definition files.
 func ViewTemplateNames() []string {
 	return []string{
@@ -389,20 +339,6 @@ func DebugTemplateNames() []string {
 	}
 }
 
-// SLATemplateNames returns template names for SLA tracking files.
-func SLATemplateNames() []string {
-	return []string{
-		TemplateSLA,
-	}
-}
-
-// PredictionTemplateNames returns template names for prediction/simulation files.
-func PredictionTemplateNames() []string {
-	return []string{
-		TemplatePrediction,
-	}
-}
-
 // GraphQLTemplateNames returns template names for GraphQL API files.
 func GraphQLTemplateNames() []string {
 	return []string{
@@ -410,20 +346,6 @@ func GraphQLTemplateNames() []string {
 		TemplateGraphQLResolver,
 		TemplateGraphQLServer,
 		TemplateGqlgenConfig,
-	}
-}
-
-// BlobstoreTemplateNames returns template names for blobstore files.
-func BlobstoreTemplateNames() []string {
-	return []string{
-		TemplateBlobstore,
-	}
-}
-
-// FeaturesTemplateNames returns template names for higher-level feature files.
-func FeaturesTemplateNames() []string {
-	return []string{
-		TemplateFeatures,
 	}
 }
 

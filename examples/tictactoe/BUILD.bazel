@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tictactoe",
+    srcs = [
+        "admin.go",
+        "aggregate.go",
+        "api.go",
+        "api_events.go",
+        "config.go",
+        "debug.go",
+        "events.go",
+        "graphql.go",
+        "service.go",
+        "workflow.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples/tictactoe",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//examples/tictactoe/graph",
+        "//pkg/runtime/api",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)
+
+go_test(
+    name = "tictactoe_test",
+    srcs = [
+        "ode_blocking_test.go",
+        "ode_draw_test.go",
+        "ode_heatmap_test.go",
+        "workflow_test.go",
+    ],
+    embed = [":tictactoe"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)

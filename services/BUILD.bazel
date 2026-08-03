@@ -25,6 +25,7 @@ go_library(
         "bundles/inventory.json",
         "bundles/order.json",
         "bundles/shop.bundle.json",
+        "bundles/warehouse.bundle.json",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/services",
     visibility = ["//visibility:public"],

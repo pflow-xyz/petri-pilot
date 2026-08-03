@@ -45,6 +45,11 @@ func (g *Generator) GenerateBundleFiles(b *metamodel.Bundle) ([]GeneratedFile, e
 			ModulePath:   g.opts.ModulePath,
 			AsSubmodule:  true,
 			IncludeTests: g.opts.IncludeTests,
+			// Must match app.go's StreamID(entity, id): without it the entity
+			// API and the coordinator write different logs for one aggregate.
+			StreamPrefix: entity.SubnetID + "/",
+			// The transitions this entity may no longer fire on its own.
+			CrossEntityTransitions: entity.CrossEntity,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("entity %q: %w", entity.SubnetID, err)
@@ -89,6 +94,12 @@ func (g *Generator) GenerateBundleFiles(b *metamodel.Bundle) ([]GeneratedFile, e
 			return nil, err
 		}
 		files = append(files, GeneratedFile{Name: out, Content: formatted})
+	}
+
+	// Root and entity packages are checked together — grouped per directory, so
+	// each is type-checked as its own package.
+	if err := checkGeneratedPackage(files); err != nil {
+		return nil, err
 	}
 
 	return files, nil

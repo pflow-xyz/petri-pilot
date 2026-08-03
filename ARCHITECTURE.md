@@ -18,12 +18,50 @@ Code is a **projection** of this model into a target language. The model is huma
 The codebase implements a functor pattern:
 
 ```
-Schema ──EnrichModel──▶ Context ──Template──▶ Artifact
-  │                        │                      │
-  │                        │                      │
-Model                  Universal              Go/JS/YAML
-(source)               Object                 (target)
+Bundle ──Flatten──▶ Schema ──EnrichModel──▶ Context ──Template──▶ Artifact
+  │                   │                        │                      │
+  │                   │                        │                      │
+Subnets +           Model                  Universal              Go/JS/YAML
+links               (source)               Object                 (target)
 ```
+
+The first arrow is composition; everything downstream is unchanged by it. A
+large model is built by linking small ones, and `Flatten` reduces the result to
+a single `Model` that the existing pipeline consumes as it always has. A bundle
+holding one subnet and no links flattens to exactly that subnet's model, so
+single-net models are unaffected — which is what let composition land without
+regenerating a single committed app.
+
+## Composition
+
+`go-pflow/metamodel.Bundle` holds independently-authored subnets joined by typed
+links. Four kinds, each meaning something different:
+
+| Link | Joins | Means |
+|---|---|---|
+| TokenLink | place ↔ place | resource coupling; the two become one marking slot |
+| DataLink | place ↔ place | read-only observation across a boundary |
+| EventLink | transition ↔ transition | rendezvous — they fire as one |
+| GuardLink | transition ← place | gate one net's action on another's state |
+
+Each subnet declares a `NetType` (WorkflowNet, ResourceNet, GameNet,
+ComputationNet, ClassificationNet) and a legality matrix rejects combinations
+that are structurally meaningless — a TokenLink cannot fuse a workflow cursor
+with an inventory counter, because that would destroy the single-token mutex the
+type promises.
+
+**Composition refines; it does not extend.** An EventLink is a rendezvous, so
+the fused transition fires only when every participant is enabled; GuardLink
+gates; TokenLink constrains its consumers. Each *removes* behavior. What survives
+is projection: every composite firing sequence, restricted to a component's
+alphabet, is a valid sequence of that component alone. That preserves safety
+properties — invariants, mutual exclusion, conservation — and not liveness.
+
+**Two consumers, two shapes.** `pkg/bundle` compiles an entity spec into a
+bundle and generates one Go package per entity plus coordinators for fused
+cross-entity commands. The single-package generator consumes a *flattened* model
+directly, but only with namespacing off: flattening otherwise prefixes IDs with
+`<subnet>/`, which is not a legal Go identifier.
 
 ### Schema → Context (Functor)
 

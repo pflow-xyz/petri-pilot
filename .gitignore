@@ -76,3 +76,13 @@ generated/*/testaccess
 generated/*/tictactoe
 generated/*/tic-tac-toe*
 generated/*/vet-clinic
+
+# Build artifacts that have been committed by accident before.
+# The Mach-O below was a 15MB arm64 binary; dist.bak escaped the **/dist/ rule
+# purely because of its name.
+examples/*/texas-holdem
+generated/*/texas-holdem
+**/dist.bak/
+# Compiled from zk-ode/cmd/<name>; 28MB and 23MB arm64 Mach-O were committed.
+/export-ttt-verifier
+/submit-ttt-proof
