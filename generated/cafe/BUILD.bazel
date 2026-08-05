@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cafe",
+    srcs = [
+        "app.go",
+        "bundle.go",
+        "flatmodel.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/cafe",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/cafe/counter",
+        "//generated/cafe/pantry",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "cafe_test",
+    srcs = ["app_test.go"],
+    embed = [":cafe"],
+    deps = [
+        "//generated/cafe/counter",
+        "//generated/cafe/pantry",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)

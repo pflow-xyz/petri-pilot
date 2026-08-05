@@ -1190,6 +1190,30 @@ class RateConfigPanel extends CoffeeShopComponent {
     return { ...this.rates };
   }
 
+  /**
+   * Adopt the rates the model declares.
+   *
+   * The panel ships with defaults so it renders before the server answers, but
+   * the model is the source of truth: it is what the forecast and the net
+   * itself are computed from. Only transitions the panel already knows are
+   * taken, so a model gaining a transition does not silently add a slider
+   * nobody designed a label for.
+   */
+  setRates(rates) {
+    if (!rates) return;
+    let changed = false;
+    for (const [id, value] of Object.entries(rates)) {
+      if (id in this.rates && typeof value === 'number' && this.rates[id] !== value) {
+        this.rates[id] = value;
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.render();
+      this.emit('rate-change', { rates: this.getRates() });
+    }
+  }
+
   getPatienceMinutes() {
     return this.patienceMinutes;
   }

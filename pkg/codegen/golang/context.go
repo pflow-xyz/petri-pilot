@@ -15,6 +15,9 @@ import (
 
 // Context holds all data needed for code generation templates.
 type Context struct {
+	// HasSimulation is true when the simulation endpoints are generated.
+	HasSimulation bool
+
 	// StreamPrefix namespaces the aggregate's event stream in bundle mode
 	// ("<entity>/"); empty for single-net apps. See ContextOptions.
 	StreamPrefix string
@@ -473,6 +476,9 @@ type ContextOptions struct {
 	ModulePath  string
 	PackageName string
 
+	// HasSimulation mounts the read-only forecast/simulate/rates endpoints.
+	HasSimulation bool
+
 	// StreamPrefix namespaces this aggregate's event stream, as "<entity>/".
 	// Set only in bundle mode: a composed app's coordinator addresses member
 	// streams as "<entity>/<id>", and without the same prefix here the entity
@@ -514,6 +520,7 @@ func NewContext(model *metamodel.Model, opts ContextOptions) (*Context, error) {
 	apiSlug := sanitizeAPISlug(enriched.Name)
 
 	ctx := &Context{
+		HasSimulation:    opts.HasSimulation,
 		StreamPrefix:     opts.StreamPrefix,
 		PackageName:      packageName,
 		ModulePath:       modulePath,

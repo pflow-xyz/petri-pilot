@@ -41,7 +41,8 @@ const (
 	TemplateGitHubCI      = "github_ci"
 
 	// Real-time templates
-	TemplateRealtime = "realtime"
+	TemplateRealtime   = "realtime"
+	TemplateSimulation = "simulation"
 
 	// Views templates (Phase 13)
 	TemplateViews = "views"
@@ -111,7 +112,8 @@ var templateInfo = map[string]struct {
 	TemplateGitHubCI:      {File: "github_ci.tmpl", Output: ".github/workflows/ci.yaml"},
 
 	// Real-time templates
-	TemplateRealtime: {File: "realtime.tmpl", Output: "realtime.go"},
+	TemplateRealtime:   {File: "realtime.tmpl", Output: "realtime.go"},
+	TemplateSimulation: {File: "simulation.tmpl", Output: "simulation.go"},
 
 	// Views templates (Phase 13)
 	TemplateViews: {File: "views.tmpl", Output: "views.go"},
@@ -379,4 +381,13 @@ func BazelTemplateNames(b *BazelBuildContext) []string {
 		names = append(names, TemplateBazelModule, TemplateBazelrc, TemplateBazelVersion)
 	}
 	return names
+}
+
+// SimulationTemplateNames returns template names for the simulation endpoints.
+//
+// Opt-in (-simulation) rather than inferred from the model. Almost every model
+// carries transition rates, so inferring would silently add endpoints to every
+// existing app; a flag keeps the decision with whoever is generating.
+func SimulationTemplateNames() []string {
+	return []string{TemplateSimulation}
 }

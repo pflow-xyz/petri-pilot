@@ -1,0 +1,30 @@
+{
+  "name": "pantry",
+  "description": "Stock room: holds ingredients and draws them down. Knows nothing about orders — a brew transition only says what a drink costs.",
+  "places": [
+    {"id": "coffee_beans", "kind": "token", "initial": 1000, "capacity": 2000, "exported": true},
+    {"id": "milk", "kind": "token", "initial": 500, "capacity": 1000, "exported": true},
+    {"id": "cups", "kind": "token", "initial": 200, "capacity": 500, "exported": true}
+  ],
+  "transitions": [
+    {"id": "brew_espresso", "event": "pantry.brew_espresso"},
+    {"id": "brew_latte", "event": "pantry.brew_latte"},
+    {"id": "brew_cappuccino", "event": "pantry.brew_cappuccino"},
+    {"id": "restock_coffee_beans", "event": "pantry.restock_coffee_beans"},
+    {"id": "restock_milk", "event": "pantry.restock_milk"},
+    {"id": "restock_cups", "event": "pantry.restock_cups"}
+  ],
+  "arcs": [
+    {"from": "coffee_beans", "to": "brew_espresso", "weight": 20},
+    {"from": "cups", "to": "brew_espresso", "weight": 1},
+    {"from": "coffee_beans", "to": "brew_latte", "weight": 15},
+    {"from": "milk", "to": "brew_latte", "weight": 50},
+    {"from": "cups", "to": "brew_latte", "weight": 1},
+    {"from": "coffee_beans", "to": "brew_cappuccino", "weight": 15},
+    {"from": "milk", "to": "brew_cappuccino", "weight": 30},
+    {"from": "cups", "to": "brew_cappuccino", "weight": 1},
+    {"from": "restock_coffee_beans", "to": "coffee_beans", "weight": 500},
+    {"from": "restock_milk", "to": "milk", "weight": 500},
+    {"from": "restock_cups", "to": "cups", "weight": 100}
+  ]
+}

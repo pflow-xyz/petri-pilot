@@ -93,6 +93,13 @@ type CommandContext struct {
 	Members      []CommandMember
 	Reads        []CommandRead
 	Participants []CommandParticipant
+
+	// Setup is the entity-local transitions the generated test must fire before
+	// this command becomes enabled. Empty when the command is enabled at the
+	// initial marking, which is the case for every model whose members start
+	// with a token in place; a model whose work has to arrive first — the
+	// café's orders_pending starts empty — needs the sequence.
+	Setup []SetupStep
 }
 
 // IsFused reports whether an EventLink fused this command's members.
@@ -271,6 +278,7 @@ func NewBundleContext(b *metamodel.Bundle, opts ContextOptions) (*BundleContext,
 	if err := resolveCommandConstants(bc.Commands, ctxBySubnet); err != nil {
 		return nil, err
 	}
+	attachSetupSequences(bc, flat, fm, pkgBySubnet, ctxBySubnet)
 
 	return bc, nil
 }
@@ -784,4 +792,49 @@ func (b *BundleContext) HasConditions() bool {
 		}
 	}
 	return false
+}
+
+// attachSetupSequences works out, per command, how to drive the net into a
+// marking where that command can fire.
+func attachSetupSequences(bc *BundleContext, flat *metamodel.Model,
+	fm *metamodel.FlattenMap, pkgBySubnet map[string]string,
+	ctxBySubnet map[string]*Context) {
+
+	// Reverse the FlattenMap rather than splitting flat IDs: the identity
+	// short-circuit (one subnet, no links) leaves IDs unprefixed.
+	transitionOwner := map[string][2]string{}
+	for subnet, locals := range fm.Transition {
+		for local, flatID := range locals {
+			transitionOwner[flatID] = [2]string{subnet, local}
+		}
+	}
+
+	isCommand := map[string]bool{}
+	for _, c := range bc.Commands {
+		isCommand[c.FlatID] = true
+	}
+
+	// entityOf resolves a flat transition to the entity package that owns it,
+	// and to the constant that package declares for it.
+	entityOf := func(flatID string) (string, string, string, string, bool) {
+		owner, ok := transitionOwner[flatID]
+		if !ok {
+			return "", "", "", "", false
+		}
+		subnet, local := owner[0], owner[1]
+		ctx := ctxBySubnet[subnet]
+		if ctx == nil {
+			return "", "", "", "", false
+		}
+		for _, t := range ctx.Transitions {
+			if t.ID == local {
+				return subnet, pkgBySubnet[subnet], t.ConstName, ToCamelCase(IdentifierFrom(subnet)), true
+			}
+		}
+		return "", "", "", "", false
+	}
+
+	for i := range bc.Commands {
+		bc.Commands[i].Setup = enablingSequence(flat, bc.Commands[i].FlatID, isCommand, entityOf)
+	}
 }

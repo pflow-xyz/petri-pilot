@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "beancounter",
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),  # keep
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/beancounter",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//generated/beancounter/graph",
+        "//pkg/runtime/api",
+        "//pkg/runtime/sim",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "beancounter_test",
+    srcs = glob(["*_test.go"]),  # keep
+    embed = [":beancounter"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)

@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "sim",
+    srcs = ["sim.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/sim",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)
+
+go_test(
+    name = "sim_test",
+    srcs = [
+        "http_smoke_test.go",
+        "sim_test.go",
+    ],
+    embed = [":sim"],
+    deps = [
+        "//generated/beancounter",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)

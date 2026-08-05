@@ -43,6 +43,10 @@ type Options struct {
 	// IncludeRealtime generates SSE and WebSocket handlers if true.
 	IncludeRealtime bool
 
+	// IncludeSimulation generates the forecast/simulate/rates endpoints, which
+	// run the model forward from an aggregate's marking without changing it.
+	IncludeSimulation bool
+
 	// StreamPrefix namespaces the aggregate's event stream as "<entity>/".
 	// Set by the bundle generator so an entity's own API addresses the same
 	// stream the composed app's coordinator does; empty for single-net apps.
@@ -246,6 +250,9 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 	if g.opts.IncludeRealtime {
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
 	}
+	if g.opts.IncludeSimulation {
+		templateNames = append(templateNames, SimulationTemplateNames()...)
+	}
 
 	// Include views template if context has views (Phase 13)
 	if ctx.HasViews() {
@@ -343,8 +350,10 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 
 	// Build template context from ApplicationSpec (includes extensions)
 	ctx, err := NewContextFromApp(app, ContextOptions{
-		ModulePath:  g.opts.ModulePath,
-		PackageName: packageName,
+		ModulePath:    g.opts.ModulePath,
+		PackageName:   packageName,
+		StreamPrefix:  g.opts.StreamPrefix,
+		HasSimulation: g.opts.IncludeSimulation,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)
@@ -375,6 +384,9 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 	}
 	if g.opts.IncludeRealtime {
 		templateNames = append(templateNames, RealtimeTemplateNames()...)
+	}
+	if g.opts.IncludeSimulation {
+		templateNames = append(templateNames, SimulationTemplateNames()...)
 	}
 
 	if ctx.HasViews() {
@@ -434,8 +446,10 @@ func (g *Generator) GenerateFilesFromApp(app *extensions.ApplicationSpec) ([]Gen
 // Preview generates a preview of a single template without writing to disk.
 func (g *Generator) Preview(model *metamodel.Model, templateName string) ([]byte, error) {
 	ctx, err := NewContext(model, ContextOptions{
-		ModulePath:  g.opts.ModulePath,
-		PackageName: g.opts.PackageName,
+		ModulePath:    g.opts.ModulePath,
+		PackageName:   g.opts.PackageName,
+		StreamPrefix:  g.opts.StreamPrefix,
+		HasSimulation: g.opts.IncludeSimulation,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)

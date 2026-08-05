@@ -140,6 +140,9 @@ export function renderDashboard() {
         <!-- Configuration and Stats -->
         <div class="config-section">
           <rate-config-panel></rate-config-panel>
+          <!-- Forecast is rendered here, alongside the live gauges rather than
+               into them: a hypothetical must stay distinguishable from stock. -->
+          <div id="forecast-panel"></div>
           <stats-dashboard></stats-dashboard>
         </div>
 
@@ -243,6 +246,8 @@ export function initDashboard() {
   gaugesComponent = document.querySelector('resource-gauges');
   flowComponent = document.querySelector('order-flow-board');
   rateComponent = document.querySelector('rate-config-panel');
+  // The model's declared rates win over whatever the panel shipped with.
+  loadModelRates();
   controlsComponent = document.querySelector('simulation-controls');
   stressComponent = document.querySelector('stress-indicator');
   statsComponent = document.querySelector('stats-dashboard');
@@ -804,44 +809,97 @@ async function runPrediction(hours = 8) {
   if (!simulationState.instanceId) return;
 
   try {
-    // Build URL with aggregate_id and current rates
-    const params = new URLSearchParams();
-    params.set('hours', hours.toString());
-    params.set('aggregate_id', simulationState.instanceId);
-
-    // Add current rates from the rate config panel
+    // Rates come from the panel only as overrides; anything left alone uses
+    // what the model declares. The server is the source of truth — see
+    // loadModelRates.
+    const params = new URLSearchParams({ hours: String(hours) });
     if (rateComponent) {
-      const rates = rateComponent.getRates();
-      for (const [key, value] of Object.entries(rates)) {
-        params.set(key, value.toString());
+      for (const [id, value] of Object.entries(rateComponent.getRates())) {
+        params.set(`rate.${id}`, String(value));
       }
     }
 
-    const response = await fetch(`${API_BASE}/api/coffeeshop/predict?${params.toString()}`);
-    if (response.ok) {
-      const data = await response.json();
+    // Two engines, and for this model the choice is not cosmetic. Mass action
+    // raises a place to the power of its arc weight, and an espresso draws 20
+    // beans — so the continuous solution runs away and the server says so
+    // rather than returning the numbers. The discrete engine handles it, so
+    // the forecast falls back to it and labels which one answered.
+    let res = await fetch(`${API_BASE}/api/predict/${simulationState.instanceId}?${params}`);
+    let data = res.ok ? await res.json() : null;
 
-      // Show predicted end state
-      if (data.resources) {
-        const lastIndex = data.timePoints.length - 1;
-        const endState = {};
-
-        Object.entries(data.resources).forEach(([key, values]) => {
-          endState[key] = Math.max(0, Math.floor(values[lastIndex] || 0));
-        });
-
-        // Update simulation state with predicted values
-        simulationState.currentState = {
-          ...simulationState.currentState,
-          ...endState
-        };
-
-        // Update UI
-        updateUI();
-      }
+    if (!data || data.diverged) {
+      if (data?.reason) console.info('continuous forecast unusable:', data.reason);
+      params.set('realizations', '12');
+      res = await fetch(`${API_BASE}/api/simulate/${simulationState.instanceId}?${params}`);
+      if (!res.ok) throw new Error(`simulate: HTTP ${res.status}`);
+      data = await res.json();
     }
+
+    renderForecast(data);
   } catch (error) {
     console.error('Prediction failed:', error);
+  }
+}
+
+/**
+ * Render a forecast without touching the live marking.
+ *
+ * The previous version wrote the predicted end state into simulationState and
+ * repainted the gauges, so a hypothetical became indistinguishable from the
+ * shop's actual stock. A forecast is shown alongside the current state, never
+ * as it.
+ */
+function renderForecast(data) {
+  const final = data.final || {};
+  const depleted = data.depleted || [];
+
+  simulationState.forecast = {
+    method: data.method,
+    horizonEnd: final,
+    depleted,
+    diverged: Boolean(data.diverged)
+  };
+
+  const panel = document.querySelector('#forecast-panel');
+  if (!panel) return;
+
+  const engine = data.method === 'ssa'
+    ? 'discrete (stochastic, 12 runs)'
+    : 'continuous (ODE)';
+  const soonest = depleted.length
+    ? depleted.map(d => `${d.place} at ~${d.at.toFixed(1)}h`).join(', ')
+    : 'nothing runs out within the horizon';
+
+  panel.innerHTML = `
+    <div class="forecast">
+      <div class="forecast-engine">forecast — ${engine}</div>
+      <div class="forecast-depleted">${soonest}</div>
+      <ul class="forecast-final">
+        ${Object.entries(final)
+          .map(([place, v]) => `<li><span>${place}</span><b>${Math.max(0, Math.round(v))}</b></li>`)
+          .join('')}
+      </ul>
+    </div>`;
+}
+
+/**
+ * Load the transition rates the MODEL declares and seed the panel with them.
+ *
+ * The panel used to ship its own table, which is how a UI and the net it draws
+ * quietly stop agreeing: the model says make_espresso fires at 20, and nothing
+ * checked that the slider agreed.
+ */
+async function loadModelRates() {
+  try {
+    const res = await fetch(`${API_BASE}/api/rates`);
+    if (!res.ok) return;
+    const { rates } = await res.json();
+    if (rateComponent?.setRates) {
+      rateComponent.setRates(rates);
+    }
+    simulationState.modelRates = rates;
+  } catch (error) {
+    console.error('Could not load model rates:', error);
   }
 }
 

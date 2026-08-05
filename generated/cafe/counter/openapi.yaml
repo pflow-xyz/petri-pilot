@@ -1,0 +1,589 @@
+openapi: "3.0.3"
+info:
+  title: "counter API"
+  version: "1.0.0"
+  description: "Generated API for counter workflow"
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/counter:
+    post:
+      summary: Create new counter
+      operationId: createCounter
+      tags:
+        - counter
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/counter/{id}:
+    get:
+      summary: Get counter state
+      operationId: getCounter
+      tags:
+        - counter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Aggregate ID
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_espresso:
+    post:
+      summary: "Fire order_espresso transition"
+      operationId: orderEspresso
+      tags:
+        - transitions
+      x-transition-id: order_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderEspressoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_latte:
+    post:
+      summary: "Fire order_latte transition"
+      operationId: orderLatte
+      tags:
+        - transitions
+      x-transition-id: order_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderLatteRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/order_cappuccino:
+    post:
+      summary: "Fire order_cappuccino transition"
+      operationId: orderCappuccino
+      tags:
+        - transitions
+      x-transition-id: order_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCappuccinoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_espresso:
+    post:
+      summary: "Fire make_espresso transition"
+      operationId: makeEspresso
+      tags:
+        - transitions
+      x-transition-id: make_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MakeEspressoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_latte:
+    post:
+      summary: "Fire make_latte transition"
+      operationId: makeLatte
+      tags:
+        - transitions
+      x-transition-id: make_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MakeLatteRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/make_cappuccino:
+    post:
+      summary: "Fire make_cappuccino transition"
+      operationId: makeCappuccino
+      tags:
+        - transitions
+      x-transition-id: make_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MakeCappuccinoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_espresso:
+    post:
+      summary: "Fire serve_espresso transition"
+      operationId: serveEspresso
+      tags:
+        - transitions
+      x-transition-id: serve_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServeEspressoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_latte:
+    post:
+      summary: "Fire serve_latte transition"
+      operationId: serveLatte
+      tags:
+        - transitions
+      x-transition-id: serve_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServeLatteRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/serve_cappuccino:
+    post:
+      summary: "Fire serve_cappuccino transition"
+      operationId: serveCappuccino
+      tags:
+        - transitions
+      x-transition-id: serve_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServeCappuccinoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+components:
+  schemas:
+    TransitionRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    TransitionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
+    StateResponse:
+      type: object
+      properties:
+        aggregate_id:
+          type: string
+        version:
+          type: integer
+        state:
+          $ref: "#/components/schemas/CounterState"
+        places:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Current Petri net marking
+        enabled_transitions:
+          type: array
+          items:
+            type: string
+          description: Transitions that can currently fire
+
+    CounterState:
+      type: object
+      description: Aggregate state for counter
+      properties:
+        orders_pending:
+          type: integer
+        espresso_ready:
+          type: integer
+        latte_ready:
+          type: integer
+        cappuccino_ready:
+          type: integer
+        orders_complete:
+          type: integer
+
+    OrderEspressoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OrderLatteRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    OrderCappuccinoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    MakeEspressoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    MakeLatteRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    MakeCappuccinoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    ServeEspressoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    ServeLatteRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    ServeCappuccinoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: system
+    description: System endpoints
+  - name: counter
+    description: counter aggregate operations
+  - name: transitions
+    description: Petri net transition endpoints

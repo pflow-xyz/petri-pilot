@@ -1,0 +1,39 @@
+{
+  "name": "counter",
+  "description": "Front of house: orders are taken, drinks are made, drinks are served. Knows nothing about ingredients.",
+  "places": [
+    {"id": "orders_pending", "kind": "token", "initial": 0},
+    {"id": "espresso_ready", "kind": "token", "initial": 0, "exported": true},
+    {"id": "latte_ready", "kind": "token", "initial": 0, "exported": true},
+    {"id": "cappuccino_ready", "kind": "token", "initial": 0, "exported": true},
+    {"id": "orders_complete", "kind": "token", "initial": 0, "exported": true}
+  ],
+  "transitions": [
+    {"id": "order_espresso", "event": "counter.order_espresso"},
+    {"id": "order_latte", "event": "counter.order_latte"},
+    {"id": "order_cappuccino", "event": "counter.order_cappuccino"},
+    {"id": "make_espresso", "event": "counter.make_espresso"},
+    {"id": "make_latte", "event": "counter.make_latte"},
+    {"id": "make_cappuccino", "event": "counter.make_cappuccino"},
+    {"id": "serve_espresso", "event": "counter.serve_espresso"},
+    {"id": "serve_latte", "event": "counter.serve_latte"},
+    {"id": "serve_cappuccino", "event": "counter.serve_cappuccino"}
+  ],
+  "arcs": [
+    {"from": "order_espresso", "to": "orders_pending"},
+    {"from": "order_latte", "to": "orders_pending"},
+    {"from": "order_cappuccino", "to": "orders_pending"},
+    {"from": "orders_pending", "to": "make_espresso"},
+    {"from": "make_espresso", "to": "espresso_ready"},
+    {"from": "orders_pending", "to": "make_latte"},
+    {"from": "make_latte", "to": "latte_ready"},
+    {"from": "orders_pending", "to": "make_cappuccino"},
+    {"from": "make_cappuccino", "to": "cappuccino_ready"},
+    {"from": "espresso_ready", "to": "serve_espresso"},
+    {"from": "serve_espresso", "to": "orders_complete"},
+    {"from": "latte_ready", "to": "serve_latte"},
+    {"from": "serve_latte", "to": "orders_complete"},
+    {"from": "cappuccino_ready", "to": "serve_cappuccino"},
+    {"from": "serve_cappuccino", "to": "orders_complete"}
+  ]
+}

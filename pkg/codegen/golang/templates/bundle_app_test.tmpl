@@ -22,6 +22,26 @@ import (
 	"{{$.ModulePath}}/{{.PackageName}}"
 {{- end}}
 )
+{{- with $first := .FirstPlainCommand}}
+
+// setupFor{{$first.Name}} drives the net to a marking where {{$first.FlatID}}
+// can fire.
+//
+// It is a no-op for a model whose members start with a token in place. It is
+// not one for a model whose work has to arrive first: the café's counter starts
+// with orders_pending empty, because an order is something a customer places,
+// so make_espresso cannot fire until order_espresso has. These are ordinary
+// entity transitions — a command is precisely what an entity refuses, so none
+// can appear here.
+func setupFor{{$first.Name}}(t *testing.T, ctx context.Context, store eventsource.Store, ids map[string]string) {
+	t.Helper()
+{{- range $first.Setup}}
+	if _, err := {{.PackageName}}.NewApplication(store).Execute(ctx, ids["{{.SubnetID}}"], {{.PackageName}}.{{.ConstName}}, nil); err != nil {
+		t.Fatalf("setup {{.SubnetID}}.{{.ConstName}}: %v", err)
+	}
+{{- end}}
+}
+{{- end}}
 
 // TestCrossEntityTransitionsAreRefusedByEntities pins the boundary: every
 // transition a command owns is unreachable through its entity's own API.
@@ -74,16 +94,31 @@ func TestCommandAtomicAppend(t *testing.T) {
 		"{{.SubnetID}}": "test-1",
 {{- end}}
 	}
+	setupFor{{$first.Name}}(t, ctx, store, ids)
+
+	// Counted from after the setup, not from zero: setup appends real events to
+	// the entities it drives, and the claim here is that the COMMAND adds
+	// exactly one more to each member.
+	before := map[string]int{}
+{{- range $first.Members}}
+	{
+		evs, _ := store.Read(ctx, StreamID("{{.SubnetID}}", "test-1"), 0)
+		before["{{.SubnetID}}"] = len(evs)
+	}
+{{- end}}
+
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
-		t.Fatalf("first firing must be enabled from initial marking: %v", err)
+		t.Fatalf("command must be enabled once its setup has run: %v", err)
 	}
 
 {{- range $first.Members}}
 	{
 		events, err := store.Read(ctx, StreamID("{{.SubnetID}}", "test-1"), 0)
-		if err != nil || len(events) != 1 {
-			t.Fatalf("{{.SubnetID}} log: %d events (%v), want exactly 1", len(events), err)
+		if err != nil || len(events) != before["{{.SubnetID}}"]+1 {
+			t.Fatalf("{{.SubnetID}} log: %d events (%v), want %d — the command must append exactly one",
+				len(events), err, before["{{.SubnetID}}"]+1)
 		}
+		events = events[before["{{.SubnetID}}"]:]
 		if events[0].Type != "{{.EventID}}" {
 			t.Errorf("{{.SubnetID}} event type = %q, want %q", events[0].Type, "{{.EventID}}")
 		}
@@ -136,6 +171,7 @@ func TestReplayIsPure(t *testing.T) {
 		"{{.SubnetID}}": "pure-1",
 {{- end}}
 	}
+	setupFor{{$first.Name}}(t, ctx, store, ids)
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +186,11 @@ func TestReplayIsPure(t *testing.T) {
 		places := agg.Places()
 		initial := {{.PackageName}}.InitialPlaces()
 		same := true
-		for id, n := range initial {
-			if places[id] != n {
+		// Over every place, not just the initially-marked ones: a net whose
+		// places all start empty has an empty InitialPlaces(), and comparing
+		// only those would report "unchanged" without examining anything.
+		for _, id := range {{.PackageName}}.AllPlaces() {
+			if places[id] != initial[id] {
 				same = false
 			}
 		}
@@ -175,6 +214,7 @@ func TestCommandReplayParity(t *testing.T) {
 		"{{.SubnetID}}": "replay-1",
 {{- end}}
 	}
+	setupFor{{$first.Name}}(t, ctx, store, ids)
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -182,6 +222,7 @@ func TestCommandReplayParity(t *testing.T) {
 	// Firing again must refuse: the members' markings moved on. This is the
 	// replay claim stated as behaviour — the second attempt reads the same
 	// logs and reaches the same conclusion the first firing left behind.
+	// Deliberately no setup here: re-enabling the command would test nothing.
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err == nil {
 		t.Error("second firing succeeded — the replayed state did not advance")
 	}
@@ -200,9 +241,21 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 		"{{.SubnetID}}": "twice-1",
 {{- end}}
 	}
+	setupFor{{$first.Name}}(t, ctx, store, ids)
 	if err := app.Fire{{$first.Name}}(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
+
+	// The baseline for "appended nothing" is the log after the FIRST firing,
+	// which includes whatever the setup wrote.
+	afterFirst := map[string]int{}
+{{- range $first.Members}}
+	{
+		evs, _ := store.Read(ctx, StreamID("{{.SubnetID}}", "twice-1"), 0)
+		afterFirst["{{.SubnetID}}"] = len(evs)
+	}
+{{- end}}
+
 	err := app.Fire{{$first.Name}}(ctx, ids, nil)
 	if err == nil {
 		t.Fatal("second firing must refuse: the marking has moved on")
@@ -215,8 +268,9 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 {{- range $first.Members}}
 	{
 		events, _ := store.Read(ctx, StreamID("{{.SubnetID}}", "twice-1"), 0)
-		if len(events) != 1 {
-			t.Errorf("{{.SubnetID}} log grew to %d events after a refused firing", len(events))
+		if len(events) != afterFirst["{{.SubnetID}}"] {
+			t.Errorf("{{.SubnetID}} log grew from %d to %d events after a refused firing",
+				afterFirst["{{.SubnetID}}"], len(events))
 		}
 	}
 {{- end}}
@@ -228,6 +282,12 @@ func TestCommandHTTP(t *testing.T) {
 	app, _ := NewApp(store)
 	srv := httptest.NewServer(app.Handler())
 	defer srv.Close()
+
+	setupFor{{$first.Name}}(t, context.Background(), store, map[string]string{
+{{- range $first.Participants}}
+		"{{.SubnetID}}": "http-1",
+{{- end}}
+	})
 
 	body, _ := json.Marshal(map[string]any{"ids": map[string]string{
 {{- range $first.Participants}}

@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "graph",
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),  # keep
+    importpath = "github.com/pflow-xyz/petri-pilot/generated/beancounter/graph",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+    ],
+)

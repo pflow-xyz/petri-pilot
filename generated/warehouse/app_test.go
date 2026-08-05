@@ -15,6 +15,19 @@ import (
 	"github.com/pflow-xyz/petri-pilot/generated/warehouse/order"
 )
 
+// setupForOrderReservesStock drives the net to a marking where order_reserves_stock
+// can fire.
+//
+// It is a no-op for a model whose members start with a token in place. It is
+// not one for a model whose work has to arrive first: the café's counter starts
+// with orders_pending empty, because an order is something a customer places,
+// so make_espresso cannot fire until order_espresso has. These are ordinary
+// entity transitions — a command is precisely what an entity refuses, so none
+// can appear here.
+func setupForOrderReservesStock(t *testing.T, ctx context.Context, store eventsource.Store, ids map[string]string) {
+	t.Helper()
+}
+
 // TestCrossEntityTransitionsAreRefusedByEntities pins the boundary: every
 // transition a command owns is unreachable through its entity's own API.
 //
@@ -96,14 +109,31 @@ func TestCommandAtomicAppend(t *testing.T) {
 		"inventory": "test-1",
 		"order":     "test-1",
 	}
+	setupForOrderReservesStock(t, ctx, store, ids)
+
+	// Counted from after the setup, not from zero: setup appends real events to
+	// the entities it drives, and the claim here is that the COMMAND adds
+	// exactly one more to each member.
+	before := map[string]int{}
+	{
+		evs, _ := store.Read(ctx, StreamID("inventory", "test-1"), 0)
+		before["inventory"] = len(evs)
+	}
+	{
+		evs, _ := store.Read(ctx, StreamID("order", "test-1"), 0)
+		before["order"] = len(evs)
+	}
+
 	if err := app.FireOrderReservesStock(ctx, ids, nil); err != nil {
-		t.Fatalf("first firing must be enabled from initial marking: %v", err)
+		t.Fatalf("command must be enabled once its setup has run: %v", err)
 	}
 	{
 		events, err := store.Read(ctx, StreamID("inventory", "test-1"), 0)
-		if err != nil || len(events) != 1 {
-			t.Fatalf("inventory log: %d events (%v), want exactly 1", len(events), err)
+		if err != nil || len(events) != before["inventory"]+1 {
+			t.Fatalf("inventory log: %d events (%v), want %d — the command must append exactly one",
+				len(events), err, before["inventory"]+1)
 		}
+		events = events[before["inventory"]:]
 		if events[0].Type != "inventory.reserve_stock" {
 			t.Errorf("inventory event type = %q, want %q", events[0].Type, "inventory.reserve_stock")
 		}
@@ -113,9 +143,11 @@ func TestCommandAtomicAppend(t *testing.T) {
 	}
 	{
 		events, err := store.Read(ctx, StreamID("order", "test-1"), 0)
-		if err != nil || len(events) != 1 {
-			t.Fatalf("order log: %d events (%v), want exactly 1", len(events), err)
+		if err != nil || len(events) != before["order"]+1 {
+			t.Fatalf("order log: %d events (%v), want %d — the command must append exactly one",
+				len(events), err, before["order"]+1)
 		}
+		events = events[before["order"]:]
 		if events[0].Type != "order.place_order" {
 			t.Errorf("order event type = %q, want %q", events[0].Type, "order.place_order")
 		}
@@ -166,6 +198,7 @@ func TestReplayIsPure(t *testing.T) {
 		"inventory": "pure-1",
 		"order":     "pure-1",
 	}
+	setupForOrderReservesStock(t, ctx, store, ids)
 	if err := app.FireOrderReservesStock(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -178,8 +211,11 @@ func TestReplayIsPure(t *testing.T) {
 		places := agg.Places()
 		initial := inventory.InitialPlaces()
 		same := true
-		for id, n := range initial {
-			if places[id] != n {
+		// Over every place, not just the initially-marked ones: a net whose
+		// places all start empty has an empty InitialPlaces(), and comparing
+		// only those would report "unchanged" without examining anything.
+		for _, id := range inventory.AllPlaces() {
+			if places[id] != initial[id] {
 				same = false
 			}
 		}
@@ -196,8 +232,11 @@ func TestReplayIsPure(t *testing.T) {
 		places := agg.Places()
 		initial := order.InitialPlaces()
 		same := true
-		for id, n := range initial {
-			if places[id] != n {
+		// Over every place, not just the initially-marked ones: a net whose
+		// places all start empty has an empty InitialPlaces(), and comparing
+		// only those would report "unchanged" without examining anything.
+		for _, id := range order.AllPlaces() {
+			if places[id] != initial[id] {
 				same = false
 			}
 		}
@@ -219,6 +258,7 @@ func TestCommandReplayParity(t *testing.T) {
 		"inventory": "replay-1",
 		"order":     "replay-1",
 	}
+	setupForOrderReservesStock(t, ctx, store, ids)
 	if err := app.FireOrderReservesStock(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -226,6 +266,7 @@ func TestCommandReplayParity(t *testing.T) {
 	// Firing again must refuse: the members' markings moved on. This is the
 	// replay claim stated as behaviour — the second attempt reads the same
 	// logs and reaches the same conclusion the first firing left behind.
+	// Deliberately no setup here: re-enabling the command would test nothing.
 	if err := app.FireOrderReservesStock(ctx, ids, nil); err == nil {
 		t.Error("second firing succeeded — the replayed state did not advance")
 	}
@@ -243,9 +284,23 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 		"inventory": "twice-1",
 		"order":     "twice-1",
 	}
+	setupForOrderReservesStock(t, ctx, store, ids)
 	if err := app.FireOrderReservesStock(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
+
+	// The baseline for "appended nothing" is the log after the FIRST firing,
+	// which includes whatever the setup wrote.
+	afterFirst := map[string]int{}
+	{
+		evs, _ := store.Read(ctx, StreamID("inventory", "twice-1"), 0)
+		afterFirst["inventory"] = len(evs)
+	}
+	{
+		evs, _ := store.Read(ctx, StreamID("order", "twice-1"), 0)
+		afterFirst["order"] = len(evs)
+	}
+
 	err := app.FireOrderReservesStock(ctx, ids, nil)
 	if err == nil {
 		t.Fatal("second firing must refuse: the marking has moved on")
@@ -256,14 +311,16 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 	}
 	{
 		events, _ := store.Read(ctx, StreamID("inventory", "twice-1"), 0)
-		if len(events) != 1 {
-			t.Errorf("inventory log grew to %d events after a refused firing", len(events))
+		if len(events) != afterFirst["inventory"] {
+			t.Errorf("inventory log grew from %d to %d events after a refused firing",
+				afterFirst["inventory"], len(events))
 		}
 	}
 	{
 		events, _ := store.Read(ctx, StreamID("order", "twice-1"), 0)
-		if len(events) != 1 {
-			t.Errorf("order log grew to %d events after a refused firing", len(events))
+		if len(events) != afterFirst["order"] {
+			t.Errorf("order log grew from %d to %d events after a refused firing",
+				afterFirst["order"], len(events))
 		}
 	}
 }
@@ -274,6 +331,11 @@ func TestCommandHTTP(t *testing.T) {
 	app, _ := NewApp(store)
 	srv := httptest.NewServer(app.Handler())
 	defer srv.Close()
+
+	setupForOrderReservesStock(t, context.Background(), store, map[string]string{
+		"inventory": "http-1",
+		"order":     "http-1",
+	})
 
 	body, _ := json.Marshal(map[string]any{"ids": map[string]string{
 		"inventory": "http-1",

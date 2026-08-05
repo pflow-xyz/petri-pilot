@@ -1,0 +1,19 @@
+{
+  "name": "cafe",
+  "description": "The coffee shop as two independently-authored nets. The counter runs orders; the pantry holds stock. Making a drink is one firing of both — an event link fuses each make_X with the brew_X that pays for it, so a drink is never made without its ingredients being drawn down in the same step.",
+  "subnets": [
+    {"id": "counter", "net_type": "", "model_ref": "cafe-counter.json"},
+    {"id": "pantry", "net_type": "ResourceNet", "model_ref": "cafe-pantry.json"}
+  ],
+  "links": [
+    {"id": "espresso_costs_stock", "kind": "event",
+     "from": {"subnet": "counter", "transition": "make_espresso"},
+     "to": {"subnet": "pantry", "transition": "brew_espresso"}},
+    {"id": "latte_costs_stock", "kind": "event",
+     "from": {"subnet": "counter", "transition": "make_latte"},
+     "to": {"subnet": "pantry", "transition": "brew_latte"}},
+    {"id": "cappuccino_costs_stock", "kind": "event",
+     "from": {"subnet": "counter", "transition": "make_cappuccino"},
+     "to": {"subnet": "pantry", "transition": "brew_cappuccino"}}
+  ]
+}

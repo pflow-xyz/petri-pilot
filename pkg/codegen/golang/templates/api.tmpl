@@ -55,6 +55,11 @@ func BuildRouter(app *Application{{if .HasAccessControl}}, middleware *Middlewar
 {{end}}
 	// Schema viewer endpoint
 	r.GET("/api/schema", "Get model schema", HandleGetSchema())
+{{- if .HasSimulation}}
+
+	// Read-only: these run the model forward from a marking and change nothing.
+	RegisterSimulationRoutes(r, app)
+{{- end}}
 
 {{if .HasAdmin}}
 	// Admin endpoints
