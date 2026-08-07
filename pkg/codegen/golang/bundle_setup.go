@@ -39,13 +39,13 @@ func enablingSequence(flat *metamodel.Model, target string, isCommand map[string
 		maxDepth  = 12
 	)
 
-	start := markingOf(flat)
-	if enabled(flat, target, start) {
+	start := flat.InitialMarking()
+	if flat.Enabled(target, start) {
 		return nil // already enabled: warehouse and shop take this path
 	}
 
 	type node struct {
-		marking map[string]int
+		marking metamodel.Marking
 		path    []string
 	}
 	seen := map[string]bool{markingKey(flat, start): true}
@@ -69,11 +69,11 @@ func enablingSequence(flat *metamodel.Model, target string, isCommand map[string
 		}
 
 		for _, id := range candidates {
-			if !enabled(flat, id, cur.marking) {
+			if !flat.Enabled(id, cur.marking) {
 				continue
 			}
-			next := fire(flat, id, cur.marking)
-			if enabled(flat, target, next) {
+			next := flat.Fire(id, cur.marking)
+			if flat.Enabled(target, next) {
 				return toSteps(append(append([]string{}, cur.path...), id), entityOf)
 			}
 			key := markingKey(flat, next)
@@ -104,17 +104,7 @@ func toSteps(path []string, entityOf func(string) (string, string, string, strin
 	return out
 }
 
-func markingOf(m *metamodel.Model) map[string]int {
-	out := make(map[string]int, len(m.Places))
-	for _, p := range m.Places {
-		if p.IsToken() {
-			out[p.ID] = p.Initial
-		}
-	}
-	return out
-}
-
-func markingKey(m *metamodel.Model, marking map[string]int) string {
+func markingKey(m *metamodel.Model, marking metamodel.Marking) string {
 	var b []byte
 	for _, p := range m.Places {
 		if !p.IsToken() {
@@ -140,60 +130,4 @@ func appendInt(b []byte, n int) []byte {
 		n /= 10
 	}
 	return append(b, digits[i:]...)
-}
-
-// enabled applies the firing rule: enough tokens on every consuming arc, the
-// threshold met on every read arc, and no inhibitor satisfied.
-func enabled(m *metamodel.Model, transition string, marking map[string]int) bool {
-	for _, a := range m.Arcs {
-		if a.To != transition {
-			continue
-		}
-		if m.PlaceByID(a.From) == nil {
-			continue
-		}
-		w := a.Weight
-		if w == 0 {
-			w = 1
-		}
-		switch {
-		case a.IsInhibitor():
-			if marking[a.From] >= w {
-				return false
-			}
-		default:
-			// A read arc gates identically to a consuming one; only the effect
-			// of firing differs, which is handled in fire.
-			if marking[a.From] < w {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// fire returns the marking after transition fires. Read and inhibitor arcs
-// move nothing — treating a read arc as consuming here would make the search
-// explore states the net cannot reach.
-func fire(m *metamodel.Model, transition string, marking map[string]int) map[string]int {
-	next := make(map[string]int, len(marking))
-	for k, v := range marking {
-		next[k] = v
-	}
-	for _, a := range m.Arcs {
-		w := a.Weight
-		if w == 0 {
-			w = 1
-		}
-		if a.IsReadOnly() {
-			continue
-		}
-		if a.To == transition && m.PlaceByID(a.From) != nil {
-			next[a.From] -= w
-		}
-		if a.From == transition && m.PlaceByID(a.To) != nil {
-			next[a.To] += w
-		}
-	}
-	return next
 }

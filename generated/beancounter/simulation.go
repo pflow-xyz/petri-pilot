@@ -199,27 +199,15 @@ func HandleSimulate(app *Application) http.HandlerFunc {
 	}
 }
 
-// HandleRates returns the transition rates the model declares.
-//
-// A client that renders rate controls should read them from here rather than
-// hard-coding its own table, which is how a UI and the net it draws quietly
-// stop agreeing.
-//
-//	GET /api/rates
-func HandleRates() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m, err := simulationModel()
-		if err != nil {
-			api.Error(w, http.StatusInternalServerError, "SCHEMA_ERROR", err.Error())
-			return
-		}
-		api.JSON(w, http.StatusOK, map[string]any{"rates": sim.Rates(m)})
-	}
-}
-
 // RegisterSimulationRoutes mounts the read-only simulation endpoints.
 func RegisterSimulationRoutes(r *api.Router, app *Application) {
 	r.GET("/api/predict/{id}", "Forecast forward from an aggregate's marking (continuous)", HandlePredict(app))
 	r.GET("/api/simulate/{id}", "Simulate forward from an aggregate's marking (discrete, stochastic)", HandleSimulate(app))
-	r.GET("/api/rates", "Transition rates declared by the model", HandleRates())
+
+	// The hypothetical endpoints come from pkg/runtime/sim rather than from
+	// this template: answering "what if" needs no aggregate, no store and no
+	// knowledge of how this app is laid out, so the composed generator mounts
+	// exactly the same handlers. Duplicating them here is how the composed app
+	// came to ship with no simulation at all.
+	sim.RegisterScenarioRoutes(r, simulationModel)
 }

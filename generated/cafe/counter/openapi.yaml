@@ -177,19 +177,19 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/make_espresso:
+  /api/start_espresso:
     post:
-      summary: "Fire make_espresso transition"
-      operationId: makeEspresso
+      summary: "Fire start_espresso transition"
+      operationId: startEspresso
       tags:
         - transitions
-      x-transition-id: make_espresso
+      x-transition-id: start_espresso
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MakeEspressoRequest"
+              $ref: "#/components/schemas/StartEspressoRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -211,19 +211,19 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/make_latte:
+  /api/start_latte:
     post:
-      summary: "Fire make_latte transition"
-      operationId: makeLatte
+      summary: "Fire start_latte transition"
+      operationId: startLatte
       tags:
         - transitions
-      x-transition-id: make_latte
+      x-transition-id: start_latte
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MakeLatteRequest"
+              $ref: "#/components/schemas/StartLatteRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -245,19 +245,121 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/make_cappuccino:
+  /api/start_cappuccino:
     post:
-      summary: "Fire make_cappuccino transition"
-      operationId: makeCappuccino
+      summary: "Fire start_cappuccino transition"
+      operationId: startCappuccino
       tags:
         - transitions
-      x-transition-id: make_cappuccino
+      x-transition-id: start_cappuccino
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MakeCappuccinoRequest"
+              $ref: "#/components/schemas/StartCappuccinoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/finish_espresso:
+    post:
+      summary: "Fire finish_espresso transition"
+      operationId: finishEspresso
+      tags:
+        - transitions
+      x-transition-id: finish_espresso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishEspressoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/finish_latte:
+    post:
+      summary: "Fire finish_latte transition"
+      operationId: finishLatte
+      tags:
+        - transitions
+      x-transition-id: finish_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishLatteRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/finish_cappuccino:
+    post:
+      summary: "Fire finish_cappuccino transition"
+      operationId: finishCappuccino
+      tags:
+        - transitions
+      x-transition-id: finish_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishCappuccinoRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -381,6 +483,40 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
+  /api/abandon:
+    post:
+      summary: "Fire abandon transition"
+      operationId: abandon
+      tags:
+        - transitions
+      x-transition-id: abandon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbandonRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
 components:
   schemas:
     TransitionRequest:
@@ -437,6 +573,12 @@ components:
       properties:
         orders_pending:
           type: integer
+        brewing_espresso:
+          type: integer
+        brewing_latte:
+          type: integer
+        brewing_cappuccino:
+          type: integer
         espresso_ready:
           type: integer
         latte_ready:
@@ -444,6 +586,8 @@ components:
         cappuccino_ready:
           type: integer
         orders_complete:
+          type: integer
+        walked_out:
           type: integer
 
     OrderEspressoRequest:
@@ -485,7 +629,7 @@ components:
           description: Additional transition data
           additionalProperties: true
 
-    MakeEspressoRequest:
+    StartEspressoRequest:
       type: object
       required:
         - aggregate_id
@@ -498,7 +642,7 @@ components:
           description: Additional transition data
           additionalProperties: true
 
-    MakeLatteRequest:
+    StartLatteRequest:
       type: object
       required:
         - aggregate_id
@@ -511,7 +655,46 @@ components:
           description: Additional transition data
           additionalProperties: true
 
-    MakeCappuccinoRequest:
+    StartCappuccinoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    FinishEspressoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    FinishLatteRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    FinishCappuccinoRequest:
       type: object
       required:
         - aggregate_id
@@ -551,6 +734,19 @@ components:
           additionalProperties: true
 
     ServeCappuccinoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    AbandonRequest:
       type: object
       required:
         - aggregate_id

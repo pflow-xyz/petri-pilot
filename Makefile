@@ -1,4 +1,4 @@
-.PHONY: test dev-run help build
+.PHONY: test test-browser e2e-install dev-run help build
 
 # Default target
 .DEFAULT_GOAL := help
@@ -14,9 +14,24 @@ LDFLAGS := -s -w -X github.com/pflow-xyz/petri-pilot/internal/version.Version=$(
 test:
 	go test ./...
 
+# Drive the café console in a real browser: builds, serves on a free port,
+# checks, tears down. One command, no second shell.
+#
+# Needs the browser tooling in e2e/ (`make e2e-install`, once), so it is not part
+# of `make test` — a fresh clone should not fail on a missing browser. CI runs it
+# as its own job, so the gap is covered where it can be.
+#
+# Pass BASE=<url> to check a server that is already running instead.
+test-browser: build
+	@node frontends/cafe/src/console.browser.mjs $(BASE)
+
+# Install the browser tooling (Playwright + its Chromium) into e2e/.
+e2e-install:
+	cd e2e && npm install && npx playwright install --with-deps chromium
+
 # Run dev server (used on pilot.pflow.xyz)
 dev-run: build
-	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight galton-board
+	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight galton-board cafe
 
 # Build the binary
 build:

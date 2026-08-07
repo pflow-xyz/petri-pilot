@@ -39,37 +39,70 @@ func (e CounterOrderCappuccinoEvent) EventType() string {
 	return "counter.order_cappuccino"
 }
 
-// CounterMakeEspressoEvent is emitted when the make_espresso transition fires.
-type CounterMakeEspressoEvent struct {
+// CounterStartEspressoEvent is emitted when the start_espresso transition fires.
+type CounterStartEspressoEvent struct {
 	AggregateId string    `json:"aggregate_id"`
 	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
-func (e CounterMakeEspressoEvent) EventType() string {
-	return "counter.make_espresso"
+func (e CounterStartEspressoEvent) EventType() string {
+	return "counter.start_espresso"
 }
 
-// CounterMakeLatteEvent is emitted when the make_latte transition fires.
-type CounterMakeLatteEvent struct {
+// CounterStartLatteEvent is emitted when the start_latte transition fires.
+type CounterStartLatteEvent struct {
 	AggregateId string    `json:"aggregate_id"`
 	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
-func (e CounterMakeLatteEvent) EventType() string {
-	return "counter.make_latte"
+func (e CounterStartLatteEvent) EventType() string {
+	return "counter.start_latte"
 }
 
-// CounterMakeCappuccinoEvent is emitted when the make_cappuccino transition fires.
-type CounterMakeCappuccinoEvent struct {
+// CounterStartCappuccinoEvent is emitted when the start_cappuccino transition fires.
+type CounterStartCappuccinoEvent struct {
 	AggregateId string    `json:"aggregate_id"`
 	Timestamp   time.Time `json:"timestamp"`
 }
 
 // EventType returns the event type identifier.
-func (e CounterMakeCappuccinoEvent) EventType() string {
-	return "counter.make_cappuccino"
+func (e CounterStartCappuccinoEvent) EventType() string {
+	return "counter.start_cappuccino"
+}
+
+// CounterFinishEspressoEvent is emitted when the finish_espresso transition fires.
+type CounterFinishEspressoEvent struct {
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e CounterFinishEspressoEvent) EventType() string {
+	return "counter.finish_espresso"
+}
+
+// CounterFinishLatteEvent is emitted when the finish_latte transition fires.
+type CounterFinishLatteEvent struct {
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e CounterFinishLatteEvent) EventType() string {
+	return "counter.finish_latte"
+}
+
+// CounterFinishCappuccinoEvent is emitted when the finish_cappuccino transition fires.
+type CounterFinishCappuccinoEvent struct {
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e CounterFinishCappuccinoEvent) EventType() string {
+	return "counter.finish_cappuccino"
 }
 
 // CounterServeEspressoEvent is emitted when the serve_espresso transition fires.
@@ -103,4 +136,15 @@ type CounterServeCappuccinoEvent struct {
 // EventType returns the event type identifier.
 func (e CounterServeCappuccinoEvent) EventType() string {
 	return "counter.serve_cappuccino"
+}
+
+// CounterAbandonEvent is emitted when the abandon transition fires.
+type CounterAbandonEvent struct {
+	AggregateId string    `json:"aggregate_id"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// EventType returns the event type identifier.
+func (e CounterAbandonEvent) EventType() string {
+	return "counter.abandon"
 }

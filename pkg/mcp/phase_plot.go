@@ -264,5 +264,5 @@ func handlePhasePlot(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		"yRange":       [2]float64{ymin, ymax},
 	}
 	text, _ := json.MarshalIndent(summary, "", "  ")
-	return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+	return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 }

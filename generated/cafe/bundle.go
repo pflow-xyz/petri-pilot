@@ -22,6 +22,7 @@ type Entity struct {
 var Entities = []Entity{
 	{SubnetID: "counter", Package: "counter"},
 	{SubnetID: "pantry", Package: "pantry"},
+	{SubnetID: "staff", Package: "staff"},
 }
 
 // CommandMember is one entity's participation in a cross-entity command.
@@ -61,30 +62,60 @@ type Command struct {
 // Commands lists every cross-entity command in the bundle.
 var Commands = []Command{
 	{
-		FlatTransition: "espresso_costs_stock",
+		FlatTransition: "espresso_started",
 		Kind:           "fused",
 		Initiator:      "counter",
 		Members: []CommandMember{
-			{SubnetID: "counter", Package: "counter", LocalTransition: "make_espresso", EventID: "counter.make_espresso"},
+			{SubnetID: "counter", Package: "counter", LocalTransition: "start_espresso", EventID: "counter.start_espresso"},
 			{SubnetID: "pantry", Package: "pantry", LocalTransition: "brew_espresso", EventID: "pantry.brew_espresso"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "acquire_espresso", EventID: "staff.acquire_espresso"},
 		},
 	},
 	{
-		FlatTransition: "latte_costs_stock",
+		FlatTransition: "latte_started",
 		Kind:           "fused",
 		Initiator:      "counter",
 		Members: []CommandMember{
-			{SubnetID: "counter", Package: "counter", LocalTransition: "make_latte", EventID: "counter.make_latte"},
+			{SubnetID: "counter", Package: "counter", LocalTransition: "start_latte", EventID: "counter.start_latte"},
 			{SubnetID: "pantry", Package: "pantry", LocalTransition: "brew_latte", EventID: "pantry.brew_latte"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "acquire_latte", EventID: "staff.acquire_latte"},
 		},
 	},
 	{
-		FlatTransition: "cappuccino_costs_stock",
+		FlatTransition: "cappuccino_started",
 		Kind:           "fused",
 		Initiator:      "counter",
 		Members: []CommandMember{
-			{SubnetID: "counter", Package: "counter", LocalTransition: "make_cappuccino", EventID: "counter.make_cappuccino"},
+			{SubnetID: "counter", Package: "counter", LocalTransition: "start_cappuccino", EventID: "counter.start_cappuccino"},
 			{SubnetID: "pantry", Package: "pantry", LocalTransition: "brew_cappuccino", EventID: "pantry.brew_cappuccino"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "acquire_cappuccino", EventID: "staff.acquire_cappuccino"},
+		},
+	},
+	{
+		FlatTransition: "espresso_finished",
+		Kind:           "fused",
+		Initiator:      "counter",
+		Members: []CommandMember{
+			{SubnetID: "counter", Package: "counter", LocalTransition: "finish_espresso", EventID: "counter.finish_espresso"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "release_espresso", EventID: "staff.release_espresso"},
+		},
+	},
+	{
+		FlatTransition: "latte_finished",
+		Kind:           "fused",
+		Initiator:      "counter",
+		Members: []CommandMember{
+			{SubnetID: "counter", Package: "counter", LocalTransition: "finish_latte", EventID: "counter.finish_latte"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "release_latte", EventID: "staff.release_latte"},
+		},
+	},
+	{
+		FlatTransition: "cappuccino_finished",
+		Kind:           "fused",
+		Initiator:      "counter",
+		Members: []CommandMember{
+			{SubnetID: "counter", Package: "counter", LocalTransition: "finish_cappuccino", EventID: "counter.finish_cappuccino"},
+			{SubnetID: "staff", Package: "staff", LocalTransition: "release_cappuccino", EventID: "staff.release_cappuccino"},
 		},
 	},
 }

@@ -331,9 +331,9 @@ func handleRisk(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 	}
 	text, _ := json.MarshalIndent(resp, "", "  ")
 	if pngBytes, perr := renderRiskPNG(resp); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 func renderRiskPNG(resp riskResponse) ([]byte, error) {

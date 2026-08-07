@@ -1,0 +1,36 @@
+{
+  "name": "staff",
+  "description": "Baristas on duty. A pool of interchangeable people: a drink seizes one at the start of the brew and returns them at the end. Knows nothing about coffee — it only says how many hands there are. `initial` on `available` IS the headcount, so asking 'what if I put a third barista on?' is a change to one number.",
+  "places": [
+    {"id": "available", "kind": "token", "initial": 2, "exported": true},
+    {"id": "busy", "kind": "token", "initial": 0, "exported": true}
+  ],
+  "transitions": [
+    {"id": "acquire_espresso", "event": "staff.acquire_espresso"},
+    {"id": "acquire_latte", "event": "staff.acquire_latte"},
+    {"id": "acquire_cappuccino", "event": "staff.acquire_cappuccino"},
+    {"id": "release_espresso", "event": "staff.release_espresso"},
+    {"id": "release_latte", "event": "staff.release_latte"},
+    {"id": "release_cappuccino", "event": "staff.release_cappuccino"}
+  ],
+  "arcs": [
+    {"from": "available", "to": "acquire_espresso"},
+    {"from": "acquire_espresso", "to": "busy"},
+    {"from": "available", "to": "acquire_latte"},
+    {"from": "acquire_latte", "to": "busy"},
+    {"from": "available", "to": "acquire_cappuccino"},
+    {"from": "acquire_cappuccino", "to": "busy"},
+    {"from": "busy", "to": "release_espresso"},
+    {"from": "release_espresso", "to": "available"},
+    {"from": "busy", "to": "release_latte"},
+    {"from": "release_latte", "to": "available"},
+    {"from": "busy", "to": "release_cappuccino"},
+    {"from": "release_cappuccino", "to": "available"}
+  ],
+  "constraints": [
+    {
+      "id": "pool_conservation",
+      "expr": "tokens(\"available\") + tokens(\"busy\") == 2"
+    }
+  ]
+}

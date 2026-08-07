@@ -186,9 +186,9 @@ func handleOdeSensitivity(ctx context.Context, request mcp.CallToolRequest) (*mc
 	}
 
 	if pngBytes, perr := renderPNGWithOpts(model, opts); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // runToEquilibrium runs a single ODE problem and returns the final value of

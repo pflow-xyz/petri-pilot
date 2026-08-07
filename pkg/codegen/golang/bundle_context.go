@@ -125,6 +125,9 @@ type BundleContext struct {
 
 	// Warnings carries FlattenMap.Warnings for surfacing in tool output.
 	Warnings []string
+
+	// HasSimulation mounts the scenario endpoints on the composition root.
+	HasSimulation bool
 }
 
 // HasCommands reports whether the bundle produced any cross-entity command.

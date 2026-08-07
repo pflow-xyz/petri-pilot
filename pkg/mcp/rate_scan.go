@@ -211,10 +211,10 @@ func handleRateScan(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	if includePlot {
 		if pngBytes, perr := renderRateScanPNG(transitionID, resp.Results, observables); perr == nil {
-			return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+			return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 		}
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // renderRateScanPNG draws equilibrium observable values as a function of the

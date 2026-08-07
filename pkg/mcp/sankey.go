@@ -182,9 +182,9 @@ func handleSankey(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		title = fmt.Sprintf("Flow over t ∈ [%g, %g] — total flux %.3g", tspan[0], tspan[1], total)
 	}
 	if pngBytes, perr := renderSankeyPNG(model, flows, title); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // renderSankeyPNG draws the model with arc widths scaled to flow magnitude.

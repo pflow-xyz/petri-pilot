@@ -258,6 +258,9 @@ func (a *App) Handler() http.Handler {
 		json.NewEncoder(w).Encode(map[string]string{"fired": "{{$c.FlatID}}"})
 	})
 {{- end}}
+{{- if .HasSimulation}}
+	registerSimulationRoutes(mux)
+{{- end}}
 	return mux
 }
 

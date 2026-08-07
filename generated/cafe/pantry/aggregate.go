@@ -146,9 +146,9 @@ func (a *Aggregate) Places() map[string]int {
 // is what let a guarded transition succeed with its cross-entity precondition
 // unmet.
 var crossEntityCommands = map[string]string{
-	TransitionBrewCappuccino: "cappuccino_costs_stock", // fused
-	TransitionBrewEspresso:   "espresso_costs_stock",   // fused
-	TransitionBrewLatte:      "latte_costs_stock",      // fused
+	TransitionBrewCappuccino: "cappuccino_started", // fused
+	TransitionBrewEspresso:   "espresso_started",   // fused
+	TransitionBrewLatte:      "latte_started",      // fused
 }
 
 // CrossEntityCommand reports the composition-root command that owns a

@@ -31,6 +31,7 @@ go_library(
         "bundles/cafe-counter.json",
         "bundles/cafe-pantry.json",
         "bundles/cafe.bundle.json",
+        "bundles/cafe-staff.json",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/services",
     visibility = ["//visibility:public"],

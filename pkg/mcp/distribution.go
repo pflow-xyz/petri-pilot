@@ -270,9 +270,9 @@ func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 
 	text, _ := json.MarshalIndent(resp, "", "  ")
 	if pngBytes, perr := renderDistributionPNG(resp); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 func renderDistributionPNG(resp distributionResponse) ([]byte, error) {

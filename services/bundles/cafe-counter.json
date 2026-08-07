@@ -1,39 +1,60 @@
 {
   "name": "counter",
-  "description": "Front of house: orders are taken, drinks are made, drinks are served. Knows nothing about ingredients.",
+  "description": "Front of house: orders are taken, drinks are brewed, drinks are served, and customers who wait too long leave. Knows nothing about ingredients or staffing.\n\nBrewing is two firings, not one. `start_X` begins a drink and `finish_X` completes it, with a token sitting in `brewing_X` in between. That gap is the whole reason headcount matters: a barista seized and released within a single firing is never observably busy, so no amount of staffing could change the outcome. Splitting the transition is what turns 'add a barista' into a question with an answer.",
   "places": [
-    {"id": "orders_pending", "kind": "token", "initial": 0},
+    {"id": "orders_pending", "kind": "token", "initial": 0, "exported": true},
+    {"id": "brewing_espresso", "kind": "token", "initial": 0},
+    {"id": "brewing_latte", "kind": "token", "initial": 0},
+    {"id": "brewing_cappuccino", "kind": "token", "initial": 0},
     {"id": "espresso_ready", "kind": "token", "initial": 0, "exported": true},
     {"id": "latte_ready", "kind": "token", "initial": 0, "exported": true},
     {"id": "cappuccino_ready", "kind": "token", "initial": 0, "exported": true},
-    {"id": "orders_complete", "kind": "token", "initial": 0, "exported": true}
+    {"id": "orders_complete", "kind": "token", "initial": 0, "exported": true},
+    {"id": "walked_out", "kind": "token", "initial": 0, "exported": true}
   ],
   "transitions": [
-    {"id": "order_espresso", "event": "counter.order_espresso"},
-    {"id": "order_latte", "event": "counter.order_latte"},
-    {"id": "order_cappuccino", "event": "counter.order_cappuccino"},
-    {"id": "make_espresso", "event": "counter.make_espresso"},
-    {"id": "make_latte", "event": "counter.make_latte"},
-    {"id": "make_cappuccino", "event": "counter.make_cappuccino"},
-    {"id": "serve_espresso", "event": "counter.serve_espresso"},
-    {"id": "serve_latte", "event": "counter.serve_latte"},
-    {"id": "serve_cappuccino", "event": "counter.serve_cappuccino"}
+    {"id": "order_espresso", "event": "counter.order_espresso", "rate": 10},
+    {"id": "order_latte", "event": "counter.order_latte", "rate": 15},
+    {"id": "order_cappuccino", "event": "counter.order_cappuccino", "rate": 8},
+    {"id": "start_espresso", "event": "counter.start_espresso", "rate": 60},
+    {"id": "start_latte", "event": "counter.start_latte", "rate": 60},
+    {"id": "start_cappuccino", "event": "counter.start_cappuccino", "rate": 60},
+    {"id": "finish_espresso", "event": "counter.finish_espresso", "rate": 20},
+    {"id": "finish_latte", "event": "counter.finish_latte", "rate": 12},
+    {"id": "finish_cappuccino", "event": "counter.finish_cappuccino", "rate": 10},
+    {"id": "serve_espresso", "event": "counter.serve_espresso", "rate": 30},
+    {"id": "serve_latte", "event": "counter.serve_latte", "rate": 30},
+    {"id": "serve_cappuccino", "event": "counter.serve_cappuccino", "rate": 30},
+    {"id": "abandon", "event": "counter.abandon", "rate": 12}
   ],
   "arcs": [
     {"from": "order_espresso", "to": "orders_pending"},
     {"from": "order_latte", "to": "orders_pending"},
     {"from": "order_cappuccino", "to": "orders_pending"},
-    {"from": "orders_pending", "to": "make_espresso"},
-    {"from": "make_espresso", "to": "espresso_ready"},
-    {"from": "orders_pending", "to": "make_latte"},
-    {"from": "make_latte", "to": "latte_ready"},
-    {"from": "orders_pending", "to": "make_cappuccino"},
-    {"from": "make_cappuccino", "to": "cappuccino_ready"},
+
+    {"from": "orders_pending", "to": "start_espresso"},
+    {"from": "start_espresso", "to": "brewing_espresso"},
+    {"from": "brewing_espresso", "to": "finish_espresso"},
+    {"from": "finish_espresso", "to": "espresso_ready"},
+
+    {"from": "orders_pending", "to": "start_latte"},
+    {"from": "start_latte", "to": "brewing_latte"},
+    {"from": "brewing_latte", "to": "finish_latte"},
+    {"from": "finish_latte", "to": "latte_ready"},
+
+    {"from": "orders_pending", "to": "start_cappuccino"},
+    {"from": "start_cappuccino", "to": "brewing_cappuccino"},
+    {"from": "brewing_cappuccino", "to": "finish_cappuccino"},
+    {"from": "finish_cappuccino", "to": "cappuccino_ready"},
+
     {"from": "espresso_ready", "to": "serve_espresso"},
     {"from": "serve_espresso", "to": "orders_complete"},
     {"from": "latte_ready", "to": "serve_latte"},
     {"from": "serve_latte", "to": "orders_complete"},
     {"from": "cappuccino_ready", "to": "serve_cappuccino"},
-    {"from": "serve_cappuccino", "to": "orders_complete"}
+    {"from": "serve_cappuccino", "to": "orders_complete"},
+
+    {"from": "orders_pending", "to": "abandon"},
+    {"from": "abandon", "to": "walked_out"}
   ]
 }

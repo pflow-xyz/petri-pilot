@@ -57,6 +57,8 @@ go_library(
         "templates/bundle_app.tmpl",
         "templates/bundle_app_test.tmpl",
         "templates/simulation.tmpl",
+        "templates/bundle_service.tmpl",
+        "templates/bundle_simulation.tmpl",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/codegen/golang",
     visibility = ["//visibility:public"],

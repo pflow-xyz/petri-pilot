@@ -293,9 +293,9 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	sol := solver.Solve(prob, solver.Tsit5(), solver.JSParityOptions())
 
 	if pngBytes, perr := renderFitPNG(sol, rawObs, fittedRates, bestLoss); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // nelderMead is a vanilla simplex search. Standard reflection (alpha=1),

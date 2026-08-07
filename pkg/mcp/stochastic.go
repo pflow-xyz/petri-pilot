@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"math"
 	"math/rand"
+	"sort"
 
 	"github.com/fogleman/gg"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -84,11 +85,49 @@ type transitionEntry struct {
 	rate    float64
 	inputs  []arcEntry
 	outputs []arcEntry
+
+	// Constraints that decide enablement without moving tokens. Unlike the
+	// continuous solver, a discrete engine has a firing instant and so can
+	// honour all of these exactly — this tool was simply not doing it, and
+	// treated a read arc as an input and an inhibitor as a *source*.
+	reads    []arcEntry
+	inhibits []arcEntry
+	caps     []capEntry
 }
 
 type arcEntry struct {
 	placeIdx int
 	weight   int
+}
+
+// capEntry is a post-firing capacity bound: firing raises placeIdx by delta,
+// and the place may not end above limit.
+type capEntry struct {
+	placeIdx int
+	delta    int
+	limit    int
+}
+
+// gated reports whether the non-consuming constraints allow this transition to
+// fire. Consuming arcs are checked by the propensity loop, which needs the
+// counts anyway.
+func (e *transitionEntry) gated(marking []int) bool {
+	for _, r := range e.reads {
+		if marking[r.placeIdx] < r.weight {
+			return false
+		}
+	}
+	for _, h := range e.inhibits {
+		if marking[h.placeIdx] >= h.weight {
+			return false
+		}
+	}
+	for _, c := range e.caps {
+		if marking[c.placeIdx]+c.delta > c.limit {
+			return false
+		}
+	}
+	return true
 }
 
 func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -248,26 +287,60 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 
 // buildTransitionEntries precomputes per-transition arc indices so the SSA
 // inner loop can compute propensities without map lookups.
+// buildTransitionEntries precomputes per-transition arc indices so the SSA
+// inner loop can compute propensities without map lookups.
+//
+// The classification comes from metamodel's firing rule rather than being
+// re-derived from arc.From/arc.To here. That is the whole point: this function
+// used to sort arcs itself and got read and inhibitor arcs exactly backwards,
+// while three other engines in the same two repos got them right.
 func buildTransitionEntries(model *goflowmetamodel.Model, placeIdx map[string]int, rates map[string]float64) []transitionEntry {
+	limits := map[string]int{}
+	for i := range model.Places {
+		if p := &model.Places[i]; p.IsToken() && p.Capacity > 0 {
+			limits[p.ID] = p.Capacity
+		}
+	}
+
 	out := make([]transitionEntry, 0, len(model.Transitions))
 	for _, t := range model.Transitions {
 		e := transitionEntry{id: t.ID, rate: rates[t.ID]}
-		for _, arc := range model.Arcs {
-			w := arc.Weight
-			if w == 0 {
-				w = 1
-			}
-			if arc.To == t.ID {
-				if idx, ok := placeIdx[arc.From]; ok {
-					e.inputs = append(e.inputs, arcEntry{placeIdx: idx, weight: w})
-				}
-			}
-			if arc.From == t.ID {
-				if idx, ok := placeIdx[arc.To]; ok {
-					e.outputs = append(e.outputs, arcEntry{placeIdx: idx, weight: w})
-				}
+		delta := map[string]int{}
+
+		for _, in := range model.Inputs(t.ID) {
+			if idx, ok := placeIdx[in.Place]; ok {
+				e.inputs = append(e.inputs, arcEntry{placeIdx: idx, weight: in.Weight})
+				delta[in.Place] -= in.Weight
 			}
 		}
+		for _, o := range model.Outputs(t.ID) {
+			if idx, ok := placeIdx[o.Place]; ok {
+				e.outputs = append(e.outputs, arcEntry{placeIdx: idx, weight: o.Weight})
+				delta[o.Place] += o.Weight
+			}
+		}
+		for _, test := range model.Tests(t.ID) {
+			idx, ok := placeIdx[test.Place]
+			if !ok {
+				continue
+			}
+			a := arcEntry{placeIdx: idx, weight: test.Weight}
+			if test.Type == goflowmetamodel.InhibitorArc {
+				e.inhibits = append(e.inhibits, a)
+			} else {
+				e.reads = append(e.reads, a)
+			}
+		}
+		// Only a net increase can breach a bound, netted against what the same
+		// firing consumes — so a full place still admits a self-loop.
+		for place, limit := range limits {
+			idx, ok := placeIdx[place]
+			if d := delta[place]; ok && d > 0 {
+				e.caps = append(e.caps, capEntry{placeIdx: idx, delta: d, limit: limit})
+			}
+		}
+		sort.Slice(e.caps, func(i, j int) bool { return e.caps[i].placeIdx < e.caps[j].placeIdx })
+
 		out = append(out, e)
 	}
 	return out
@@ -314,7 +387,10 @@ func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples [
 				// Combinatorial selection: C(m, w).
 				a *= combinations(m, in.weight)
 			}
-			if !enabled {
+			// Read arcs, inhibitors and capacity decide enablement without
+			// appearing in the propensity: a blocked transition has rate zero,
+			// it does not merely fire more slowly.
+			if !enabled || !transitions[i].gated(marking) {
 				a = 0
 			}
 			propensities[i] = a

@@ -1,0 +1,173 @@
+:root {
+  --bg: #faf7f2;
+  --ink: #3a2f27;
+  --muted: #857466;
+  --line: #e3d9cd;
+  --accent: #7b4b2a;
+  --accent-soft: #f0e5d8;
+  --warn: #8a5a12;
+  --warn-bg: #fdf3e0;
+  --err: #8c2f22;
+  --err-bg: #fbe9e6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+header, main { max-width: 62rem; margin: 0 auto; }
+
+h1 { margin: 0 0 .35rem; font-size: 1.7rem; letter-spacing: -.01em; }
+h2 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+
+.sub { margin: 0 0 2rem; color: var(--muted); max-width: 46rem; }
+
+code {
+  font: .87em/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--accent-soft);
+  padding: .12em .35em;
+  border-radius: 3px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.control {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.control label {
+  display: block;
+  font-weight: 600;
+  font-size: .9rem;
+  margin-bottom: .55rem;
+}
+
+.control label.inline { display: inline; font-weight: 400; }
+
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+output {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: .2rem;
+}
+
+.hint {
+  margin: .5rem 0 0;
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+button {
+  font: inherit;
+  font-size: .92rem;
+  padding: .6rem 1.05rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#status { color: var(--muted); font-size: .88rem; }
+
+table.compare {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.compare th, .compare td {
+  padding: .6rem .9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line);
+}
+
+.compare thead th { background: var(--accent-soft); font-size: .85rem; }
+.compare th[scope="row"] { text-align: left; font-weight: 500; white-space: nowrap; }
+.compare tbody tr:last-child th, .compare tbody tr:last-child td { border-bottom: 0; }
+.compare tbody tr:last-child td { font-size: .85rem; color: var(--muted); }
+
+.note {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: .8rem 0 0;
+  max-width: 46rem;
+}
+
+.caveat, .error {
+  margin-top: 1rem;
+  padding: .8rem 1rem;
+  border-radius: 8px;
+  font-size: .87rem;
+  line-height: 1.5;
+}
+
+.caveat { background: var(--warn-bg); border: 1px solid #eddcbb; color: var(--warn); }
+.error { background: var(--err-bg); border: 1px solid #f0c9c2; color: var(--err); }
+.caveat ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+
+.explain { margin-top: 2.5rem; color: var(--muted); max-width: 46rem; font-size: .9rem; }
+.explain h2 { color: var(--ink); }
+.explain p { margin: .5rem 0 .9rem; }
+
+/* The console is a table of numbers; it should stay readable on a phone.
+   The table scrolls inside its own box rather than pushing the page sideways —
+   but a clipped column with no cue just looks like missing data, so the wrapper
+   fades its right edge while there is more to see. */
+.table-scroll { position: relative; }
+
+@media (max-width: 34rem) {
+  body { padding: 1.25rem .9rem 3rem; }
+  table.compare { display: block; overflow-x: auto; }
+
+  .table-scroll::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2rem;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(250, 247, 242, 0), rgba(250, 247, 242, .95));
+    border-radius: 0 10px 10px 0;
+  }
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/generated/cafe/counter"
 	"github.com/pflow-xyz/petri-pilot/generated/cafe/pantry"
+	"github.com/pflow-xyz/petri-pilot/generated/cafe/staff"
 )
 
 // App wires the composed application: one shared event store backing every
@@ -112,29 +113,29 @@ func (w Witness) metadata() (map[string]string, error) {
 	}, nil
 }
 
-// FireEspressoCostsStock fires the cross-entity command "espresso_costs_stock" (fused).
+// FireEspressoStarted fires the cross-entity command "espresso_started" (fused).
 // Every member entity's transition fires together, appending one event to each
 // entity's own log in a single atomic step.
 //
 // ids maps entity name to aggregate ID and must name every participating
 // entity.
-func (a *App) FireEspressoCostsStock(ctx context.Context, ids map[string]string, data any) error {
-	appends := make([]eventsource.StreamAppend, 0, 2)
-	witness := Witness{Command: "espresso_costs_stock"}
+func (a *App) FireEspressoStarted(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 3)
+	witness := Witness{Command: "espresso_started"}
 
 	counterID, ok := ids["counter"]
 	if !ok {
-		return fmt.Errorf("espresso_costs_stock: missing aggregate id for entity %q", "counter")
+		return fmt.Errorf("espresso_started: missing aggregate id for entity %q", "counter")
 	}
 	counterAgg := counter.NewAggregate(counterID)
 	{
 		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
 		if err != nil {
-			return fmt.Errorf("espresso_costs_stock: loading counter/%s: %w", counterID, err)
+			return fmt.Errorf("espresso_started: loading counter/%s: %w", counterID, err)
 		}
 		for _, e := range events {
 			if err := counterAgg.Apply(e); err != nil {
-				return fmt.Errorf("espresso_costs_stock: replaying counter/%s: %w", counterID, err)
+				return fmt.Errorf("espresso_started: replaying counter/%s: %w", counterID, err)
 			}
 		}
 	}
@@ -145,17 +146,17 @@ func (a *App) FireEspressoCostsStock(ctx context.Context, ids map[string]string,
 
 	pantryID, ok := ids["pantry"]
 	if !ok {
-		return fmt.Errorf("espresso_costs_stock: missing aggregate id for entity %q", "pantry")
+		return fmt.Errorf("espresso_started: missing aggregate id for entity %q", "pantry")
 	}
 	pantryAgg := pantry.NewAggregate(pantryID)
 	{
 		events, err := a.store.Read(ctx, StreamID("pantry", pantryID), 0)
 		if err != nil {
-			return fmt.Errorf("espresso_costs_stock: loading pantry/%s: %w", pantryID, err)
+			return fmt.Errorf("espresso_started: loading pantry/%s: %w", pantryID, err)
 		}
 		for _, e := range events {
 			if err := pantryAgg.Apply(e); err != nil {
-				return fmt.Errorf("espresso_costs_stock: replaying pantry/%s: %w", pantryID, err)
+				return fmt.Errorf("espresso_started: replaying pantry/%s: %w", pantryID, err)
 			}
 		}
 	}
@@ -164,14 +165,35 @@ func (a *App) FireEspressoCostsStock(ctx context.Context, ids map[string]string,
 		Version: pantryAgg.Version(),
 	})
 
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("espresso_started: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("espresso_started: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("espresso_started: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
 	metadata, err := witness.metadata()
 	if err != nil {
-		return fmt.Errorf("espresso_costs_stock: %w", err)
+		return fmt.Errorf("espresso_started: %w", err)
 	}
 	{
-		event, err := counterAgg.FireComposed(counter.TransitionMakeEspresso, data, metadata)
+		event, err := counterAgg.FireComposed(counter.TransitionStartEspresso, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "espresso_costs_stock", Entity: "counter", Reason: err.Error()}
+			return &NotEnabledError{Command: "espresso_started", Entity: "counter", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("counter", counterID),
@@ -182,7 +204,7 @@ func (a *App) FireEspressoCostsStock(ctx context.Context, ids map[string]string,
 	{
 		event, err := pantryAgg.FireComposed(pantry.TransitionBrewEspresso, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "espresso_costs_stock", Entity: "pantry", Reason: err.Error()}
+			return &NotEnabledError{Command: "espresso_started", Entity: "pantry", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("pantry", pantryID),
@@ -190,32 +212,43 @@ func (a *App) FireEspressoCostsStock(ctx context.Context, ids map[string]string,
 			Events:          []*eventsource.Event{event},
 		})
 	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionAcquireEspresso, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "espresso_started", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
 	return a.multi.MultiAppend(ctx, appends)
 }
 
-// FireLatteCostsStock fires the cross-entity command "latte_costs_stock" (fused).
+// FireLatteStarted fires the cross-entity command "latte_started" (fused).
 // Every member entity's transition fires together, appending one event to each
 // entity's own log in a single atomic step.
 //
 // ids maps entity name to aggregate ID and must name every participating
 // entity.
-func (a *App) FireLatteCostsStock(ctx context.Context, ids map[string]string, data any) error {
-	appends := make([]eventsource.StreamAppend, 0, 2)
-	witness := Witness{Command: "latte_costs_stock"}
+func (a *App) FireLatteStarted(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 3)
+	witness := Witness{Command: "latte_started"}
 
 	counterID, ok := ids["counter"]
 	if !ok {
-		return fmt.Errorf("latte_costs_stock: missing aggregate id for entity %q", "counter")
+		return fmt.Errorf("latte_started: missing aggregate id for entity %q", "counter")
 	}
 	counterAgg := counter.NewAggregate(counterID)
 	{
 		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
 		if err != nil {
-			return fmt.Errorf("latte_costs_stock: loading counter/%s: %w", counterID, err)
+			return fmt.Errorf("latte_started: loading counter/%s: %w", counterID, err)
 		}
 		for _, e := range events {
 			if err := counterAgg.Apply(e); err != nil {
-				return fmt.Errorf("latte_costs_stock: replaying counter/%s: %w", counterID, err)
+				return fmt.Errorf("latte_started: replaying counter/%s: %w", counterID, err)
 			}
 		}
 	}
@@ -226,17 +259,17 @@ func (a *App) FireLatteCostsStock(ctx context.Context, ids map[string]string, da
 
 	pantryID, ok := ids["pantry"]
 	if !ok {
-		return fmt.Errorf("latte_costs_stock: missing aggregate id for entity %q", "pantry")
+		return fmt.Errorf("latte_started: missing aggregate id for entity %q", "pantry")
 	}
 	pantryAgg := pantry.NewAggregate(pantryID)
 	{
 		events, err := a.store.Read(ctx, StreamID("pantry", pantryID), 0)
 		if err != nil {
-			return fmt.Errorf("latte_costs_stock: loading pantry/%s: %w", pantryID, err)
+			return fmt.Errorf("latte_started: loading pantry/%s: %w", pantryID, err)
 		}
 		for _, e := range events {
 			if err := pantryAgg.Apply(e); err != nil {
-				return fmt.Errorf("latte_costs_stock: replaying pantry/%s: %w", pantryID, err)
+				return fmt.Errorf("latte_started: replaying pantry/%s: %w", pantryID, err)
 			}
 		}
 	}
@@ -245,14 +278,35 @@ func (a *App) FireLatteCostsStock(ctx context.Context, ids map[string]string, da
 		Version: pantryAgg.Version(),
 	})
 
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("latte_started: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("latte_started: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("latte_started: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
 	metadata, err := witness.metadata()
 	if err != nil {
-		return fmt.Errorf("latte_costs_stock: %w", err)
+		return fmt.Errorf("latte_started: %w", err)
 	}
 	{
-		event, err := counterAgg.FireComposed(counter.TransitionMakeLatte, data, metadata)
+		event, err := counterAgg.FireComposed(counter.TransitionStartLatte, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "latte_costs_stock", Entity: "counter", Reason: err.Error()}
+			return &NotEnabledError{Command: "latte_started", Entity: "counter", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("counter", counterID),
@@ -263,7 +317,7 @@ func (a *App) FireLatteCostsStock(ctx context.Context, ids map[string]string, da
 	{
 		event, err := pantryAgg.FireComposed(pantry.TransitionBrewLatte, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "latte_costs_stock", Entity: "pantry", Reason: err.Error()}
+			return &NotEnabledError{Command: "latte_started", Entity: "pantry", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("pantry", pantryID),
@@ -271,32 +325,43 @@ func (a *App) FireLatteCostsStock(ctx context.Context, ids map[string]string, da
 			Events:          []*eventsource.Event{event},
 		})
 	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionAcquireLatte, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "latte_started", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
 	return a.multi.MultiAppend(ctx, appends)
 }
 
-// FireCappuccinoCostsStock fires the cross-entity command "cappuccino_costs_stock" (fused).
+// FireCappuccinoStarted fires the cross-entity command "cappuccino_started" (fused).
 // Every member entity's transition fires together, appending one event to each
 // entity's own log in a single atomic step.
 //
 // ids maps entity name to aggregate ID and must name every participating
 // entity.
-func (a *App) FireCappuccinoCostsStock(ctx context.Context, ids map[string]string, data any) error {
-	appends := make([]eventsource.StreamAppend, 0, 2)
-	witness := Witness{Command: "cappuccino_costs_stock"}
+func (a *App) FireCappuccinoStarted(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 3)
+	witness := Witness{Command: "cappuccino_started"}
 
 	counterID, ok := ids["counter"]
 	if !ok {
-		return fmt.Errorf("cappuccino_costs_stock: missing aggregate id for entity %q", "counter")
+		return fmt.Errorf("cappuccino_started: missing aggregate id for entity %q", "counter")
 	}
 	counterAgg := counter.NewAggregate(counterID)
 	{
 		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
 		if err != nil {
-			return fmt.Errorf("cappuccino_costs_stock: loading counter/%s: %w", counterID, err)
+			return fmt.Errorf("cappuccino_started: loading counter/%s: %w", counterID, err)
 		}
 		for _, e := range events {
 			if err := counterAgg.Apply(e); err != nil {
-				return fmt.Errorf("cappuccino_costs_stock: replaying counter/%s: %w", counterID, err)
+				return fmt.Errorf("cappuccino_started: replaying counter/%s: %w", counterID, err)
 			}
 		}
 	}
@@ -307,17 +372,17 @@ func (a *App) FireCappuccinoCostsStock(ctx context.Context, ids map[string]strin
 
 	pantryID, ok := ids["pantry"]
 	if !ok {
-		return fmt.Errorf("cappuccino_costs_stock: missing aggregate id for entity %q", "pantry")
+		return fmt.Errorf("cappuccino_started: missing aggregate id for entity %q", "pantry")
 	}
 	pantryAgg := pantry.NewAggregate(pantryID)
 	{
 		events, err := a.store.Read(ctx, StreamID("pantry", pantryID), 0)
 		if err != nil {
-			return fmt.Errorf("cappuccino_costs_stock: loading pantry/%s: %w", pantryID, err)
+			return fmt.Errorf("cappuccino_started: loading pantry/%s: %w", pantryID, err)
 		}
 		for _, e := range events {
 			if err := pantryAgg.Apply(e); err != nil {
-				return fmt.Errorf("cappuccino_costs_stock: replaying pantry/%s: %w", pantryID, err)
+				return fmt.Errorf("cappuccino_started: replaying pantry/%s: %w", pantryID, err)
 			}
 		}
 	}
@@ -326,14 +391,35 @@ func (a *App) FireCappuccinoCostsStock(ctx context.Context, ids map[string]strin
 		Version: pantryAgg.Version(),
 	})
 
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("cappuccino_started: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("cappuccino_started: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("cappuccino_started: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
 	metadata, err := witness.metadata()
 	if err != nil {
-		return fmt.Errorf("cappuccino_costs_stock: %w", err)
+		return fmt.Errorf("cappuccino_started: %w", err)
 	}
 	{
-		event, err := counterAgg.FireComposed(counter.TransitionMakeCappuccino, data, metadata)
+		event, err := counterAgg.FireComposed(counter.TransitionStartCappuccino, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "cappuccino_costs_stock", Entity: "counter", Reason: err.Error()}
+			return &NotEnabledError{Command: "cappuccino_started", Entity: "counter", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("counter", counterID),
@@ -344,11 +430,265 @@ func (a *App) FireCappuccinoCostsStock(ctx context.Context, ids map[string]strin
 	{
 		event, err := pantryAgg.FireComposed(pantry.TransitionBrewCappuccino, data, metadata)
 		if err != nil {
-			return &NotEnabledError{Command: "cappuccino_costs_stock", Entity: "pantry", Reason: err.Error()}
+			return &NotEnabledError{Command: "cappuccino_started", Entity: "pantry", Reason: err.Error()}
 		}
 		appends = append(appends, eventsource.StreamAppend{
 			StreamID:        StreamID("pantry", pantryID),
 			ExpectedVersion: pantryAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionAcquireCappuccino, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "cappuccino_started", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	return a.multi.MultiAppend(ctx, appends)
+}
+
+// FireEspressoFinished fires the cross-entity command "espresso_finished" (fused).
+// Every member entity's transition fires together, appending one event to each
+// entity's own log in a single atomic step.
+//
+// ids maps entity name to aggregate ID and must name every participating
+// entity.
+func (a *App) FireEspressoFinished(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 2)
+	witness := Witness{Command: "espresso_finished"}
+
+	counterID, ok := ids["counter"]
+	if !ok {
+		return fmt.Errorf("espresso_finished: missing aggregate id for entity %q", "counter")
+	}
+	counterAgg := counter.NewAggregate(counterID)
+	{
+		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
+		if err != nil {
+			return fmt.Errorf("espresso_finished: loading counter/%s: %w", counterID, err)
+		}
+		for _, e := range events {
+			if err := counterAgg.Apply(e); err != nil {
+				return fmt.Errorf("espresso_finished: replaying counter/%s: %w", counterID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("counter", counterID),
+		Version: counterAgg.Version(),
+	})
+
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("espresso_finished: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("espresso_finished: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("espresso_finished: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
+	metadata, err := witness.metadata()
+	if err != nil {
+		return fmt.Errorf("espresso_finished: %w", err)
+	}
+	{
+		event, err := counterAgg.FireComposed(counter.TransitionFinishEspresso, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "espresso_finished", Entity: "counter", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("counter", counterID),
+			ExpectedVersion: counterAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionReleaseEspresso, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "espresso_finished", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	return a.multi.MultiAppend(ctx, appends)
+}
+
+// FireLatteFinished fires the cross-entity command "latte_finished" (fused).
+// Every member entity's transition fires together, appending one event to each
+// entity's own log in a single atomic step.
+//
+// ids maps entity name to aggregate ID and must name every participating
+// entity.
+func (a *App) FireLatteFinished(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 2)
+	witness := Witness{Command: "latte_finished"}
+
+	counterID, ok := ids["counter"]
+	if !ok {
+		return fmt.Errorf("latte_finished: missing aggregate id for entity %q", "counter")
+	}
+	counterAgg := counter.NewAggregate(counterID)
+	{
+		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
+		if err != nil {
+			return fmt.Errorf("latte_finished: loading counter/%s: %w", counterID, err)
+		}
+		for _, e := range events {
+			if err := counterAgg.Apply(e); err != nil {
+				return fmt.Errorf("latte_finished: replaying counter/%s: %w", counterID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("counter", counterID),
+		Version: counterAgg.Version(),
+	})
+
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("latte_finished: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("latte_finished: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("latte_finished: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
+	metadata, err := witness.metadata()
+	if err != nil {
+		return fmt.Errorf("latte_finished: %w", err)
+	}
+	{
+		event, err := counterAgg.FireComposed(counter.TransitionFinishLatte, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "latte_finished", Entity: "counter", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("counter", counterID),
+			ExpectedVersion: counterAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionReleaseLatte, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "latte_finished", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	return a.multi.MultiAppend(ctx, appends)
+}
+
+// FireCappuccinoFinished fires the cross-entity command "cappuccino_finished" (fused).
+// Every member entity's transition fires together, appending one event to each
+// entity's own log in a single atomic step.
+//
+// ids maps entity name to aggregate ID and must name every participating
+// entity.
+func (a *App) FireCappuccinoFinished(ctx context.Context, ids map[string]string, data any) error {
+	appends := make([]eventsource.StreamAppend, 0, 2)
+	witness := Witness{Command: "cappuccino_finished"}
+
+	counterID, ok := ids["counter"]
+	if !ok {
+		return fmt.Errorf("cappuccino_finished: missing aggregate id for entity %q", "counter")
+	}
+	counterAgg := counter.NewAggregate(counterID)
+	{
+		events, err := a.store.Read(ctx, StreamID("counter", counterID), 0)
+		if err != nil {
+			return fmt.Errorf("cappuccino_finished: loading counter/%s: %w", counterID, err)
+		}
+		for _, e := range events {
+			if err := counterAgg.Apply(e); err != nil {
+				return fmt.Errorf("cappuccino_finished: replaying counter/%s: %w", counterID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("counter", counterID),
+		Version: counterAgg.Version(),
+	})
+
+	staffID, ok := ids["staff"]
+	if !ok {
+		return fmt.Errorf("cappuccino_finished: missing aggregate id for entity %q", "staff")
+	}
+	staffAgg := staff.NewAggregate(staffID)
+	{
+		events, err := a.store.Read(ctx, StreamID("staff", staffID), 0)
+		if err != nil {
+			return fmt.Errorf("cappuccino_finished: loading staff/%s: %w", staffID, err)
+		}
+		for _, e := range events {
+			if err := staffAgg.Apply(e); err != nil {
+				return fmt.Errorf("cappuccino_finished: replaying staff/%s: %w", staffID, err)
+			}
+		}
+	}
+	witness.Streams = append(witness.Streams, WitnessStream{
+		Stream:  StreamID("staff", staffID),
+		Version: staffAgg.Version(),
+	})
+
+	metadata, err := witness.metadata()
+	if err != nil {
+		return fmt.Errorf("cappuccino_finished: %w", err)
+	}
+	{
+		event, err := counterAgg.FireComposed(counter.TransitionFinishCappuccino, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "cappuccino_finished", Entity: "counter", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("counter", counterID),
+			ExpectedVersion: counterAgg.Version(),
+			Events:          []*eventsource.Event{event},
+		})
+	}
+	{
+		event, err := staffAgg.FireComposed(staff.TransitionReleaseCappuccino, data, metadata)
+		if err != nil {
+			return &NotEnabledError{Command: "cappuccino_finished", Entity: "staff", Reason: err.Error()}
+		}
+		appends = append(appends, eventsource.StreamAppend{
+			StreamID:        StreamID("staff", staffID),
+			ExpectedVersion: staffAgg.Version(),
 			Events:          []*eventsource.Event{event},
 		})
 	}
@@ -366,7 +706,7 @@ type fireRequest struct {
 // commands route through here.
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /fire/espresso_costs_stock", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /fire/espresso_started", func(w http.ResponseWriter, r *http.Request) {
 		var req fireRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -379,7 +719,7 @@ func (a *App) Handler() http.Handler {
 				return
 			}
 		}
-		if err := a.FireEspressoCostsStock(r.Context(), req.IDs, data); err != nil {
+		if err := a.FireEspressoStarted(r.Context(), req.IDs, data); err != nil {
 			status := http.StatusInternalServerError
 			var notEnabled *NotEnabledError
 			if errAs(err, &notEnabled) {
@@ -389,9 +729,9 @@ func (a *App) Handler() http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"fired": "espresso_costs_stock"})
+		json.NewEncoder(w).Encode(map[string]string{"fired": "espresso_started"})
 	})
-	mux.HandleFunc("POST /fire/latte_costs_stock", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /fire/latte_started", func(w http.ResponseWriter, r *http.Request) {
 		var req fireRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -404,7 +744,7 @@ func (a *App) Handler() http.Handler {
 				return
 			}
 		}
-		if err := a.FireLatteCostsStock(r.Context(), req.IDs, data); err != nil {
+		if err := a.FireLatteStarted(r.Context(), req.IDs, data); err != nil {
 			status := http.StatusInternalServerError
 			var notEnabled *NotEnabledError
 			if errAs(err, &notEnabled) {
@@ -414,9 +754,9 @@ func (a *App) Handler() http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"fired": "latte_costs_stock"})
+		json.NewEncoder(w).Encode(map[string]string{"fired": "latte_started"})
 	})
-	mux.HandleFunc("POST /fire/cappuccino_costs_stock", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /fire/cappuccino_started", func(w http.ResponseWriter, r *http.Request) {
 		var req fireRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -429,7 +769,7 @@ func (a *App) Handler() http.Handler {
 				return
 			}
 		}
-		if err := a.FireCappuccinoCostsStock(r.Context(), req.IDs, data); err != nil {
+		if err := a.FireCappuccinoStarted(r.Context(), req.IDs, data); err != nil {
 			status := http.StatusInternalServerError
 			var notEnabled *NotEnabledError
 			if errAs(err, &notEnabled) {
@@ -439,8 +779,84 @@ func (a *App) Handler() http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"fired": "cappuccino_costs_stock"})
+		json.NewEncoder(w).Encode(map[string]string{"fired": "cappuccino_started"})
 	})
+	mux.HandleFunc("POST /fire/espresso_finished", func(w http.ResponseWriter, r *http.Request) {
+		var req fireRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		var data any
+		if len(req.Data) > 0 {
+			if err := json.Unmarshal(req.Data, &data); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+		if err := a.FireEspressoFinished(r.Context(), req.IDs, data); err != nil {
+			status := http.StatusInternalServerError
+			var notEnabled *NotEnabledError
+			if errAs(err, &notEnabled) {
+				status = http.StatusConflict
+			}
+			http.Error(w, err.Error(), status)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"fired": "espresso_finished"})
+	})
+	mux.HandleFunc("POST /fire/latte_finished", func(w http.ResponseWriter, r *http.Request) {
+		var req fireRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		var data any
+		if len(req.Data) > 0 {
+			if err := json.Unmarshal(req.Data, &data); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+		if err := a.FireLatteFinished(r.Context(), req.IDs, data); err != nil {
+			status := http.StatusInternalServerError
+			var notEnabled *NotEnabledError
+			if errAs(err, &notEnabled) {
+				status = http.StatusConflict
+			}
+			http.Error(w, err.Error(), status)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"fired": "latte_finished"})
+	})
+	mux.HandleFunc("POST /fire/cappuccino_finished", func(w http.ResponseWriter, r *http.Request) {
+		var req fireRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		var data any
+		if len(req.Data) > 0 {
+			if err := json.Unmarshal(req.Data, &data); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+		if err := a.FireCappuccinoFinished(r.Context(), req.IDs, data); err != nil {
+			status := http.StatusInternalServerError
+			var notEnabled *NotEnabledError
+			if errAs(err, &notEnabled) {
+				status = http.StatusConflict
+			}
+			http.Error(w, err.Error(), status)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"fired": "cappuccino_finished"})
+	})
+	registerSimulationRoutes(mux)
 	return mux
 }
 

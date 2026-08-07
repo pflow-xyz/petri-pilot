@@ -1,7 +1,7 @@
 
 # pantry
 
-Stock room: holds ingredients and draws them down. Knows nothing about orders — a brew transition only says what a drink costs.
+Stock room: holds ingredients and draws them down. Knows nothing about orders or staffing — a brew transition only says what a drink costs. Fused with the counter's start_X, so ingredients are committed when the brew begins rather than when it finishes: a drink half-made has already cost its beans.
 
 ## Quick Start
 

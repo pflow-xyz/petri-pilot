@@ -13,9 +13,10 @@ import (
 	"github.com/pflow-xyz/go-pflow/eventsource"
 	"github.com/pflow-xyz/petri-pilot/generated/cafe/counter"
 	"github.com/pflow-xyz/petri-pilot/generated/cafe/pantry"
+	"github.com/pflow-xyz/petri-pilot/generated/cafe/staff"
 )
 
-// setupForEspressoCostsStock drives the net to a marking where espresso_costs_stock
+// setupForEspressoStarted drives the net to a marking where espresso_started
 // can fire.
 //
 // It is a no-op for a model whose members start with a token in place. It is
@@ -24,7 +25,7 @@ import (
 // so make_espresso cannot fire until order_espresso has. These are ordinary
 // entity transitions — a command is precisely what an entity refuses, so none
 // can appear here.
-func setupForEspressoCostsStock(t *testing.T, ctx context.Context, store eventsource.Store, ids map[string]string) {
+func setupForEspressoStarted(t *testing.T, ctx context.Context, store eventsource.Store, ids map[string]string) {
 	t.Helper()
 	if _, err := counter.NewApplication(store).Execute(ctx, ids["counter"], counter.TransitionOrderCappuccino, nil); err != nil {
 		t.Fatalf("setup counter.TransitionOrderCappuccino: %v", err)
@@ -43,34 +44,34 @@ func setupForEspressoCostsStock(t *testing.T, ctx context.Context, store eventso
 func TestCrossEntityTransitionsAreRefusedByEntities(t *testing.T) {
 	{
 		agg := counter.NewAggregate("refuse-1")
-		if agg.CanFire(counter.TransitionMakeEspresso) {
-			t.Errorf("counter: CanFire(%s) is true, but espresso_costs_stock owns it", counter.TransitionMakeEspresso)
+		if agg.CanFire(counter.TransitionStartEspresso) {
+			t.Errorf("counter: CanFire(%s) is true, but espresso_started owns it", counter.TransitionStartEspresso)
 		}
 		for _, id := range agg.EnabledTransitions() {
-			if id == counter.TransitionMakeEspresso {
-				t.Errorf("counter: EnabledTransitions offers %s, which only espresso_costs_stock may fire", id)
+			if id == counter.TransitionStartEspresso {
+				t.Errorf("counter: EnabledTransitions offers %s, which only espresso_started may fire", id)
 			}
 		}
-		if _, err := agg.Fire(counter.TransitionMakeEspresso, nil); err == nil {
-			t.Errorf("counter: Fire(%s) succeeded standalone; espresso_costs_stock must be the only way in", counter.TransitionMakeEspresso)
+		if _, err := agg.Fire(counter.TransitionStartEspresso, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; espresso_started must be the only way in", counter.TransitionStartEspresso)
 		}
 		app := counter.NewApplication(eventsource.NewMemoryStore())
-		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionMakeEspresso, nil); err == nil {
-			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionMakeEspresso)
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionStartEspresso, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionStartEspresso)
 		}
 	}
 	{
 		agg := pantry.NewAggregate("refuse-1")
 		if agg.CanFire(pantry.TransitionBrewEspresso) {
-			t.Errorf("pantry: CanFire(%s) is true, but espresso_costs_stock owns it", pantry.TransitionBrewEspresso)
+			t.Errorf("pantry: CanFire(%s) is true, but espresso_started owns it", pantry.TransitionBrewEspresso)
 		}
 		for _, id := range agg.EnabledTransitions() {
 			if id == pantry.TransitionBrewEspresso {
-				t.Errorf("pantry: EnabledTransitions offers %s, which only espresso_costs_stock may fire", id)
+				t.Errorf("pantry: EnabledTransitions offers %s, which only espresso_started may fire", id)
 			}
 		}
 		if _, err := agg.Fire(pantry.TransitionBrewEspresso, nil); err == nil {
-			t.Errorf("pantry: Fire(%s) succeeded standalone; espresso_costs_stock must be the only way in", pantry.TransitionBrewEspresso)
+			t.Errorf("pantry: Fire(%s) succeeded standalone; espresso_started must be the only way in", pantry.TransitionBrewEspresso)
 		}
 		app := pantry.NewApplication(eventsource.NewMemoryStore())
 		if _, err := app.Execute(context.Background(), "refuse-1", pantry.TransitionBrewEspresso, nil); err == nil {
@@ -78,35 +79,53 @@ func TestCrossEntityTransitionsAreRefusedByEntities(t *testing.T) {
 		}
 	}
 	{
-		agg := counter.NewAggregate("refuse-1")
-		if agg.CanFire(counter.TransitionMakeLatte) {
-			t.Errorf("counter: CanFire(%s) is true, but latte_costs_stock owns it", counter.TransitionMakeLatte)
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionAcquireEspresso) {
+			t.Errorf("staff: CanFire(%s) is true, but espresso_started owns it", staff.TransitionAcquireEspresso)
 		}
 		for _, id := range agg.EnabledTransitions() {
-			if id == counter.TransitionMakeLatte {
-				t.Errorf("counter: EnabledTransitions offers %s, which only latte_costs_stock may fire", id)
+			if id == staff.TransitionAcquireEspresso {
+				t.Errorf("staff: EnabledTransitions offers %s, which only espresso_started may fire", id)
 			}
 		}
-		if _, err := agg.Fire(counter.TransitionMakeLatte, nil); err == nil {
-			t.Errorf("counter: Fire(%s) succeeded standalone; latte_costs_stock must be the only way in", counter.TransitionMakeLatte)
+		if _, err := agg.Fire(staff.TransitionAcquireEspresso, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; espresso_started must be the only way in", staff.TransitionAcquireEspresso)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionAcquireEspresso, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionAcquireEspresso)
+		}
+	}
+	{
+		agg := counter.NewAggregate("refuse-1")
+		if agg.CanFire(counter.TransitionStartLatte) {
+			t.Errorf("counter: CanFire(%s) is true, but latte_started owns it", counter.TransitionStartLatte)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == counter.TransitionStartLatte {
+				t.Errorf("counter: EnabledTransitions offers %s, which only latte_started may fire", id)
+			}
+		}
+		if _, err := agg.Fire(counter.TransitionStartLatte, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; latte_started must be the only way in", counter.TransitionStartLatte)
 		}
 		app := counter.NewApplication(eventsource.NewMemoryStore())
-		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionMakeLatte, nil); err == nil {
-			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionMakeLatte)
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionStartLatte, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionStartLatte)
 		}
 	}
 	{
 		agg := pantry.NewAggregate("refuse-1")
 		if agg.CanFire(pantry.TransitionBrewLatte) {
-			t.Errorf("pantry: CanFire(%s) is true, but latte_costs_stock owns it", pantry.TransitionBrewLatte)
+			t.Errorf("pantry: CanFire(%s) is true, but latte_started owns it", pantry.TransitionBrewLatte)
 		}
 		for _, id := range agg.EnabledTransitions() {
 			if id == pantry.TransitionBrewLatte {
-				t.Errorf("pantry: EnabledTransitions offers %s, which only latte_costs_stock may fire", id)
+				t.Errorf("pantry: EnabledTransitions offers %s, which only latte_started may fire", id)
 			}
 		}
 		if _, err := agg.Fire(pantry.TransitionBrewLatte, nil); err == nil {
-			t.Errorf("pantry: Fire(%s) succeeded standalone; latte_costs_stock must be the only way in", pantry.TransitionBrewLatte)
+			t.Errorf("pantry: Fire(%s) succeeded standalone; latte_started must be the only way in", pantry.TransitionBrewLatte)
 		}
 		app := pantry.NewApplication(eventsource.NewMemoryStore())
 		if _, err := app.Execute(context.Background(), "refuse-1", pantry.TransitionBrewLatte, nil); err == nil {
@@ -114,44 +133,188 @@ func TestCrossEntityTransitionsAreRefusedByEntities(t *testing.T) {
 		}
 	}
 	{
-		agg := counter.NewAggregate("refuse-1")
-		if agg.CanFire(counter.TransitionMakeCappuccino) {
-			t.Errorf("counter: CanFire(%s) is true, but cappuccino_costs_stock owns it", counter.TransitionMakeCappuccino)
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionAcquireLatte) {
+			t.Errorf("staff: CanFire(%s) is true, but latte_started owns it", staff.TransitionAcquireLatte)
 		}
 		for _, id := range agg.EnabledTransitions() {
-			if id == counter.TransitionMakeCappuccino {
-				t.Errorf("counter: EnabledTransitions offers %s, which only cappuccino_costs_stock may fire", id)
+			if id == staff.TransitionAcquireLatte {
+				t.Errorf("staff: EnabledTransitions offers %s, which only latte_started may fire", id)
 			}
 		}
-		if _, err := agg.Fire(counter.TransitionMakeCappuccino, nil); err == nil {
-			t.Errorf("counter: Fire(%s) succeeded standalone; cappuccino_costs_stock must be the only way in", counter.TransitionMakeCappuccino)
+		if _, err := agg.Fire(staff.TransitionAcquireLatte, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; latte_started must be the only way in", staff.TransitionAcquireLatte)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionAcquireLatte, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionAcquireLatte)
+		}
+	}
+	{
+		agg := counter.NewAggregate("refuse-1")
+		if agg.CanFire(counter.TransitionStartCappuccino) {
+			t.Errorf("counter: CanFire(%s) is true, but cappuccino_started owns it", counter.TransitionStartCappuccino)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == counter.TransitionStartCappuccino {
+				t.Errorf("counter: EnabledTransitions offers %s, which only cappuccino_started may fire", id)
+			}
+		}
+		if _, err := agg.Fire(counter.TransitionStartCappuccino, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; cappuccino_started must be the only way in", counter.TransitionStartCappuccino)
 		}
 		app := counter.NewApplication(eventsource.NewMemoryStore())
-		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionMakeCappuccino, nil); err == nil {
-			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionMakeCappuccino)
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionStartCappuccino, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionStartCappuccino)
 		}
 	}
 	{
 		agg := pantry.NewAggregate("refuse-1")
 		if agg.CanFire(pantry.TransitionBrewCappuccino) {
-			t.Errorf("pantry: CanFire(%s) is true, but cappuccino_costs_stock owns it", pantry.TransitionBrewCappuccino)
+			t.Errorf("pantry: CanFire(%s) is true, but cappuccino_started owns it", pantry.TransitionBrewCappuccino)
 		}
 		for _, id := range agg.EnabledTransitions() {
 			if id == pantry.TransitionBrewCappuccino {
-				t.Errorf("pantry: EnabledTransitions offers %s, which only cappuccino_costs_stock may fire", id)
+				t.Errorf("pantry: EnabledTransitions offers %s, which only cappuccino_started may fire", id)
 			}
 		}
 		if _, err := agg.Fire(pantry.TransitionBrewCappuccino, nil); err == nil {
-			t.Errorf("pantry: Fire(%s) succeeded standalone; cappuccino_costs_stock must be the only way in", pantry.TransitionBrewCappuccino)
+			t.Errorf("pantry: Fire(%s) succeeded standalone; cappuccino_started must be the only way in", pantry.TransitionBrewCappuccino)
 		}
 		app := pantry.NewApplication(eventsource.NewMemoryStore())
 		if _, err := app.Execute(context.Background(), "refuse-1", pantry.TransitionBrewCappuccino, nil); err == nil {
 			t.Errorf("pantry: Execute(%s) succeeded standalone", pantry.TransitionBrewCappuccino)
 		}
 	}
+	{
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionAcquireCappuccino) {
+			t.Errorf("staff: CanFire(%s) is true, but cappuccino_started owns it", staff.TransitionAcquireCappuccino)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == staff.TransitionAcquireCappuccino {
+				t.Errorf("staff: EnabledTransitions offers %s, which only cappuccino_started may fire", id)
+			}
+		}
+		if _, err := agg.Fire(staff.TransitionAcquireCappuccino, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; cappuccino_started must be the only way in", staff.TransitionAcquireCappuccino)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionAcquireCappuccino, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionAcquireCappuccino)
+		}
+	}
+	{
+		agg := counter.NewAggregate("refuse-1")
+		if agg.CanFire(counter.TransitionFinishEspresso) {
+			t.Errorf("counter: CanFire(%s) is true, but espresso_finished owns it", counter.TransitionFinishEspresso)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == counter.TransitionFinishEspresso {
+				t.Errorf("counter: EnabledTransitions offers %s, which only espresso_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(counter.TransitionFinishEspresso, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; espresso_finished must be the only way in", counter.TransitionFinishEspresso)
+		}
+		app := counter.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionFinishEspresso, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionFinishEspresso)
+		}
+	}
+	{
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionReleaseEspresso) {
+			t.Errorf("staff: CanFire(%s) is true, but espresso_finished owns it", staff.TransitionReleaseEspresso)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == staff.TransitionReleaseEspresso {
+				t.Errorf("staff: EnabledTransitions offers %s, which only espresso_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(staff.TransitionReleaseEspresso, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; espresso_finished must be the only way in", staff.TransitionReleaseEspresso)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionReleaseEspresso, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionReleaseEspresso)
+		}
+	}
+	{
+		agg := counter.NewAggregate("refuse-1")
+		if agg.CanFire(counter.TransitionFinishLatte) {
+			t.Errorf("counter: CanFire(%s) is true, but latte_finished owns it", counter.TransitionFinishLatte)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == counter.TransitionFinishLatte {
+				t.Errorf("counter: EnabledTransitions offers %s, which only latte_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(counter.TransitionFinishLatte, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; latte_finished must be the only way in", counter.TransitionFinishLatte)
+		}
+		app := counter.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionFinishLatte, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionFinishLatte)
+		}
+	}
+	{
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionReleaseLatte) {
+			t.Errorf("staff: CanFire(%s) is true, but latte_finished owns it", staff.TransitionReleaseLatte)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == staff.TransitionReleaseLatte {
+				t.Errorf("staff: EnabledTransitions offers %s, which only latte_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(staff.TransitionReleaseLatte, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; latte_finished must be the only way in", staff.TransitionReleaseLatte)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionReleaseLatte, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionReleaseLatte)
+		}
+	}
+	{
+		agg := counter.NewAggregate("refuse-1")
+		if agg.CanFire(counter.TransitionFinishCappuccino) {
+			t.Errorf("counter: CanFire(%s) is true, but cappuccino_finished owns it", counter.TransitionFinishCappuccino)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == counter.TransitionFinishCappuccino {
+				t.Errorf("counter: EnabledTransitions offers %s, which only cappuccino_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(counter.TransitionFinishCappuccino, nil); err == nil {
+			t.Errorf("counter: Fire(%s) succeeded standalone; cappuccino_finished must be the only way in", counter.TransitionFinishCappuccino)
+		}
+		app := counter.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", counter.TransitionFinishCappuccino, nil); err == nil {
+			t.Errorf("counter: Execute(%s) succeeded standalone", counter.TransitionFinishCappuccino)
+		}
+	}
+	{
+		agg := staff.NewAggregate("refuse-1")
+		if agg.CanFire(staff.TransitionReleaseCappuccino) {
+			t.Errorf("staff: CanFire(%s) is true, but cappuccino_finished owns it", staff.TransitionReleaseCappuccino)
+		}
+		for _, id := range agg.EnabledTransitions() {
+			if id == staff.TransitionReleaseCappuccino {
+				t.Errorf("staff: EnabledTransitions offers %s, which only cappuccino_finished may fire", id)
+			}
+		}
+		if _, err := agg.Fire(staff.TransitionReleaseCappuccino, nil); err == nil {
+			t.Errorf("staff: Fire(%s) succeeded standalone; cappuccino_finished must be the only way in", staff.TransitionReleaseCappuccino)
+		}
+		app := staff.NewApplication(eventsource.NewMemoryStore())
+		if _, err := app.Execute(context.Background(), "refuse-1", staff.TransitionReleaseCappuccino, nil); err == nil {
+			t.Errorf("staff: Execute(%s) succeeded standalone", staff.TransitionReleaseCappuccino)
+		}
+	}
 }
 
-// TestCommandAtomicAppend fires the espresso_costs_stock command once
+// TestCommandAtomicAppend fires the espresso_started command once
 // and asserts one event landed in EVERY member entity's log — the composed
 // firing is one atomic step.
 func TestCommandAtomicAppend(t *testing.T) {
@@ -165,8 +328,9 @@ func TestCommandAtomicAppend(t *testing.T) {
 	ids := map[string]string{
 		"counter": "test-1",
 		"pantry":  "test-1",
+		"staff":   "test-1",
 	}
-	setupForEspressoCostsStock(t, ctx, store, ids)
+	setupForEspressoStarted(t, ctx, store, ids)
 
 	// Counted from after the setup, not from zero: setup appends real events to
 	// the entities it drives, and the claim here is that the COMMAND adds
@@ -180,8 +344,12 @@ func TestCommandAtomicAppend(t *testing.T) {
 		evs, _ := store.Read(ctx, StreamID("pantry", "test-1"), 0)
 		before["pantry"] = len(evs)
 	}
+	{
+		evs, _ := store.Read(ctx, StreamID("staff", "test-1"), 0)
+		before["staff"] = len(evs)
+	}
 
-	if err := app.FireEspressoCostsStock(ctx, ids, nil); err != nil {
+	if err := app.FireEspressoStarted(ctx, ids, nil); err != nil {
 		t.Fatalf("command must be enabled once its setup has run: %v", err)
 	}
 	{
@@ -191,10 +359,10 @@ func TestCommandAtomicAppend(t *testing.T) {
 				len(events), err, before["counter"]+1)
 		}
 		events = events[before["counter"]:]
-		if events[0].Type != "counter.make_espresso" {
-			t.Errorf("counter event type = %q, want %q", events[0].Type, "counter.make_espresso")
+		if events[0].Type != "counter.start_espresso" {
+			t.Errorf("counter event type = %q, want %q", events[0].Type, "counter.start_espresso")
 		}
-		if events[0].Metadata[MetadataCommand] != "espresso_costs_stock" {
+		if events[0].Metadata[MetadataCommand] != "espresso_started" {
 			t.Errorf("counter event is not attributed to its command: %v", events[0].Metadata)
 		}
 	}
@@ -208,8 +376,22 @@ func TestCommandAtomicAppend(t *testing.T) {
 		if events[0].Type != "pantry.brew_espresso" {
 			t.Errorf("pantry event type = %q, want %q", events[0].Type, "pantry.brew_espresso")
 		}
-		if events[0].Metadata[MetadataCommand] != "espresso_costs_stock" {
+		if events[0].Metadata[MetadataCommand] != "espresso_started" {
 			t.Errorf("pantry event is not attributed to its command: %v", events[0].Metadata)
+		}
+	}
+	{
+		events, err := store.Read(ctx, StreamID("staff", "test-1"), 0)
+		if err != nil || len(events) != before["staff"]+1 {
+			t.Fatalf("staff log: %d events (%v), want %d — the command must append exactly one",
+				len(events), err, before["staff"]+1)
+		}
+		events = events[before["staff"]:]
+		if events[0].Type != "staff.acquire_espresso" {
+			t.Errorf("staff event type = %q, want %q", events[0].Type, "staff.acquire_espresso")
+		}
+		if events[0].Metadata[MetadataCommand] != "espresso_started" {
+			t.Errorf("staff event is not attributed to its command: %v", events[0].Metadata)
 		}
 	}
 }
@@ -254,9 +436,10 @@ func TestReplayIsPure(t *testing.T) {
 	ids := map[string]string{
 		"counter": "pure-1",
 		"pantry":  "pure-1",
+		"staff":   "pure-1",
 	}
-	setupForEspressoCostsStock(t, ctx, store, ids)
-	if err := app.FireEspressoCostsStock(ctx, ids, nil); err != nil {
+	setupForEspressoStarted(t, ctx, store, ids)
+	if err := app.FireEspressoStarted(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
 	{
@@ -301,6 +484,27 @@ func TestReplayIsPure(t *testing.T) {
 			t.Errorf("pantry: replaying its own log alone left the initial marking %v; the command's effect was not reconstructed", places)
 		}
 	}
+	{
+		isolated := staff.NewApplication(singleStreamStore{Store: store, allowed: StreamID("staff", "pure-1")})
+		agg, err := isolated.Load(ctx, "pure-1")
+		if err != nil {
+			t.Fatalf("staff: replay is not pure — %v", err)
+		}
+		places := agg.Places()
+		initial := staff.InitialPlaces()
+		same := true
+		// Over every place, not just the initially-marked ones: a net whose
+		// places all start empty has an empty InitialPlaces(), and comparing
+		// only those would report "unchanged" without examining anything.
+		for _, id := range staff.AllPlaces() {
+			if places[id] != initial[id] {
+				same = false
+			}
+		}
+		if same {
+			t.Errorf("staff: replaying its own log alone left the initial marking %v; the command's effect was not reconstructed", places)
+		}
+	}
 }
 
 // TestCommandReplayParity replays each member's own log and asserts the
@@ -314,9 +518,10 @@ func TestCommandReplayParity(t *testing.T) {
 	ids := map[string]string{
 		"counter": "replay-1",
 		"pantry":  "replay-1",
+		"staff":   "replay-1",
 	}
-	setupForEspressoCostsStock(t, ctx, store, ids)
-	if err := app.FireEspressoCostsStock(ctx, ids, nil); err != nil {
+	setupForEspressoStarted(t, ctx, store, ids)
+	if err := app.FireEspressoStarted(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,7 +529,7 @@ func TestCommandReplayParity(t *testing.T) {
 	// replay claim stated as behaviour — the second attempt reads the same
 	// logs and reaches the same conclusion the first firing left behind.
 	// Deliberately no setup here: re-enabling the command would test nothing.
-	if err := app.FireEspressoCostsStock(ctx, ids, nil); err == nil {
+	if err := app.FireEspressoStarted(ctx, ids, nil); err == nil {
 		t.Error("second firing succeeded — the replayed state did not advance")
 	}
 }
@@ -340,9 +545,10 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 	ids := map[string]string{
 		"counter": "twice-1",
 		"pantry":  "twice-1",
+		"staff":   "twice-1",
 	}
-	setupForEspressoCostsStock(t, ctx, store, ids)
-	if err := app.FireEspressoCostsStock(ctx, ids, nil); err != nil {
+	setupForEspressoStarted(t, ctx, store, ids)
+	if err := app.FireEspressoStarted(ctx, ids, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -357,8 +563,12 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 		evs, _ := store.Read(ctx, StreamID("pantry", "twice-1"), 0)
 		afterFirst["pantry"] = len(evs)
 	}
+	{
+		evs, _ := store.Read(ctx, StreamID("staff", "twice-1"), 0)
+		afterFirst["staff"] = len(evs)
+	}
 
-	err := app.FireEspressoCostsStock(ctx, ids, nil)
+	err := app.FireEspressoStarted(ctx, ids, nil)
 	if err == nil {
 		t.Fatal("second firing must refuse: the marking has moved on")
 	}
@@ -380,6 +590,13 @@ func TestCommandRefusalAppendsNothing(t *testing.T) {
 				afterFirst["pantry"], len(events))
 		}
 	}
+	{
+		events, _ := store.Read(ctx, StreamID("staff", "twice-1"), 0)
+		if len(events) != afterFirst["staff"] {
+			t.Errorf("staff log grew from %d to %d events after a refused firing",
+				afterFirst["staff"], len(events))
+		}
+	}
 }
 
 // TestCommandHTTP drives the command through its HTTP surface.
@@ -389,17 +606,19 @@ func TestCommandHTTP(t *testing.T) {
 	srv := httptest.NewServer(app.Handler())
 	defer srv.Close()
 
-	setupForEspressoCostsStock(t, context.Background(), store, map[string]string{
+	setupForEspressoStarted(t, context.Background(), store, map[string]string{
 		"counter": "http-1",
 		"pantry":  "http-1",
+		"staff":   "http-1",
 	})
 
 	body, _ := json.Marshal(map[string]any{"ids": map[string]string{
 		"counter": "http-1",
 		"pantry":  "http-1",
+		"staff":   "http-1",
 	}})
 
-	resp, err := srv.Client().Post(srv.URL+"/fire/espresso_costs_stock", "application/json", bytes.NewReader(body))
+	resp, err := srv.Client().Post(srv.URL+"/fire/espresso_started", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +628,7 @@ func TestCommandHTTP(t *testing.T) {
 	}
 
 	// Second identical firing: 409, nothing appended.
-	resp2, err := srv.Client().Post(srv.URL+"/fire/espresso_costs_stock", "application/json", bytes.NewReader(body))
+	resp2, err := srv.Client().Post(srv.URL+"/fire/espresso_started", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}

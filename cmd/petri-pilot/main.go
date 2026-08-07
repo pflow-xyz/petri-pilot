@@ -516,7 +516,7 @@ Examples:
 // cmdCodegenBundle generates a composed application from a bundle document.
 // Module path: explicit via PETRI_PILOT_MODULE, else derived for in-repo
 // generated/ output, else app/<name>.
-func cmdCodegenBundle(bundlePath, output string, includeTests bool) {
+func cmdCodegenBundle(bundlePath, output string, includeTests, includeSimulation, includeInfra bool) {
 	b, err := bundlepkg.LoadFile(bundlePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading bundle: %v\n", err)
@@ -539,7 +539,12 @@ func cmdCodegenBundle(bundlePath, output string, includeTests bool) {
 		}
 	}
 
-	gen, err := golang.New(golang.Options{ModulePath: modulePath, IncludeTests: includeTests})
+	gen, err := golang.New(golang.Options{
+		ModulePath:        modulePath,
+		IncludeTests:      includeTests,
+		IncludeSimulation: includeSimulation,
+		IncludeInfra:      includeInfra,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating generator: %v\n", err)
 		os.Exit(1)
@@ -619,7 +624,7 @@ Examples:
 	// subpackage per subnet plus root coordinators. Everything below this
 	// block is the single-net path, untouched.
 	if strings.HasSuffix(modelPath, ".bundle.json") {
-		cmdCodegenBundle(modelPath, *output, *includeTests)
+		cmdCodegenBundle(modelPath, *output, *includeTests, *includeSimulation, *includeInfra)
 		return
 	}
 

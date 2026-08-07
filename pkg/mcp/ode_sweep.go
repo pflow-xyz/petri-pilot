@@ -204,9 +204,9 @@ func handleOdeSweep(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	if pngBytes, perr := renderOdeSweepPNG(resp, observable, transitionID); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // renderOdeSweepPNG draws all trajectories on one plot, colored by rate via

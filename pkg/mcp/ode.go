@@ -275,25 +275,89 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	}
 
 	if pngBytes != nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
+// buildOdeNet converts a model into the net the continuous solver consumes.
+//
+// Every arc used to become a consuming arc here, whatever its type. That turned
+// a read arc — which tests a place without touching it — into a drain on that
+// place, and an inhibitor arc, which *blocks* a firing, into a thing that feeds
+// it. Twelve tools share this builder, so one wrong line mis-modelled every
+// gated net across the whole analytic surface, quietly and in the same
+// direction each time.
+//
+// Read arcs are dropped: they move no tokens, and the ODE has no firing instant
+// at which to test them. Inhibitors are declared as inhibitors even though the
+// solver ignores them, so the net at least carries the truth. Neither is
+// *honoured* by a continuous solve — that is what odeCaveats exists to say.
 func buildOdeNet(model *goflowmetamodel.Model) *petri.PetriNet {
 	b := petri.Build()
 	for _, p := range model.Places {
+		if p.Capacity > 0 {
+			b = b.PlaceWithCapacity(p.ID, float64(p.Initial), float64(p.Capacity))
+			continue
+		}
 		b = b.Place(p.ID, float64(p.Initial))
 	}
 	for _, t := range model.Transitions {
 		b = b.Transition(t.ID)
 	}
-	for _, arc := range model.Arcs {
+	for i := range model.Arcs {
+		arc := &model.Arcs[i]
+		if arc.IsRead() {
+			continue
+		}
 		w := arc.Weight
 		if w == 0 {
 			w = 1
 		}
+		if arc.IsInhibitor() {
+			b = b.InhibitorArc(arc.From, arc.To, float64(w))
+			continue
+		}
 		b = b.Arc(arc.From, arc.To, float64(w))
 	}
 	return b.Done()
+}
+
+// odeCaveats is what a continuous answer cannot cover.
+//
+// The mass-action solver integrates a rate law over real-valued concentrations.
+// There is no firing instant in that picture, so a read arc, an inhibitor, a
+// capacity and a guard are all unrepresentable — the solver does not approximate
+// them badly, it does not see them at all. A model that leans on any of them is
+// being answered as though it were unconstrained, and the caller has to be told
+// so, on every tool that shares this builder.
+func odeCaveats(model *goflowmetamodel.Model) []string {
+	return model.Gating()
+}
+
+// withCaveats adds a "caveats" field to a tool's JSON summary when the model
+// leans on something the continuous solver cannot see.
+//
+// Returns text untouched when there is nothing to say, so every unconstrained
+// model — which is all of the committed examples — produces byte-identical
+// output. Only a gated model takes the re-marshalling path.
+func withCaveats(text []byte, model *goflowmetamodel.Model) []byte {
+	gating := odeCaveats(model)
+	if len(gating) == 0 {
+		return text
+	}
+
+	var summary map[string]any
+	if err := json.Unmarshal(text, &summary); err != nil {
+		return text // not a JSON object: leave it alone rather than corrupt it
+	}
+	summary["caveats"] = gating
+	summary["caveats_note"] = "The continuous solver cannot enforce these, so the result above describes " +
+		"a less constrained system than the one modelled. Use petri_stochastic for an answer that honours them."
+
+	out, err := json.MarshalIndent(summary, "", "  ")
+	if err != nil {
+		return text
+	}
+	return out
 }

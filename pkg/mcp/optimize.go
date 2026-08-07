@@ -244,9 +244,9 @@ func handleOptimize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	if pngBytes, perr := renderOptimizePNG(resp); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // identifyPareto marks each sample's IsPareto flag in-place. A sample A is

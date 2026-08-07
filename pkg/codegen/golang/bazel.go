@@ -119,6 +119,16 @@ func computeBazelBuild(ctx *Context, opts Options) *BazelBuildContext {
 	if ctx.UsesMetamodelRuntime() {
 		deps = append(deps, "@com_github_holiman_uint256//:uint256")
 	}
+	if ctx.HasSimulation {
+		// simulation.go decodes the embedded model and runs it forward. Without
+		// these the generated BUILD is missing deps its own sources need, and
+		// only survives because `bazel run //:gazelle` repairs it afterwards —
+		// which is not a property a generated file should depend on.
+		deps = append(deps,
+			ppPrefix+"pkg/runtime/sim",
+			"@com_github_pflow_xyz_go_pflow//metamodel",
+		)
+	}
 	b.Deps = sortBazelLabels(dedupe(deps))
 	b.TestDeps = []string{"@com_github_pflow_xyz_go_pflow//eventsource"}
 

@@ -84,6 +84,17 @@ func stableNet() *metamodel.Model {
 // the feature — the alternative is a dashboard plotting minus two trillion cups.
 func TestForecastDetectsDivergence(t *testing.T) {
 	m := coffeeshop(t)
+	// Strip the declared capacities so the run reaches the solver at all: the
+	// shop caps its stock places, and a capacity is refused up front for a
+	// different and equally good reason. What is under test here is the
+	// numerical failure, not the structural one.
+	for i := range m.Places {
+		m.Places[i].Capacity = 0
+	}
+	if gating := m.Gating(); len(gating) > 0 {
+		t.Fatalf("this test needs an ungated model to reach the solver: %v", gating)
+	}
+
 	res, err := Forecast(m, marking(m), Options{Horizon: 8, Samples: 30})
 	if err != nil {
 		t.Fatal(err)
@@ -123,10 +134,14 @@ func TestForecastIsDeterministic(t *testing.T) {
 	}
 }
 
-// TestForecastAnswersTheResourceQuestion: the coffee shop's whole point is
-// "when do I run out". Beans are consumed 20 at a time from 1000, so over a
-// long enough horizon with no restocking they must deplete.
-func TestForecastDepletesStock(t *testing.T) {
+// TestDepletesStock: the coffee shop's whole point is "when do I run out".
+// Beans are consumed 20 at a time from 1000, so over a long enough horizon with
+// no restocking they must deplete.
+//
+// Asked of the discrete engine, because the shop declares capacities on its
+// stock places and Forecast now refuses a model whose constraints it cannot
+// honour — see TestForecastRefusesGatedModels.
+func TestDepletesStock(t *testing.T) {
 	m := coffeeshop(t)
 	// Silence restocking so the draw-down is visible.
 	rates := Rates(m)
@@ -136,7 +151,7 @@ func TestForecastDepletesStock(t *testing.T) {
 		}
 	}
 
-	res, err := Forecast(m, marking(m), Options{Horizon: 40, Samples: 80, Rates: rates})
+	res, err := Simulate(m, marking(m), Options{Horizon: 40, Samples: 80, Rates: rates})
 	if err != nil {
 		t.Fatal(err)
 	}

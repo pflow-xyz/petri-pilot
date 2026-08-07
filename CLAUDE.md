@@ -389,6 +389,81 @@ behaviours. Anything that executes a net on behalf of a user belongs on
 both — go-pflow's `Validate` warns `W_GUARD_OPAQUE` — so it silently weakens
 every static claim about the net.
 
+## The firing rule has one home
+
+`metamodel.Enabled`/`Fire`/`Inputs`/`Outputs`/`Tests` (go-pflow
+`metamodel/firing.go`) is *the* firing rule. Four rules together:
+
+| | Rule |
+|---|---|
+| consuming arc | needs `weight` tokens |
+| **read arc** | needs `weight` present, consumes none |
+| **inhibitor arc** | blocks at `>= weight` |
+| **capacity** | a **post-firing** bound, netting out what the same firing consumes — a capacity-2 place holding 2 still admits a consume-1-produce-1 firing. Zero means unbounded, not a bound of zero |
+
+Before it existed, five implementations disagreed. `pkg/mcp/simulate.go` and the
+bundle setup search were right; `pkg/runtime/sim`'s SSA **dropped** read and
+inhibitor arcs, and `pkg/mcp/stochastic.go` and `buildOdeNet` **consumed** them —
+turning a read arc into a drain and an inhibitor into a *source* feeding the
+transition it blocks. `buildOdeNet` is shared by twelve tools, so one line
+mis-modelled every gated net across the whole analytic surface, silently and in
+the same direction each time. Nothing compared them, so nothing failed.
+
+**Never re-derive it from `arc.From`/`arc.To`.** Classify through `Inputs`,
+`Outputs` and `Tests`; index-address the result if the inner loop needs speed
+(`pkg/runtime/sim.compile` does). `pkg/runtime/sim`'s
+`TestSSAAgreesWithTheSharedRule` pins the engine's copy to the definition.
+
+**Capacity ≠ gating unless something can reach it.** `Model.Gating()` reports a
+capacity only when a transition raises that place; a bound nothing can breach is
+documentation. Otherwise every drain-down model would refuse a forecast it can
+answer perfectly well.
+
+## Scenarios: asking a hypothetical
+
+`Forecast`/`Simulate` run forward from a marking something already holds.
+**`sim.Run(model, Scenario)`** supplies its own — which is what a decision needs,
+since "should I put a third barista on?" is about a shop that does not exist yet
+and has no aggregate to point at.
+
+```
+POST /api/scenario          {"marking": {"staff/available": 3}, "schedule": {...}, "hours": 8}
+POST /api/scenario/compare  {"scenarios": [{"name": "today", ...}, ...]}
+GET  /api/rates             rates + initial marking + gating caveats
+```
+
+Mounted from `pkg/runtime/sim/http.go`, **not** from a template, so the
+single-net and composed generators serve identical handlers. Duplicating them is
+how the composed app came to ship with no simulation at all.
+
+- **Marking is a sparse override.** Presence decides, not value: an unnamed place
+  keeps what the model declares. An unknown name is a **400**, never a silent
+  no-op — a scenario that ignores the knob you set and reports "no difference" is
+  the worst possible answer.
+- **`schedule`** is piecewise-constant, run segment by segment because SSA draws
+  a waiting time from the current total propensity. The last segment holds to the
+  horizon rather than reverting to the model's rate.
+- **`Compare` forces one seed.** Two SSA runs of the same shop differ; without a
+  shared seed a caller cannot tell staffing from dice. That is enforceable only
+  server-side, which is why it is one request.
+- **`Metrics`** is throughput / mean / P95 / utilization (`<pool>/busy` over
+  `busy+available`) — SSA only. A continuous solution has no firings to count.
+- **Depletion is "below the smallest weight drawn from it"**, not zero: ten beans
+  against a weight-20 espresso arc is a shop that has run out.
+
+**A resource pool only bites if the resource is held across two firings.**
+`start_X` → `brewing_X` → `finish_X`. Seized and released in one firing, a
+barista is never observably busy and headcount cannot change the outcome — see
+`services/bundles/cafe-*.json`. Each fusion class takes **one** `Link.ID`: it
+names the fused transition, so two links joining the same class must agree.
+
+`Forecast` **refuses** a model carrying read arcs, inhibitors, reachable
+capacities or guards, and says which. A continuous solve has no firing instant to
+test any of them, so it would answer a less constrained question — and a
+dashboard plots a wrong smooth curve just as happily as a right one. The twelve
+`buildOdeNet` tools carry the same text as a `caveats` field, added only when
+there is something to say so unconstrained models are byte-identical.
+
 ## Building (Go + Bazel)
 
 petri-pilot builds two ways. **Go tooling and Bazel coexist** — `go.mod`/`go.sum`
@@ -493,6 +568,43 @@ Mechanics worth knowing (`pkg/codegen/golang/bazel.go`):
 - The generated submodule `BUILD.bazel` is byte-compatible with what
   `bazel run //:gazelle` produces (only `glob`-vs-explicit `srcs` differs), so the
   two never fight. After regenerating, `bazel build //examples/<app>/...` (or `//generated/<app>/...`) works as-is.
+
+### Checking a hand-written frontend
+
+A custom frontend under `frontends/` is not generated, so nothing regenerates a
+test for it. One check, and it drives the real page:
+
+```bash
+make e2e-install     # once: Playwright and its Chromium, into e2e/
+make test-browser    # builds, serves on a free port, checks, tears down
+```
+
+`frontends/cafe/src/console.browser.mjs` starts the app itself, so it is one
+command rather than a two-shell dance — pass `BASE=<url>` to point at a server
+that is already running. It asserts the page renders, that no request 404s, that
+requests land **under the mount prefix**, that every place and transition the
+console names exists in the model, that the sliders reach the wire as
+`staff/available` and an abandon rate, that a comparison shares one seed, and
+that nothing scrolls sideways at 390px. CI runs it as its own job (`browser`),
+which is the only place it runs automatically — `make test` stays free of a
+browser dependency so a fresh clone works.
+
+**There used to be a second, cheaper check** — a DOM stub that imported
+`console.js` and asserted the same bindings with no browser. Every assertion it
+made is made here by loading the real page, so it was a second implementation of
+one definition, and it was the weaker one: the console fetched an absolute
+`/api/rates` while the app is mounted under `/cafe/`, every request 404'd, the
+page rendered empty, **and the stub passed throughout** — it was always handed a
+base URL and so never exercised the default. Its stated advantage was running
+without a browser in CI. It never ran in CI at all; CI runs `go test`, not
+`make test`. Same lesson as the five firing rules: a second implementation of one
+definition is a way to be confidently wrong, not a safety net.
+
+The other half is judgement, which no assertion covers. The browser check
+happily passed a results table listing the **barista pool** under "Ran out" — a
+pool reaching zero is every barista being busy, not the shop running out of
+staff. That was caught by looking at the screenshot the run writes to
+`SHOT_DIR`. Run it, then look at the picture.
 
 ### E2E Tests
 

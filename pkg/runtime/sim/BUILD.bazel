@@ -2,10 +2,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "sim",
-    srcs = ["sim.go"],
+    srcs = [
+        "http.go",
+        "scenario.go",
+        "sim.go",
+    ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/sim",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/dsl",
+        "//pkg/runtime/api",
         "@com_github_pflow_xyz_go_pflow//metamodel",
         "@com_github_pflow_xyz_go_pflow//petri",
         "@com_github_pflow_xyz_go_pflow//solver",
@@ -15,12 +21,19 @@ go_library(
 go_test(
     name = "sim_test",
     srcs = [
+        "cafe_e2e_test.go",
+        "cafe_service_test.go",
+        "gating_test.go",
         "http_smoke_test.go",
+        "scenario_test.go",
         "sim_test.go",
     ],
     embed = [":sim"],
     deps = [
+        "//generated",
         "//generated/beancounter",
+        "//generated/cafe",
+        "//pkg/serve",
         "@com_github_pflow_xyz_go_pflow//eventsource",
         "@com_github_pflow_xyz_go_pflow//metamodel",
     ],

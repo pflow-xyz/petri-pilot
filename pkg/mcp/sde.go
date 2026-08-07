@@ -327,9 +327,9 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 	}
 
 	if pngBytes, perr := renderSDEPNG(resp, variables); perr == nil {
-		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
+		return mcp.NewToolResultImage(string(withCaveats(text, model)), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
-	return mcp.NewToolResultText(string(text)), nil
+	return mcp.NewToolResultText(string(withCaveats(text, model))), nil
 }
 
 // runSDEPath runs one Euler-Maruyama path with optional correlated noise.

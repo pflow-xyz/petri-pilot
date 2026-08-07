@@ -54,6 +54,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(odeSensitivityTool(), handleOdeSensitivity)
 	s.AddTool(optimizeTool(), handleOptimize)
 	s.AddTool(stochasticTool(), handleStochastic)
+	s.AddTool(scenarioTool(), handleScenario)
 	s.AddTool(fitTool(), handleFit)
 	s.AddTool(templateTool(), handleTemplate)
 	s.AddTool(sdeTool(), handleSde)

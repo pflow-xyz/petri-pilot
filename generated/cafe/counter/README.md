@@ -1,7 +1,9 @@
 
 # counter
 
-Front of house: orders are taken, drinks are made, drinks are served. Knows nothing about ingredients.
+Front of house: orders are taken, drinks are brewed, drinks are served, and customers who wait too long leave. Knows nothing about ingredients or staffing.
+
+Brewing is two firings, not one. `start_X` begins a drink and `finish_X` completes it, with a token sitting in `brewing_X` in between. That gap is the whole reason headcount matters: a barista seized and released within a single firing is never observably busy, so no amount of staffing could change the outcome. Splitting the transition is what turns 'add a barista' into a question with an answer.
 
 ## Quick Start
 
@@ -29,10 +31,14 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | Place | Type | Initial | Description |
 |-------|------|---------|-------------|
 | `orders_pending` | Token | 0 | - |
+| `brewing_espresso` | Token | 0 | - |
+| `brewing_latte` | Token | 0 | - |
+| `brewing_cappuccino` | Token | 0 | - |
 | `espresso_ready` | Token | 0 | - |
 | `latte_ready` | Token | 0 | - |
 | `cappuccino_ready` | Token | 0 | - |
 | `orders_complete` | Token | 0 | - |
+| `walked_out` | Token | 0 | - |
 
 
 ### Transitions (Actions)
@@ -42,12 +48,16 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `order_espresso` | `counter.order_espresso` | - | - |
 | `order_latte` | `counter.order_latte` | - | - |
 | `order_cappuccino` | `counter.order_cappuccino` | - | - |
-| `make_espresso` | `counter.make_espresso` | - | - |
-| `make_latte` | `counter.make_latte` | - | - |
-| `make_cappuccino` | `counter.make_cappuccino` | - | - |
+| `start_espresso` | `counter.start_espresso` | - | - |
+| `start_latte` | `counter.start_latte` | - | - |
+| `start_cappuccino` | `counter.start_cappuccino` | - | - |
+| `finish_espresso` | `counter.finish_espresso` | - | - |
+| `finish_latte` | `counter.finish_latte` | - | - |
+| `finish_cappuccino` | `counter.finish_cappuccino` | - | - |
 | `serve_espresso` | `counter.serve_espresso` | - | - |
 | `serve_latte` | `counter.serve_latte` | - | - |
 | `serve_cappuccino` | `counter.serve_cappuccino` | - | - |
+| `abandon` | `counter.abandon` | - | - |
 
 
 ### Petri Net Diagram
@@ -57,21 +67,29 @@ stateDiagram-v2
     direction LR
 
     state "orders_pending" as PlaceOrdersPending
+    state "brewing_espresso" as PlaceBrewingEspresso
+    state "brewing_latte" as PlaceBrewingLatte
+    state "brewing_cappuccino" as PlaceBrewingCappuccino
     state "espresso_ready" as PlaceEspressoReady
     state "latte_ready" as PlaceLatteReady
     state "cappuccino_ready" as PlaceCappuccinoReady
     state "orders_complete" as PlaceOrdersComplete
+    state "walked_out" as PlaceWalkedOut
 
 
     state "order_espresso" as t_TransitionOrderEspresso
     state "order_latte" as t_TransitionOrderLatte
     state "order_cappuccino" as t_TransitionOrderCappuccino
-    state "make_espresso" as t_TransitionMakeEspresso
-    state "make_latte" as t_TransitionMakeLatte
-    state "make_cappuccino" as t_TransitionMakeCappuccino
+    state "start_espresso" as t_TransitionStartEspresso
+    state "start_latte" as t_TransitionStartLatte
+    state "start_cappuccino" as t_TransitionStartCappuccino
+    state "finish_espresso" as t_TransitionFinishEspresso
+    state "finish_latte" as t_TransitionFinishLatte
+    state "finish_cappuccino" as t_TransitionFinishCappuccino
     state "serve_espresso" as t_TransitionServeEspresso
     state "serve_latte" as t_TransitionServeLatte
     state "serve_cappuccino" as t_TransitionServeCappuccino
+    state "abandon" as t_TransitionAbandon
 
 
     t_TransitionOrderEspresso --> PlaceOrdersPending
@@ -80,14 +98,23 @@ stateDiagram-v2
 
     t_TransitionOrderCappuccino --> PlaceOrdersPending
 
-    PlaceOrdersPending --> t_TransitionMakeEspresso
-    t_TransitionMakeEspresso --> PlaceEspressoReady
+    PlaceOrdersPending --> t_TransitionStartEspresso
+    t_TransitionStartEspresso --> PlaceBrewingEspresso
 
-    PlaceOrdersPending --> t_TransitionMakeLatte
-    t_TransitionMakeLatte --> PlaceLatteReady
+    PlaceOrdersPending --> t_TransitionStartLatte
+    t_TransitionStartLatte --> PlaceBrewingLatte
 
-    PlaceOrdersPending --> t_TransitionMakeCappuccino
-    t_TransitionMakeCappuccino --> PlaceCappuccinoReady
+    PlaceOrdersPending --> t_TransitionStartCappuccino
+    t_TransitionStartCappuccino --> PlaceBrewingCappuccino
+
+    PlaceBrewingEspresso --> t_TransitionFinishEspresso
+    t_TransitionFinishEspresso --> PlaceEspressoReady
+
+    PlaceBrewingLatte --> t_TransitionFinishLatte
+    t_TransitionFinishLatte --> PlaceLatteReady
+
+    PlaceBrewingCappuccino --> t_TransitionFinishCappuccino
+    t_TransitionFinishCappuccino --> PlaceCappuccinoReady
 
     PlaceEspressoReady --> t_TransitionServeEspresso
     t_TransitionServeEspresso --> PlaceOrdersComplete
@@ -97,6 +124,9 @@ stateDiagram-v2
 
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
+
+    PlaceOrdersPending --> t_TransitionAbandon
+    t_TransitionAbandon --> PlaceWalkedOut
 
 ```
 
@@ -106,22 +136,30 @@ stateDiagram-v2
 flowchart TD
     subgraph Places
         PlaceOrdersPending[("orders_pending")]
+        PlaceBrewingEspresso[("brewing_espresso")]
+        PlaceBrewingLatte[("brewing_latte")]
+        PlaceBrewingCappuccino[("brewing_cappuccino")]
         PlaceEspressoReady[("espresso_ready")]
         PlaceLatteReady[("latte_ready")]
         PlaceCappuccinoReady[("cappuccino_ready")]
         PlaceOrdersComplete[("orders_complete")]
+        PlaceWalkedOut[("walked_out")]
     end
 
     subgraph Transitions
         t_TransitionOrderEspresso["order_espresso"]
         t_TransitionOrderLatte["order_latte"]
         t_TransitionOrderCappuccino["order_cappuccino"]
-        t_TransitionMakeEspresso["make_espresso"]
-        t_TransitionMakeLatte["make_latte"]
-        t_TransitionMakeCappuccino["make_cappuccino"]
+        t_TransitionStartEspresso["start_espresso"]
+        t_TransitionStartLatte["start_latte"]
+        t_TransitionStartCappuccino["start_cappuccino"]
+        t_TransitionFinishEspresso["finish_espresso"]
+        t_TransitionFinishLatte["finish_latte"]
+        t_TransitionFinishCappuccino["finish_cappuccino"]
         t_TransitionServeEspresso["serve_espresso"]
         t_TransitionServeLatte["serve_latte"]
         t_TransitionServeCappuccino["serve_cappuccino"]
+        t_TransitionAbandon["abandon"]
     end
 
 
@@ -131,14 +169,23 @@ flowchart TD
 
     t_TransitionOrderCappuccino --> PlaceOrdersPending
 
-    PlaceOrdersPending --> t_TransitionMakeEspresso
-    t_TransitionMakeEspresso --> PlaceEspressoReady
+    PlaceOrdersPending --> t_TransitionStartEspresso
+    t_TransitionStartEspresso --> PlaceBrewingEspresso
 
-    PlaceOrdersPending --> t_TransitionMakeLatte
-    t_TransitionMakeLatte --> PlaceLatteReady
+    PlaceOrdersPending --> t_TransitionStartLatte
+    t_TransitionStartLatte --> PlaceBrewingLatte
 
-    PlaceOrdersPending --> t_TransitionMakeCappuccino
-    t_TransitionMakeCappuccino --> PlaceCappuccinoReady
+    PlaceOrdersPending --> t_TransitionStartCappuccino
+    t_TransitionStartCappuccino --> PlaceBrewingCappuccino
+
+    PlaceBrewingEspresso --> t_TransitionFinishEspresso
+    t_TransitionFinishEspresso --> PlaceEspressoReady
+
+    PlaceBrewingLatte --> t_TransitionFinishLatte
+    t_TransitionFinishLatte --> PlaceLatteReady
+
+    PlaceBrewingCappuccino --> t_TransitionFinishCappuccino
+    t_TransitionFinishCappuccino --> PlaceCappuccinoReady
 
     PlaceEspressoReady --> t_TransitionServeEspresso
     t_TransitionServeEspresso --> PlaceOrdersComplete
@@ -148,6 +195,9 @@ flowchart TD
 
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
+
+    PlaceOrdersPending --> t_TransitionAbandon
+    t_TransitionAbandon --> PlaceWalkedOut
 
 
     style Places fill:#e1f5fe
@@ -164,12 +214,16 @@ Events are immutable records of state transitions. Each event captures the trans
 | `counter.order_espresso` | `order_espresso` | `aggregate_id`, `timestamp` |
 | `counter.order_latte` | `order_latte` | `aggregate_id`, `timestamp` |
 | `counter.order_cappuccino` | `order_cappuccino` | `aggregate_id`, `timestamp` |
-| `counter.make_espresso` | `make_espresso` | `aggregate_id`, `timestamp` |
-| `counter.make_latte` | `make_latte` | `aggregate_id`, `timestamp` |
-| `counter.make_cappuccino` | `make_cappuccino` | `aggregate_id`, `timestamp` |
+| `counter.start_espresso` | `start_espresso` | `aggregate_id`, `timestamp` |
+| `counter.start_latte` | `start_latte` | `aggregate_id`, `timestamp` |
+| `counter.start_cappuccino` | `start_cappuccino` | `aggregate_id`, `timestamp` |
+| `counter.finish_espresso` | `finish_espresso` | `aggregate_id`, `timestamp` |
+| `counter.finish_latte` | `finish_latte` | `aggregate_id`, `timestamp` |
+| `counter.finish_cappuccino` | `finish_cappuccino` | `aggregate_id`, `timestamp` |
 | `counter.serve_espresso` | `serve_espresso` | `aggregate_id`, `timestamp` |
 | `counter.serve_latte` | `serve_latte` | `aggregate_id`, `timestamp` |
 | `counter.serve_cappuccino` | `serve_cappuccino` | `aggregate_id`, `timestamp` |
+| `counter.abandon` | `abandon` | `aggregate_id`, `timestamp` |
 
 
 ```mermaid
@@ -202,23 +256,41 @@ classDiagram
     }
     Event <|-- CounterOrderCappuccinoEvent
 
-    class CounterMakeEspressoEvent {
+    class CounterStartEspressoEvent {
         +string AggregateId
         +time.Time Timestamp
     }
-    Event <|-- CounterMakeEspressoEvent
+    Event <|-- CounterStartEspressoEvent
 
-    class CounterMakeLatteEvent {
+    class CounterStartLatteEvent {
         +string AggregateId
         +time.Time Timestamp
     }
-    Event <|-- CounterMakeLatteEvent
+    Event <|-- CounterStartLatteEvent
 
-    class CounterMakeCappuccinoEvent {
+    class CounterStartCappuccinoEvent {
         +string AggregateId
         +time.Time Timestamp
     }
-    Event <|-- CounterMakeCappuccinoEvent
+    Event <|-- CounterStartCappuccinoEvent
+
+    class CounterFinishEspressoEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterFinishEspressoEvent
+
+    class CounterFinishLatteEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterFinishLatteEvent
+
+    class CounterFinishCappuccinoEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterFinishCappuccinoEvent
 
     class CounterServeEspressoEvent {
         +string AggregateId
@@ -237,6 +309,12 @@ classDiagram
         +time.Time Timestamp
     }
     Event <|-- CounterServeCappuccinoEvent
+
+    class CounterAbandonEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterAbandonEvent
 
 ```
 
@@ -261,12 +339,16 @@ classDiagram
 | POST | `/api/order_espresso` | `order_espresso` | - |
 | POST | `/api/order_latte` | `order_latte` | - |
 | POST | `/api/order_cappuccino` | `order_cappuccino` | - |
-| POST | `/api/make_espresso` | `make_espresso` | - |
-| POST | `/api/make_latte` | `make_latte` | - |
-| POST | `/api/make_cappuccino` | `make_cappuccino` | - |
+| POST | `/api/start_espresso` | `start_espresso` | - |
+| POST | `/api/start_latte` | `start_latte` | - |
+| POST | `/api/start_cappuccino` | `start_cappuccino` | - |
+| POST | `/api/finish_espresso` | `finish_espresso` | - |
+| POST | `/api/finish_latte` | `finish_latte` | - |
+| POST | `/api/finish_cappuccino` | `finish_cappuccino` | - |
 | POST | `/api/serve_espresso` | `serve_espresso` | - |
 | POST | `/api/serve_latte` | `serve_latte` | - |
 | POST | `/api/serve_cappuccino` | `serve_cappuccino` | - |
+| POST | `/api/abandon` | `abandon` | - |
 
 
 ### Request/Response Format

@@ -16,6 +16,8 @@ const (
 	TemplateFlatModel     = "flatmodel"
 	TemplateBundleApp     = "bundle_app"
 	TemplateBundleAppTest = "bundle_app_test"
+	TemplateBundleSim     = "bundle_simulation"
+	TemplateBundleService = "bundle_service"
 )
 
 var bundleTemplateOutputs = map[string]string{
@@ -23,6 +25,8 @@ var bundleTemplateOutputs = map[string]string{
 	TemplateFlatModel:     "flatmodel.go",
 	TemplateBundleApp:     "app.go",
 	TemplateBundleAppTest: "app_test.go",
+	TemplateBundleSim:     "simulation.go",
+	TemplateBundleService: "service.go",
 }
 
 // GenerateBundleFiles generates a composed application from a bundle: one Go
@@ -35,6 +39,7 @@ func (g *Generator) GenerateBundleFiles(b *metamodel.Bundle) ([]GeneratedFile, e
 	if err != nil {
 		return nil, err
 	}
+	bc.HasSimulation = g.opts.IncludeSimulation
 
 	var files []GeneratedFile
 
@@ -75,11 +80,18 @@ func (g *Generator) GenerateBundleFiles(b *metamodel.Bundle) ([]GeneratedFile, e
 	// Root package: composition metadata + the embedded flattened model.
 	rootTmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS,
 		"templates/bundle_root.tmpl", "templates/flatmodel.tmpl",
-		"templates/bundle_app.tmpl", "templates/bundle_app_test.tmpl")
+		"templates/bundle_app.tmpl", "templates/bundle_app_test.tmpl",
+		"templates/bundle_simulation.tmpl", "templates/bundle_service.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("parsing bundle templates: %w", err)
 	}
 	rootTemplates := []string{TemplateBundleRoot, TemplateFlatModel, TemplateBundleApp}
+	if g.opts.IncludeInfra {
+		rootTemplates = append(rootTemplates, TemplateBundleService)
+	}
+	if g.opts.IncludeSimulation {
+		rootTemplates = append(rootTemplates, TemplateBundleSim)
+	}
 	if g.opts.IncludeTests {
 		rootTemplates = append(rootTemplates, TemplateBundleAppTest)
 	}

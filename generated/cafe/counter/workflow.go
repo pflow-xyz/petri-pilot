@@ -4,37 +4,49 @@ package counter
 
 // Place constants
 const (
-	PlaceOrdersPending   = "orders_pending"
-	PlaceEspressoReady   = "espresso_ready"
-	PlaceLatteReady      = "latte_ready"
-	PlaceCappuccinoReady = "cappuccino_ready"
-	PlaceOrdersComplete  = "orders_complete"
+	PlaceOrdersPending     = "orders_pending"
+	PlaceBrewingEspresso   = "brewing_espresso"
+	PlaceBrewingLatte      = "brewing_latte"
+	PlaceBrewingCappuccino = "brewing_cappuccino"
+	PlaceEspressoReady     = "espresso_ready"
+	PlaceLatteReady        = "latte_ready"
+	PlaceCappuccinoReady   = "cappuccino_ready"
+	PlaceOrdersComplete    = "orders_complete"
+	PlaceWalkedOut         = "walked_out"
 )
 
 // Transition constants
 const (
-	TransitionOrderEspresso   = "order_espresso"
-	TransitionOrderLatte      = "order_latte"
-	TransitionOrderCappuccino = "order_cappuccino"
-	TransitionMakeEspresso    = "make_espresso"
-	TransitionMakeLatte       = "make_latte"
-	TransitionMakeCappuccino  = "make_cappuccino"
-	TransitionServeEspresso   = "serve_espresso"
-	TransitionServeLatte      = "serve_latte"
-	TransitionServeCappuccino = "serve_cappuccino"
+	TransitionOrderEspresso    = "order_espresso"
+	TransitionOrderLatte       = "order_latte"
+	TransitionOrderCappuccino  = "order_cappuccino"
+	TransitionStartEspresso    = "start_espresso"
+	TransitionStartLatte       = "start_latte"
+	TransitionStartCappuccino  = "start_cappuccino"
+	TransitionFinishEspresso   = "finish_espresso"
+	TransitionFinishLatte      = "finish_latte"
+	TransitionFinishCappuccino = "finish_cappuccino"
+	TransitionServeEspresso    = "serve_espresso"
+	TransitionServeLatte       = "serve_latte"
+	TransitionServeCappuccino  = "serve_cappuccino"
+	TransitionAbandon          = "abandon"
 )
 
 // Event type constants
 const (
-	EventTypeOrderEspresso   = "counter.order_espresso"
-	EventTypeOrderLatte      = "counter.order_latte"
-	EventTypeOrderCappuccino = "counter.order_cappuccino"
-	EventTypeMakeEspresso    = "counter.make_espresso"
-	EventTypeMakeLatte       = "counter.make_latte"
-	EventTypeMakeCappuccino  = "counter.make_cappuccino"
-	EventTypeServeEspresso   = "counter.serve_espresso"
-	EventTypeServeLatte      = "counter.serve_latte"
-	EventTypeServeCappuccino = "counter.serve_cappuccino"
+	EventTypeOrderEspresso    = "counter.order_espresso"
+	EventTypeOrderLatte       = "counter.order_latte"
+	EventTypeOrderCappuccino  = "counter.order_cappuccino"
+	EventTypeStartEspresso    = "counter.start_espresso"
+	EventTypeStartLatte       = "counter.start_latte"
+	EventTypeStartCappuccino  = "counter.start_cappuccino"
+	EventTypeFinishEspresso   = "counter.finish_espresso"
+	EventTypeFinishLatte      = "counter.finish_latte"
+	EventTypeFinishCappuccino = "counter.finish_cappuccino"
+	EventTypeServeEspresso    = "counter.serve_espresso"
+	EventTypeServeLatte       = "counter.serve_latte"
+	EventTypeServeCappuccino  = "counter.serve_cappuccino"
+	EventTypeAbandon          = "counter.abandon"
 )
 
 // InitialPlaces returns the initial token distribution for new aggregates.
@@ -46,10 +58,14 @@ func InitialPlaces() map[string]int {
 func AllPlaces() []string {
 	return []string{
 		PlaceOrdersPending,
+		PlaceBrewingEspresso,
+		PlaceBrewingLatte,
+		PlaceBrewingCappuccino,
 		PlaceEspressoReady,
 		PlaceLatteReady,
 		PlaceCappuccinoReady,
 		PlaceOrdersComplete,
+		PlaceWalkedOut,
 	}
 }
 
@@ -59,11 +75,15 @@ func AllTransitions() []string {
 		TransitionOrderEspresso,
 		TransitionOrderLatte,
 		TransitionOrderCappuccino,
-		TransitionMakeEspresso,
-		TransitionMakeLatte,
-		TransitionMakeCappuccino,
+		TransitionStartEspresso,
+		TransitionStartLatte,
+		TransitionStartCappuccino,
+		TransitionFinishEspresso,
+		TransitionFinishLatte,
+		TransitionFinishCappuccino,
 		TransitionServeEspresso,
 		TransitionServeLatte,
 		TransitionServeCappuccino,
+		TransitionAbandon,
 	}
 }

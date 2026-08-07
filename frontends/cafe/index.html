@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Café — what-if console</title>
+<meta name="description" content="Ask a Petri net what happens if you put another barista on. Composed from three nets: counter, pantry and staff.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <h1>☕ Café — what-if console</h1>
+  <p class="sub">
+    Three Petri nets composed into one: the <b>counter</b> takes orders, the <b>pantry</b> holds stock,
+    and <b>staff</b> are people who can only make one drink at a time. Nothing here changes the shop —
+    every question is answered by running a copy forward.
+  </p>
+</header>
+
+<main>
+  <!--
+    The values below are placeholders, deliberately NOT the model's. Every one of
+    them is overwritten from /api/rates on load, so if they ever show through, the
+    page failed to read the net it claims to be asking about — which is a thing
+    worth being able to see rather than a coincidence to rely on.
+  -->
+  <section class="controls" aria-label="Scenario controls">
+    <div class="control">
+      <label for="baristas">Baristas on duty</label>
+      <input type="range" id="baristas" min="1" max="8" step="1" value="1">
+      <output id="baristas-out">1</output>
+      <p class="hint">Tokens in <code>staff/available</code>. A drink holds one for the whole brew.</p>
+    </div>
+
+    <div class="control">
+      <label for="arrivals">Customers per hour</label>
+      <input type="range" id="arrivals" min="1" max="120" step="1" value="20">
+      <output id="arrivals-out">20</output>
+      <p class="hint">Split across the three <code>order_*</code> transitions in the model's own proportion.</p>
+    </div>
+
+    <div class="control">
+      <label for="patience">Walk out after</label>
+      <input type="range" id="patience" min="1" max="30" step="1" value="10">
+      <output id="patience-out">10 min</output>
+      <p class="hint">Sets the <code>abandon</code> rate. Waiting customers are a place in the net, not a colour on a card.</p>
+    </div>
+
+    <div class="control">
+      <label for="hours">Hours to run</label>
+      <input type="range" id="hours" min="1" max="12" step="1" value="8">
+      <output id="hours-out">8</output>
+      <p class="hint">
+        <label class="inline"><input type="checkbox" id="rush"> morning rush</label> —
+        triple arrivals for the first two hours, then quiet.
+      </p>
+    </div>
+  </section>
+
+  <section class="actions">
+    <button id="run" class="primary">Run this scenario</button>
+    <button id="compare">Compare: now vs +1 vs +2 baristas</button>
+    <span id="status" role="status"></span>
+  </section>
+
+  <section id="results" aria-live="polite"></section>
+
+  <section class="explain">
+    <h2>Why the barista has to be held</h2>
+    <p>
+      Making a drink is two firings, not one: <code>start_X</code> takes an order, its ingredients
+      <em>and</em> a barista; <code>finish_X</code> produces the drink and gives the barista back. In between,
+      a token sits in <code>brewing_X</code> and that barista is unavailable.
+    </p>
+    <p>
+      If making a drink were a single firing, the barista would be seized and released in the same instant —
+      never observably busy — and no amount of staffing could change the answer. That is not a detail of the
+      implementation; it is the difference between a model that can answer this question and one that cannot.
+    </p>
+    <h2>Which engine answers</h2>
+    <p>
+      The discrete one. A queue with three baristas is exactly the regime where noise decides the outcome,
+      so the answer is an average over independent runs rather than a smooth curve. The continuous solver has
+      no firing instant, so it cannot test a capacity or a guard at all — asked about a model that has them,
+      it refuses instead of quietly answering an easier question.
+    </p>
+  </section>
+</main>
+
+<script type="module" src="src/console.js"></script>
+</body>
+</html>

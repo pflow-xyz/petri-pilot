@@ -13,11 +13,15 @@ import (
 
 // State holds the aggregate state for counter.
 type State struct {
-	OrdersPending   int `json:"orders_pending"`
-	EspressoReady   int `json:"espresso_ready"`
-	LatteReady      int `json:"latte_ready"`
-	CappuccinoReady int `json:"cappuccino_ready"`
-	OrdersComplete  int `json:"orders_complete"`
+	OrdersPending     int `json:"orders_pending"`
+	BrewingEspresso   int `json:"brewing_espresso"`
+	BrewingLatte      int `json:"brewing_latte"`
+	BrewingCappuccino int `json:"brewing_cappuccino"`
+	EspressoReady     int `json:"espresso_ready"`
+	LatteReady        int `json:"latte_ready"`
+	CappuccinoReady   int `json:"cappuccino_ready"`
+	OrdersComplete    int `json:"orders_complete"`
+	WalkedOut         int `json:"walked_out"`
 }
 
 // NewState creates a new State with initialized collections.
@@ -63,30 +67,60 @@ func NewAggregate(id string) *Aggregate {
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionMakeEspresso,
-		EventType: EventTypeMakeEspresso,
+		ID:        TransitionStartEspresso,
+		EventType: EventTypeStartEspresso,
 		Inputs: map[string]int{
 			PlaceOrdersPending: 1,
+		},
+		Outputs: map[string]int{
+			PlaceBrewingEspresso: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionStartLatte,
+		EventType: EventTypeStartLatte,
+		Inputs: map[string]int{
+			PlaceOrdersPending: 1,
+		},
+		Outputs: map[string]int{
+			PlaceBrewingLatte: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionStartCappuccino,
+		EventType: EventTypeStartCappuccino,
+		Inputs: map[string]int{
+			PlaceOrdersPending: 1,
+		},
+		Outputs: map[string]int{
+			PlaceBrewingCappuccino: 1,
+		},
+	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionFinishEspresso,
+		EventType: EventTypeFinishEspresso,
+		Inputs: map[string]int{
+			PlaceBrewingEspresso: 1,
 		},
 		Outputs: map[string]int{
 			PlaceEspressoReady: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionMakeLatte,
-		EventType: EventTypeMakeLatte,
+		ID:        TransitionFinishLatte,
+		EventType: EventTypeFinishLatte,
 		Inputs: map[string]int{
-			PlaceOrdersPending: 1,
+			PlaceBrewingLatte: 1,
 		},
 		Outputs: map[string]int{
 			PlaceLatteReady: 1,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
-		ID:        TransitionMakeCappuccino,
-		EventType: EventTypeMakeCappuccino,
+		ID:        TransitionFinishCappuccino,
+		EventType: EventTypeFinishCappuccino,
 		Inputs: map[string]int{
-			PlaceOrdersPending: 1,
+			PlaceBrewingCappuccino: 1,
 		},
 		Outputs: map[string]int{
 			PlaceCappuccinoReady: 1,
@@ -122,6 +156,16 @@ func NewAggregate(id string) *Aggregate {
 			PlaceOrdersComplete: 1,
 		},
 	})
+	sm.AddTransition(eventsource.Transition{
+		ID:        TransitionAbandon,
+		EventType: EventTypeAbandon,
+		Inputs: map[string]int{
+			PlaceOrdersPending: 1,
+		},
+		Outputs: map[string]int{
+			PlaceWalkedOut: 1,
+		},
+	})
 
 	// Register event handlers for state updates
 	sm.RegisterHandler(EventTypeOrderEspresso, func(state *State, event *eventsource.Event) error {
@@ -133,14 +177,23 @@ func NewAggregate(id string) *Aggregate {
 	sm.RegisterHandler(EventTypeOrderCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyOrderCappuccino(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeEspresso, func(state *State, event *eventsource.Event) error {
-		return applyMakeEspresso(state, event)
+	sm.RegisterHandler(EventTypeStartEspresso, func(state *State, event *eventsource.Event) error {
+		return applyStartEspresso(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeLatte, func(state *State, event *eventsource.Event) error {
-		return applyMakeLatte(state, event)
+	sm.RegisterHandler(EventTypeStartLatte, func(state *State, event *eventsource.Event) error {
+		return applyStartLatte(state, event)
 	})
-	sm.RegisterHandler(EventTypeMakeCappuccino, func(state *State, event *eventsource.Event) error {
-		return applyMakeCappuccino(state, event)
+	sm.RegisterHandler(EventTypeStartCappuccino, func(state *State, event *eventsource.Event) error {
+		return applyStartCappuccino(state, event)
+	})
+	sm.RegisterHandler(EventTypeFinishEspresso, func(state *State, event *eventsource.Event) error {
+		return applyFinishEspresso(state, event)
+	})
+	sm.RegisterHandler(EventTypeFinishLatte, func(state *State, event *eventsource.Event) error {
+		return applyFinishLatte(state, event)
+	})
+	sm.RegisterHandler(EventTypeFinishCappuccino, func(state *State, event *eventsource.Event) error {
+		return applyFinishCappuccino(state, event)
 	})
 	sm.RegisterHandler(EventTypeServeEspresso, func(state *State, event *eventsource.Event) error {
 		return applyServeEspresso(state, event)
@@ -150,6 +203,9 @@ func NewAggregate(id string) *Aggregate {
 	})
 	sm.RegisterHandler(EventTypeServeCappuccino, func(state *State, event *eventsource.Event) error {
 		return applyServeCappuccino(state, event)
+	})
+	sm.RegisterHandler(EventTypeAbandon, func(state *State, event *eventsource.Event) error {
+		return applyAbandon(state, event)
 	})
 	return &Aggregate{sm: sm}
 }
@@ -188,9 +244,12 @@ func (a *Aggregate) Places() map[string]int {
 // is what let a guarded transition succeed with its cross-entity precondition
 // unmet.
 var crossEntityCommands = map[string]string{
-	TransitionMakeCappuccino: "cappuccino_costs_stock", // fused
-	TransitionMakeEspresso:   "espresso_costs_stock",   // fused
-	TransitionMakeLatte:      "latte_costs_stock",      // fused
+	TransitionFinishCappuccino: "cappuccino_finished", // fused
+	TransitionFinishEspresso:   "espresso_finished",   // fused
+	TransitionFinishLatte:      "latte_finished",      // fused
+	TransitionStartCappuccino:  "cappuccino_started",  // fused
+	TransitionStartEspresso:    "espresso_started",    // fused
+	TransitionStartLatte:       "latte_started",       // fused
 }
 
 // CrossEntityCommand reports the composition-root command that owns a
@@ -295,21 +354,42 @@ func applyOrderCappuccino(state *State, event *eventsource.Event) error {
 	return nil
 }
 
-func applyMakeEspresso(state *State, event *eventsource.Event) error {
+func applyStartEspresso(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakeLatte(state *State, event *eventsource.Event) error {
+func applyStartLatte(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
 	return nil
 }
 
-func applyMakeCappuccino(state *State, event *eventsource.Event) error {
+func applyStartCappuccino(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyFinishEspresso(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyFinishLatte(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyFinishCappuccino(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event
@@ -331,6 +411,13 @@ func applyServeLatte(state *State, event *eventsource.Event) error {
 }
 
 func applyServeCappuccino(state *State, event *eventsource.Event) error {
+	// No data transformations for this transition
+	_ = state
+	_ = event
+	return nil
+}
+
+func applyAbandon(state *State, event *eventsource.Event) error {
 	// No data transformations for this transition
 	_ = state
 	_ = event

@@ -34,10 +34,13 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strings"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
 	"github.com/pflow-xyz/go-pflow/petri"
 	"github.com/pflow-xyz/go-pflow/solver"
+
+	"github.com/pflow-xyz/petri-pilot/pkg/dsl"
 )
 
 // DefaultRate is used for a transition whose model declares none. Mass-action
@@ -86,6 +89,22 @@ type Options struct {
 	Realizations int
 }
 
+// startFrom overlays a caller's marking onto the one the model declares.
+//
+// Presence decides, not value: a place the caller names at zero is zero, and a
+// place they omit keeps the model's initial count. That makes a sparse map a
+// scenario — "same shop, but three baristas" — rather than a marking the caller
+// has to restate in full and can silently get wrong.
+func startFrom(m *metamodel.Model, marking map[string]int) metamodel.Marking {
+	mk := m.InitialMarking()
+	for p, n := range marking {
+		if _, isTokenPlace := mk[p]; isTokenPlace {
+			mk[p] = n
+		}
+	}
+	return mk
+}
+
 func (o Options) withDefaults(m *metamodel.Model) Options {
 	if o.Horizon <= 0 {
 		o.Horizon = 1
@@ -128,12 +147,45 @@ type Result struct {
 	// truth than a good one, it is noise, and a dashboard will happily plot it.
 	Diverged bool   `json:"diverged,omitempty"`
 	Reason   string `json:"reason,omitempty"`
+
+	// Caveats name constraints the model expresses that this run could not
+	// enforce. An empty list is a claim: everything the net says was applied.
+	Caveats []string `json:"caveats,omitempty"`
+
+	// Metrics are the numbers an operator asks for, as distinct from the
+	// trajectory an analyst reads. Populated by Simulate only — a continuous
+	// solution has no firings to count and no percentiles to take.
+	Metrics *Metrics `json:"metrics,omitempty"`
+}
+
+// Metrics summarise a stochastic run in the terms of the thing being modelled.
+type Metrics struct {
+	// Throughput is the mean number of firings per transition over the horizon.
+	Throughput map[string]float64 `json:"throughput"`
+	// Mean and P95 per place. A queue's average is reassuring and its 95th
+	// percentile is what the customer standing in it experiences.
+	Mean map[string]float64 `json:"mean"`
+	P95  map[string]float64 `json:"p95"`
+	// Utilization is the fraction of a resource pool that is busy, for every
+	// pair of places named "<pool>/busy" and "<pool>/available" (or "busy" and
+	// "available" within one subnet). Absent when the model has no such pair.
+	Utilization map[string]float64 `json:"utilization,omitempty"`
 }
 
 // Depletion records when a place first runs out.
 type Depletion struct {
 	Place string  `json:"place"`
 	At    float64 `json:"at"`
+
+	// Recovered is true when the place was back above the floor by the end of
+	// the horizon.
+	//
+	// Without this the metric conflates two different events. A pantry running
+	// out of beans is a problem; a barista pool reaching zero is just everyone
+	// being busy for a moment, and it refills itself by construction. Both hit
+	// the floor, so both are "depleted" — reporting them identically told a
+	// café owner their staff had run out.
+	Recovered bool `json:"recovered,omitempty"`
 }
 
 // Forecast runs the continuous mass-action ODE forward from marking.
@@ -143,14 +195,33 @@ type Depletion struct {
 func Forecast(m *metamodel.Model, marking map[string]int, opts Options) (*Result, error) {
 	opts = opts.withDefaults(m)
 
-	net, places, err := toNet(m, marking)
+	// A continuous solution has no firing instant, so there is nowhere to test a
+	// read arc, an inhibitor, a capacity or a guard — the solver ignores all
+	// four. On an ungated net that costs nothing; on a staffing model it means
+	// the curve shows a shop with unlimited baristas. Refuse rather than plot
+	// it: the caller has a discrete engine one call away.
+	if gating := m.Gating(); len(gating) > 0 {
+		return &Result{
+			Method:   "ode",
+			Times:    sampleTimes(opts),
+			Final:    map[string]float64{},
+			Diverged: true,
+			Reason: "this model constrains firing in ways a continuous solution cannot express, so the ODE would " +
+				"silently model an unconstrained system. Use the discrete engine (Simulate). Specifically: " +
+				strings.Join(gating, "; "),
+			Caveats: gating,
+		}, nil
+	}
+
+	start := startFrom(m, marking)
+	net, places, err := toNet(m, start)
 	if err != nil {
 		return nil, err
 	}
 
 	state := make(map[string]float64, len(places))
 	for _, p := range places {
-		state[p] = float64(marking[p])
+		state[p] = float64(start[p])
 	}
 
 	prob := solver.NewProblem(net, state, [2]float64{0, opts.Horizon}, opts.Rates)
@@ -169,7 +240,7 @@ func Forecast(m *metamodel.Model, marking map[string]int, opts Options) (*Result
 		res.Series = append(res.Series, Series{Place: p, Values: vals})
 		res.Final[p] = vals[len(vals)-1]
 	}
-	res.Depleted = depletions(res)
+	res.Depleted = depletions(m, res)
 	checkDivergence(res)
 	return res, nil
 }
@@ -206,34 +277,46 @@ func checkDivergence(res *Result) {
 func Simulate(m *metamodel.Model, marking map[string]int, opts Options) (*Result, error) {
 	opts = opts.withDefaults(m)
 
-	trs, places, err := compile(m, marking)
+	trs, places, caveats, err := compile(m, opts.Rates)
 	if err != nil {
 		return nil, err
 	}
 	times := sampleTimes(opts)
+	firings := make([]float64, len(trs))
 
 	sums := make([][]float64, len(places))
 	sumSquares := make([][]float64, len(places))
+	// Every observation, across realizations and time, kept so percentiles are
+	// taken over the actual population rather than over an average that has
+	// already smoothed the tail away.
+	observed := make([][]float64, len(places))
 	for i := range places {
 		sums[i] = make([]float64, len(times))
 		sumSquares[i] = make([]float64, len(times))
+		observed[i] = make([]float64, 0, len(times)*opts.Realizations)
 	}
 
 	seed := opts.Seed
 	if seed == 0 {
 		seed = 1
 	}
+	initial := startFrom(m, marking)
 	for r := 0; r < opts.Realizations; r++ {
 		start := make([]int, len(places))
 		for i, p := range places {
-			start[i] = marking[p]
+			start[i] = initial[p]
 		}
-		traj := ssa(trs, start, times, rand.New(rand.NewSource(seed+int64(r)))) //nolint:gosec // not cryptographic
+		counts := make([]int, len(trs))
+		traj := ssa(trs, places, start, times, rand.New(rand.NewSource(seed+int64(r))), counts) //nolint:gosec // not cryptographic
+		for i, c := range counts {
+			firings[i] += float64(c)
+		}
 		for p := range places {
 			for i, v := range traj[p] {
 				sums[p][i] += v
 				sumSquares[p][i] += v * v
 			}
+			observed[p] = append(observed[p], traj[p]...)
 		}
 	}
 
@@ -258,8 +341,109 @@ func Simulate(m *metamodel.Model, marking map[string]int, opts Options) (*Result
 		res.Series = append(res.Series, Series{Place: p, Values: mean, StdDev: sd})
 		res.Final[p] = mean[len(mean)-1]
 	}
-	res.Depleted = depletions(res)
+	res.Depleted = depletions(m, res)
+	res.Caveats = caveats
+	res.Metrics = metricsOf(trs, firings, places, observed, n)
 	return res, nil
+}
+
+// metricsOf turns a run into the numbers an operator asks for.
+func metricsOf(trs []transition, firings []float64, places []string, observed [][]float64, n float64) *Metrics {
+	mt := &Metrics{
+		Throughput: make(map[string]float64, len(trs)),
+		Mean:       make(map[string]float64, len(places)),
+		P95:        make(map[string]float64, len(places)),
+	}
+	for i := range trs {
+		mt.Throughput[trs[i].id] = firings[i] / n
+	}
+	for i, p := range places {
+		mt.Mean[p] = mean(observed[i])
+		mt.P95[p] = percentile(observed[i], 0.95)
+	}
+	mt.Utilization = utilization(places, mt.Mean)
+	return mt
+}
+
+func mean(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	var total float64
+	for _, x := range xs {
+		total += x
+	}
+	return total / float64(len(xs))
+}
+
+// percentile is the nearest-rank percentile of a copy of xs, so the caller's
+// slice keeps its time ordering.
+func percentile(xs []float64, q float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	sorted := append([]float64(nil), xs...)
+	sort.Float64s(sorted)
+	i := int(math.Ceil(q*float64(len(sorted)))) - 1
+	if i < 0 {
+		i = 0
+	}
+	if i >= len(sorted) {
+		i = len(sorted) - 1
+	}
+	return sorted[i]
+}
+
+// utilization pairs up the "available"/"busy" places a resource pool exposes
+// and reports the busy fraction — the answer to "are my baristas standing
+// around, or are they the bottleneck?".
+//
+// Matched by suffix so it works both inside a single net ("available") and
+// across a composed one ("staff/available"), and only when both halves are
+// present: a lone "busy" place is not evidence of a pool.
+func utilization(places []string, means map[string]float64) map[string]float64 {
+	pools := map[string][2]float64{}
+	seen := map[string][2]bool{}
+	for _, p := range places {
+		pool, role := "", ""
+		switch {
+		case p == "available" || strings.HasSuffix(p, "/available"):
+			pool, role = strings.TrimSuffix(strings.TrimSuffix(p, "available"), "/"), "available"
+		case p == "busy" || strings.HasSuffix(p, "/busy"):
+			pool, role = strings.TrimSuffix(strings.TrimSuffix(p, "busy"), "/"), "busy"
+		case p == "in_use" || strings.HasSuffix(p, "/in_use"):
+			pool, role = strings.TrimSuffix(strings.TrimSuffix(p, "in_use"), "/"), "busy"
+		default:
+			continue
+		}
+		v, s := pools[pool], seen[pool]
+		if role == "available" {
+			v[0], s[0] = means[p], true
+		} else {
+			v[1], s[1] = means[p], true
+		}
+		pools[pool], seen[pool] = v, s
+	}
+
+	var out map[string]float64
+	for pool, v := range pools {
+		if !seen[pool][0] || !seen[pool][1] {
+			continue
+		}
+		total := v[0] + v[1]
+		if total <= 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string]float64{}
+		}
+		name := pool
+		if name == "" {
+			name = "pool"
+		}
+		out[name] = v[1] / total
+	}
+	return out
 }
 
 // resample linearly interpolates a solver trajectory onto the requested times.
@@ -300,22 +484,53 @@ func sampleTimes(opts Options) []float64 {
 	return times
 }
 
-// depletions reports the first sample time at which each place hits zero,
-// earliest first. A place that starts empty is not "depleted".
-func depletions(res *Result) []Depletion {
+// depletions reports the first sample time at which each place can no longer
+// supply anything that draws on it, earliest first. A place that starts empty is
+// not "depleted".
+//
+// Not "reaches zero": a place is out when it falls below the smallest weight
+// any transition takes from it. Ten coffee beans and a weight-20 espresso arc
+// is a shop that has run out of coffee, and reporting it as still stocked —
+// because the number is not literally zero — answers the wrong question. The
+// threshold comes from the model, so it is right for each place rather than a
+// constant someone has to tune.
+func depletions(m *metamodel.Model, res *Result) []Depletion {
+	floor := map[string]int{}
+	for i := range m.Transitions {
+		for _, in := range m.Inputs(m.Transitions[i].ID) {
+			if w, seen := floor[in.Place]; !seen || in.Weight < w {
+				floor[in.Place] = in.Weight
+			}
+		}
+	}
+
 	var out []Depletion
 	for _, s := range res.Series {
-		if len(s.Values) == 0 || s.Values[0] <= 0 {
+		if len(s.Values) == 0 {
 			continue
 		}
+		threshold := float64(floor[s.Place]) // absent ⇒ 0: nothing draws on it
+		if s.Values[0] < threshold || s.Values[0] <= 0 {
+			continue // already out, or never stocked
+		}
 		for i, v := range s.Values {
-			if v <= 0 {
-				out = append(out, Depletion{Place: s.Place, At: res.Times[i]})
+			if v < threshold || v <= 0 {
+				last := s.Values[len(s.Values)-1]
+				out = append(out, Depletion{
+					Place:     s.Place,
+					At:        res.Times[i],
+					Recovered: last >= threshold && last > 0,
+				})
 				break
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].At < out[j].At })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].At != out[j].At {
+			return out[i].At < out[j].At
+		}
+		return out[i].Place < out[j].Place
+	})
 	return out
 }
 
@@ -326,55 +541,166 @@ type arc struct {
 	weight int
 }
 
+// capBound is a post-firing capacity check, precomputed: firing this transition
+// raises place by delta, and the place may not end above limit.
+type capBound struct {
+	place int
+	delta int
+	limit int
+}
+
 type transition struct {
 	id      string
 	rate    float64
 	inputs  []arc
 	outputs []arc
+
+	// reads and inhibits gate a firing without moving tokens. Leaving them out
+	// — which this engine did until the staffing work — makes every constraint
+	// a model expresses structurally invisible to the simulation of it.
+	reads    []arc
+	inhibits []arc
+	caps     []capBound
+
+	// guard is evaluated against the marking each step, when it is decidable
+	// from the marking alone. A guard needing action parameters is reported as
+	// a caveat rather than guessed at.
+	guard string
+}
+
+// gated reports whether the non-consuming constraints allow this transition to
+// fire at marking. The consuming arcs are checked by the propensity calculation
+// itself, which needs the token counts anyway.
+func (t *transition) gated(marking []int) bool {
+	for _, r := range t.reads {
+		if marking[r.place] < r.weight {
+			return false
+		}
+	}
+	for _, h := range t.inhibits {
+		if marking[h.place] >= h.weight {
+			return false
+		}
+	}
+	for _, c := range t.caps {
+		if marking[c.place]+c.delta > c.limit {
+			return false
+		}
+	}
+	return true
 }
 
 // compile turns the model into index-addressed transitions, which is what makes
 // the inner SSA loop cheap.
-func compile(m *metamodel.Model, marking map[string]int) ([]transition, []string, error) {
+//
+// The classification — what is an input, what merely tests the marking, what
+// weight an unset arc carries — comes from metamodel's firing rule rather than
+// being re-derived here. Only the arithmetic is local. Four engines used to own
+// four answers to that question and two of them were wrong; the answer now has
+// one home.
+//
+// Returns any caveats: constraints the model expresses that this engine cannot
+// enforce. They are reported, never silently dropped.
+func compile(m *metamodel.Model, rates map[string]float64) ([]transition, []string, []string, error) {
 	places, index, err := tokenPlaces(m)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	rates := Rates(m)
+	if rates == nil {
+		rates = Rates(m)
+	}
 
-	byID := make(map[string]*transition, len(m.Transitions))
+	// Post-firing capacity bounds, keyed by the transition that could breach
+	// them. Precomputed because the net delta per place is fixed by the net.
+	limits := map[string]int{}
+	for i := range m.Places {
+		if p := &m.Places[i]; p.IsToken() && p.Capacity > 0 {
+			limits[p.ID] = p.Capacity
+		}
+	}
+
+	var caveats []string
 	out := make([]transition, 0, len(m.Transitions))
-	for _, t := range m.Transitions {
-		out = append(out, transition{id: t.ID, rate: rates[t.ID]})
-	}
-	for i := range out {
-		byID[out[i].id] = &out[i]
-	}
+	for i := range m.Transitions {
+		t := &m.Transitions[i]
+		tr := transition{id: t.ID, rate: rates[t.ID]}
 
-	for _, a := range m.Arcs {
-		w := a.Weight
-		if w == 0 {
-			w = 1
+		delta := map[string]int{}
+		for _, in := range m.Inputs(t.ID) {
+			tr.inputs = append(tr.inputs, arc{place: index[in.Place], weight: in.Weight})
+			delta[in.Place] -= in.Weight
 		}
-		// Read and inhibitor arcs gate a firing but move nothing. Treating them
-		// as inputs here would make the simulation consume tokens the model only
-		// tests — the same defect read arcs exposed in the ZK compiler.
-		if a.Type != "" {
-			continue
+		for _, o := range m.Outputs(t.ID) {
+			tr.outputs = append(tr.outputs, arc{place: index[o.Place], weight: o.Weight})
+			delta[o.Place] += o.Weight
 		}
-		if pi, ok := index[a.From]; ok {
-			if tr := byID[a.To]; tr != nil {
-				tr.inputs = append(tr.inputs, arc{place: pi, weight: w})
+		for _, test := range m.Tests(t.ID) {
+			a := arc{place: index[test.Place], weight: test.Weight}
+			if test.Type == metamodel.InhibitorArc {
+				tr.inhibits = append(tr.inhibits, a)
+			} else {
+				tr.reads = append(tr.reads, a)
 			}
-			continue
 		}
-		if pi, ok := index[a.To]; ok {
-			if tr := byID[a.From]; tr != nil {
-				tr.outputs = append(tr.outputs, arc{place: pi, weight: w})
+		// Only a net increase can breach a bound, and the increase is netted
+		// against what the same firing consumes — a full place still admits a
+		// self-loop.
+		for _, p := range places {
+			limit, bounded := limits[p]
+			if d := delta[p]; bounded && d > 0 {
+				tr.caps = append(tr.caps, capBound{place: index[p], delta: d, limit: limit})
 			}
+		}
+
+		if t.Guard != "" {
+			if decidableFromMarking(t.Guard, m) {
+				tr.guard = t.Guard
+			} else {
+				caveats = append(caveats, fmt.Sprintf(
+					"the guard on %s needs action parameters, so it is not enforced here; "+
+						"this run may fire it where the application would refuse", t.ID))
+			}
+		}
+
+		out = append(out, tr)
+	}
+	return out, places, caveats, nil
+}
+
+// decidableFromMarking reports whether a guard can be settled by token counts
+// alone.
+//
+// Decided by trying it rather than by pattern-matching the expression: a guard
+// that evaluates cleanly against a marking with no bindings in scope references
+// nothing but the marking. Anything else — an action parameter, an ambient
+// request value — fails to resolve, and guessing at it would be worse than
+// admitting the gap.
+func decidableFromMarking(guard string, m *metamodel.Model) bool {
+	probe := dsl.Marking{}
+	for i := range m.Places {
+		if m.Places[i].IsToken() {
+			probe[m.Places[i].ID] = m.Places[i].Initial
 		}
 	}
-	return out, places, nil
+	_, err := dsl.Evaluate(guard, map[string]any{}, dsl.MakeAggregates(probe))
+	return err == nil
+}
+
+// allows evaluates a transition's guard against the current marking.
+func (t *transition) allows(places []string, marking []int) bool {
+	if t.guard == "" {
+		return true
+	}
+	mk := make(dsl.Marking, len(places))
+	for i, p := range places {
+		mk[p] = marking[i]
+	}
+	ok, err := dsl.Evaluate(t.guard, map[string]any{}, dsl.MakeAggregates(mk))
+	// A guard that fails to evaluate mid-run was classified as decidable at
+	// compile time, so this is a bug rather than a modelling choice. Refuse the
+	// firing: over-reporting throughput is the more damaging error for a
+	// capacity question.
+	return err == nil && ok
 }
 
 func tokenPlaces(m *metamodel.Model) ([]string, map[string]int, error) {
@@ -396,7 +722,7 @@ func tokenPlaces(m *metamodel.Model) ([]string, map[string]int, error) {
 
 // ssa is Gillespie's direct method. Ported from the petri_simulate tooling so
 // the generated app and the MCP tool answer the same question the same way.
-func ssa(trs []transition, marking []int, times []float64, rng *rand.Rand) [][]float64 {
+func ssa(trs []transition, places []string, marking []int, times []float64, rng *rand.Rand, fired []int) [][]float64 {
 	nPlaces := len(marking)
 	traj := make([][]float64, nPlaces)
 	for p := range traj {
@@ -431,6 +757,12 @@ func ssa(trs []transition, marking []int, times []float64, rng *rand.Rand) [][]f
 				}
 				a *= combinations(m, in.weight)
 			}
+			// Read arcs, inhibitors, capacity and marking guards decide
+			// enablement without appearing in the propensity: a blocked
+			// transition has rate zero, it does not merely fire more slowly.
+			if a > 0 && (!trs[i].gated(marking) || !trs[i].allows(places, marking)) {
+				a = 0
+			}
 			propensities[i] = a
 			total += a
 		}
@@ -462,6 +794,9 @@ func ssa(trs []transition, marking []int, times []float64, rng *rand.Rand) [][]f
 		for _, out := range trs[chosen].outputs {
 			marking[out.place] += out.weight
 		}
+		if fired != nil {
+			fired[chosen]++
+		}
 	}
 
 	// Hold the final marking through any remaining samples.
@@ -492,7 +827,7 @@ func combinations(m, w int) float64 {
 }
 
 // toNet builds the petri.PetriNet the ODE solver consumes.
-func toNet(m *metamodel.Model, marking map[string]int) (*petri.PetriNet, []string, error) {
+func toNet(m *metamodel.Model, marking metamodel.Marking) (*petri.PetriNet, []string, error) {
 	places, index, err := tokenPlaces(m)
 	if err != nil {
 		return nil, nil, err
