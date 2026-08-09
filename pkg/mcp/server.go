@@ -1839,10 +1839,14 @@ func parsePflowNet(jsonStr string) (*petri.PetriNet, *pflowProbe, bool, error) {
 	return net, &probe, true, nil
 }
 
-// schemaV2 represents the v2.0 schema format with nested net and extensions.
+// schemaV2 represents the enveloped schema format with nested net and
+// extensions. This covers the v2.0 schema as well as the ComputationNet
+// documents the frontends ship (any "version", "@type": "ComputationNet"),
+// so Net is kept raw and routed through parseModel, which understands both
+// the standard array format and the pflow.xyz map format.
 type schemaV2 struct {
 	Version    string                     `json:"version"`
-	Net        *goflowmetamodel.Model     `json:"net"`
+	Net        json.RawMessage            `json:"net"`
 	Extensions map[string]json.RawMessage `json:"extensions"`
 }
 
@@ -1871,13 +1875,28 @@ func parseModelV2(input string) (*ParseResult, error) {
 		}, nil
 	}
 
-	// First check if this is v2 format (has "version" and "net" keys)
+	// Envelope format: any document carrying a "net" object (v2.0 schema,
+	// ComputationNet frontends at version 2.1, ...) is unwrapped and the
+	// inner net parsed. Matching on the presence of "net" rather than an
+	// exact version string matters: version 2.1 documents used to fail this
+	// check, fall through to v1 parsing, and come back as a structurally
+	// "valid" model with zero places — an envelope mistake disguised as an
+	// empty model. A "net" key that then fails to parse is a loud error,
+	// never a fallthrough.
 	var v2 schemaV2
-	if err := json.Unmarshal([]byte(input), &v2); err == nil && v2.Version == "2.0" && v2.Net != nil {
+	if err := json.Unmarshal([]byte(input), &v2); err == nil && len(v2.Net) > 0 && string(v2.Net) != "null" {
+		model, err := parseModel(string(v2.Net))
+		if err != nil {
+			return nil, fmt.Errorf("parsing enveloped net: %w", err)
+		}
+		version := v2.Version
+		if version == "" {
+			version = "2.0"
+		}
 		return &ParseResult{
-			Model:      v2.Net,
+			Model:      model,
 			Extensions: v2.Extensions,
-			Version:    "2.0",
+			Version:    version,
 		}, nil
 	}
 

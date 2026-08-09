@@ -960,6 +960,21 @@ func parseModelFile(data []byte) (*metamodel.Model, error) {
 		return metamodel.FromTokenModel(schema), nil
 	}
 
+	// Envelope format ({"version": ..., "net": {...}} — the v2.0 schema or
+	// a frontend ComputationNet document): unwrap and parse the inner net.
+	// Without this, an enveloped model parses as structurally valid with
+	// zero places.
+	var envelope struct {
+		Net json.RawMessage `json:"net"`
+	}
+	if err := json.Unmarshal(data, &envelope); err == nil && len(envelope.Net) > 0 && string(envelope.Net) != "null" {
+		model, err := parseModelFile(envelope.Net)
+		if err != nil {
+			return nil, fmt.Errorf("parsing enveloped net: %w", err)
+		}
+		return model, nil
+	}
+
 	// JSON format
 	var model metamodel.Model
 	if err := json.Unmarshal(data, &model); err != nil {
@@ -1005,6 +1020,19 @@ func parseModelWithExtensions(data []byte) (*metamodel.Model, *extensions.Applic
 		}
 		model := metamodel.FromTokenModel(schema)
 		app := extensions.NewApplicationSpec(model)
+		return model, app, nil
+	}
+
+	// Envelope format: unwrap the nested net (see parseModelFile). Extension
+	// fields declared inside the net are picked up by the recursive parse.
+	var envelope struct {
+		Net json.RawMessage `json:"net"`
+	}
+	if err := json.Unmarshal(data, &envelope); err == nil && len(envelope.Net) > 0 && string(envelope.Net) != "null" {
+		model, app, err := parseModelWithExtensions(envelope.Net)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing enveloped net: %w", err)
+		}
 		return model, app, nil
 	}
 

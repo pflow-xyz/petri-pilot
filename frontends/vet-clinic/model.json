@@ -25,6 +25,7 @@
       { "id": "wait_surgery", "description": "Waiting for surgery", "initial": 0 },
       { "id": "wait_dental", "description": "Waiting for dental", "initial": 0 },
       { "id": "wait_diag", "description": "Waiting for diagnostics", "initial": 0 },
+      { "id": "wait_lab", "description": "Sample awaiting lab processing", "initial": 0 },
 
       { "id": "in_wellness", "description": "In wellness exam", "initial": 0 },
       { "id": "in_sick", "description": "In sick visit", "initial": 0 },
@@ -223,12 +224,13 @@
       { "from": "in_bloodwork", "to": "finish_bloodwork" },
       { "from": "finish_bloodwork", "to": "rvt_avail" },
       { "from": "finish_bloodwork", "to": "treatment_free" },
-      { "from": "finish_bloodwork", "to": "in_lab" },
+      { "from": "finish_bloodwork", "to": "wait_lab" },
 
-      { "from": "in_lab", "to": "start_lab" },
+      { "from": "wait_lab", "to": "start_lab" },
       { "from": "lab_free", "to": "start_lab" },
-      { "from": "start_lab", "to": "finish_lab" },
+      { "from": "start_lab", "to": "in_lab" },
 
+      { "from": "in_lab", "to": "finish_lab" },
       { "from": "finish_lab", "to": "lab_free" },
       { "from": "finish_lab", "to": "checkout" },
 

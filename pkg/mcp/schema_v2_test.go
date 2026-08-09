@@ -153,6 +153,53 @@ func TestParseV2Extensions(t *testing.T) {
 	}
 }
 
+func TestParseModelV2ComputationNetEnvelope(t *testing.T) {
+	// The frontends ship ComputationNet documents at version 2.1. These used
+	// to fail the exact-"2.0" check, fall through to v1 parsing, and come
+	// back as a "valid" model with zero places.
+	doc := `{
+		"@context": "https://pflow.xyz/schema",
+		"@type": "ComputationNet",
+		"@id": "vet-clinic",
+		"version": "2.1",
+		"net": {
+			"name": "vet-clinic",
+			"places": [
+				{"id": "wait_exam", "initial": 0},
+				{"id": "dvm_avail", "initial": 2}
+			],
+			"transitions": [{"id": "start_wellness"}],
+			"arcs": [
+				{"from": "wait_exam", "to": "start_wellness"},
+				{"from": "dvm_avail", "to": "start_wellness"}
+			]
+		}
+	}`
+
+	result, err := parseModelV2(doc)
+	if err != nil {
+		t.Fatalf("Failed to parse ComputationNet envelope: %v", err)
+	}
+	if result.Version != "2.1" {
+		t.Errorf("Expected version 2.1, got %s", result.Version)
+	}
+	if result.Model.Name != "vet-clinic" {
+		t.Errorf("Expected name 'vet-clinic', got %s", result.Model.Name)
+	}
+	if len(result.Model.Places) != 2 {
+		t.Errorf("Expected 2 places, got %d", len(result.Model.Places))
+	}
+}
+
+func TestParseModelV2EnvelopeWithBadNetErrors(t *testing.T) {
+	// A present-but-unparseable net must be a loud error, never a
+	// fallthrough to v1 that reports an empty model as valid.
+	doc := `{"version": "2.1", "net": "not a model"}`
+	if _, err := parseModelV2(doc); err == nil {
+		t.Fatal("Expected error for envelope with unparseable net, got nil")
+	}
+}
+
 func TestMigrateV1ToV2(t *testing.T) {
 	// v1 schema with extensions in flat format
 	v1JSON := `{
