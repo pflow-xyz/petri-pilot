@@ -197,7 +197,9 @@ func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		samples := []float64{tspan[1]} // record only final time
 		for p := 0; p < paths; p++ {
 			sub := rng.Int63()
-			out := runSSA(initialInt, transitions, len(initialInt), samples, sub)
+			// nil: this tool reports the distribution of one observable, and
+			// has no field to carry a contention report even if it measured one.
+			out := runSSA(initialInt, transitions, len(initialInt), samples, sub, nil)
 			finals = append(finals, out[obsIdx][0])
 		}
 	}

@@ -50,10 +50,26 @@ type sankeyResponse struct {
 }
 
 // transitionInputs returns the (place_id, weight) pairs that feed transition t.
+//
+// Feed, not merely point at. A read arc runs place -> transition and moves no
+// tokens; buildOdeNet drops it, so it is not a term in the law the solver
+// integrates and including it here computed a flux from a law no plotted
+// trajectory ever had — a gated net drew its widths from k·a·gate, five times
+// the k·a the curve above it came from.
+//
+// An inhibitor is *not* filtered, however wrong that reads. buildOdeNet emits
+// it via petri.InhibitorArc, and nothing in the solver looks at the resulting
+// arc's InhibitTransition flag: it is integrated as an ordinary input, consumed
+// and multiplied into the rate, so the place that blocks the transition makes
+// it appear to run faster. That is a defect in the continuous engine, which
+// odeCaveats already declares — an inhibitor is unrepresentable in a solve with
+// no firing instant. Correcting it here alone would only make the widths
+// disagree with the curve they annotate, which is the one thing this function
+// must not do. Fix it in buildOdeNet, and this follows.
 func transitionInputs(model *goflowmetamodel.Model, transitionID string) [][2]any {
 	out := [][2]any{}
 	for _, arc := range model.Arcs {
-		if arc.To != transitionID {
+		if arc.To != transitionID || arc.IsRead() {
 			continue
 		}
 		w := arc.Weight
@@ -66,7 +82,15 @@ func transitionInputs(model *goflowmetamodel.Model, transitionID string) [][2]an
 }
 
 // transitionRate computes k_t · ∏ C(m(p), w(p,t)) for transition t at the
-// given marking. Mirrors the mass-action propensity used by the SSA.
+// given marking, the product running over the arcs that consume tokens — the
+// same set buildOdeNet emits, which is why transitionInputs filters.
+//
+// That is the rate law the ODE above it actually integrated, which is what the
+// widths have to be drawn from — not the SSA's. The two agree except on a model
+// carrying non-kinetic arcs: the SSA leaves those out of the product and a
+// continuous solve cannot, which is why petri_ode caveats such a model rather
+// than quietly answering a different question. Mirroring the SSA here would
+// draw fluxes the plotted trajectory never had.
 func transitionRate(model *goflowmetamodel.Model, transitionID string, rates map[string]float64, marking map[string]float64) float64 {
 	rate := rates[transitionID]
 	for _, in := range transitionInputs(model, transitionID) {

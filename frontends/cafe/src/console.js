@@ -3,7 +3,8 @@
  *
  * Every control here binds to something the Petri net actually has. The barista
  * slider is the token count in `staff/available`; the patience slider is the
- * rate of the `abandon` transition; the rush toggle is a piecewise rate
+ * rate of every `abandon_<drink>` transition — the queue is one place per drink,
+ * so giving up is one transition per queue; the rush toggle is a piecewise rate
  * schedule. Nothing is a display-only decoration sitting beside a model that
  * cannot express it — which is the trap the older coffee-shop dashboard fell
  * into, where the barista was an emoji with a CSS class and the "rush hour"
@@ -37,6 +38,26 @@ let model = { rates: {}, initial: {} }
 /** Order transitions, discovered from the model rather than hardcoded. */
 let orderTransitions = []
 
+/**
+ * Give-up transitions, one per queue, discovered the same way.
+ *
+ * There used to be exactly one, `counter/abandon`, and the console named it as a
+ * literal. Splitting the queue per drink split it into three, and a literal
+ * would have kept setting a rate that no longer exists: the slider would have
+ * moved, the request would have been accepted, and two of the three queues would
+ * have quietly kept the model's declared patience.
+ */
+let abandonTransitions = []
+
+/**
+ * The queue places, and the drink each one belongs to.
+ *
+ * One place per drink is the whole point of the split — with a single fungible
+ * queue, which drink got made was decided by whichever recipe's ingredients
+ * multiplied out largest, not by what anyone ordered.
+ */
+let queues = []
+
 async function loadModel () {
   const res = await fetch(url('/api/rates'))
   if (!res.ok) throw new Error(`GET /api/rates: HTTP ${res.status}`)
@@ -45,6 +66,13 @@ async function loadModel () {
   orderTransitions = Object.keys(model.rates)
     .filter((id) => id.includes('order_'))
     .sort()
+  abandonTransitions = Object.keys(model.rates)
+    .filter((id) => id.includes('abandon'))
+    .sort()
+  queues = Object.keys(model.initial)
+    .filter((p) => /(^|\/)pending_/.test(p))
+    .sort()
+    .map((place) => ({ place, drink: place.replace(/^.*pending_/, '') }))
 
   // Seed the controls from the net, so the page opens showing what the model
   // actually says rather than a number someone typed into the HTML.
@@ -53,7 +81,8 @@ async function loadModel () {
   if (model.initial['staff/available'] != null) {
     setSlider('baristas', model.initial['staff/available'])
   }
-  const abandon = model.rates['counter/abandon']
+  // The queues declare the same patience, so any of them seeds the slider.
+  const abandon = model.rates[abandonTransitions[0]]
   if (abandon > 0) setSlider('patience', Math.max(1, Math.round(60 / abandon)))
 }
 
@@ -91,8 +120,11 @@ function buildScenario (name, baristas) {
     rates[id] = arrivals * share
   }
   // A customer who waits `patienceMinutes` leaves: as a rate, that is how many
-  // times an hour they would give up.
-  rates['counter/abandon'] = 60 / Math.max(1, patienceMinutes)
+  // times an hour they would give up. Patience is a property of the customer,
+  // not of the drink, so every queue gets the same one.
+  for (const id of abandonTransitions) {
+    rates[id] = 60 / Math.max(1, patienceMinutes)
+  }
 
   const scenario = {
     name,
@@ -183,6 +215,10 @@ function escapeHTML (s) {
 
 const round = (v) => (v == null ? '—' : Math.round(v).toLocaleString())
 
+// Queue lengths live below 1 in a shop that is keeping up, and rounding those to
+// a column of zeroes hides the difference the staffing slider makes.
+const round1 = (v) => (v == null ? '—' : v.toFixed(1))
+
 /**
  * Depletions worth calling "ran out", which is not all of them.
  *
@@ -201,24 +237,125 @@ function stockDepletions (result) {
   return (result.depleted || []).filter((d) => !poolPlaces.has(d.place))
 }
 
-/** Peak of a place's trajectory — what "how bad did it get" means. */
-function peak (result, place) {
-  const series = (result.series || []).find((s) => s.place === place)
-  if (!series) return null
-  return series.values.reduce((top, v) => (v > top ? v : top), 0)
+/**
+ * What kept orders waiting, and for how much of the day.
+ *
+ * "Ran out" cannot answer this and was the only thing here that tried. It
+ * reports a place that empties and stays empty, so a resource consumed exactly
+ * as fast as it is delivered — refilled, drained, refilled, its average never
+ * near zero — is invisible to it. The café shipped in that state on milk, and
+ * the console said so nowhere: eight baristas idle two thirds of the day, half
+ * the customers lost, "Ran out: nothing". This row is the engine's Contended
+ * list, which measures how much of the run each place spent being the only
+ * thing a firing was waiting for.
+ *
+ * Queue places are dropped. An empty queue is also "the only thing missing",
+ * and it is true — the shop was waiting for customers — but it is not a
+ * shortage anyone can go and fix, and it sits at the top of the raw list every
+ * time and buries the answer. Which places those are is the engine's call
+ * (`kind`), not this console's: the filter here used to be "drop anything
+ * prefixed with the queue places' own subnet", which happened to work for this
+ * one composed bundle and classified every place in a single-net model as a
+ * queue. The engine decides it structurally and already ranks capacity first,
+ * so this is a filter and not a re-ranking.
+ */
+function waitedOn (result) {
+  const shortages = (result.contended || [])
+    .filter((c) => c.kind === 'conserved' || c.kind === 'bounded')
+    .slice(0, 3)
+  if (shortages.length === 0) return 'nothing'
+  return shortages
+    .map((c) => `${escapeHTML(c.place)} ${Math.round(c.fraction * 100)}% of the day`)
+    .join('<br>')
+}
+
+/**
+ * Peak of the total queue — what "how bad did it get" means.
+ *
+ * The three queues share one time grid, so summing them point by point gives the
+ * trajectory of the total queue, and its maximum is that trajectory's peak.
+ * Every series is already a mean over realizations, so this is the peak of the
+ * average shop and not the worst moment any single run had — which is what the
+ * row said when there was one queue, and still says now.
+ */
+function peakQueue (result) {
+  const series = queues
+    .map(({ place }) => (result.series || []).find((s) => s.place === place))
+    .filter(Boolean)
+  if (series.length === 0) return null
+  const total = series[0].values.map((_, i) =>
+    series.reduce((sum, s) => sum + (s.values[i] || 0), 0))
+  return total.reduce((top, v) => (v > top ? v : top), 0)
+}
+
+/**
+ * Mean of the total queue.
+ *
+ * Exact: expectation is linear, so the mean of the sum IS the sum of the means,
+ * whatever the queues do to each other.
+ */
+function meanQueue (result) {
+  const means = result.metrics?.mean
+  if (!means) return null
+  return queues.reduce((sum, { place }) => sum + (means[place] || 0), 0)
+}
+
+/**
+ * Worst 5% per queue, reported per drink rather than as one number.
+ *
+ * There deliberately is no total here. A percentile is not additive — the three
+ * queues do not hit their bad moments together, so summing their P95s overstates
+ * the total and taking the largest understates it — and the engine returns only
+ * per-place percentiles, so the P95 of the sum cannot be recovered from what we
+ * have. Reporting three exact numbers beats reporting one invented one.
+ */
+function worstPerQueue (result) {
+  const p95 = result.metrics?.p95
+  if (!p95) return '—'
+  return queues
+    .map(({ place, drink }) => `${escapeHTML(drink)} ${round1(p95[place])}`)
+    .join('<br>')
+}
+
+/**
+ * What was ordered against what was served, per drink.
+ *
+ * This is the row the split exists for. Throughput counts firings, so
+ * `order_<drink>` is demand and `serve_<drink>` is what the shop actually got
+ * out — and under one fungible queue those two lists did not even have to
+ * resemble each other, because which drink got brewed was settled by ingredient
+ * arithmetic rather than by anyone asking for it.
+ */
+function orderedVersusServed (result) {
+  const th = result.metrics?.throughput
+  if (!th) return '—'
+  const find = (verb, drink) =>
+    Object.keys(th).find((id) => id.endsWith(`${verb}_${drink}`))
+  return queues
+    .map(({ drink }) => {
+      const ordered = th[find('order', drink)]
+      const served = th[find('serve', drink)]
+      return `${escapeHTML(drink)} ${round(ordered)} → ${round(served)}`
+    })
+    .join('<br>')
 }
 
 function render (runs) {
   const rows = [
     ['Drinks served', (r) => round(r.final['counter/orders_complete'])],
+    ['Ordered → served', orderedVersusServed],
     ['Customers who left', (r) => round(r.final['counter/walked_out'])],
-    ['Queue — typical', (r) => round(r.metrics?.mean?.['counter/orders_pending'])],
-    ['Queue — worst 5%', (r) => round(r.metrics?.p95?.['counter/orders_pending'])],
-    ['Queue — peak', (r) => round(peak(r, 'counter/orders_pending'))],
+    ['Queue — typical', (r) => round1(meanQueue(r))],
+    // "peak" averages the runs and then takes the maximum; "worst 5%" takes the
+    // percentile of the runs themselves, so it can and does come out larger.
+    // Labelling them apart is cheaper than a reader deciding the table is wrong.
+    ['Queue — peak, average day', (r) => round1(peakQueue(r))],
+    ['Queue — worst 5%, per drink', worstPerQueue],
     ['Baristas busy', (r) => {
       const u = r.metrics?.utilization?.staff
       return u == null ? '—' : `${Math.round(u * 100)}%`
     }],
+    ['Waiting on', waitedOn],
     ['Beans left', (r) => round(r.final['pantry/coffee_beans'])],
     ['Ran out', (r) => {
       const out = stockDepletions(r)
@@ -235,9 +372,18 @@ function render (runs) {
       ${runs.map((run) => `<td>${get(run.result)}</td>`).join('')}
     </tr>`).join('')
 
-  // Caveats are the model telling you what this run could not enforce. An empty
-  // list is a claim, so it is worth showing when it is not empty.
+  // Two different admissions, under two different headings.
+  //
+  // Caveats are the model telling you what this run could not enforce — an
+  // empty list is a claim, so it is worth showing when it is not empty.
+  // Assumptions are what the arithmetic had to assume whatever the model said,
+  // and no edit to the net removes one. They used to arrive in the same list
+  // and render under "Not enforced in this run:", which read a correct
+  // statement about the engine as a defect in the run — and, because every SSA
+  // scenario carries one, meant that heading was never absent and so never
+  // told anyone anything.
   const caveats = [...new Set(runs.flatMap((run) => run.result.caveats || []))]
+  const assumptions = [...new Set(runs.flatMap((run) => run.result.assumptions || []))]
   const refused = runs.filter((run) => run.result.diverged)
 
   el('results').innerHTML = `
@@ -248,11 +394,14 @@ function render (runs) {
     <p class="note">
       ${runs[0].result.method === 'ssa' ? 'Discrete engine, averaged over 16 runs on one seed.' : 'Continuous engine.'}
       A single run of a queue is an anecdote, so these are means; “worst 5%” is what the person
-      standing in the queue experiences.
+      standing in the queue experiences on a bad day, and it is per drink because there is a queue
+      per drink — the three do not queue up at the same moment, so there is no honest total.
     </p>
     ${refused.length ? `<div class="caveat"><b>Refused:</b> ${escapeHTML(refused[0].result.reason)}</div>` : ''}
     ${caveats.length ? `<div class="caveat"><b>Not enforced in this run:</b><ul>${
-      caveats.map((c) => `<li>${escapeHTML(c)}</li>`).join('')}</ul></div>` : ''}`
+      caveats.map((c) => `<li>${escapeHTML(c)}</li>`).join('')}</ul></div>` : ''}
+    ${assumptions.length ? `<div class="caveat assumption"><b>What this method assumes:</b><ul>${
+      assumptions.map((a) => `<li>${escapeHTML(a)}</li>`).join('')}</ul></div>` : ''}`
 }
 
 function wire () {

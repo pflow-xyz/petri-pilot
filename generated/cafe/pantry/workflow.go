@@ -32,8 +32,8 @@ const (
 // InitialPlaces returns the initial token distribution for new aggregates.
 func InitialPlaces() map[string]int {
 	return map[string]int{
-		PlaceCoffeeBeans: 1000,
-		PlaceMilk:        500,
+		PlaceCoffeeBeans: 2000,
+		PlaceMilk:        2000,
 		PlaceCups:        200,
 	}
 }

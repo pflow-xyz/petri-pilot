@@ -22,9 +22,13 @@ type SetupStep struct {
 // marking. That happens to work when every member starts with a token in place
 // — warehouse's order begins in `draft`, shop's likewise — and it fails on any
 // model whose work has to arrive first. The café's counter starts with
-// `orders_pending` empty, because an order is something a customer places, so
-// `make_espresso` cannot possibly fire until `order_espresso` has. The test was
+// `pending_espresso` empty, because an order is something a customer places, so
+// `start_espresso` cannot possibly fire until `order_espresso` has. The test was
 // asserting a property of two example models rather than of composition.
+//
+// The café also has a queue per drink, so the search has to find the *right*
+// order transition rather than any of three: ordering a cappuccino no longer
+// puts a token anywhere `start_espresso` can read.
 //
 // Breadth-first over markings, so the sequence found is the shortest one, and
 // bounded so a large or unbounded net degrades to "no setup found" rather than

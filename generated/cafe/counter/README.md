@@ -5,6 +5,12 @@ Front of house: orders are taken, drinks are brewed, drinks are served, and cust
 
 Brewing is two firings, not one. `start_X` begins a drink and `finish_X` completes it, with a token sitting in `brewing_X` in between. That gap is the whole reason headcount matters: a barista seized and released within a single firing is never observably busy, so no amount of staffing could change the outcome. Splitting the transition is what turns 'add a barista' into a question with an answer.
 
+The queue is per drink, and it has to be. A single fungible `orders_pending` made all three `start_X` race for the same token, so which drink got made was decided by whatever else those transitions happened to be reading — the recipes' ingredient counts, not the customers. Over an eight-hour day that shop took 65 cappuccino orders and made 8, while serving more espressos than anyone had ordered. `pending_espresso`/`pending_latte`/`pending_cappuccino` make an order for a cappuccino the only thing that can start a cappuccino.
+
+Abandonment is per queue for the same reason: a customer gives up on the drink they asked for, so the walkouts have to come out of the queue that actually kept them waiting. They all share `walked_out` because a lost customer is a lost customer whatever they wanted.
+
+`pending_X -> start_X` is `kinetic: false`, and the start rate is a pickup time rather than a second service time. Both correct the same defect. With that arc kinetic, a queued order was started at 60/h *per waiting customer* while a waiting customer gave up at 12/h, so exactly five orders in six were started — at every queue length, at every headcount. One arrival in six walked out with every barista idle and the stock full, and 'how many baristas do I need to get walkouts under 10%?' had no answer in this model: measured walkouts flattened at 17% and never went below it. A barista does not pick orders up faster because more people are waiting, so the queue is a prerequisite here too, not an accelerant. Made non-kinetic, the split between started and abandoned becomes a function of how long the queue is — which is the thing staffing actually changes. And the rate is 720/h because what it measures is a free barista noticing a waiting order, about five seconds; the drink itself is `finish_X`, which is where the declared 3/5/6 minutes live. At 60/h the handoff was quietly a minute-long service stage of its own that no amount of hiring could get past.
+
 ## Quick Start
 
 ```bash
@@ -30,7 +36,9 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Place | Type | Initial | Description |
 |-------|------|---------|-------------|
-| `orders_pending` | Token | 0 | - |
+| `pending_espresso` | Token | 0 | - |
+| `pending_latte` | Token | 0 | - |
+| `pending_cappuccino` | Token | 0 | - |
 | `brewing_espresso` | Token | 0 | - |
 | `brewing_latte` | Token | 0 | - |
 | `brewing_cappuccino` | Token | 0 | - |
@@ -57,7 +65,9 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 | `serve_espresso` | `counter.serve_espresso` | - | - |
 | `serve_latte` | `counter.serve_latte` | - | - |
 | `serve_cappuccino` | `counter.serve_cappuccino` | - | - |
-| `abandon` | `counter.abandon` | - | - |
+| `abandon_espresso` | `counter.abandon_espresso` | - | - |
+| `abandon_latte` | `counter.abandon_latte` | - | - |
+| `abandon_cappuccino` | `counter.abandon_cappuccino` | - | - |
 
 
 ### Petri Net Diagram
@@ -66,7 +76,9 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 stateDiagram-v2
     direction LR
 
-    state "orders_pending" as PlaceOrdersPending
+    state "pending_espresso" as PlacePendingEspresso
+    state "pending_latte" as PlacePendingLatte
+    state "pending_cappuccino" as PlacePendingCappuccino
     state "brewing_espresso" as PlaceBrewingEspresso
     state "brewing_latte" as PlaceBrewingLatte
     state "brewing_cappuccino" as PlaceBrewingCappuccino
@@ -89,22 +101,24 @@ stateDiagram-v2
     state "serve_espresso" as t_TransitionServeEspresso
     state "serve_latte" as t_TransitionServeLatte
     state "serve_cappuccino" as t_TransitionServeCappuccino
-    state "abandon" as t_TransitionAbandon
+    state "abandon_espresso" as t_TransitionAbandonEspresso
+    state "abandon_latte" as t_TransitionAbandonLatte
+    state "abandon_cappuccino" as t_TransitionAbandonCappuccino
 
 
-    t_TransitionOrderEspresso --> PlaceOrdersPending
+    t_TransitionOrderEspresso --> PlacePendingEspresso
 
-    t_TransitionOrderLatte --> PlaceOrdersPending
+    t_TransitionOrderLatte --> PlacePendingLatte
 
-    t_TransitionOrderCappuccino --> PlaceOrdersPending
+    t_TransitionOrderCappuccino --> PlacePendingCappuccino
 
-    PlaceOrdersPending --> t_TransitionStartEspresso
+    PlacePendingEspresso --> t_TransitionStartEspresso
     t_TransitionStartEspresso --> PlaceBrewingEspresso
 
-    PlaceOrdersPending --> t_TransitionStartLatte
+    PlacePendingLatte --> t_TransitionStartLatte
     t_TransitionStartLatte --> PlaceBrewingLatte
 
-    PlaceOrdersPending --> t_TransitionStartCappuccino
+    PlacePendingCappuccino --> t_TransitionStartCappuccino
     t_TransitionStartCappuccino --> PlaceBrewingCappuccino
 
     PlaceBrewingEspresso --> t_TransitionFinishEspresso
@@ -125,8 +139,14 @@ stateDiagram-v2
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
 
-    PlaceOrdersPending --> t_TransitionAbandon
-    t_TransitionAbandon --> PlaceWalkedOut
+    PlacePendingEspresso --> t_TransitionAbandonEspresso
+    t_TransitionAbandonEspresso --> PlaceWalkedOut
+
+    PlacePendingLatte --> t_TransitionAbandonLatte
+    t_TransitionAbandonLatte --> PlaceWalkedOut
+
+    PlacePendingCappuccino --> t_TransitionAbandonCappuccino
+    t_TransitionAbandonCappuccino --> PlaceWalkedOut
 
 ```
 
@@ -135,7 +155,9 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     subgraph Places
-        PlaceOrdersPending[("orders_pending")]
+        PlacePendingEspresso[("pending_espresso")]
+        PlacePendingLatte[("pending_latte")]
+        PlacePendingCappuccino[("pending_cappuccino")]
         PlaceBrewingEspresso[("brewing_espresso")]
         PlaceBrewingLatte[("brewing_latte")]
         PlaceBrewingCappuccino[("brewing_cappuccino")]
@@ -159,23 +181,25 @@ flowchart TD
         t_TransitionServeEspresso["serve_espresso"]
         t_TransitionServeLatte["serve_latte"]
         t_TransitionServeCappuccino["serve_cappuccino"]
-        t_TransitionAbandon["abandon"]
+        t_TransitionAbandonEspresso["abandon_espresso"]
+        t_TransitionAbandonLatte["abandon_latte"]
+        t_TransitionAbandonCappuccino["abandon_cappuccino"]
     end
 
 
-    t_TransitionOrderEspresso --> PlaceOrdersPending
+    t_TransitionOrderEspresso --> PlacePendingEspresso
 
-    t_TransitionOrderLatte --> PlaceOrdersPending
+    t_TransitionOrderLatte --> PlacePendingLatte
 
-    t_TransitionOrderCappuccino --> PlaceOrdersPending
+    t_TransitionOrderCappuccino --> PlacePendingCappuccino
 
-    PlaceOrdersPending --> t_TransitionStartEspresso
+    PlacePendingEspresso --> t_TransitionStartEspresso
     t_TransitionStartEspresso --> PlaceBrewingEspresso
 
-    PlaceOrdersPending --> t_TransitionStartLatte
+    PlacePendingLatte --> t_TransitionStartLatte
     t_TransitionStartLatte --> PlaceBrewingLatte
 
-    PlaceOrdersPending --> t_TransitionStartCappuccino
+    PlacePendingCappuccino --> t_TransitionStartCappuccino
     t_TransitionStartCappuccino --> PlaceBrewingCappuccino
 
     PlaceBrewingEspresso --> t_TransitionFinishEspresso
@@ -196,8 +220,14 @@ flowchart TD
     PlaceCappuccinoReady --> t_TransitionServeCappuccino
     t_TransitionServeCappuccino --> PlaceOrdersComplete
 
-    PlaceOrdersPending --> t_TransitionAbandon
-    t_TransitionAbandon --> PlaceWalkedOut
+    PlacePendingEspresso --> t_TransitionAbandonEspresso
+    t_TransitionAbandonEspresso --> PlaceWalkedOut
+
+    PlacePendingLatte --> t_TransitionAbandonLatte
+    t_TransitionAbandonLatte --> PlaceWalkedOut
+
+    PlacePendingCappuccino --> t_TransitionAbandonCappuccino
+    t_TransitionAbandonCappuccino --> PlaceWalkedOut
 
 
     style Places fill:#e1f5fe
@@ -223,7 +253,9 @@ Events are immutable records of state transitions. Each event captures the trans
 | `counter.serve_espresso` | `serve_espresso` | `aggregate_id`, `timestamp` |
 | `counter.serve_latte` | `serve_latte` | `aggregate_id`, `timestamp` |
 | `counter.serve_cappuccino` | `serve_cappuccino` | `aggregate_id`, `timestamp` |
-| `counter.abandon` | `abandon` | `aggregate_id`, `timestamp` |
+| `counter.abandon_espresso` | `abandon_espresso` | `aggregate_id`, `timestamp` |
+| `counter.abandon_latte` | `abandon_latte` | `aggregate_id`, `timestamp` |
+| `counter.abandon_cappuccino` | `abandon_cappuccino` | `aggregate_id`, `timestamp` |
 
 
 ```mermaid
@@ -310,11 +342,23 @@ classDiagram
     }
     Event <|-- CounterServeCappuccinoEvent
 
-    class CounterAbandonEvent {
+    class CounterAbandonEspressoEvent {
         +string AggregateId
         +time.Time Timestamp
     }
-    Event <|-- CounterAbandonEvent
+    Event <|-- CounterAbandonEspressoEvent
+
+    class CounterAbandonLatteEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterAbandonLatteEvent
+
+    class CounterAbandonCappuccinoEvent {
+        +string AggregateId
+        +time.Time Timestamp
+    }
+    Event <|-- CounterAbandonCappuccinoEvent
 
 ```
 
@@ -348,7 +392,9 @@ classDiagram
 | POST | `/api/serve_espresso` | `serve_espresso` | - |
 | POST | `/api/serve_latte` | `serve_latte` | - |
 | POST | `/api/serve_cappuccino` | `serve_cappuccino` | - |
-| POST | `/api/abandon` | `abandon` | - |
+| POST | `/api/abandon_espresso` | `abandon_espresso` | - |
+| POST | `/api/abandon_latte` | `abandon_latte` | - |
+| POST | `/api/abandon_cappuccino` | `abandon_cappuccino` | - |
 
 
 ### Request/Response Format

@@ -132,11 +132,51 @@ func Run(m *metamodel.Model, s Scenario) (*Result, error) {
 	if s.Engine == "ode" {
 		return Forecast(m, s.Marking, s.options())
 	}
+
+	var (
+		res *Result
+		err error
+	)
 	if len(s.Schedule) == 0 {
-		return Simulate(m, s.Marking, s.options())
+		res, err = Simulate(m, s.Marking, s.options())
+	} else {
+		res, err = simulateScheduled(m, s)
 	}
-	return simulateScheduled(m, s)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
+
+// serviceTimeAssumption is what the SSA cannot avoid assuming.
+//
+// Gillespie draws every duration from an exponential distribution, which is the
+// same as assuming a job that has already taken five minutes is no more likely
+// to finish soon than one that just started. Real work is not like that: pulling
+// a shot takes about as long every time. Exponential service is the most
+// variable case consistent with the same average, so the queue this engine
+// reports is the pessimistic one — expect roughly half the waiting and walking
+// out in a shop whose steps take a predictable amount of time.
+//
+// It reports as an Assumption, not a Caveat, and the distinction is the whole
+// reason there are two fields. Caveats are things the engine could not enforce
+// about *this model* — an empty list is the claim that everything the net says
+// was applied — and this is true of every model the SSA runs, so filing it
+// there both mislabelled it and made the claim unfalsifiable: appended to every
+// scenario result, the list could never be empty again. Editing the net cannot
+// remove this one; only a different engine could.
+//
+// Added by the exported SSA entry points — Simulate and simulateScheduled —
+// rather than by Run, so that it reaches every caller of the engine and not only
+// the ones who came through a Scenario. It was in Run first, which meant a
+// generated app or an MCP tool calling Simulate directly got an answer with the
+// assumption silently dropped, while the console next to it showed it. The
+// unexported simulate is deliberately not the place: it is also the per-segment
+// engine behind a schedule, and appending there would repeat it once a segment.
+const serviceTimeAssumption = "this engine assumes every step takes a random, exponentially distributed amount of " +
+	"time, which is the most erratic a shop can be for a given average. Work with a predictable duration — a shot " +
+	"pulls in about the same time every time — queues roughly half as much, so treat the waiting and the walkouts " +
+	"here as the bad case, not the typical one."
 
 // simulateScheduled runs the horizon in pieces, one per schedule boundary,
 // carrying the marking across.
@@ -148,6 +188,10 @@ func Run(m *metamodel.Model, s Scenario) (*Result, error) {
 // rates in force when it was made.
 func simulateScheduled(m *metamodel.Model, s Scenario) (*Result, error) {
 	opts := s.options().withDefaults(m)
+	places, _, err := tokenPlaces(m)
+	if err != nil {
+		return nil, err
+	}
 
 	bounds := scheduleBoundaries(s.Schedule, opts.Horizon)
 	marking := startFrom(m, s.Marking)
@@ -155,7 +199,12 @@ func simulateScheduled(m *metamodel.Model, s Scenario) (*Result, error) {
 	combined := &Result{Method: "ssa", Final: map[string]float64{}}
 	series := map[string][]float64{}
 	throughput := map[string]float64{}
-	means := map[string][]float64{}
+	// One accumulator for the whole horizon, carrying both the time-weighted
+	// marking summary and the blocked-time ledger. Averaging the segments' own
+	// means would weight a ten-minute rush the same as a seven-hour lull, which
+	// is the smoothing a schedule exists to avoid, and a segment's Contended
+	// fractions are shares of that segment rather than of the run.
+	stats := newRunStats(len(places))
 	var caveats []string
 
 	from := 0.0
@@ -178,10 +227,11 @@ func simulateScheduled(m *metamodel.Model, s Scenario) (*Result, error) {
 			Seed:         opts.Seed,
 			Rates:        ratesAt(m, s, from),
 		}
-		res, err := Simulate(m, marking, segment)
+		res, segStats, err := simulate(m, marking, segment)
 		if err != nil {
 			return nil, err
 		}
+		stats.merge(segStats)
 
 		for _, t := range res.Times {
 			combined.Times = append(combined.Times, from+t)
@@ -192,9 +242,6 @@ func simulateScheduled(m *metamodel.Model, s Scenario) (*Result, error) {
 		if res.Metrics != nil {
 			for id, n := range res.Metrics.Throughput {
 				throughput[id] += n
-			}
-			for p, v := range res.Metrics.Mean {
-				means[p] = append(means[p], v)
 			}
 		}
 		if len(caveats) == 0 {
@@ -216,16 +263,23 @@ func simulateScheduled(m *metamodel.Model, s Scenario) (*Result, error) {
 		combined.Final[p] = series[p][len(series[p])-1]
 	}
 	combined.Depleted = depletions(m, combined)
+	// Contention is the diagnostic a schedule is usually run to get: a rush is
+	// the interval where capacity binds, so a scheduled run reporting nothing
+	// contended is the shape of silence Contention exists to eliminate — the
+	// café console's Rush box read "waiting on nothing" for a shop at 87%
+	// utilization, because this was never populated at all.
+	combined.Contended = contentions(m, places, stats.blocked, opts.Horizon*float64(opts.Realizations))
 	combined.Caveats = caveats
+	// Once for the whole run, not once per segment: splitting a horizon into
+	// rate segments does not make the engine assume anything extra.
+	combined.Assumptions = append(combined.Assumptions, serviceTimeAssumption)
 
 	mt := &Metrics{Throughput: throughput, Mean: map[string]float64{}, P95: map[string]float64{}}
-	for p, vals := range means {
-		mt.Mean[p] = mean(vals)
+	for i, p := range places {
+		mt.Mean[p] = stats.times.mean(i)
+		mt.P95[p] = stats.times.percentile(i, 0.95)
 	}
-	for p, vals := range series {
-		mt.P95[p] = percentile(vals, 0.95)
-	}
-	mt.Utilization = utilization(sortedKeys(series), mt.Mean)
+	mt.Utilization = utilization(places, mt.Mean)
 	combined.Metrics = mt
 
 	return combined, nil

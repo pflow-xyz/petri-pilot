@@ -70,7 +70,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeRestockCoffeeBeans,
 		Inputs:    map[string]int{},
 		Outputs: map[string]int{
-			PlaceCoffeeBeans: 500,
+			PlaceCoffeeBeans: 1000,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{
@@ -78,7 +78,7 @@ func NewAggregate(id string) *Aggregate {
 		EventType: EventTypeRestockMilk,
 		Inputs:    map[string]int{},
 		Outputs: map[string]int{
-			PlaceMilk: 500,
+			PlaceMilk: 1500,
 		},
 	})
 	sm.AddTransition(eventsource.Transition{

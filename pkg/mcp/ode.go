@@ -290,9 +290,21 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 // direction each time.
 //
 // Read arcs are dropped: they move no tokens, and the ODE has no firing instant
-// at which to test them. Inhibitors are declared as inhibitors even though the
-// solver ignores them, so the net at least carries the truth. Neither is
-// *honoured* by a continuous solve — that is what odeCaveats exists to say.
+// at which to test them. Inhibitors are declared as inhibitors so the net at
+// least carries the truth, but nothing downstream reads that flag — the solver
+// integrates the arc as an ordinary input, consuming its place and multiplying
+// it into the rate, so a marked inhibitor makes the transition it blocks run
+// *faster*. Neither is honoured by a continuous solve; that is what odeCaveats
+// exists to say, and petri-pilot's own Forecast refuses such a model outright
+// rather than answering it.
+//
+// A non-kinetic arc is emitted as an ordinary arc, deliberately. It really does
+// consume its tokens, so dropping it the way a read arc is dropped would break
+// stoichiometry on top of the rate law and leave the net conserving nothing. The
+// mass-action solver multiplies every input into the rate and has no way to be
+// told "this one gates and is consumed but does not accelerate anything", so the
+// curve overstates the rate whenever such an input is plentiful. That is a
+// caveat, not a fix — see odeCaveats.
 func buildOdeNet(model *goflowmetamodel.Model) *petri.PetriNet {
 	b := petri.Build()
 	for _, p := range model.Places {
@@ -328,9 +340,12 @@ func buildOdeNet(model *goflowmetamodel.Model) *petri.PetriNet {
 // The mass-action solver integrates a rate law over real-valued concentrations.
 // There is no firing instant in that picture, so a read arc, an inhibitor, a
 // capacity and a guard are all unrepresentable — the solver does not approximate
-// them badly, it does not see them at all. A model that leans on any of them is
-// being answered as though it were unconstrained, and the caller has to be told
-// so, on every tool that shares this builder.
+// them badly, it does not see them at all. A non-kinetic arc fails the other
+// way: the solver sees it and cannot help but put it in the rate law, so a
+// staffed shop is answered as one where every extra barista makes every drink in
+// progress finish faster. Either way the model is being answered as though it
+// were something looser than what was written, and the caller has to be told so,
+// on every tool that shares this builder.
 func odeCaveats(model *goflowmetamodel.Model) []string {
 	return model.Gating()
 }

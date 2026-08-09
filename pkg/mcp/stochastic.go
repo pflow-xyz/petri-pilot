@@ -14,6 +14,8 @@ import (
 	"github.com/fogleman/gg"
 	"github.com/mark3labs/mcp-go/mcp"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+
+	"github.com/pflow-xyz/petri-pilot/pkg/runtime/sim"
 )
 
 // petri_stochastic runs Gillespie's Stochastic Simulation Algorithm (SSA)
@@ -23,8 +25,11 @@ import (
 // noise matters (queueing, biology, scarce-resource problems).
 //
 // Algorithm (Gillespie 1977 / SSA):
-//   1. Compute propensity a_i = k_i × C(m, w) over input arcs for each
-//      transition i, where C is binomial selection coefficient.
+//   1. Compute propensity a_i = k_i × C(m, w) over the *kinetic* input arcs
+//      of transition i, where C is the binomial selection coefficient. An
+//      input marked non-kinetic still has to be there and is still consumed,
+//      but drops out of the product — a barista is a prerequisite for making
+//      a drink, not a catalyst that makes it pour faster.
 //   2. Total rate A = Σ a_i.
 //   3. Wait time τ ~ Exp(A) (i.e. −ln U / A).
 //   4. Pick transition i with probability a_i / A.
@@ -74,7 +79,143 @@ type stochasticResponse struct {
 	Mean         map[string][]float64 `json:"mean"`
 	Stdev        map[string][]float64 `json:"stdev,omitempty"`
 	FinalMean    map[string]float64   `json:"finalMean"`
+	Contended    []contendedPlace     `json:"contended,omitempty"`
 	Explanation  string               `json:"explanation,omitempty"`
+}
+
+// contendedPlace reports how much of the run a place spent being the only thing
+// standing between a transition and firing.
+//
+// A trajectory shows what happened; this says what stopped happening, which is
+// the question anyone running this tool on a capacity model is really asking. A
+// mean that sits at a comfortable level all run is not evidence a place is
+// plentiful: a resource consumed exactly as fast as it is delivered is refilled
+// and drained all day and never looks short in the plot. The café shipped in
+// that state on milk, and the only visible symptom was an arithmetic
+// contradiction elsewhere — idle servers alongside heavy loss.
+//
+// Fraction is a share of the horizon, over every realization, in which this
+// place was short while everything else Blocking's transitions needed was
+// present. Places short of nothing much are left out entirely (see
+// minContention); a work queue with no work in it will legitimately appear —
+// and Kind is what stops that being read as a bottleneck.
+type contendedPlace struct {
+	Place    string  `json:"place"`
+	Fraction float64 `json:"fraction"`
+	// Kind says whether waiting on this place is a capacity finding
+	// ("conserved" — a fixed pool whose size was set once, such as staff;
+	// "bounded" — a shelf with a declared capacity, such as stock) or something
+	// that claims nothing: "queue" (unbounded and fed by the net's own flow, so
+	// an empty one means the work has not arrived) and "state" (a conserved
+	// marker whose tokens serve nothing, such as a stoplight's colour). An empty queue is
+	// the opposite of a bottleneck, so capacity kinds sort ahead of every queue
+	// however large the fractions: on the café the three emptiest order queues
+	// read 80-90% while the staff pool that actually decided throughput read
+	// 26%, and a caller ranking on fraction alone was told the shop's idleness
+	// was its constraint. See sim.SupplyKind.
+	Kind     sim.SupplyKind `json:"kind"`
+	Blocking []string       `json:"blocking"`
+}
+
+// minContention keeps the list an answer rather than an inventory: over a long
+// enough run almost every place is briefly short of something.
+const minContention = 0.01
+
+// shortages accumulates the blocked-time bookkeeping across realizations. The
+// rule it implements is the same one pkg/runtime/sim uses, deliberately: two
+// engines that report different constraints for one model is the failure both
+// files' comments were written about.
+type shortages struct {
+	waited     []float64
+	holding    []map[string]bool
+	candidates []int
+	seen       []bool
+}
+
+func newShortages(nPlaces int) *shortages {
+	return &shortages{
+		waited:  make([]float64, nPlaces),
+		holding: make([]map[string]bool, nPlaces),
+		seen:    make([]bool, nPlaces),
+	}
+}
+
+// note records that place is the sole unmet input of transition id at the
+// current marking. One short place commonly holds up several transitions, so it
+// is credited once per step however many it blocks.
+func (s *shortages) note(place int, id string) {
+	if s.holding[place] == nil {
+		s.holding[place] = map[string]bool{}
+	}
+	s.holding[place][id] = true
+	if !s.seen[place] {
+		s.seen[place] = true
+		s.candidates = append(s.candidates, place)
+	}
+}
+
+func (s *shortages) credit(dt float64) {
+	for _, p := range s.candidates {
+		s.waited[p] += dt
+		s.seen[p] = false
+	}
+	s.candidates = s.candidates[:0]
+}
+
+// report ranks the shortages. Capacity constraints come first and the longest
+// wait first within each kind — same order pkg/runtime/sim produces, from the
+// same classification, because two engines disagreeing about what a model is
+// limited by is the failure this file's comments are about.
+func (s *shortages) report(m *goflowmetamodel.Model, labels []string, totalTime float64) []contendedPlace {
+	if totalTime <= 0 {
+		return nil
+	}
+	kinds := sim.ClassifySupply(m)
+	var out []contendedPlace
+	for i, label := range labels {
+		f := s.waited[i] / totalTime
+		if f < minContention {
+			continue
+		}
+		held := make([]string, 0, len(s.holding[i]))
+		for id := range s.holding[i] {
+			held = append(held, id)
+		}
+		sort.Strings(held)
+		kind := kinds[label]
+		if kind == "" {
+			kind = sim.SupplyQueue
+		}
+		out = append(out, contendedPlace{Place: label, Fraction: f, Kind: kind, Blocking: held})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ci, cj := out[i].Kind.IsCapacity(), out[j].Kind.IsCapacity()
+		if ci != cj {
+			return ci
+		}
+		if out[i].Fraction != out[j].Fraction {
+			return out[i].Fraction > out[j].Fraction
+		}
+		return out[i].Place < out[j].Place
+	})
+	return out
+}
+
+// soleShortInput returns the index of the only input place this transition is
+// short of, or -1 when it is short of none or of more than one. With two things
+// missing neither is the reason the firing did not happen.
+func (e *transitionEntry) soleShortInput(marking []int) int {
+	short := -1
+	for _, in := range e.inputs {
+		if marking[in.placeIdx] >= in.weight {
+			continue
+		}
+		if short >= 0 {
+			return -1
+		}
+		short = in.placeIdx
+	}
+	return short
 }
 
 // transitionEntry holds the pre-indexed input/output arcs for one
@@ -98,6 +239,14 @@ type transitionEntry struct {
 type arcEntry struct {
 	placeIdx int
 	weight   int
+
+	// kinetic reports whether this input belongs in the rate law as well as in
+	// the enablement test. A non-kinetic input is a prerequisite, not an
+	// accelerant: it gates the firing and is consumed by it, but does not scale
+	// how often it happens. Mass action over every input is right for chemistry
+	// and wrong for a service system — a barista is not a reactant, and a full
+	// pantry does not make a drink pour faster.
+	kinetic bool
 }
 
 // capEntry is a post-firing capacity bound: firing raises placeIdx by delta,
@@ -219,11 +368,12 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	// time t in realization r.
 	trajectories := make([][][]float64, realizations)
 	rng := rand.New(rand.NewSource(seed))
+	short := newShortages(len(stateLabels))
 	for r := 0; r < realizations; r++ {
 		// Each realization uses an independent stream derived from the
 		// master seed so the result is reproducible across runs.
 		subSeed := rng.Int63()
-		trajectories[r] = runSSA(initialMarking, transitions, len(stateLabels), times, subSeed)
+		trajectories[r] = runSSA(initialMarking, transitions, len(stateLabels), times, subSeed, short)
 	}
 
 	// Aggregate: mean and stdev per (place, time).
@@ -267,6 +417,7 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		Mean:         mean,
 		Stdev:        stdev,
 		FinalMean:    finalMean,
+		Contended:    short.report(model, stateLabels, (tspan[1]-tspan[0])*float64(realizations)),
 	}
 
 	if request.GetBool("verbose", false) {
@@ -309,13 +460,15 @@ func buildTransitionEntries(model *goflowmetamodel.Model, placeIdx map[string]in
 
 		for _, in := range model.Inputs(t.ID) {
 			if idx, ok := placeIdx[in.Place]; ok {
-				e.inputs = append(e.inputs, arcEntry{placeIdx: idx, weight: in.Weight})
+				e.inputs = append(e.inputs, arcEntry{placeIdx: idx, weight: in.Weight, kinetic: in.Kinetic})
 				delta[in.Place] -= in.Weight
 			}
 		}
 		for _, o := range model.Outputs(t.ID) {
 			if idx, ok := placeIdx[o.Place]; ok {
-				e.outputs = append(e.outputs, arcEntry{placeIdx: idx, weight: o.Weight})
+				// kinetic is carried for uniformity; it means nothing on an
+				// output or a test arc, neither of which is ever in a rate law.
+				e.outputs = append(e.outputs, arcEntry{placeIdx: idx, weight: o.Weight, kinetic: o.Kinetic})
 				delta[o.Place] += o.Weight
 			}
 		}
@@ -324,7 +477,7 @@ func buildTransitionEntries(model *goflowmetamodel.Model, placeIdx map[string]in
 			if !ok {
 				continue
 			}
-			a := arcEntry{placeIdx: idx, weight: test.Weight}
+			a := arcEntry{placeIdx: idx, weight: test.Weight, kinetic: test.Kinetic}
 			if test.Type == goflowmetamodel.InhibitorArc {
 				e.inhibits = append(e.inhibits, a)
 			} else {
@@ -348,8 +501,11 @@ func buildTransitionEntries(model *goflowmetamodel.Model, placeIdx map[string]in
 
 // runSSA executes one Gillespie realization, recording markings at every
 // time in samples. Returns trajectories[placeIdx][sampleIdx].
-func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples []float64, seed int64) [][]float64 {
+func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples []float64, seed int64, short *shortages) [][]float64 {
 	rng := rand.New(rand.NewSource(seed))
+	if short != nil {
+		short.credit(0) // a run cut short by maxSteps leaves scratch behind
+	}
 	marking := make([]int, nPlaces)
 	copy(marking, initial)
 
@@ -384,20 +540,38 @@ func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples [
 					enabled = false
 					break
 				}
-				// Combinatorial selection: C(m, w).
-				a *= combinations(m, in.weight)
+				// Combinatorial selection: C(m, w), for kinetic inputs only.
+				if in.kinetic {
+					a *= combinations(m, in.weight)
+				}
 			}
 			// Read arcs, inhibitors and capacity decide enablement without
 			// appearing in the propensity: a blocked transition has rate zero,
-			// it does not merely fire more slowly.
+			// it does not merely fire more slowly. A non-kinetic input is the
+			// third case — enabled by it, consumed from it, not sped up by it.
 			if !enabled || !transitions[i].gated(marking) {
 				a = 0
 			}
 			propensities[i] = a
 			totalRate += a
+
+			// Why this transition is not firing, when it is not. Only the
+			// consuming arcs are attributed: a read arc or an inhibitor is the
+			// model refusing outright, not a shortage anyone can go and fix.
+			if a == 0 && short != nil {
+				if p := transitions[i].soleShortInput(marking); p >= 0 && transitions[i].gated(marking) {
+					short.note(p, transitions[i].id)
+				}
+			}
 		}
 		if totalRate <= 0 {
-			break // dead state — no transition can fire
+			// Dead state — no transition can fire, and no amount of time
+			// changes that, so the rest of the horizon was spent waiting for
+			// whatever is short.
+			if short != nil {
+				short.credit(tEnd - t)
+			}
+			break
 		}
 
 		// Time to next event ~ Exp(totalRate).
@@ -406,6 +580,9 @@ func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples [
 			u = 1e-300
 		}
 		dt := -math.Log(u) / totalRate
+		if short != nil {
+			short.credit(math.Min(dt, tEnd-t))
+		}
 		t += dt
 
 		// Record any sample points we crossed at the pre-firing marking.

@@ -98,7 +98,7 @@ type CommandContext struct {
 	// this command becomes enabled. Empty when the command is enabled at the
 	// initial marking, which is the case for every model whose members start
 	// with a token in place; a model whose work has to arrive first — the
-	// café's orders_pending starts empty — needs the sequence.
+	// café's per-drink queues start empty — needs the sequence.
 	Setup []SetupStep
 }
 

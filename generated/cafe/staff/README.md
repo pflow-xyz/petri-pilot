@@ -3,6 +3,8 @@
 
 Baristas on duty. A pool of interchangeable people: a drink seizes one at the start of the brew and returns them at the end. Knows nothing about coffee — it only says how many hands there are. `initial` on `available` IS the headcount, so asking 'what if I put a third barista on?' is a change to one number.
 
+Both pool arcs are `kinetic: false`, because a barista is a prerequisite, not an accelerant. Mass action multiplies every input into the firing rate, so with `busy` in the product two drinks in progress made each other finish twice as fast — per-drink brew time fell from 4.8 minutes at one barista to 2.2 at eight, which is a shop where hiring makes the espresso machine quicker. A non-kinetic arc still gates the firing and is still consumed by it: no free barista, no drink started. It just stops the count of people from setting the pace of the work.
+
 ## Quick Start
 
 ```bash

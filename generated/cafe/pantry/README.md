@@ -3,6 +3,12 @@
 
 Stock room: holds ingredients and draws them down. Knows nothing about orders or staffing — a brew transition only says what a drink costs. Fused with the counter's start_X, so ingredients are committed when the brew begins rather than when it finishes: a drink half-made has already cost its beans.
 
+Every ingredient arc is `kinetic: false`: a full pantry is a prerequisite, not an accelerant. Under mass action the stock counts entered the firing rate as C(stock, weight), so a latte beat a cappuccino purely because C(500, 50) exceeds C(500, 30) — the shop favoured a drink for using MORE milk, and a delivery of beans made coffee pour faster. Non-kinetic keeps the part that is true: the arc still gates the brew and still draws the stock down, so an empty pantry still stops the shop.
+
+Supply is sized so that the pantry is not the constraint, and that took measuring rather than assuming. At full service the shop drinks 15 lattes x 50 + 8 cappuccinos x 30 = 990 units of milk an hour; two 500-unit deliveries an hour is 1000, and a capacity of 1000 blocked the delivery whenever the stock was above 500. Milk ran at about 99% subscription and nothing in the output said so — Depleted only reports a place that empties and stays empty, and this one was refilled and drained all day with its mean sitting comfortably above zero. The staffing answer was really a milk answer: eight baristas idle two thirds of the day, still losing 28% of the trade. The declared restock rates are unchanged; the deliveries are bigger (1500 units of milk, 1000 of beans) and the shelves hold them, which puts roughly 3x headroom on both. That the pantry CAN bind is a real property and still testable — run a scenario with a lean pantry and no restocking — it is just no longer what the shipped shop is limited by, and sim.Result.Contended names the place if that ever changes.
+
+brew_X carries the counter's start rate, not its own. Fusion fires a rendezvous no faster than its slowest participant (compose_fuse takes the minimum), so a stale 60 left here would silently cap the 720/h pickup the counter declares and put back the walkout floor the counter's note describes.
+
 ## Quick Start
 
 ```bash
@@ -28,8 +34,8 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 
 | Place | Type | Initial | Description |
 |-------|------|---------|-------------|
-| `coffee_beans` | Token | 1000 | - |
-| `milk` | Token | 500 | - |
+| `coffee_beans` | Token | 2000 | - |
+| `milk` | Token | 2000 | - |
 | `cups` | Token | 200 | - |
 
 
@@ -51,8 +57,8 @@ This application uses **event sourcing** with a **Petri net** state machine to m
 stateDiagram-v2
     direction LR
 
-    state "coffee_beans (1000)" as PlaceCoffeeBeans
-    state "milk (500)" as PlaceMilk
+    state "coffee_beans (2000)" as PlaceCoffeeBeans
+    state "milk (2000)" as PlaceMilk
     state "cups (200)" as PlaceCups
 
 
@@ -75,9 +81,9 @@ stateDiagram-v2
     PlaceMilk --> t_TransitionBrewCappuccino: 30
     PlaceCups --> t_TransitionBrewCappuccino
 
-    t_TransitionRestockCoffeeBeans --> PlaceCoffeeBeans: 500
+    t_TransitionRestockCoffeeBeans --> PlaceCoffeeBeans: 1000
 
-    t_TransitionRestockMilk --> PlaceMilk: 500
+    t_TransitionRestockMilk --> PlaceMilk: 1500
 
     t_TransitionRestockCups --> PlaceCups: 100
 
@@ -88,8 +94,8 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     subgraph Places
-        PlaceCoffeeBeans[("coffee_beans<br/>initial: 1000")]
-        PlaceMilk[("milk<br/>initial: 500")]
+        PlaceCoffeeBeans[("coffee_beans<br/>initial: 2000")]
+        PlaceMilk[("milk<br/>initial: 2000")]
         PlaceCups[("cups<br/>initial: 200")]
     end
 
@@ -114,9 +120,9 @@ flowchart TD
     PlaceMilk -->|30| t_TransitionBrewCappuccino
     PlaceCups --> t_TransitionBrewCappuccino
 
-    t_TransitionRestockCoffeeBeans -->|500| PlaceCoffeeBeans
+    t_TransitionRestockCoffeeBeans -->|1000| PlaceCoffeeBeans
 
-    t_TransitionRestockMilk -->|500| PlaceMilk
+    t_TransitionRestockMilk -->|1500| PlaceMilk
 
     t_TransitionRestockCups -->|100| PlaceCups
 

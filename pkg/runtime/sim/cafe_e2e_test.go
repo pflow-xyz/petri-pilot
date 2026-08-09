@@ -127,21 +127,31 @@ func TestScheduleOverHTTP(t *testing.T) {
 	if n := len(res.Times); n == 0 || res.Times[n-1] < 7.5 {
 		t.Fatalf("the run covers %v, not the full horizon", res.Times)
 	}
-	var peak float64
+	// The rush is on latte alone, and there is a queue per drink, so it has to
+	// show up in the latte queue and not in the others. Under one fungible
+	// queue this could only be asserted as "the queue got longer" — a
+	// drink-specific rush was not observable at all, which is the same blind
+	// spot that let the shop serve espressos nobody had ordered.
+	peaks := map[string]float64{}
 	for _, s := range res.Series {
-		if s.Place != "counter/orders_pending" {
-			continue
-		}
 		for _, v := range s.Values {
-			if v > peak {
-				peak = v
+			if v > peaks[s.Place] {
+				peaks[s.Place] = v
 			}
 		}
 	}
-	if peak < 5 {
-		t.Errorf("peak queue was %.0f under a 200/h rush; the schedule did not reach the engine", peak)
+	latte := peaks["counter/pending_latte"]
+	if latte < 5 {
+		t.Errorf("peak latte queue was %.0f under a 200/h rush; the schedule did not reach the engine", latte)
 	}
-	t.Logf("peak queue under the rush: %.0f", peak)
+	for _, other := range []string{"counter/pending_espresso", "counter/pending_cappuccino"} {
+		if peaks[other] >= latte {
+			t.Errorf("%s peaked at %.1f against latte's %.1f; a latte rush is queueing drinks nobody rushed",
+				other, peaks[other], latte)
+		}
+	}
+	t.Logf("peak queues under the latte rush: latte %.1f espresso %.1f cappuccino %.1f",
+		latte, peaks["counter/pending_espresso"], peaks["counter/pending_cappuccino"])
 }
 
 // TestScenarioRejectsATypo: the failure this prevents is a scenario that runs,

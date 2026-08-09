@@ -26,11 +26,11 @@ func TestWorkflowConstants(t *testing.T) {
 func TestInitialPlaces(t *testing.T) {
 	initial := InitialPlaces()
 	_ = initial // suppress unused variable warning if no places have initial values
-	if initial[PlaceCoffeeBeans] != 1000 {
-		t.Errorf("expected PlaceCoffeeBeans initial = 1000, got %d", initial[PlaceCoffeeBeans])
+	if initial[PlaceCoffeeBeans] != 2000 {
+		t.Errorf("expected PlaceCoffeeBeans initial = 2000, got %d", initial[PlaceCoffeeBeans])
 	}
-	if initial[PlaceMilk] != 500 {
-		t.Errorf("expected PlaceMilk initial = 500, got %d", initial[PlaceMilk])
+	if initial[PlaceMilk] != 2000 {
+		t.Errorf("expected PlaceMilk initial = 2000, got %d", initial[PlaceMilk])
 	}
 	if initial[PlaceCups] != 200 {
 		t.Errorf("expected PlaceCups initial = 200, got %d", initial[PlaceCups])
@@ -59,11 +59,11 @@ func TestInitialState(t *testing.T) {
 	agg := NewAggregate("")
 	places := agg.Places()
 	_ = places // suppress unused variable warning if no places have initial values
-	if places[PlaceCoffeeBeans] != 1000 {
-		t.Errorf("expected PlaceCoffeeBeans = 1000, got %d", places[PlaceCoffeeBeans])
+	if places[PlaceCoffeeBeans] != 2000 {
+		t.Errorf("expected PlaceCoffeeBeans = 2000, got %d", places[PlaceCoffeeBeans])
 	}
-	if places[PlaceMilk] != 500 {
-		t.Errorf("expected PlaceMilk = 500, got %d", places[PlaceMilk])
+	if places[PlaceMilk] != 2000 {
+		t.Errorf("expected PlaceMilk = 2000, got %d", places[PlaceMilk])
 	}
 	if places[PlaceCups] != 200 {
 		t.Errorf("expected PlaceCups = 200, got %d", places[PlaceCups])

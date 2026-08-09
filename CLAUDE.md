@@ -448,8 +448,53 @@ how the composed app came to ship with no simulation at all.
   server-side, which is why it is one request.
 - **`Metrics`** is throughput / mean / P95 / utilization (`<pool>/busy` over
   `busy+available`) — SSA only. A continuous solution has no firings to count.
+  **Mean and P95 are time-weighted over the trajectory**, not averages of the
+  reported sample points, so they are a property of the run and not of the grid
+  `Options.Samples` asked for. Averaging the points gave the empty shop at t=0
+  the same weight as a state the run spent real time in: the same scenario read
+  74.1% utilization at 8 samples, 81.7% at the default 60 and 82.8% converged,
+  always low, and GATE 2 was spending half its 10% band on it. Time-weighted
+  integration is the textbook estimator for a continuous-time Markov chain and
+  needs no warm-up window to be guessed at; it removes the discretization, not
+  the transient, so the residual gap to M/M/c theory is the shop filling up.
+  `Series`/`Times` still report the sample grid — this is only about the metrics.
 - **Depletion is "below the smallest weight drawn from it"**, not zero: ten beans
   against a weight-20 espresso arc is a shop that has run out.
+- **`Contended` is what the run spent its time waiting for**, most of the run
+  first: per place, the share of the horizon in which it was the *only* unmet
+  input of some transition, and which transitions those were. Depletion cannot
+  answer this and was being asked to — it needs a place to empty and stay empty,
+  so a resource consumed exactly as fast as it is supplied is invisible to it.
+  The café shipped in that state on milk (990 units an hour of demand against
+  1000 of supply) and a run reported eight idle baristas losing half the trade,
+  an empty `Depleted`, and nothing anywhere naming the cause. Both SSA engines
+  report it; `pkg/mcp/stochastic.go` carries the same rule under `contended`.
+  **A scheduled run reports it too**, over one ledger merged across every
+  segment. It has to be merged rather than assembled from the segments' own:
+  a segment's fractions are shares of that segment, so a two-hour rush's 100%
+  and a six-hour lull's 0% are not averageable. `simulateScheduled` set every
+  other field and not this one, so the café console's Rush box — the only
+  control where staffing actually binds — read "waiting on nothing" for a shop
+  at 87% utilization.
+
+- **An empty work queue appears in that list too, and `kind` is what keeps it
+  from being read as the answer.** "Waiting for customers" and "waiting for milk"
+  are the same shape of fact and the opposite finding, and the raw fraction ranks
+  them the wrong way round: at three baristas the café's emptiest order queue read
+  90% against a staff pool at 26%, so the top four rows of a field documented as
+  *what the run was waiting for* said the shop was busy when it was quiet.
+  `sim.ClassifySupply` (`pkg/runtime/sim/supply.go`) decides it structurally —
+  **conserved** (in a P-invariant *and* initially marked: a fixed pool, so the
+  stock it was given is the stock it has — `staff/available`), **bounded**
+  (a declared `Capacity`: a shelf with a size — `pantry/*`), or **queue**
+  (everything else: unbounded, filled only by the net's own flow). Capacity kinds
+  sort ahead of every queue whatever the fractions. The invariant half alone is
+  not enough: `available + sum(brewing_X)` is *also* a P-invariant, so membership
+  by itself makes "no espresso is brewing" a resource shortage — hence the
+  initially-marked half, which is where an operator would add more. The café
+  console used to do this with `!place.startsWith(ownSubnetPrefix)`, a naming
+  convention that fit one bundle and called every place in a single-net model a
+  queue; it now just drops `kind === 'queue'`.
 
 **A resource pool only bites if the resource is held across two firings.**
 `start_X` → `brewing_X` → `finish_X`. Seized and released in one firing, a
@@ -457,8 +502,66 @@ barista is never observably busy and headcount cannot change the outcome — see
 `services/bundles/cafe-*.json`. Each fusion class takes **one** `Link.ID`: it
 names the fused transition, so two links joining the same class must agree.
 
+**A prerequisite is not an accelerant.** Mass action multiplies every input into
+the rate, which is right for chemistry and wrong for a service system: with the
+barista pool in the product, two drinks in progress made *both* finish twice as
+fast, and a drink was favoured over its neighbour for using more milk. An arc
+marked `"kinetic": false` (go-pflow `Arc.Kinetic`, absent means true, so every
+existing model is byte-identical) still gates the firing and is still consumed by
+it — it just leaves the product. Both SSA engines honour it (`pkg/runtime/sim`
+and `pkg/mcp/stochastic.go`, which are separate copies of the propensity loop;
+change them together).
+
+The queue is one of these too, and less obviously. `pending_X -> start_X` kinetic
+meant a waiting order was picked up at 60/h *per waiting customer* against
+patience of 12/h per waiting customer: the two scaled together and cancelled, so
+exactly five orders in six were started at every queue length and every
+headcount. One arrival in six walked out with every barista idle, and "how many
+baristas do I need to get walkouts under 10%" had no answer — the loss was a
+Bernoulli split, not a function of the wait. A barista does not pick orders up
+faster because more people are waiting. With that arc non-kinetic the loss is
+`patience x mean queue`, which is what staffing moves. The paired change is the
+rate: `start_X` is a free barista noticing a waiting order (720/h, about five
+seconds), not a second service stage — the drink is `finish_X`. And because
+fusion fires a rendezvous at its **slowest** member's rate, the pantry's
+`brew_X` has to carry the same number or it silently caps the pickup.
+
+**The fitness gates run the shipped model, with nothing overridden.**
+`pkg/runtime/sim/cafe_fitness_test.go` sweeps headcount over the composed café
+and asserts six things: service time is invariant to headcount, utilization
+matches offered load, the served mix tracks the ordered mix, staffing has a knee
+and gets walkouts under a tenth of arrivals somewhere in the sweep, the pantry
+does not accelerate, and the shop is limited by its baristas rather than its
+stock. That last one exists because the gates originally overrode the three
+restock rates to open the pantry up, on the reasoning that a staffing gate should
+not be measuring milk — which certified a shop nobody ships, at 224 served and 42
+walked out against the shipped model's 190 and 75. The reasoning was right and the
+fix was wrong: **size the model so the intended constraint binds, then assert it**,
+rather than running a scenario the operator cannot. Every expectation is derived
+from `sim.Rates(cafe.FlatModel())`, so a rate change moves what the gates expect
+instead of breaking them.
+
+**A method assumption is not an unenforced constraint, and they are separate
+fields.** `Result.Caveats` is constraints *this model* expresses that the run
+could not enforce, and an empty list is a claim: everything the net says was
+applied. `Result.Assumptions` is what the engine assumes whatever the model
+says. Every SSA scenario carries one — Gillespie draws every duration from an
+exponential distribution, the most erratic a shop can be for a given average, so
+work with a predictable duration queues roughly half as much and the waiting and
+the walkouts here are the bad case, not the typical one. That note used to be
+appended to `Caveats`, which mislabelled it (the café console rendered it under
+"Not enforced in this run:") *and* cost the empty-list claim its meaning, since
+the list could then never be empty for any scenario. No edit to a net removes an
+assumption; only a different engine could. It is appended in `sim.Run` rather
+than `Simulate` because it belongs to the answer a scenario gives, and
+`Simulate` is also the segment engine behind a schedule. The console has a
+heading per list, `pkg/mcp`'s comparison summary has a field per list, and
+`pkg/runtime/sim/metrics_test.go` pins them apart.
+
 `Forecast` **refuses** a model carrying read arcs, inhibitors, reachable
-capacities or guards, and says which. A continuous solve has no firing instant to
+capacities, guards or non-kinetic arcs, and says which. The first four are
+invisible to a continuous solve; a non-kinetic arc fails the other way — the
+solver sees it and cannot help but put it in the rate law. A continuous solve has no firing instant to
 test any of them, so it would answer a less constrained question — and a
 dashboard plots a wrong smooth curve just as happily as a right one. The twelve
 `buildOdeNet` tools carry the same text as a `caveats` field, added only when
@@ -584,7 +687,8 @@ command rather than a two-shell dance — pass `BASE=<url>` to point at a server
 that is already running. It asserts the page renders, that no request 404s, that
 requests land **under the mount prefix**, that every place and transition the
 console names exists in the model, that the sliders reach the wire as
-`staff/available` and an abandon rate, that a comparison shares one seed, and
+`staff/available` and an abandon rate on **every** per-drink queue, that no drink
+is served more often than it was ordered, that a comparison shares one seed, and
 that nothing scrolls sideways at 390px. CI runs it as its own job (`browser`),
 which is the only place it runs automatically — `make test` stays free of a
 browser dependency so a fresh clone works.

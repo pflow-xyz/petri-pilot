@@ -99,6 +99,7 @@ go_test(
         "prompts_test.go",
         "rate_scan_test.go",
         "render_png_test.go",
+        "sankey_test.go",
         "scenario_test.go",
         "schema_v2_test.go",
         "sde_test.go",
@@ -118,6 +119,7 @@ go_test(
     embed = [":mcp"],
     deps = [
         "//pkg/extensions",
+        "//pkg/runtime/sim",
         "@com_github_mark3labs_mcp_go//mcp",
         "@com_github_pflow_xyz_go_pflow//metamodel",
         "@com_github_pflow_xyz_go_pflow//solver",

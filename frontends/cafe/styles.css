@@ -145,6 +145,15 @@ table.compare {
 .error { background: var(--err-bg); border: 1px solid #f0c9c2; color: var(--err); }
 .caveat ul { margin: .4rem 0 0; padding-left: 1.1rem; }
 
+/* A method assumption is not a defect in the run — it is the price of the
+   answer — so it is toned down rather than shown in the same warning amber as
+   a constraint the engine could not enforce. */
+.caveat.assumption {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .explain { margin-top: 2.5rem; color: var(--muted); max-width: 46rem; font-size: .9rem; }
 .explain h2 { color: var(--ink); }
 .explain p { margin: .5rem 0 .9rem; }

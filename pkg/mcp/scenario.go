@@ -155,22 +155,31 @@ type scenarioSummary struct {
 	MeanPerc95  map[string]string  `json:"mean_and_p95,omitempty"`
 	Utilization map[string]float64 `json:"utilization,omitempty"`
 	Depleted    []sim.Depletion    `json:"depleted,omitempty"`
-	Caveats     []string           `json:"caveats,omitempty"`
-	Reason      string             `json:"refused,omitempty"`
+	// Caveats are constraints of *this model* the run could not enforce;
+	// Assumptions are what the method assumes whatever the model. Kept apart
+	// here for the same reason they are kept apart on sim.Result: an empty
+	// caveat list is the claim that everything the net says was applied, and
+	// folding a method assumption in makes that claim unfalsifiable.
+	Caveats     []string `json:"caveats,omitempty"`
+	Assumptions []string `json:"assumptions,omitempty"`
+	Reason      string   `json:"refused,omitempty"`
 }
 
 func summariseComparison(cmp *sim.Comparison) comparisonSummary {
 	out := comparisonSummary{
 		Note: "All scenarios ran on one seed, so a difference between them is the change you made rather than the dice. " +
 			"mean_and_p95 reads \"mean / P95\" per place: the average is reassuring and the 95th percentile is what the " +
-			"person standing in the queue experiences.",
+			"person standing in the queue experiences. Both are weighted by time held, not by sample point, so they do " +
+			"not move with the reporting grid. caveats are constraints of the model this run could not enforce — an " +
+			"empty list means every one was applied; assumptions are what the method assumes whatever the model says.",
 	}
 	for _, s := range cmp.Scenarios {
 		summary := scenarioSummary{
-			Name:     s.Name,
-			Final:    s.Result.Final,
-			Depleted: s.Result.Depleted,
-			Caveats:  s.Result.Caveats,
+			Name:        s.Name,
+			Final:       s.Result.Final,
+			Depleted:    s.Result.Depleted,
+			Caveats:     s.Result.Caveats,
+			Assumptions: s.Result.Assumptions,
 		}
 		if s.Result.Diverged {
 			summary.Reason = s.Result.Reason

@@ -27,8 +27,8 @@ import (
 // can appear here.
 func setupForEspressoStarted(t *testing.T, ctx context.Context, store eventsource.Store, ids map[string]string) {
 	t.Helper()
-	if _, err := counter.NewApplication(store).Execute(ctx, ids["counter"], counter.TransitionOrderCappuccino, nil); err != nil {
-		t.Fatalf("setup counter.TransitionOrderCappuccino: %v", err)
+	if _, err := counter.NewApplication(store).Execute(ctx, ids["counter"], counter.TransitionOrderEspresso, nil); err != nil {
+		t.Fatalf("setup counter.TransitionOrderEspresso: %v", err)
 	}
 }
 

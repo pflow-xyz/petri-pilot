@@ -44,7 +44,7 @@
       <label for="patience">Walk out after</label>
       <input type="range" id="patience" min="1" max="30" step="1" value="10">
       <output id="patience-out">10 min</output>
-      <p class="hint">Sets the <code>abandon</code> rate. Waiting customers are a place in the net, not a colour on a card.</p>
+      <p class="hint">Sets every <code>abandon_*</code> rate. Waiting customers are three places in the net — one queue per drink — not a colour on a card.</p>
     </div>
 
     <div class="control">
@@ -77,6 +77,34 @@
       If making a drink were a single firing, the barista would be seized and released in the same instant —
       never observably busy — and no amount of staffing could change the answer. That is not a detail of the
       implementation; it is the difference between a model that can answer this question and one that cannot.
+    </p>
+    <h2>A prerequisite is not an accelerant</h2>
+    <p>
+      <code>start_X</code> also consumes beans, milk, a cup and a barista, and the usual rate law multiplies
+      every input into the firing rate. That is right for chemistry and wrong for a café: it made a bigger
+      pantry brew faster, favoured the latte over the cappuccino for using more milk, and made two drinks in
+      progress finish each other early. Those arcs are marked <code>kinetic: false</code>, so they still gate
+      the firing and are still consumed by it — they just leave the rate alone.
+    </p>
+    <p>
+      The queue is one place per drink for the same reason. With a single fungible queue, which drink got made
+      was settled by whichever recipe's ingredients multiplied out largest; the shop could serve more espressos
+      than anyone ordered and never make a cappuccino at all. Now demand sets the pace and everything else sets
+      permission.
+    </p>
+    <p>
+      The queue itself is a prerequisite too. While picking an order up scaled with the number of people
+      waiting — exactly as giving up does — the two cancelled, and precisely one customer in six walked out
+      however many baristas were on and however short the queue was. Patience was a coin flip rather than a
+      function of the wait, so "how many baristas do I need to stop losing people" had no answer. A barista
+      does not pick orders up faster because more people are waiting, and once the model says so, the walkout
+      column responds to the staffing slider.
+    </p>
+    <p>
+      <b>Waiting on</b> is the row that says what the shop was short of, and for how much of the day. It is not
+      the same question as <b>Ran out</b>: a resource consumed as fast as it is delivered is refilled and
+      drained all day and never reads as empty. The milk was in that state, and the only visible symptom was a
+      table that made no sense — idle baristas, and half the customers gone.
     </p>
     <h2>Which engine answers</h2>
     <p>

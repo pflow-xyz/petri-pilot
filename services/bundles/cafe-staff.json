@@ -1,6 +1,6 @@
 {
   "name": "staff",
-  "description": "Baristas on duty. A pool of interchangeable people: a drink seizes one at the start of the brew and returns them at the end. Knows nothing about coffee — it only says how many hands there are. `initial` on `available` IS the headcount, so asking 'what if I put a third barista on?' is a change to one number.",
+  "description": "Baristas on duty. A pool of interchangeable people: a drink seizes one at the start of the brew and returns them at the end. Knows nothing about coffee — it only says how many hands there are. `initial` on `available` IS the headcount, so asking 'what if I put a third barista on?' is a change to one number.\n\nBoth pool arcs are `kinetic: false`, because a barista is a prerequisite, not an accelerant. Mass action multiplies every input into the firing rate, so with `busy` in the product two drinks in progress made each other finish twice as fast — per-drink brew time fell from 4.8 minutes at one barista to 2.2 at eight, which is a shop where hiring makes the espresso machine quicker. A non-kinetic arc still gates the firing and is still consumed by it: no free barista, no drink started. It just stops the count of people from setting the pace of the work.",
   "places": [
     {"id": "available", "kind": "token", "initial": 2, "exported": true},
     {"id": "busy", "kind": "token", "initial": 0, "exported": true}
@@ -14,17 +14,17 @@
     {"id": "release_cappuccino", "event": "staff.release_cappuccino"}
   ],
   "arcs": [
-    {"from": "available", "to": "acquire_espresso"},
+    {"from": "available", "to": "acquire_espresso", "kinetic": false},
     {"from": "acquire_espresso", "to": "busy"},
-    {"from": "available", "to": "acquire_latte"},
+    {"from": "available", "to": "acquire_latte", "kinetic": false},
     {"from": "acquire_latte", "to": "busy"},
-    {"from": "available", "to": "acquire_cappuccino"},
+    {"from": "available", "to": "acquire_cappuccino", "kinetic": false},
     {"from": "acquire_cappuccino", "to": "busy"},
-    {"from": "busy", "to": "release_espresso"},
+    {"from": "busy", "to": "release_espresso", "kinetic": false},
     {"from": "release_espresso", "to": "available"},
-    {"from": "busy", "to": "release_latte"},
+    {"from": "busy", "to": "release_latte", "kinetic": false},
     {"from": "release_latte", "to": "available"},
-    {"from": "busy", "to": "release_cappuccino"},
+    {"from": "busy", "to": "release_cappuccino", "kinetic": false},
     {"from": "release_cappuccino", "to": "available"}
   ],
   "constraints": [

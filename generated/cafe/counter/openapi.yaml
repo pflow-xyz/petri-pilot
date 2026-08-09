@@ -483,19 +483,87 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 
-  /api/abandon:
+  /api/abandon_espresso:
     post:
-      summary: "Fire abandon transition"
-      operationId: abandon
+      summary: "Fire abandon_espresso transition"
+      operationId: abandonEspresso
       tags:
         - transitions
-      x-transition-id: abandon
+      x-transition-id: abandon_espresso
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AbandonRequest"
+              $ref: "#/components/schemas/AbandonEspressoRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/abandon_latte:
+    post:
+      summary: "Fire abandon_latte transition"
+      operationId: abandonLatte
+      tags:
+        - transitions
+      x-transition-id: abandon_latte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbandonLatteRequest"
+      responses:
+        "200":
+          description: Transition fired successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition failed (guard rejected or invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/abandon_cappuccino:
+    post:
+      summary: "Fire abandon_cappuccino transition"
+      operationId: abandonCappuccino
+      tags:
+        - transitions
+      x-transition-id: abandon_cappuccino
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbandonCappuccinoRequest"
       responses:
         "200":
           description: Transition fired successfully
@@ -571,7 +639,11 @@ components:
       type: object
       description: Aggregate state for counter
       properties:
-        orders_pending:
+        pending_espresso:
+          type: integer
+        pending_latte:
+          type: integer
+        pending_cappuccino:
           type: integer
         brewing_espresso:
           type: integer
@@ -746,7 +818,33 @@ components:
           description: Additional transition data
           additionalProperties: true
 
-    AbandonRequest:
+    AbandonEspressoRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    AbandonLatteRequest:
+      type: object
+      required:
+        - aggregate_id
+      properties:
+        aggregate_id:
+          type: string
+          description: ID of the aggregate to modify
+        data:
+          type: object
+          description: Additional transition data
+          additionalProperties: true
+
+    AbandonCappuccinoRequest:
       type: object
       required:
         - aggregate_id

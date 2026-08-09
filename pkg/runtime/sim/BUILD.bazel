@@ -6,6 +6,7 @@ go_library(
         "http.go",
         "scenario.go",
         "sim.go",
+        "supply.go",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/sim",
     visibility = ["//visibility:public"],
@@ -14,6 +15,7 @@ go_library(
         "//pkg/runtime/api",
         "@com_github_pflow_xyz_go_pflow//metamodel",
         "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//reachability",
         "@com_github_pflow_xyz_go_pflow//solver",
     ],
 )
@@ -22,11 +24,16 @@ go_test(
     name = "sim_test",
     srcs = [
         "cafe_e2e_test.go",
+        "cafe_fitness_test.go",
         "cafe_service_test.go",
+        "contention_test.go",
         "gating_test.go",
         "http_smoke_test.go",
+        "kinetic_test.go",
+        "metrics_test.go",
         "scenario_test.go",
         "sim_test.go",
+        "supply_test.go",
     ],
     embed = [":sim"],
     deps = [

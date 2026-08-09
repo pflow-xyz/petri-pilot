@@ -1,8 +1,10 @@
 {
   "name": "counter",
-  "description": "Front of house: orders are taken, drinks are brewed, drinks are served, and customers who wait too long leave. Knows nothing about ingredients or staffing.\n\nBrewing is two firings, not one. `start_X` begins a drink and `finish_X` completes it, with a token sitting in `brewing_X` in between. That gap is the whole reason headcount matters: a barista seized and released within a single firing is never observably busy, so no amount of staffing could change the outcome. Splitting the transition is what turns 'add a barista' into a question with an answer.",
+  "description": "Front of house: orders are taken, drinks are brewed, drinks are served, and customers who wait too long leave. Knows nothing about ingredients or staffing.\n\nBrewing is two firings, not one. `start_X` begins a drink and `finish_X` completes it, with a token sitting in `brewing_X` in between. That gap is the whole reason headcount matters: a barista seized and released within a single firing is never observably busy, so no amount of staffing could change the outcome. Splitting the transition is what turns 'add a barista' into a question with an answer.\n\nThe queue is per drink, and it has to be. A single fungible `orders_pending` made all three `start_X` race for the same token, so which drink got made was decided by whatever else those transitions happened to be reading — the recipes' ingredient counts, not the customers. Over an eight-hour day that shop took 65 cappuccino orders and made 8, while serving more espressos than anyone had ordered. `pending_espresso`/`pending_latte`/`pending_cappuccino` make an order for a cappuccino the only thing that can start a cappuccino.\n\nAbandonment is per queue for the same reason: a customer gives up on the drink they asked for, so the walkouts have to come out of the queue that actually kept them waiting. They all share `walked_out` because a lost customer is a lost customer whatever they wanted.\n\n`pending_X -> start_X` is `kinetic: false`, and the start rate is a pickup time rather than a second service time. Both correct the same defect. With that arc kinetic, a queued order was started at 60/h *per waiting customer* while a waiting customer gave up at 12/h, so exactly five orders in six were started — at every queue length, at every headcount. One arrival in six walked out with every barista idle and the stock full, and 'how many baristas do I need to get walkouts under 10%?' had no answer in this model: measured walkouts flattened at 17% and never went below it. A barista does not pick orders up faster because more people are waiting, so the queue is a prerequisite here too, not an accelerant. Made non-kinetic, the split between started and abandoned becomes a function of how long the queue is — which is the thing staffing actually changes. And the rate is 720/h because what it measures is a free barista noticing a waiting order, about five seconds; the drink itself is `finish_X`, which is where the declared 3/5/6 minutes live. At 60/h the handoff was quietly a minute-long service stage of its own that no amount of hiring could get past.",
   "places": [
-    {"id": "orders_pending", "kind": "token", "initial": 0, "exported": true},
+    {"id": "pending_espresso", "kind": "token", "initial": 0, "exported": true},
+    {"id": "pending_latte", "kind": "token", "initial": 0, "exported": true},
+    {"id": "pending_cappuccino", "kind": "token", "initial": 0, "exported": true},
     {"id": "brewing_espresso", "kind": "token", "initial": 0},
     {"id": "brewing_latte", "kind": "token", "initial": 0},
     {"id": "brewing_cappuccino", "kind": "token", "initial": 0},
@@ -16,33 +18,35 @@
     {"id": "order_espresso", "event": "counter.order_espresso", "rate": 10},
     {"id": "order_latte", "event": "counter.order_latte", "rate": 15},
     {"id": "order_cappuccino", "event": "counter.order_cappuccino", "rate": 8},
-    {"id": "start_espresso", "event": "counter.start_espresso", "rate": 60},
-    {"id": "start_latte", "event": "counter.start_latte", "rate": 60},
-    {"id": "start_cappuccino", "event": "counter.start_cappuccino", "rate": 60},
+    {"id": "start_espresso", "event": "counter.start_espresso", "rate": 720},
+    {"id": "start_latte", "event": "counter.start_latte", "rate": 720},
+    {"id": "start_cappuccino", "event": "counter.start_cappuccino", "rate": 720},
     {"id": "finish_espresso", "event": "counter.finish_espresso", "rate": 20},
     {"id": "finish_latte", "event": "counter.finish_latte", "rate": 12},
     {"id": "finish_cappuccino", "event": "counter.finish_cappuccino", "rate": 10},
     {"id": "serve_espresso", "event": "counter.serve_espresso", "rate": 30},
     {"id": "serve_latte", "event": "counter.serve_latte", "rate": 30},
     {"id": "serve_cappuccino", "event": "counter.serve_cappuccino", "rate": 30},
-    {"id": "abandon", "event": "counter.abandon", "rate": 12}
+    {"id": "abandon_espresso", "event": "counter.abandon_espresso", "rate": 12},
+    {"id": "abandon_latte", "event": "counter.abandon_latte", "rate": 12},
+    {"id": "abandon_cappuccino", "event": "counter.abandon_cappuccino", "rate": 12}
   ],
   "arcs": [
-    {"from": "order_espresso", "to": "orders_pending"},
-    {"from": "order_latte", "to": "orders_pending"},
-    {"from": "order_cappuccino", "to": "orders_pending"},
+    {"from": "order_espresso", "to": "pending_espresso"},
+    {"from": "order_latte", "to": "pending_latte"},
+    {"from": "order_cappuccino", "to": "pending_cappuccino"},
 
-    {"from": "orders_pending", "to": "start_espresso"},
+    {"from": "pending_espresso", "to": "start_espresso", "kinetic": false},
     {"from": "start_espresso", "to": "brewing_espresso"},
     {"from": "brewing_espresso", "to": "finish_espresso"},
     {"from": "finish_espresso", "to": "espresso_ready"},
 
-    {"from": "orders_pending", "to": "start_latte"},
+    {"from": "pending_latte", "to": "start_latte", "kinetic": false},
     {"from": "start_latte", "to": "brewing_latte"},
     {"from": "brewing_latte", "to": "finish_latte"},
     {"from": "finish_latte", "to": "latte_ready"},
 
-    {"from": "orders_pending", "to": "start_cappuccino"},
+    {"from": "pending_cappuccino", "to": "start_cappuccino", "kinetic": false},
     {"from": "start_cappuccino", "to": "brewing_cappuccino"},
     {"from": "brewing_cappuccino", "to": "finish_cappuccino"},
     {"from": "finish_cappuccino", "to": "cappuccino_ready"},
@@ -54,7 +58,11 @@
     {"from": "cappuccino_ready", "to": "serve_cappuccino"},
     {"from": "serve_cappuccino", "to": "orders_complete"},
 
-    {"from": "orders_pending", "to": "abandon"},
-    {"from": "abandon", "to": "walked_out"}
+    {"from": "pending_espresso", "to": "abandon_espresso"},
+    {"from": "abandon_espresso", "to": "walked_out"},
+    {"from": "pending_latte", "to": "abandon_latte"},
+    {"from": "abandon_latte", "to": "walked_out"},
+    {"from": "pending_cappuccino", "to": "abandon_cappuccino"},
+    {"from": "abandon_cappuccino", "to": "walked_out"}
   ]
 }
