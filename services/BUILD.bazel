@@ -1,8 +1,12 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-# Exposed so //pkg/codegen/zkgo:zkgo_test can read it as test data (the test reads
-# the JSON from disk via a relative path rather than the embedded copy).
-exports_files(["tic-tac-toe.json"])
+# Exposed so //pkg/codegen/zkgo:zkgo_test and //pkg/runtime/sim:sim_test can
+# read them as test data (the tests read the JSON from disk via a relative path
+# rather than the embedded copy).
+exports_files([
+    "tic-tac-toe.json",
+    "vet-clinic.json",
+])
 
 go_library(
     name = "services",
@@ -32,6 +36,7 @@ go_library(
         "bundles/cafe-pantry.json",
         "bundles/cafe.bundle.json",
         "bundles/cafe-staff.json",
+        "vet-clinic.json",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/services",
     visibility = ["//visibility:public"],

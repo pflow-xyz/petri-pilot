@@ -14,6 +14,7 @@
         <div class="view-toggle">
             <button class="active" id="view-sim-btn">Simulation</button>
             <button id="view-sched-btn">Schedule</button>
+            <button id="view-whatif-btn">What-If</button>
         </div>
         <span class="subtitle">ODE-based resource scheduling for a small animal hospital</span>
     </header>
@@ -59,6 +60,49 @@
             <shift-scheduler id="scheduler"></shift-scheduler>
         </div>
     </div>
+
+    <!-- What-If View (hidden by default) -->
+    <div class="whatif-view hidden" id="whatif-view">
+        <div class="card whatif-controls">
+            <h3>Ask the clinic a hypothetical</h3>
+            <p class="whatif-blurb">Every control is a real knob in the Petri net — a token count or a
+            transition rate. Scenarios run server-side on a copy of the model and change nothing.</p>
+
+            <div class="whatif-grid">
+                <label>Veterinarians <output id="dvms-out"></output>
+                    <input type="range" id="dvms" min="1" max="6" step="1" value="1"></label>
+                <label>Vet techs <output id="rvts-out"></output>
+                    <input type="range" id="rvts" min="1" max="8" step="1" value="1"></label>
+                <label>Receptionists <output id="receptionists-out"></output>
+                    <input type="range" id="receptionists" min="1" max="3" step="1" value="2"></label>
+                <label>Arrivals / hour <output id="arrivals-out"></output>
+                    <input type="range" id="arrivals" min="1" max="20" step="1" value="12"></label>
+                <label>Walk-in patience <output id="patience-out"></output>
+                    <input type="range" id="patience" min="5" max="120" step="5" value="60"></label>
+                <label>Day length (hours) <output id="hours-out"></output>
+                    <input type="range" id="hours" min="2" max="12" step="1" value="8"></label>
+            </div>
+
+            <h4>Disruptions</h4>
+            <div class="whatif-disruptions">
+                <label><input type="number" id="emergencies" min="0" max="10" value="0" style="width:3.5em">
+                    emergencies at the door at opening</label>
+                <label><input type="checkbox" id="emergency-stream">
+                    emergency wave — 2/h arriving between hour 1 and hour 3</label>
+                <label><input type="checkbox" id="no-surgery">
+                    no surgery today (gate closed)</label>
+                <label><input type="checkbox" id="xray-down">
+                    x-ray machine down</label>
+            </div>
+
+            <div class="whatif-actions">
+                <button id="run" class="btn-primary">Run scenario</button>
+                <button id="compare" class="btn-secondary">Compare staffing</button>
+                <span id="status" class="whatif-status" aria-live="polite"></span>
+            </div>
+        </div>
+        <div class="card" id="results" aria-live="polite"></div>
+    </div>
 </div>
 
 <script type="module">
@@ -98,18 +142,27 @@ const schedView = document.getElementById('sched-view');
 const viewSimBtn = document.getElementById('view-sim-btn');
 const viewSchedBtn = document.getElementById('view-sched-btn');
 
+const whatifView = document.getElementById('whatif-view');
+const viewWhatifBtn = document.getElementById('view-whatif-btn');
+
+function showView(active) {
+    const views = [[viewSimBtn, simView], [viewSchedBtn, schedView], [viewWhatifBtn, whatifView]];
+    for (const [btn, view] of views) {
+        btn.classList.toggle('active', btn === active);
+        view.classList.toggle('hidden', btn !== active);
+    }
+}
+
 viewSimBtn.addEventListener('click', () => {
-    simView.classList.remove('hidden');
-    schedView.classList.add('hidden');
-    viewSimBtn.classList.add('active');
-    viewSchedBtn.classList.remove('active');
+    showView(viewSimBtn);
+});
+
+viewWhatifBtn.addEventListener('click', () => {
+    showView(viewWhatifBtn);
 });
 
 viewSchedBtn.addEventListener('click', () => {
-    simView.classList.add('hidden');
-    schedView.classList.remove('hidden');
-    viewSimBtn.classList.remove('active');
-    viewSchedBtn.classList.add('active');
+    showView(viewSchedBtn);
     // Initialize scheduler with employees if not already done
     if (registryEl.employees) {
         schedulerEl.setEmployees(registryEl.employees);
@@ -341,7 +394,7 @@ function runODE(config) {
 
 // ── Plot rendering ──
 const PLOT_GROUPS = {
-    'Queues': { places: ['wait_exam','wait_tech','wait_surgery','wait_dental','wait_diag'], colors: ['#9b59b6','#f39c12','#e74c3c','#e74c3c','#2ea44f'] },
+    'Queues': { places: ['wait_exam','wait_tech','wait_surgery','wait_dental','wait_diag','wait_lab'], colors: ['#9b59b6','#f39c12','#e74c3c','#e74c3c','#2ea44f','#1abc9c'] },
     'In Service': { places: ['in_wellness','in_sick','in_vaccine','in_nail_trim','in_weight','in_suture','in_spay','in_neuter','in_dental','in_xray','in_bloodwork','in_lab'], colors: null },
     'Staff': { places: ['dvm_avail','rvt_avail','receptionist_avail'], colors: ['#e74c3c','#3498db','#f39c12'] },
     'Rooms': { places: ['exam_room_free','surgery_free','dental_free','radiology_free','treatment_free'], colors: ['#9b59b6','#e74c3c','#e74c3c','#2ea44f','#f39c12'] },
@@ -493,6 +546,8 @@ scheduleEl.addEventListener('schedule-change', (e) => {
 // ── Initial run ──
 runODE(currentConfig);
 </script>
+
+<script type="module" src="whatif.js"></script>
 
 <!-- Tutorial / Explainer Section -->
 <div class="explainer-wrapper">

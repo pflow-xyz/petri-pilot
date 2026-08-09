@@ -24,6 +24,11 @@ test:
 # Pass BASE=<url> to check a server that is already running instead.
 test-browser: build
 	@node frontends/cafe/src/console.browser.mjs $(BASE)
+	@node frontends/vet-clinic/whatif.browser.mjs $(BASE_VET)
+
+# Just the vet-clinic what-if console check.
+test-browser-vet: build
+	@node frontends/vet-clinic/whatif.browser.mjs $(BASE_VET)
 
 # Install the browser tooling (Playwright + its Chromium) into e2e/.
 e2e-install:
@@ -31,7 +36,7 @@ e2e-install:
 
 # Run dev server (used on pilot.pflow.xyz)
 dev-run: build
-	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight galton-board cafe
+	./$(BINARY) serve -port 8083 tic-tac-toe zk-tic-tac-toe coffeeshop texas-holdem knapsack predator-prey dining-philosophers loan-approval tcp-handshake thermostat producer-consumer hiring-pipeline enzyme-kinetics stoplight galton-board cafe vet-clinic
 
 # Build the binary
 build:

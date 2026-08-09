@@ -127,6 +127,77 @@ retirement.
 - Visual workflow editor integration
 - Multi-tenant support
 
+## Vet-clinic: retire the legacy in-browser model
+
+The What-If tab runs `services/vet-clinic.json` (café-calibrated: non-kinetic
+pickup arcs, read-arc surgery gate, patience, emergency class) through the
+server's scenario API. The Simulation/floor-plan tab still runs the older
+`frontends/vet-clinic/model.json` through `pflow-engine.js`, which understands
+none of those constructs — so the two tabs describe different clinics. Either
+teach pflow-engine the shared firing rule (it is an acknowledged independent
+runtime, same exposure as the retired five-firing-rules bug) or point the
+floor-plan animation at server trajectories and delete the local engine.
+
+## sim.pflow.xyz — simulation-as-a-service (planned fork)
+
+Fork the what-if stack into a new **private** repo backing **sim.pflow.xyz**:
+curated operational models (vet clinic, coffee shop, …) offered as a service —
+pick a model, turn the knobs, inject disruptions, compare scenarios.
+
+What the fork takes with it:
+
+- The scenario surface (`pkg/runtime/sim`: `/api/scenario`, `/api/scenario/compare`,
+  `/api/rates`, SSA metrics/contended/assumptions) — already generator-independent.
+- The calibration discipline: two-firing resource seizure, non-kinetic queue→start
+  pickup arcs, per-queue patience, read-arc gates, café/vet-clinic fitness gates
+  as the template for every hosted model.
+- `services/vet-clinic.json` + `services/bundles/cafe-*` as the first two catalog
+  entries; the vet-clinic What-If view as the reference console UI.
+
+**Architecture: serverless on Google Cloud.** Unlike the rest of the ecosystem
+(long-lived Go services on pflow.dev), sim.pflow.xyz targets GCP serverless:
+
+- **Cloud Run** is the natural fit for the scenario API — the Go handlers in
+  `pkg/runtime/sim` are already stateless pure reads (model in, trajectory
+  out), so they containerize as-is with no session or store to keep warm.
+  Scale-to-zero suits a demo/service site's bursty traffic.
+- Model catalog + per-model fitness baselines in **Cloud Storage** (or
+  Firestore if catalog metadata gets queried); static consoles from a bucket
+  behind **Cloud CDN** or served by the same Cloud Run service.
+- Candidate uses for other GCP pieces: Cloud Tasks for long sweep jobs
+  (many-realization parameter sweeps beyond request timeout), API Gateway or
+  Firebase Auth for tenant quotas.
+
+**Google Sheets as a surface.** Three distinct ideas, in ascending order of
+fidelity honesty:
+
+1. *Formulas-only ODE*: a fixed-step Euler/RK4 mass-action solve is genuinely
+   expressible as a sheet — rows are time steps, columns are places, each
+   transition's rate law is a formula over the previous row, the incidence
+   matrix sits in a block. petri-pilot could *generate* this (a "spreadsheet
+   form" alongside pflow-polyglot's interpreter/lambda/generated/contract
+   forms) via the Sheets API. Honest caveat: this is the continuous engine, so
+   everything Forecast refuses (read arcs, inhibitors, non-kinetic arcs —
+   i.e. the vet-clinic/café calibrations) is silently unenforceable in cells.
+   Fine for predator-prey/enzyme-kinetics-class models; wrong for the
+   staffing/disruption models the site is about.
+2. *Apps Script SSA*: possible but a dead end — per-event loops in Apps Script
+   are slow, RAND() is unseedable (comparisons stop being comparisons), and
+   the engine would be a third implementation of the firing rule.
+3. *Sheets as a client of the Cloud Run API* (the one to build): custom
+   functions / Apps Script call `/api/scenario/compare`, results land in
+   ranges, native charts on top. The seed, the firing rule, contended-time
+   accounting all stay server-side; the sheet is a console. Pairs naturally
+   with the serverless plan — same API, one more surface, and a very natural
+   "export this comparison to Sheets" button for the web console.
+
+Open questions for the fork: multi-tenant scenario quotas, model catalog schema
+(one JSON per model + fitness gates per model), whether consoles are generated
+or hand-built per model, and how much of petri-pilot's codegen comes along vs.
+just the runtime. Note the SQLite-only / Makefile conventions in CLAUDE.md are
+ecosystem defaults — the serverless fork will need its own deviations documented
+(no local SQLite on Cloud Run's ephemeral filesystem beyond caches).
+
 ---
 
 ## ZK Tic-Tac-Toe Integration

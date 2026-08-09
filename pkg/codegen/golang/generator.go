@@ -210,12 +210,16 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 		packageName = "main"
 	}
 
-	// Build template context
+	// Build template context. HasSimulation must ride along here exactly as
+	// it does in GenerateFilesFromApp: the template list and the api.go
+	// registration are gated separately, so dropping it emits simulation.go
+	// with nothing mounting it.
 	ctx, err := NewContext(model, ContextOptions{
 		ModulePath:             g.opts.ModulePath,
 		PackageName:            packageName,
 		StreamPrefix:           g.opts.StreamPrefix,
 		CrossEntityTransitions: g.opts.CrossEntityTransitions,
+		HasSimulation:          g.opts.IncludeSimulation,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)

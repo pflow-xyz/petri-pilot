@@ -29,6 +29,11 @@
     align-items: center;
     gap: 16px;
     border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .clinic-header .subtitle { display: none; }
 }
 
 .clinic-header h1 {
@@ -1323,4 +1328,157 @@
 .explainer-wrapper explainer-panel em {
     color: #f1c40f;
     font-style: normal;
+}
+
+/* ── What-If console ── */
+.whatif-view {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    align-items: start;
+}
+
+.whatif-view.hidden { display: none; }
+
+/* Grid items default to min-width:auto, so the results card would inherit the
+   table's intrinsic width and drag the 1fr track past the viewport — the
+   .table-scroll wrapper can only do its job if the card is allowed to shrink. */
+.whatif-view > .card { min-width: 0; }
+
+@media (max-width: 1200px) {
+    .whatif-view {
+        grid-template-columns: 1fr;
+    }
+}
+
+.whatif-blurb {
+    font-size: 0.8rem;
+    opacity: 0.75;
+    margin-bottom: 12px;
+}
+
+.whatif-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.whatif-grid label {
+    display: block;
+    font-size: 0.85rem;
+}
+
+.whatif-grid input[type="range"] {
+    width: 100%;
+    display: block;
+}
+
+.whatif-grid output {
+    float: right;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+.whatif-controls h4 {
+    margin: 14px 0 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.whatif-disruptions {
+    display: grid;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.whatif-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.whatif-actions button {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.whatif-actions button.btn-primary {
+    background: #2ea44f;
+    border-color: #2ea44f;
+    color: #fff;
+}
+
+.whatif-actions button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.whatif-status {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.table-scroll { overflow-x: auto; }
+
+.whatif-compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.whatif-compare th,
+.whatif-compare td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.whatif-compare thead th {
+    font-weight: 600;
+}
+
+.whatif-compare td {
+    font-variant-numeric: tabular-nums;
+}
+
+.whatif-note {
+    font-size: 0.75rem;
+    opacity: 0.65;
+    margin-top: 10px;
+}
+
+.whatif-caveat {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-left: 3px solid #f1c40f;
+    font-size: 0.8rem;
+    background: rgba(241, 196, 64, 0.08);
+}
+
+.whatif-caveat.whatif-assumption {
+    border-left-color: #3498db;
+    background: rgba(52, 152, 219, 0.08);
+}
+
+.whatif-caveat ul {
+    margin: 6px 0 0 18px;
+}
+
+.whatif-error {
+    padding: 12px;
+    border-left: 3px solid #e74c3c;
+    background: rgba(231, 76, 60, 0.08);
+    font-size: 0.85rem;
 }

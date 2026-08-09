@@ -34,7 +34,11 @@ go_test(
         "scenario_test.go",
         "sim_test.go",
         "supply_test.go",
+        "vetclinic_fitness_test.go",
     ],
+    # The vet-clinic fitness gates read ../../../services/vet-clinic.json from
+    # disk; supply it as a data runfile so the test is hermetic.
+    data = ["//services:vet-clinic.json"],  # keep
     embed = [":sim"],
     deps = [
         "//generated",

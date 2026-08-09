@@ -21,5 +21,6 @@ go_library(
         "//examples/texasholdem",
         "//examples/thermostat",
         "//examples/tictactoe",
+        "//examples/vetclinic",
     ],
 )

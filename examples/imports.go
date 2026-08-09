@@ -17,4 +17,5 @@ import (
 	_ "github.com/pflow-xyz/petri-pilot/examples/texasholdem"
 	_ "github.com/pflow-xyz/petri-pilot/examples/thermostat"
 	_ "github.com/pflow-xyz/petri-pilot/examples/tictactoe"
+	_ "github.com/pflow-xyz/petri-pilot/examples/vetclinic"
 )

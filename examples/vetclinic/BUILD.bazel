@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "vetclinic",
+    srcs = [
+        "aggregate.go",
+        "api.go",
+        "api_events.go",
+        "config.go",
+        "events.go",
+        "service.go",
+        "simulation.go",
+        "workflow.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/examples/vetclinic",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/runtime/api",
+        "//pkg/runtime/sim",
+        "//pkg/serve",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_pflow_xyz_go_pflow//eventsource",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "vetclinic_test",
+    srcs = ["workflow_test.go"],
+    embed = [":vetclinic"],
+    deps = ["@com_github_pflow_xyz_go_pflow//eventsource"],
+)
