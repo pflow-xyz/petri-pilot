@@ -85,7 +85,7 @@ Examples:
 	// Register MCP HTTP endpoint (Streamable HTTP transport for remote Claude clients).
 	opts.CustomRoutes = func(mux *http.ServeMux) {
 		mcpServer := mcp.NewServer()
-		mcpHTTP := mcpgoserver.NewStreamableHTTPServer(mcpServer)
+		mcpHTTP := mcpgoserver.NewStreamableHTTPServer(mcpServer, mcpgoserver.WithHTTPContextFunc(mcp.WithCaller))
 		mux.HandleFunc("/mcp/openapi.json", mcp.OpenAPIHandler(mcpServer))
 		landingPage := mcp.LandingPageHandler(mcpServer)
 		mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {

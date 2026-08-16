@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,12 +59,51 @@ func usageLogger() *log.Logger {
 	return usageOut
 }
 
+// callerKey carries the HTTP caller's identity signals into tool handlers.
+// The surface is anonymous by policy, so "identity" here means the repeat-
+// user signals an open endpoint legitimately has: the client IP (nginx's
+// X-Forwarded-For), the user agent, and the MCP session id. IP+UA repeating
+// across days is a returning user; the session id groups one sitting.
+type ctxCallerKey int
+
+const callerKey ctxCallerKey = 0
+
+type caller struct {
+	IP, UA, Session string
+}
+
+// WithCaller is the HTTPContextFunc for the streamable server: it stashes
+// the request's caller signals where ObserveMiddleware can log them.
+func WithCaller(ctx context.Context, r *http.Request) context.Context {
+	ip := r.Header.Get("X-Forwarded-For")
+	if i := strings.IndexByte(ip, ','); i > 0 {
+		ip = ip[:i]
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+		if i := strings.LastIndexByte(ip, ':'); i > 0 {
+			ip = ip[:i]
+		}
+	}
+	return context.WithValue(ctx, callerKey, caller{
+		IP:      strings.TrimSpace(ip),
+		UA:      r.Header.Get("User-Agent"),
+		Session: r.Header.Get("Mcp-Session-Id"),
+	})
+}
+
+func callerFrom(ctx context.Context) caller {
+	c, _ := ctx.Value(callerKey).(caller)
+	return c
+}
+
 // inflight tracks calls currently executing, so the watchdog can name what
 // was running when memory climbed — including the call that never returns.
 type inflightCall struct {
 	Tool    string
 	Started time.Time
 	Args    string // truncated JSON of the request arguments
+	Caller  caller
 }
 
 var (
@@ -103,7 +144,8 @@ func ObserveMiddleware(next server.ToolHandlerFunc) server.ToolHandlerFunc {
 		inflightMu.Lock()
 		inflightID++
 		id := inflightID
-		inflight[id] = inflightCall{Tool: req.Params.Name, Started: start, Args: args}
+		who := callerFrom(ctx)
+		inflight[id] = inflightCall{Tool: req.Params.Name, Started: start, Args: args, Caller: who}
 		inflightMu.Unlock()
 		defer func() {
 			inflightMu.Lock()
@@ -114,7 +156,8 @@ func ObserveMiddleware(next server.ToolHandlerFunc) server.ToolHandlerFunc {
 		res, err := next(ctx, req)
 
 		delta := int64(heapMB()) - int64(before)
-		line := fmt.Sprintf("mcp: usage tool=%s dur=%s heapMB=%d deltaMB=%+d", req.Params.Name, time.Since(start).Round(time.Millisecond), heapMB(), delta)
+		line := fmt.Sprintf("mcp: usage tool=%s ip=%s ua=%q sess=%s dur=%s heapMB=%d deltaMB=%+d",
+			req.Params.Name, who.IP, who.UA, shortSession(who.Session), time.Since(start).Round(time.Millisecond), heapMB(), delta)
 		if delta > argCaptureDeltaMB() {
 			// A call that grew the heap this much is worth reproducing:
 			// keep its arguments next to the number.
@@ -164,7 +207,7 @@ func StartMemWatchdog() {
 			lg := usageLogger()
 			lg.Printf("mcp: MEMORY WATCHDOG heapMB=%d threshold=%d inflight=%d", h, threshold, len(calls))
 			for _, c := range calls {
-				lg.Printf("mcp: memdebug inflight tool=%s running=%s args=%s", c.Tool, time.Since(c.Started).Round(time.Second), c.Args)
+				lg.Printf("mcp: memdebug inflight tool=%s ip=%s running=%s args=%s", c.Tool, c.Caller.IP, time.Since(c.Started).Round(time.Second), c.Args)
 			}
 
 			home, _ := os.UserHomeDir()
@@ -177,4 +220,17 @@ func StartMemWatchdog() {
 			}
 		}
 	}()
+}
+
+// shortSession trims the session UUID to a correlatable stub — enough to
+// group one sitting's calls, short enough to keep lines greppable.
+func shortSession(s string) string {
+	s = strings.TrimPrefix(s, "mcp-session-")
+	if len(s) > 8 {
+		return s[:8]
+	}
+	if s == "" {
+		return "-"
+	}
+	return s
 }

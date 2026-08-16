@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,5 +78,29 @@ func TestInflightTableNamesTheRunningCall(t *testing.T) {
 	inflightMu.Unlock()
 	if n != 0 {
 		t.Fatalf("in-flight table not cleaned up: %d entries remain", n)
+	}
+}
+
+// The caller's IP must travel from the HTTP layer into the usage line —
+// it is the repeat-user signal an anonymous endpoint legitimately has.
+func TestCallerRidesTheContextIntoTheUsageLine(t *testing.T) {
+	r, _ := http.NewRequest("POST", "/mcp", nil)
+	r.Header.Set("X-Forwarded-For", "203.0.113.7, 10.0.0.1")
+	r.Header.Set("User-Agent", "opencode/1.18.18")
+	r.Header.Set("Mcp-Session-Id", "mcp-session-deadbeef-0000")
+	ctx := WithCaller(context.Background(), r)
+
+	handler := func(ctx context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+		return mcplib.NewToolResultText("ok"), nil
+	}
+	req := mcplib.CallToolRequest{}
+	req.Params.Name = "petri_simulate"
+	if _, err := ObserveMiddleware(handler)(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(testLogPath)
+	log := string(b)
+	if !strings.Contains(log, "ip=203.0.113.7") || !strings.Contains(log, `ua="opencode/1.18.18"`) || !strings.Contains(log, "sess=deadbeef") {
+		t.Fatalf("caller signals missing from usage log: %q", log)
 	}
 }
