@@ -39,7 +39,9 @@ func NewServer() *server.MCPServer {
 		version.Version,
 		server.WithToolCapabilities(false),
 		server.WithRecovery(),
+		server.WithToolHandlerMiddleware(ObserveMiddleware),
 	)
+	StartMemWatchdog()
 
 	// Register tools
 	s.AddTool(validateTool(), handleValidate)
