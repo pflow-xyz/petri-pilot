@@ -27,7 +27,7 @@ jobs:
           # main at the moment it runs, so an unrelated go-pflow push can turn
           # this repo's CI red. Bump deliberately, or drop with the replace.
           repository: pflow-xyz/go-pflow
-          ref: 02b4af6b2e66e6693db894967566612720c773be
+          ref: 3975b7f6ced679439c53754c3e35b44c99357bde
           path: .go-pflow-sibling
 
       - name: Move sibling to ../go-pflow
