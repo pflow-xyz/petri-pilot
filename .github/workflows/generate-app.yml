@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # go.mod carries a temporary `replace ../go-pflow` (see CLAUDE.md);
       # provide the sibling checkout it points at.
       - name: Check out go-pflow sibling (go.mod replace)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: pflow-xyz/go-pflow
           path: .go-pflow-sibling
@@ -27,9 +27,14 @@ jobs:
         run: rm -rf ../go-pflow && mv "$PWD/.go-pflow-sibling" ../go-pflow
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          # Read the version from go.mod rather than pinning one here.
+          # setup-go v6 sets GOTOOLCHAIN=local, so a pinned version older
+          # than go.mod's `go` directive is a hard error instead of the
+          # silent toolchain download v5 did — this step asked for 1.21
+          # against a go.mod requiring 1.25.6.
+          go-version-file: go.mod
 
       - name: Build petri-pilot
         run: go build -o petri-pilot ./cmd/petri-pilot
@@ -42,7 +47,7 @@ jobs:
           echo "app_name=${APP_NAME:-generated-app}" >> $GITHUB_OUTPUT
 
       - name: Comment on issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.createComment({
@@ -97,7 +102,7 @@ jobs:
           git push -u origin app/${{ steps.extract.outputs.app_name }}
 
       - name: Create draft PR for Copilot
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = await github.rest.pulls.create({
