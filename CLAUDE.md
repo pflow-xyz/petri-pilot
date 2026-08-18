@@ -90,14 +90,13 @@ It returns fitness (can the model reproduce observed traces?), precision (does i
 permit behavior never seen?), and per-trace diagnostics naming the activities that
 could not be replayed, worst-fitting traces first.
 
-**Dependency note:** both tools need the go-pflow `verify` package. `go.mod`
-carries a temporary `replace` pointing at the sibling `../go-pflow` checkout,
-because petri-pilot tracks unreleased go-pflow work — currently the
-`metamodel` composition layer (`Bundle`/`Subnet`/`Link`/`Flatten`). The `require`
-line still names the last released tag, so **check both**: `require` tells you
-the floor, the sibling checkout tells you what you're actually compiling.
-**Before releasing, tag go-pflow and swap that replace for a version bump on the
-`require` line** — a `replace` must not ship in a released module.
+**Dependency note:** both tools need the go-pflow `verify` package, which ships
+in the pinned release. This repo used to carry a `replace` pointing at a sibling
+`../go-pflow` checkout, because it tracked unreleased go-pflow work — the
+`metamodel` composition layer and everything after it. That work is now released
+as **v0.22.0** and the `require` line names it, so there is one answer to what
+you compile against instead of two. Adopting new go-pflow work means landing it
+there, tagging, and bumping the `require` line here.
 
 ### 2. Generate Code
 
@@ -633,13 +632,11 @@ Layout:
 - After editing `go.mod`, run `bazel mod tidy`; after adding/moving `.go` files, run
   `bazel run //:gazelle`. Apps under `examples/` and `generated/` are part of the main module
   (single-module architecture), so Gazelle picks them up automatically.
-- **Editing the sibling `../go-pflow` while the local `replace` is active.** Gazelle's
-  `go_deps.from_file` reads the `replace` and *materializes a copy* of `../go-pflow`
-  under the output base — it is not a symlink. Bazel does notice edits and re-fetches,
-  but the invalidation can land mid-build, so the first `bazel build` after a go-pflow
-  edit sometimes aborts; **just run it again**. It does not silently compile stale code.
-  `go build`/`go test` have no such lag — they read the sibling directly. So when the
-  two disagree, believe `go test` and re-run Bazel.
+- **Adopting new go-pflow work means a release, not an edit.** With the `replace`
+  gone there is no sibling to edit into this build: land the change in go-pflow,
+  tag it, and bump the `require` line here. Slower on purpose — it is what makes
+  local builds, Bazel and CI all compile the same go-pflow, which a sibling
+  checkout at a hand-maintained CI ref never guaranteed.
 
 ### Generating Bazel-ready apps (`-bazel`)
 

@@ -12,20 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # go.mod carries a temporary `replace ../go-pflow` (see CLAUDE.md);
-      # provide the sibling checkout it points at.
-      - name: Check out go-pflow sibling (go.mod replace)
-        uses: actions/checkout@v5
-        with:
-          repository: pflow-xyz/go-pflow
-          path: .go-pflow-sibling
-
-      - name: Move sibling to ../go-pflow
-        # A real directory outside the workspace, exactly like a local
-        # checkout — a symlink into the workspace confuses Bazel's go_deps
-        # materialization (and gazelle would otherwise walk it).
-        run: rm -rf ../go-pflow && mv "$PWD/.go-pflow-sibling" ../go-pflow
-
       - name: Setup Go
         uses: actions/setup-go@v6
         with:

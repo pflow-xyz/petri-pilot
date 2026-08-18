@@ -18,25 +18,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # go.mod carries a temporary `replace ../go-pflow` (see CLAUDE.md);
-      # provide the sibling checkout it points at.
-      - name: Check out go-pflow sibling (go.mod replace)
-        uses: actions/checkout@v5
-        with:
-          # Pinned: without a ref this job compiles whatever is on go-pflow
-          # main at the moment it runs, so an unrelated go-pflow push can turn
-          # this repo's CI red. Bump deliberately, or drop with the replace.
-          repository: pflow-xyz/go-pflow
-          ref: 3975b7f6ced679439c53754c3e35b44c99357bde
-          path: .go-pflow-sibling
-
-      - name: Move sibling to ../go-pflow
-        # A real directory outside the workspace, exactly like a local
-        # checkout — a symlink into the workspace confuses Bazel's go_deps
-        # materialization (and gazelle would otherwise walk it).
-        run: rm -rf ../go-pflow && mv "$PWD/.go-pflow-sibling" ../go-pflow
-
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
