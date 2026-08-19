@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -168,15 +169,22 @@ func TestGenerateBundleFilesCompiles(t *testing.T) {
 		}
 	}
 
-	// A scratch module wrapping the generated tree, pointed at this repo
-	// and the go-pflow sibling.
+	// A scratch module wrapping the generated tree. petri-pilot is replaced
+	// with this checkout because the generated code must compile against the
+	// generator that emitted it, not against whatever is published. go-pflow
+	// is an ordinary released dependency — it used to be replaced with a
+	// sibling ../go-pflow checkout, which meant this test could only pass on
+	// a machine that happened to have one.
 	repoRoot, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Read the version from this module rather than hardcoding it, so a
+	// go-pflow bump cannot leave the generated app compiling against a
+	// different version than its generator does.
+	goPflowVersion := goPflowRequire(t, filepath.Join(repoRoot, "go.mod"))
 	gomod := "module example.com/shopapp\n\ngo 1.25\n\n" +
-		"require (\n\tgithub.com/pflow-xyz/go-pflow v0.0.0\n\tgithub.com/pflow-xyz/petri-pilot v0.0.0\n)\n\n" +
-		"replace github.com/pflow-xyz/go-pflow => " + filepath.Join(repoRoot, "..", "go-pflow") + "\n" +
+		"require (\n\tgithub.com/pflow-xyz/go-pflow " + goPflowVersion + "\n\tgithub.com/pflow-xyz/petri-pilot v0.0.0\n)\n\n" +
 		"replace github.com/pflow-xyz/petri-pilot => " + repoRoot + "\n"
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(gomod), 0o644); err != nil {
 		t.Fatal(err)
@@ -192,4 +200,21 @@ func TestGenerateBundleFilesCompiles(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("generated bundle app does not compile: %v\n%s", err, out)
 	}
+}
+
+// goPflowRequire reads this module's own go-pflow version out of go.mod. The
+// generated app has to compile against the same one the generator does, and
+// duplicating the version in a test string is how those drift apart.
+func goPflowRequire(t *testing.T, goModPath string) string {
+	t.Helper()
+	data, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := regexp.MustCompile(`(?m)^\s*github\.com/pflow-xyz/go-pflow\s+(v\S+)`)
+	m := re.FindSubmatch(data)
+	if m == nil {
+		t.Fatalf("no go-pflow require line in %s", goModPath)
+	}
+	return string(m[1])
 }
