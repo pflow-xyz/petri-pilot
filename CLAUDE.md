@@ -1421,3 +1421,20 @@ ssh pflow.dev "tmux attach -t servers"
 Environment variables are configured in `~/services`. This service uses:
 - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` - GitHub OAuth
 - `GOOGLE_ANALYTICS_ID` - Analytics (G-TFGGN262Z3)
+
+## Decommissioning
+
+Code generator + MCP server at pilot.pflow.xyz (pflow.dev :8083).
+
+See [Archiving, backing up and taking down a project](../stackdump-com/CLAUDE.md#archiving-backing-up-and-taking-down-a-project) for the ecosystem-wide procedure and the ordering. This section records only what **this** project holds, which is the part that differs.
+
+**State that is not in git** (every path below is gitignored):
+
+| Host | Path | Size | What it is |
+|---|---|---|---|
+| pflow.dev | `~/Workspace/petri-pilot/features.db` | 496M | the largest single database in the ecosystem |
+
+**Specific to this project:**
+
+- Generated apps under `examples/` and `generated/` are hash-pinned against the model — regenerable, not state.
+- sim-pflow-xyz is a private fork of this repo and still carries its module path; retiring this does not retire that.
