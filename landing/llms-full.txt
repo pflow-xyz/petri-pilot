@@ -1,0 +1,286 @@
+# pilot.pflow.xyz — petri-pilot: Petri net model compiler and MCP analysis server
+
+petri-pilot compiles Petri net models into running applications. A model
+defines places (states), transitions (actions), and arcs (connections); the
+generator turns it into a deployable app. Generation is deterministic — the
+same model always produces the same code — and no code is written by an LLM:
+the LLM designs the model, templates compile the app.
+
+```
+Model ──> Context ──> Templates ──> Running Application
+```
+
+This origin (https://pilot.pflow.xyz) serves three things:
+
+1. The MCP server at `/mcp` — analysis, verification, simulation, DeFi
+   tooling, and code generation as JSON-RPC tools.
+2. Demo applications generated from the models in the repo's `services/`
+   directory, each mounted at `/<name>/` with a REST API, event history, and
+   an interactive Petri net view.
+3. Learning pages: `/learn/`, `/patterns/`, `/advanced/`, `/zk-intro/`.
+
+Source: https://github.com/pflow-xyz/petri-pilot (Go 1.23+, vanilla ES
+modules, SQLite; MIT licence).
+
+## Model formats
+
+Every MCP tool and CLI command accepts either format. The DSL is detected by
+a leading `(`.
+
+### Flat JSON
+
+```json
+{
+  "name": "order",
+  "places": [{"id": "pending", "initial": 1}, {"id": "shipped"}],
+  "transitions": [{"id": "ship"}],
+  "arcs": [{"from": "pending", "to": "ship"}, {"from": "ship", "to": "shipped"}]
+}
+```
+
+Optional per-place fields: `initial`, `capacity`, `kind` (`token` or data
+places with a `type`). Optional per-transition fields: `guard`, `rate` (used
+by the ODE/stochastic tools), `role`. Optional per-arc fields: `weight`,
+`inhibit` (inhibitor arc), `read` (read arc). The v2 nested schema separates
+the net from extensions (roles, views, events); `petri_migrate` converts v1
+to v2.
+
+### Tokenmodel DSL (`.pflow`)
+
+```lisp
+(schema erc20-token
+  (version v1.0.0)
+  (states
+    (state balances :type map[string]int64 :exported)
+    (state total_supply :type int64 :initial 0 :exported))
+  (actions
+    (action transfer :guard {balances[from] >= amount && amount > 0})
+    (action mint :guard {amount > 0}))
+  (arcs
+    (arc balances -> transfer :keys (from) :value amount)
+    (arc transfer -> balances :keys (to) :value amount)
+    (arc mint -> balances :keys (to) :value amount)
+    (arc mint -> total_supply :value amount)))
+```
+
+The pflow.xyz JSON-LD editor format (`@context: https://pflow.xyz/schema`) is
+a different shape — `places`/`transitions` keyed by id, vector-valued
+`initial`/`weight`. The pflow.xyz editor's Analysis dialog has a "Copy MCP
+call" button that converts a model into a ready-to-send payload for this
+server.
+
+## MCP server
+
+Hosted, Streamable HTTP, no install:
+
+```bash
+claude mcp add --transport http petri-pilot https://pilot.pflow.xyz/mcp
+```
+
+`GET /mcp` from a browser (without `Accept: text/event-stream`) returns a
+human-readable landing page listing every tool. `GET /mcp/openapi.json`
+returns the same tool schemas as an OpenAPI document. The JSON-RPC transport
+is served at `/mcp` and `/mcp/`.
+
+Local stdio:
+
+```bash
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+petri-pilot mcp
+```
+
+### Tools
+
+Model checking and behaviour:
+
+- `petri_validate` — structural correctness: empty models, unconnected
+  elements, invalid arc references, conservation laws.
+- `petri_analyze` — reachability, deadlocks, liveness, boundedness,
+  P/T-invariants, element importance.
+- `petri_verify` — check stated properties (`deadlock-free`,
+  `mutex:a,b`, `bounded:p<=N`, linear invariants like
+  `minted == circulating + burned`). Returns proved / refuted / unknown per
+  property with a replayable firing sequence on refutation. Each verdict
+  carries a `method`: `structural` (incidence-matrix algebra, holds for any
+  initial marking), `exhaustive` (full state space of this marking),
+  `witness`, or `partial` (truncated — only refutations are sound). `ok` is
+  true only when every property was proved; `unknown` is never a pass.
+- `petri_conformance` — replay a real event log (`[{"case","activity"}]`)
+  against the model: fitness (can the model reproduce observed traces?),
+  precision (does it permit behaviour never seen?), per-trace diagnostics,
+  worst-fitting first.
+- `petri_simulate` — fire a transition sequence and return the step-by-step
+  state trace.
+- `petri_scenario` — what-if: override the initial marking and/or rates
+  (optionally time-varying), run forward, return a trajectory plus operator
+  metrics — throughput, mean and P95 per place, utilization, time-to-depletion.
+- `petri_diff` — structural diff of two models (places, transitions, arcs,
+  roles, access rules).
+- `petri_extend` — apply edit operations (`add_place`, `add_transition`,
+  `add_arc`, `add_event`, `add_event_field`, `add_binding`, and the `remove_*`
+  counterparts); returns the modified model.
+- `petri_migrate` — convert a v1 flat model to the v2 nested schema.
+
+Continuous and stochastic dynamics (mass-action kinetics; transition `rate`
+fields are the rate constants; the Tsit5 solver matches pflow.xyz and
+go-pflow exactly):
+
+- `petri_ode` — ODE time series of place concentrations plus an inline PNG;
+  `mode=equilibrium` integrates until the system stabilises.
+- `petri_ode_sweep` — overlay several ODE trajectories at different values of
+  one rate.
+- `petri_ode_sensitivity` — perturb each rate, measure the shift in an
+  observable's equilibrium; dimensionless elasticities plus a net diagram
+  tinted by influence.
+- `petri_rate_scan` — 1D parameter sweep of one rate; steady-state
+  observables vs the swept value.
+- `petri_param_heatmap` — 2D sweep over two rates; observable rendered as a
+  viridis heatmap.
+- `petri_phase_plot` — phase-space portrait in the (place_x, place_y) plane,
+  optionally several initial conditions to map basins.
+- `petri_stochastic` — Gillespie SSA over the discrete marking; integer token
+  counts, random firings, multiple realisations.
+- `petri_sde` — mass-action drift plus geometric Brownian motion on selected
+  places (price processes, interest rates); mean ± stdev band over N paths.
+- `petri_distribution` — N stochastic paths, histogram and P5/P25/P50/P75/P95
+  of an observable at the final time.
+- `petri_risk` — risk dashboard for an observable under SDE: mean, stdev,
+  percentiles, max drawdown, CVaR (expected shortfall, worst 5%).
+- `petri_fit` — fit transition rates to observed (t, value) data by
+  Nelder-Mead under the mass-action ODE; fitted rates plus a plot.
+- `petri_optimize` — multi-objective Monte Carlo over rates; Pareto frontier
+  with every sample flagged `is_pareto`, scatter or parallel-coordinates plot.
+- `petri_corr_matrix` — render a correlation matrix heatmap (pre-flight check
+  for `petri_sde` correlation inputs).
+
+Visualisation and documentation:
+
+- `petri_visualize` — SVG plus inline PNG of the net; shading by
+  `sensitivity` (analyzer importance) or `marking` (user-supplied values).
+- `petri_heatmap` — the marking as a 2D coloured grid (grid-structured nets,
+  boards).
+- `petri_sankey` — arc widths proportional to integrated ODE flow: "where do
+  the tokens go".
+- `petri_docs` — markdown documentation with mermaid diagrams.
+- `petri_explain` — formulas, intuition, derivations, worked examples for
+  every concept the server uses (mass-action kinetics, Gillespie SSA,
+  Euler-Maruyama, impermanent loss, constant-product AMMs, Nelder-Mead, Pareto
+  optimisation, ...). No argument lists the topics.
+- `petri_template` — ready-made DeFi/tokenomics models (constant-product AMM,
+  lending pool, staking pool, vesting schedule, DAO governance, yield
+  aggregator, liquidation cascade, ...). No argument lists them.
+
+DeFi closed-form helpers (pure algebra, no model required):
+
+- `petri_amm_quote` — one trade against a Uniswap-V2-style pool: output,
+  effective and spot price, slippage, fee.
+- `petri_amm_il` — impermanent-loss curve IL(r) = 2·√r/(1+r) − 1, optional
+  fee-APY breakeven overlay.
+- `petri_amm_depth` — slippage or output price vs trade size.
+
+Code generation:
+
+- `petri_codegen` — `language='go'` produces a full event-sourced application
+  (state machine, events, REST API, SQLite); `'zk-go'` produces gnark ZK
+  circuits; `'go-core'`, `'rust'`, `'python'`, `'javascript'` produce a
+  dependency-free single-file state-machine core in one of four `form`s
+  (`generated` default, `interpreter`, `lambda`, `contract`); `'lean'` is the
+  proof form — the generator model-checks the net (BFS, refuses unbounded or
+  >4096-state nets) and bakes state count, place bounds, and deadlock set into
+  Lean 4 theorems discharged by `decide`. Core forms follow pflow-polyglot's
+  FORMS.md and are gated by execution-parity tests against its golden trace.
+- `petri_frontend` — vanilla-JS ES modules frontend (Vite project: API client,
+  state display, transition forms).
+- `petri_preview` — render one generated file without full generation
+  (templates: main, workflow, events, aggregate, api, openapi, test, config,
+  migrations, auth, middleware, permissions, views, navigation, admin, debug).
+- `petri_application` — composed application from a high-level spec: every
+  entity is its own Petri net (subnet), cross-entity field references are
+  validated, declared `fusions` become atomic cross-entity commands with
+  coordinators (HTTP `POST /fire/<transition>`, refusals are 409 and append
+  nothing). Pass `output_dir` to write files.
+- `petri_bundle` — the same composed generator from a raw bundle document
+  (subnets plus token/data/event/guard links).
+- `petri_code_to_flow` — convert source code into an executable, verifiable
+  Petri net (analyses control flow, state machines, resource management,
+  concurrency). Registered only when the server has an Anthropic API key; the
+  hosted UI is at https://pilot.pflow.xyz/code-to-flow/.
+
+Not on the hosted server: `service_start/stop/list/logs/stats/health` (run
+generated services locally) and `delegate_app/status/tasks` (GitHub Copilot
+hand-off) are registered only when `ENABLE_DELEGATE_TOOLS` is set on a local
+stdio instance.
+
+### Recommended workflow
+
+Design → Validate → Verify → Generate → Test → Iterate.
+
+1. `petri_validate` the model; `petri_simulate` a few transition sequences.
+2. `petri_verify` with the requirements stated as properties; once real logs
+   exist, `petri_conformance`.
+3. `petri_analyze` for deadlocks, liveness, invariants; `petri_ode` /
+   `petri_scenario` if rates matter.
+4. `petri_codegen` / `petri_frontend` / `petri_application`; `petri_preview`
+   individual files first if unsure.
+5. `petri_extend` to modify, regenerate, repeat.
+
+## HTTP endpoints on this origin
+
+- `GET /health` — `{"status":"ok"}`.
+- `GET /metrics` — Prometheus metrics.
+- `GET /models` — JSON array of hosted model names (CORS open).
+- `POST /graphql` — unified GraphQL over every hosted service;
+  `GET /graphql/i` is the playground; `GET /schema` the SDL.
+- `GET /pflow` — Petri net viewer for the hosted models.
+- `GET /<name>/` — each demo app (SPA + `/<name>/api/...` REST backend;
+  `/<name>/api/schema` returns the model JSON for the model-driven ones).
+- `GET /shared/` — ES modules shared by the frontends.
+- `POST /api/code-to-flow` — the code-to-flow converter (needs the server's
+  Anthropic key).
+- `GET /sitemap.xml`, `/robots.txt`, `/llms.txt`, `/llms-full.txt`.
+
+Hosted demo apps: tic-tac-toe, zk-tic-tac-toe, texas-holdem, poker-hand,
+coffeeshop, cafe, vet-clinic, hiring-pipeline, loan-approval, predator-prey,
+enzyme-kinetics, galton-board, knapsack, dining-philosophers,
+producer-consumer, tcp-handshake, thermostat, stoplight, optimal-play,
+march-madness-2026, code-to-flow. Each is `/<name>/`.
+
+## CLI
+
+```bash
+go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest
+petri-pilot serve tic-tac-toe coffeeshop knapsack   # demo server (default :8080, -port)
+petri-pilot mcp                                     # stdio MCP server
+petri-pilot codegen model.json -o out/              # generate; *.bundle.json routes to the composed generator
+petri-pilot version
+```
+
+Docker: `docker run ghcr.io/pflow-xyz/petri-pilot version`. Binaries on
+GitHub Releases.
+
+## Generated application shape
+
+From a single model the Go generator produces an event-sourced aggregate
+(`State(t) = fold(apply, initial, events[0..t])`), REST API, SQLite event
+store, GraphQL schema, OpenAPI description, admin dashboard, simulation and
+event-history views, and an embedded pflow viewer. The ES modules frontend
+is plain JavaScript — no React, no bundler required at runtime. Composed
+applications get one Go subpackage per entity plus a root package with the
+composition tables, the flattened model, and the fusion coordinators;
+`examples/shop` in the repo is the reference output and a freeze test diffs
+the generator against it byte-for-byte.
+
+## Related services
+
+- https://pflow.xyz — visual Petri net editor and the browser ES modules
+  (`petri-solver.js`, `petri-sim.js`, `petri-view.js`) with the same ODE
+  semantics; `https://pflow.xyz/llms.txt`. `POST https://pflow.xyz/api/svg`
+  renders a model server-side; `https://pflow.xyz/schema` is the JSON-LD
+  context.
+- https://book.pflow.xyz — the book on modeling with Petri nets.
+- https://sim.pflow.xyz — calibrated what-if models (vet clinic, café, ...) as
+  a service, built on petri-pilot.
+- https://github.com/pflow-xyz/go-pflow — the Go library (ODE solver,
+  analyzer, verifier, conformance, process mining) that every tool above calls.
+- https://github.com/pflow-xyz/pflow-polyglot — the forms and golden trace the
+  core code generator is held to.

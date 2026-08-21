@@ -1,0 +1,85 @@
+# pilot.pflow.xyz
+
+> petri-pilot compiles Petri net models into running applications and exposes
+> the analysis math as an MCP server. An LLM designs the model (via the MCP
+> tools); deterministic code generation then produces Go backends, ES module
+> frontends, ZK circuits, or single-file state-machine cores — the same model
+> always yields the same code. This origin hosts the MCP endpoint, the demo
+> apps generated from the models in `services/`, and the learning pages.
+
+Models are a flat JSON object — `{"name": "...", "places": [{"id","initial"}],
+"transitions": [{"id"}], "arcs": [{"from","to","weight"}]}` — or the
+S-expression tokenmodel DSL (`.pflow`, detected by a leading `(`). Every MCP
+tool and CLI command accepts both.
+
+## Docs
+
+- [Full guide](https://pilot.pflow.xyz/llms-full.txt): model formats, the
+  complete MCP tool list, HTTP endpoints, CLI, workflow, related services
+- [Learn](https://pilot.pflow.xyz/learn/): introduction to Petri nets
+- [Patterns](https://pilot.pflow.xyz/patterns/): state machines, fork/join,
+  resource pools, mutual exclusion, deadlock
+- [Advanced](https://pilot.pflow.xyz/advanced/): invariants, ODE analysis,
+  verification
+- [ZK intro](https://pilot.pflow.xyz/zk-intro/): Petri nets as ZK circuits
+- [GitHub](https://github.com/pflow-xyz/petri-pilot): source, README, CLAUDE.md
+
+## MCP server
+
+- [MCP endpoint](https://pilot.pflow.xyz/mcp): Streamable HTTP JSON-RPC;
+  `claude mcp add --transport http petri-pilot https://pilot.pflow.xyz/mcp`.
+  GET from a browser renders a human landing page listing every tool
+- [OpenAPI description](https://pilot.pflow.xyz/mcp/openapi.json): the tool
+  schemas as an OpenAPI document
+- Local stdio alternative: `go install github.com/pflow-xyz/petri-pilot/cmd/petri-pilot@latest && petri-pilot mcp`
+- Tools (all prefixed `petri_`): validate, analyze, verify, conformance,
+  simulate, scenario, ode, ode_sweep, ode_sensitivity, rate_scan,
+  param_heatmap, phase_plot, stochastic, sde, distribution, risk, fit,
+  optimize, sankey, heatmap, corr_matrix, visualize, docs, explain, template,
+  amm_quote, amm_il, amm_depth, diff, extend, migrate, preview, codegen,
+  frontend, application, bundle, code_to_flow — one-line descriptions in the
+  full guide
+
+## HTTP endpoints
+
+- [/health](https://pilot.pflow.xyz/health): liveness JSON
+- [/models](https://pilot.pflow.xyz/models): names of the hosted demo models
+- [/graphql](https://pilot.pflow.xyz/graphql): unified GraphQL API over the
+  hosted services; [playground](https://pilot.pflow.xyz/graphql/i),
+  [schema](https://pilot.pflow.xyz/schema)
+- [/pflow](https://pilot.pflow.xyz/pflow): Petri net viewer for the hosted models
+- [/sitemap.xml](https://pilot.pflow.xyz/sitemap.xml): every demo and doc page
+
+## Demo apps (generated from models)
+
+- [Tic-tac-toe](https://pilot.pflow.xyz/tic-tac-toe/),
+  [ZK tic-tac-toe](https://pilot.pflow.xyz/zk-tic-tac-toe/),
+  [Texas hold'em](https://pilot.pflow.xyz/texas-holdem/),
+  [Poker hand](https://pilot.pflow.xyz/poker-hand/): games
+- [Coffeeshop](https://pilot.pflow.xyz/coffeeshop/),
+  [Café](https://pilot.pflow.xyz/cafe/),
+  [Vet clinic](https://pilot.pflow.xyz/vet-clinic/),
+  [Hiring pipeline](https://pilot.pflow.xyz/hiring-pipeline/),
+  [Loan approval](https://pilot.pflow.xyz/loan-approval/): workflows and
+  what-if consoles
+- [Predator-prey](https://pilot.pflow.xyz/predator-prey/),
+  [Enzyme kinetics](https://pilot.pflow.xyz/enzyme-kinetics/),
+  [Galton board](https://pilot.pflow.xyz/galton-board/),
+  [Knapsack](https://pilot.pflow.xyz/knapsack/): computation and dynamics
+- [Dining philosophers](https://pilot.pflow.xyz/dining-philosophers/),
+  [Producer-consumer](https://pilot.pflow.xyz/producer-consumer/),
+  [TCP handshake](https://pilot.pflow.xyz/tcp-handshake/),
+  [Thermostat](https://pilot.pflow.xyz/thermostat/),
+  [Stoplight](https://pilot.pflow.xyz/stoplight/): classic concurrency and
+  control models
+
+## Related
+
+- [pflow.xyz](https://pflow.xyz): visual editor + browser ES modules with the
+  same ODE math ([llms.txt](https://pflow.xyz/llms.txt)); its Analysis dialog
+  emits ready-to-send payloads for this MCP server
+- [book.pflow.xyz](https://book.pflow.xyz): the book on modeling with Petri nets
+- [sim.pflow.xyz](https://sim.pflow.xyz): calibrated what-if models as a
+  service, built on petri-pilot
+- [go-pflow](https://github.com/pflow-xyz/go-pflow): the Go library behind the
+  solver, analyzer, verifier, and conformance checker
