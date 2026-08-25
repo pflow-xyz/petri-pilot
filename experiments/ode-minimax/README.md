@@ -1,15 +1,16 @@
-# d-hazard: ablation vs minimax over one tic-tac-toe net
+# ode-minimax: an ODE-evaluated Petri net that plays perfectly
 
 Can a continuous relaxation of a declared game net pick moves? This
 experiment holds every candidate evaluator to the same referee — exact
 minimax over the net's own firing rule — and measures where each one's
-honesty runs out. The name is the finding that started it: the
-**d-hazard** net, where the draw is modelled as a hazard
-(`game_active → tie`) instead of a move counter, is the structurally
-correct form for continuous evaluation. The experiment's answer to its
-own open question: with two further structural additions — win-bias and
-block-bias play transitions — the ODE evaluator is **minimax-equivalent
-on both seats, exhaustively verified**.
+honesty runs out. The answer: with the forced-reply prior declared as
+structure (block-bias play transitions) and two fitted scalars, the ODE
+evaluator is **minimax-equivalent on both seats, exhaustively verified**.
+
+(Formerly `d-hazard`, after the finding that started it — the draw
+modelled as a hazard, `game_active → tie`. Findings 12 and 15 later
+removed the draw from the winning net entirely, so the folder is named
+for the result instead; the d-hazard *variant* keeps its name below.)
 
 The net is the shipped `sim` tic-tac-toe model (catalytic win detectors,
 `game_active`, `move_tokens`, weight-9 draw). The discrete game — referee,

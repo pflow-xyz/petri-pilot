@@ -1,4 +1,4 @@
-// d-hazard: an ODE-evaluated Petri net that plays tic-tac-toe
+// ode-minimax: an ODE-evaluated Petri net that plays tic-tac-toe
 // minimax-perfectly on both seats. The experiment that got here — and
 // everything it refuted along the way — is README.md; the variant code
 // lives in this branch's git history.
