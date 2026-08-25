@@ -31,6 +31,16 @@ variant zoo the findings below refer to — draw wirings, threat
 coordinates, bias scans, incidence weightings — was pruned once the
 experiment resolved; it is all recoverable from this branch's history.
 
+The generic halves now live in **go-pflow** and this experiment consumes
+them: the champion net is the declared net plus three `derive` transforms
+(`DropTransitions`, `DropPlaces`, `AddCatalyzedCopy` ×48), and the fitter
+is `learn.Minimize` over `learn.HingeRankLoss`. What stays here is
+exactly the game knowledge: the discrete referee, minimax labels, and
+the exhaustive walk. `go.mod` carries a temporary `replace` to the
+sibling go-pflow checkout (branch `evaluation-derivations`); per the
+adoption convention it comes out when that work is released and the
+`require` line names the tag.
+
 ## Results
 
 100-game tournaments (seeded; minimax randomizes over its optimal set):

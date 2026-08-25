@@ -1,21 +1,15 @@
-// Gradient-fitting the policy-bias constants instead of hand-fitting
-// them — the follow-up finding 9 asks for. The parameter vector is the
-// tied triple (winBias, blockBias, lam); the loss is a hinge ranking
-// loss against minimax labels over a training set of positions sampled
-// from random self-play; the optimizer is Nelder-Mead in log-space
-// (rates are positive), matching go-pflow/learn's gradient-free
-// approach — its own Fit entry point assumes a single-trajectory MSE
-// loss, which a many-position ranking loss cannot be expressed as.
-//
-// The question this answers: do the hand-found constants fall out of
-// optimization from a naive start, or were they luck?
+// Calibration and the exhaustive referee. The generic halves —
+// gradient-free optimization and the hinge ranking loss — live in
+// go-pflow/learn (Minimize, HingeRankLoss); this file keeps only what
+// knows the game: sampling positions, labeling them with minimax, and
+// walking every opponent line.
 package main
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
-	"sort"
+
+	"github.com/pflow-xyz/go-pflow/learn"
 )
 
 type trainPos struct {
@@ -51,10 +45,10 @@ func collectPositions(m *model, games int, seed int64) []trainPos {
 		out = append(out, trainPos{mk, moves, maximizes, opt})
 	}
 
-	add(m.position([]string{"00"}, nil, "o"))                                     // corner reply
-	add(m.position([]string{"11"}, nil, "o"))                                     // center reply
-	add(m.position([]string{"00", "11", "21"}, []string{"20", "22"}, "o"))        // must-block
-	add(m.position([]string{"00", "22"}, []string{"11"}, "o"))                    // double-corner fork
+	add(m.position([]string{"00"}, nil, "o"))                              // corner reply
+	add(m.position([]string{"11"}, nil, "o"))                              // center reply
+	add(m.position([]string{"00", "11", "21"}, []string{"20", "22"}, "o")) // must-block
+	add(m.position([]string{"00", "22"}, []string{"11"}, "o"))             // double-corner fork
 	for g := 0; g < games; g++ {
 		mk := m.start()
 		for {
@@ -73,119 +67,51 @@ func collectPositions(m *model, games int, seed int64) []trainPos {
 	return out
 }
 
-// rankLoss: per position, the worst hinge violation of "some optimal
-// move must outscore every non-optimal move by margin".
+// rankLoss scores every candidate at every training position on the
+// champion net at (bias, lam) and returns the hinge ranking loss
+// against the minimax labels.
 func rankLoss(m *model, positions []trainPos, bias, lam float64) float64 {
-	const margin = 0.0005
 	ev := m.toPetriChampion(bias)
-	loss := 0.0
+	decisions := make([]learn.RankedDecision, 0, len(positions))
 	for _, p := range positions {
-		bestOpt, bestNon := math.Inf(-1), math.Inf(-1)
-		for _, mv := range p.moves {
+		d := learn.RankedDecision{
+			Scores:    make([]float64, len(p.moves)),
+			Preferred: make([]bool, len(p.moves)),
+		}
+		for i, mv := range p.moves {
 			f := m.odeFinal(ev.net, m.fire(mv, p.mk), ev.rates)
 			s := f["win_x"] - f["win_o"]
 			if !p.maximizes {
 				s = f["x_turn"] + f["o_turn"] + lam*f["win_o"]
 			}
-			if p.optimal[mv] {
-				if s > bestOpt {
-					bestOpt = s
-				}
-			} else if s > bestNon {
-				bestNon = s
-			}
+			d.Scores[i] = s
+			d.Preferred[i] = p.optimal[mv]
 		}
-		if !math.IsInf(bestNon, -1) {
-			if v := margin + bestNon - bestOpt; v > 0 {
-				loss += v
-			}
-		}
+		decisions = append(decisions, d)
 	}
-	return loss
+	return learn.HingeRankLoss(decisions, 0.0005)
 }
 
-// nelderMead minimizes f over log-space parameters (all params positive).
-func nelderMead(f func([]float64) float64, x0 []float64, iters int, verbose bool) []float64 {
-	n := len(x0)
-	simplex := make([][]float64, n+1)
-	vals := make([]float64, n+1)
-	for i := range simplex {
-		pt := append([]float64{}, x0...)
-		if i > 0 {
-			pt[i-1] += 0.7 // log-space step ~ factor 2
-		}
-		simplex[i] = pt
-		vals[i] = f(pt)
+// fitChampion optimizes (blockBias, lambda) in log space from (1, 1)
+// with learn.Minimize and returns the fitted pair.
+func fitChampion(m *model, positions []trainPos, iters int, verbose bool) (bias, lam float64) {
+	f := func(logp []float64) float64 {
+		return rankLoss(m, positions, math.Exp(logp[0]), math.Exp(logp[1]))
 	}
-	order := func() {
-		idx := make([]int, n+1)
-		for i := range idx {
-			idx[i] = i
-		}
-		sort.Slice(idx, func(a, b int) bool { return vals[idx[a]] < vals[idx[b]] })
-		ns, nv := make([][]float64, n+1), make([]float64, n+1)
-		for i, j := range idx {
-			ns[i], nv[i] = simplex[j], vals[j]
-		}
-		copy(simplex, ns)
-		copy(vals, nv)
+	opts := learn.DefaultFitOptions()
+	opts.MaxIters = iters
+	opts.Tolerance = 1e-9
+	opts.Verbose = verbose
+	res, err := learn.Minimize(f, []float64{0, 0}, opts)
+	if err != nil {
+		panic(err)
 	}
-	for it := 0; it < iters; it++ {
-		order()
-		if verbose && it%5 == 0 {
-			exp := make([]float64, n)
-			for i, v := range simplex[0] {
-				exp[i] = math.Exp(v)
-			}
-			fmt.Printf("  iter %3d  loss %.6f  params %.3v\n", it, vals[0], exp)
-		}
-		if vals[n]-vals[0] < 1e-9 {
-			break
-		}
-		centroid := make([]float64, n)
-		for i := 0; i < n; i++ {
-			for d := 0; d < n; d++ {
-				centroid[d] += simplex[i][d] / float64(n)
-			}
-		}
-		lerp := func(a, b []float64, t float64) []float64 {
-			out := make([]float64, n)
-			for d := 0; d < n; d++ {
-				out[d] = a[d] + t*(b[d]-a[d])
-			}
-			return out
-		}
-		refl := lerp(centroid, simplex[n], -1)
-		fr := f(refl)
-		switch {
-		case fr < vals[0]:
-			expd := lerp(centroid, simplex[n], -2)
-			if fe := f(expd); fe < fr {
-				simplex[n], vals[n] = expd, fe
-			} else {
-				simplex[n], vals[n] = refl, fr
-			}
-		case fr < vals[n-1]:
-			simplex[n], vals[n] = refl, fr
-		default:
-			contr := lerp(centroid, simplex[n], 0.5)
-			if fc := f(contr); fc < vals[n] {
-				simplex[n], vals[n] = contr, fc
-			} else {
-				for i := 1; i <= n; i++ {
-					simplex[i] = lerp(simplex[0], simplex[i], 0.5)
-					vals[i] = f(simplex[i])
-				}
-			}
-		}
-	}
-	order()
-	return simplex[0]
+	return math.Exp(res.Params[0]), math.Exp(res.Params[1])
 }
 
 // exhaustiveCheck walks every legal opponent line with the evaluator on
 // one seat and reports (distinct decisions, game-losing moves, missed
-// wins) — the same referee the verify mode prints.
+// wins) — the referee behind the verify and fit modes.
 func exhaustiveCheck(m *model, p player, variantIsX bool) (decisions, blown, missed int) {
 	cache := map[string]string{}
 	seen := map[string]bool{}

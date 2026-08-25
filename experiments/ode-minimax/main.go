@@ -14,7 +14,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"strings"
@@ -140,12 +139,9 @@ func main() {
 		}
 		positions := collectPositions(m, games, 7)
 		fmt.Printf("training positions: %d (random self-play + 4 audits)\n", len(positions))
-		f := func(logp []float64) float64 {
-			return rankLoss(m, positions, math.Exp(logp[0]), math.Exp(logp[1]))
-		}
-		best := nelderMead(f, []float64{0, 0}, iters, true)
-		bias, lam := math.Exp(best[0]), math.Exp(best[1])
-		fmt.Printf("\nfitted: blockBias %.3f  lambda %.3f  (train loss %.6f)\n", bias, lam, f(best))
+		bias, lam := fitChampion(m, positions, iters, true)
+		fmt.Printf("\nfitted: blockBias %.3f  lambda %.3f  (train loss %.6f)\n",
+			bias, lam, rankLoss(m, positions, bias, lam))
 		p := championPlayer(m.toPetriChampion(bias), lam)
 		for _, seat := range []bool{false, true} {
 			d, b, mi := exhaustiveCheck(m, p, seat)
