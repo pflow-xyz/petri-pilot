@@ -433,21 +433,7 @@ func main() {
 		if len(os.Args) > 4 {
 			fmt.Sscanf(os.Args[4], "%f", &lam)
 		}
-		ev := m.toPetriPolicyBias(wb, bb)
-		p := func(m *model, mk marking, moves []string, maximizes bool, _ *rand.Rand) string {
-			best, bestScore := "", 0.0
-			for i, mv := range moves {
-				f := m.odeFinal(ev.net, m.fire(mv, mk), ev.rates)
-				score := f["win_x"] - f["win_o"]
-				if !maximizes {
-					score = f["tie"] + lam*f["win_o"]
-				}
-				if i == 0 || score > bestScore {
-					best, bestScore = mv, score
-				}
-			}
-			return best
-		}
+		p := odePlayPolicy(m.toPetriPolicyBias(wb, bb), lam)
 		fmt.Printf("policy w%.0f b%.0f, O score = tie + %.1f*win_o\n", wb, bb, lam)
 		for _, variantIsX := range []bool{false, true} {
 			cache := map[string]string{}
@@ -612,13 +598,16 @@ func main() {
 			p = odePlayVariant(m.toPetriBlockBias(b), 0, "")
 			label = fmt.Sprintf("block-bias %.0f", b)
 		case len(os.Args) > 2 && os.Args[2] == "policy":
-			wb, bb := 2.0, 6.0
+			wb, bb, lam := 2.0, 6.0, 1.8
 			if len(os.Args) > 4 {
 				fmt.Sscanf(os.Args[3], "%f", &wb)
 				fmt.Sscanf(os.Args[4], "%f", &bb)
 			}
-			p = odePlayVariant(m.toPetriPolicyBias(wb, bb), 0, "")
-			label = fmt.Sprintf("policy w%.0f b%.0f", wb, bb)
+			if len(os.Args) > 5 {
+				fmt.Sscanf(os.Args[5], "%f", &lam)
+			}
+			p = odePlayPolicy(m.toPetriPolicyBias(wb, bb), lam)
+			label = fmt.Sprintf("policy w%.0f b%.0f l%.1f", wb, bb, lam)
 		case len(os.Args) > 2 && os.Args[2] == "tempo":
 			a, pen := 1.0, "fork_x"
 			if len(os.Args) > 3 {

@@ -214,3 +214,25 @@ func odePlayVariant(ev evalNet, alpha float64, penalty string) player {
 		return best
 	}
 }
+
+// odePlayPolicy is THE evaluator the experiment resolves on: play-scoring
+// over the policy-biased d-hazard net, X maximizing win_x - win_o and O
+// maximizing tie + lam*win_o. At (winBias 2, blockBias 6, lam 1.8) the
+// exhaustive referee reports zero value-losing moves and zero missed wins
+// on both seats.
+func odePlayPolicy(ev evalNet, lam float64) player {
+	return func(m *model, mk marking, moves []string, maximizes bool, _ *rand.Rand) string {
+		best, bestScore := "", 0.0
+		for i, mv := range moves {
+			f := m.odeFinal(ev.net, m.fire(mv, mk), ev.rates)
+			score := f["win_x"] - f["win_o"]
+			if !maximizes {
+				score = f["tie"] + lam*f["win_o"]
+			}
+			if i == 0 || score > bestScore {
+				best, bestScore = mv, score
+			}
+		}
+		return best
+	}
+}
