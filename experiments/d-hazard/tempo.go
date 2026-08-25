@@ -154,6 +154,100 @@ func (m *model) toPetriPolicyBias(winBias, blockBias float64) evalNet {
 	return evalNet{net, rates}
 }
 
+// applyBlockBias adds the forced-reply transitions to an existing
+// evaluation net — for each line, cell and side, a copy of the play
+// transition catalyzed by the opponent's two marks on that line.
+func applyBlockBias(ev evalNet, bias float64) evalNet {
+	if bias == 0 {
+		return ev
+	}
+	for _, name := range sortedLineNames() {
+		line := winLines[name]
+		for i, c := range line {
+			for _, side := range []string{"x", "o"} {
+				opp := "o"
+				if side == "o" {
+					opp = "x"
+				}
+				t := "blk_" + side + "_" + name + "_" + strconvItoa(i)
+				ev.net.AddTransition(t, "", 0, 0, nil)
+				ev.rates[t] = bias
+				ev.net.AddArc("p"+c, t, 1, false)
+				ev.net.AddArc(side+"_turn", t, 1, false)
+				ev.net.AddArc(t, side+c, 1, false)
+				ev.net.AddArc(t, opp+"_turn", 1, false)
+				ev.net.AddArc(t, "move_tokens", 1, false)
+				for j, oc := range line {
+					if j != i {
+						ev.net.AddArc(opp+oc, t, 1, false)
+						ev.net.AddArc(t, opp+oc, 1, false)
+					}
+				}
+			}
+		}
+	}
+	return ev
+}
+
+func strconvItoa(i int) string { return strconv.Itoa(i) }
+
+// toPetriNoDraw is the declared net with the draw transition removed
+// entirely: undecided mass simply stays in game_active.
+func (m *model) toPetriNoDraw() evalNet {
+	net := petri.NewPetriNet()
+	for _, p := range m.places {
+		net.AddPlace(p, m.initial[p], nil, 0, 0, nil)
+	}
+	for _, t := range m.transitions {
+		if t == "draw" {
+			continue
+		}
+		net.AddTransition(t, "", 0, 0, nil)
+		for _, a := range m.inputs[t] {
+			net.AddArc(a.from, t, a.weight, false)
+		}
+		for _, a := range m.outputs[t] {
+			net.AddArc(t, a.to, a.weight, false)
+		}
+	}
+	return evalNet{net, m.cloneRates()}
+}
+
+// drawVariant is one answer to "which draw structure does the evaluation
+// net carry?" — build the base net, and name O's undecided coordinate.
+type drawVariant struct {
+	name   string
+	build  func(m *model) evalNet
+	oscore func(f map[string]float64, lam float64) float64
+}
+
+var drawVariants = []drawVariant{
+	{"dhazard", func(m *model) evalNet { return evalNet{m.toPetriDHazard(), m.cloneRates()} },
+		func(f map[string]float64, lam float64) float64 { return f["tie"] + lam*f["win_o"] }},
+	{"nodraw", func(m *model) evalNet { return m.toPetriNoDraw() },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"counter", func(m *model) evalNet { return evalNet{m.toPetriDraw(nil), m.cloneRates()} },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+}
+
+// odePlayScored: X maximizes win_x - win_o, O maximizes oscore(final, lam).
+func odePlayScored(ev evalNet, oscore func(map[string]float64, float64) float64, lam float64) player {
+	return func(m *model, mk marking, moves []string, maximizes bool, _ *rand.Rand) string {
+		best, bestScore := "", 0.0
+		for i, mv := range moves {
+			f := m.odeFinal(ev.net, m.fire(mv, mk), ev.rates)
+			score := f["win_x"] - f["win_o"]
+			if !maximizes {
+				score = oscore(f, lam)
+			}
+			if i == 0 || score > bestScore {
+				best, bestScore = mv, score
+			}
+		}
+		return best
+	}
+}
+
 // toPetriBlockBias is the one-knob form: block bias only.
 func (m *model) toPetriBlockBias(bias float64) evalNet {
 	net := m.toPetriDHazard()

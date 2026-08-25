@@ -457,6 +457,69 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "fitv" {
+		// Is the draw structure load-bearing, or was calibration doing the
+		// work? Fit (blockBias, lambda) per draw variant — hazard, no draw
+		// at all, and the declared counter — then referee each fit
+		// exhaustively. fitv [variant] [games] [iters]
+		games, iters := 40, 50
+		only := ""
+		if len(os.Args) > 2 {
+			only = os.Args[2]
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("training positions: %d\n", len(positions))
+		for _, v := range drawVariants {
+			if only != "" && v.name != only {
+				continue
+			}
+			f := func(logp []float64) float64 {
+				bias, lam := math.Exp(logp[0]), math.Exp(logp[1])
+				ev := applyBlockBias(v.build(m), bias)
+				const margin = 0.0005
+				loss := 0.0
+				for _, p := range positions {
+					bestOpt, bestNon := math.Inf(-1), math.Inf(-1)
+					for _, mv := range p.moves {
+						fin := m.odeFinal(ev.net, m.fire(mv, p.mk), ev.rates)
+						s := fin["win_x"] - fin["win_o"]
+						if !p.maximizes {
+							s = v.oscore(fin, lam)
+						}
+						if p.optimal[mv] {
+							if s > bestOpt {
+								bestOpt = s
+							}
+						} else if s > bestNon {
+							bestNon = s
+						}
+					}
+					if !math.IsInf(bestNon, -1) {
+						if viol := margin + bestNon - bestOpt; viol > 0 {
+							loss += viol
+						}
+					}
+				}
+				return loss
+			}
+			fmt.Printf("\n== %s ==\n", v.name)
+			best := nelderMead(f, []float64{0, 0}, iters, true)
+			bias, lam := math.Exp(best[0]), math.Exp(best[1])
+			fmt.Printf("fitted: blockBias %.3f  lambda %.3f  (train loss %.6f)\n", bias, lam, f(best))
+			p := odePlayScored(applyBlockBias(v.build(m), bias), v.oscore, lam)
+			for _, seat := range []bool{false, true} {
+				d, b, mi := exhaustiveCheck(m, p, seat)
+				name := "O"
+				if seat {
+					name = "X"
+				}
+				fmt.Printf("exhaustive referee as %s: %d decisions, %d game-losing, %d missed wins\n",
+					name, d, b, mi)
+			}
+		}
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "verify" {
 		// Exhaustive referee: walk EVERY legal opponent line (optimal or
 		// not); at each variant decision point, the variant's move must not

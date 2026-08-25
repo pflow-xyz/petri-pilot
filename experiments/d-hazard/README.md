@@ -30,6 +30,7 @@ go run . tempo100 policy 2 6   # tournament for the policy-bias evaluator
 go run . verify 2 6 1.8    # exhaustive referee: every opponent line, both seats
 go run . trace bias 6      # replay losses, report the first off-optimal move
 go run . fit 40 60         # optimize the constants from (1,1,1); referee the result
+go run . fitv              # refit per draw variant: hazard / no draw / counter
 ```
 
 ## Results
@@ -156,6 +157,24 @@ stronger than the tournaments can show — see finding 9.
     single-trajectory MSE `Fit`; the upstream refinement, if this
     pattern recurs, is exporting its optimizers behind a generic
     `Minimize(f, x0, opts)`.
+
+12. **The draw structure is not load-bearing — but the declared counter
+    is anti-load-bearing.** `fitv` refits (blockBias, λ) per draw
+    variant and holds each to the exhaustive referee. Removing the draw
+    transition entirely and scoring O on `game_active + λ·win_o` fits to
+    (3.68, 1.84) and passes **0/0 on both seats**: the leftover
+    `game_active` mass is already the undecided coordinate, and the
+    hazard's `tie` was only ever drained `game_active` under its own
+    name. Keeping the declared weight-9 counter in the evaluation net,
+    however, cannot be rescued by calibration: its linear-rate payment
+    into `win_o` (finding 4) pollutes both objectives, and the fit
+    (2.13, 1.31) still loses 2 games as O — and 4 as X, the only
+    variant to lose on that seat at all. So the relaxation's correct
+    treatment of the declared draw is removal or re-routing, never
+    faithful inclusion. What the hazard form still buys is margin:
+    train loss 0.10 against nodraw's 0.51 — the same argmax with 5×
+    the headroom, which is what robustness to rate perturbation is
+    made of.
 
 ## Resolution
 
