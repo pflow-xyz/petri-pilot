@@ -117,6 +117,24 @@ stronger than the tournaments can show — see finding 9.
    found against the referee, and the windows are narrow (win bias 4
    already breaks the fork; block bias needs [4, 10]).
 
+10. **Static evaluators degrade gracefully with initiative and sharply
+    without it.** The seat asymmetry (X perfect on the plain d-hazard
+    net, O stuck at 93%) is not an accident of this net — it is tempo
+    converting tactic depth. A move ahead, every threat X must answer is
+    already on the board: a live detector rate, a depth-1 fact the flow
+    measures directly, so greedy threat-maximization is complete for the
+    attacker (verified: as X, zero misses at all 96 decision points,
+    blunder-punishing included). A move behind, O's decisive danger — the
+    fork — does not exist yet at O's decision point; it is assembled two
+    plies later out of forced replies, so it is legible only in the
+    continuation structure that an order-free flow integral erases. The
+    attacker's game is legible in the current marking; the defender's is
+    partly legible only in move order. That is also why the working fix
+    had to be the policy-biased flow and could not be a rescoring: the
+    block/win biases give the trajectory a model of *forced replies* —
+    exactly the piece of continuation structure the defender needs and
+    the attacker never did.
+
 ## Resolution
 
 The open question — can a structural adjustment make some ODE-evaluable
@@ -137,4 +155,8 @@ now minimax-equivalent on this game at calibrated constants — plain
 d-hazard play-scoring when nothing may be tuned (93% as O, perfect as X),
 elimination as a diagnostic only. Whether the policy-bias construction
 and its constants transfer to any other game is the next question, and
-this directory is where to answer it.
+this directory is where to answer it. Finding 10 supplies the testable
+prediction to carry there: a static (flow-integral) evaluator's quality
+should track initiative — near-complete for the side attacking, failing
+exactly at the defender's trap positions — so the seats to instrument
+first in any new game are the ones without the tempo.
