@@ -9,6 +9,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strings"
@@ -416,6 +417,42 @@ func main() {
 		fmt.Printf("\nlosses with a slip: %d; distinct first-slip patterns:\n", losses)
 		for k, n := range seen {
 			fmt.Printf("  %3dx  %s\n", n, k)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "fit" {
+		// Optimize (winBias, blockBias, lam) from a naive start against a
+		// hinge ranking loss over positions sampled from random self-play,
+		// labelled by minimax. Then hold the fitted triple to the same
+		// exhaustive referee as the hand-found one. fit [games] [iters]
+		games, iters := 40, 60
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("training positions: %d (random self-play + 4 audits)\n", len(positions))
+		f := func(logp []float64) float64 {
+			return rankLoss(m, positions, math.Exp(logp[0]), math.Exp(logp[1]), math.Exp(logp[2]))
+		}
+		start := []float64{0, 0, 0} // (1, 1, 1) in rate space
+		fmt.Printf("start (1.00, 1.00, 1.00): loss %.6f\n", f(start))
+		best := nelderMead(f, start, iters, true)
+		wb, bb, lam := math.Exp(best[0]), math.Exp(best[1]), math.Exp(best[2])
+		fmt.Printf("\nfitted: winBias %.3f  blockBias %.3f  lambda %.3f  (train loss %.6f)\n",
+			wb, bb, lam, f(best))
+		p := odePlayPolicy(m.toPetriPolicyBias(wb, bb), lam)
+		for _, seat := range []bool{false, true} {
+			d, b, mi := exhaustiveCheck(m, p, seat)
+			name := "O"
+			if seat {
+				name = "X"
+			}
+			fmt.Printf("exhaustive referee, fitted params, as %s: %d decisions, %d game-losing, %d missed wins\n",
+				name, d, b, mi)
 		}
 		return
 	}

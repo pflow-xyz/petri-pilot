@@ -29,6 +29,7 @@ go run . bias2d            # two-knob (winBias x blockBias) vs four audits
 go run . tempo100 policy 2 6   # tournament for the policy-bias evaluator
 go run . verify 2 6 1.8    # exhaustive referee: every opponent line, both seats
 go run . trace bias 6      # replay losses, report the first off-optimal move
+go run . fit 40 60         # optimize the constants from (1,1,1); referee the result
 ```
 
 ## Results
@@ -134,6 +135,27 @@ stronger than the tournaments can show — see finding 9.
     block/win biases give the trajectory a model of *forced replies* —
     exactly the piece of continuation structure the defender needs and
     the attacker never did.
+
+11. **The constants are discoverable by optimization — and the optimizer
+    found a simpler solution than the hand search.** `fit` mode:
+    Nelder-Mead in log space over (winBias, blockBias, λ) from a naive
+    (1, 1, 1) start, hinge ranking loss against minimax labels on 241
+    positions sampled from random self-play (plus the four audits).
+    It converges to **(winBias → 0, blockBias 4.3, λ 1.7)** — and that
+    triple passes the exhaustive referee with 0 game-losing moves and 0
+    missed wins on both seats. Win bias is unnecessary: finding 8's
+    "empty one-knob window" was an artifact of scanning at λ = 1 — the
+    λ knob is what reconciles the fork with the corner reply, and the
+    hand-found (2, 6, 1.8) is just a more complex point of the same
+    solution region, reached because the hand search walked a 2-D slice
+    of the 3-D space. Two free parameters suffice. Also worth keeping:
+    training loss plateaus at 0.10 while every decision is correct —
+    hinge margins stay sub-margin at some positions but the argmax is
+    right, so the loss overstates failure. The optimizer is
+    experiment-local because go-pflow's `learn` package exposes only a
+    single-trajectory MSE `Fit`; the upstream refinement, if this
+    pattern recurs, is exporting its optimizers behind a generic
+    `Minimize(f, x0, opts)`.
 
 ## Resolution
 
