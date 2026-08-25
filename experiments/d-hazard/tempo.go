@@ -176,7 +176,21 @@ func applyBlockBias(ev evalNet, bias float64) evalNet {
 				ev.net.AddArc(side+"_turn", t, 1, false)
 				ev.net.AddArc(t, side+c, 1, false)
 				ev.net.AddArc(t, opp+"_turn", 1, false)
-				ev.net.AddArc(t, "move_tokens", 1, false)
+				if _, ok := ev.net.Places["move_tokens"]; ok {
+					ev.net.AddArc(t, "move_tokens", 1, false)
+				}
+				// match the base play transition's total deposit weight
+				// (possibly split over top-up arcs), so an incidence-
+				// weighted net biases consistently
+				total := 0
+				for _, a := range ev.net.Arcs {
+					if a.Source == side+"_play_"+c && a.Target == side+c {
+						total += int(a.GetWeightSum())
+					}
+				}
+				if total > 1 {
+					ev.net.AddArc(t, side+c, total-1, false)
+				}
 				for j, oc := range line {
 					if j != i {
 						ev.net.AddArc(opp+oc, t, 1, false)
@@ -213,6 +227,101 @@ func (m *model) toPetriNoDraw() evalNet {
 	return evalNet{net, m.cloneRates()}
 }
 
+// toPetriMinimal: no draw transition AND no move_tokens place — with the
+// draw gone, the counter is a write-only accumulator no rate ever reads,
+// so removing it must be behavior-neutral for the ODE. The minimal
+// evaluation net: cells, turns, game_active, win detectors, win places.
+func (m *model) toPetriMinimal() evalNet {
+	net := petri.NewPetriNet()
+	for _, p := range m.places {
+		if p == "move_tokens" {
+			continue
+		}
+		net.AddPlace(p, m.initial[p], nil, 0, 0, nil)
+	}
+	for _, t := range m.transitions {
+		if t == "draw" {
+			continue
+		}
+		net.AddTransition(t, "", 0, 0, nil)
+		for _, a := range m.inputs[t] {
+			net.AddArc(a.from, t, a.weight, false)
+		}
+		for _, a := range m.outputs[t] {
+			if a.to == "move_tokens" {
+				continue
+			}
+			net.AddArc(t, a.to, a.weight, false)
+		}
+	}
+	return evalNet{net, m.cloneRates()}
+}
+
+// toPetriOneShot: the minimal net with CONSUMING win detectors — the
+// cell-return arcs (x_win_anti -> x11 etc.) are dropped, so a detector
+// firing consumes the line it detected. Each line pays its win once
+// instead of pumping continuously; threats self-extinguish as they are
+// counted. Evaluation only, as ever.
+func (m *model) toPetriOneShot() evalNet {
+	net := petri.NewPetriNet()
+	for _, p := range m.places {
+		if p == "move_tokens" {
+			continue
+		}
+		net.AddPlace(p, m.initial[p], nil, 0, 0, nil)
+	}
+	isDetector := func(t string) bool {
+		return len(t) > 5 && (t[:5] == "x_win" || t[:5] == "o_win")
+	}
+	for _, t := range m.transitions {
+		if t == "draw" {
+			continue
+		}
+		net.AddTransition(t, "", 0, 0, nil)
+		for _, a := range m.inputs[t] {
+			net.AddArc(a.from, t, a.weight, false)
+		}
+		for _, a := range m.outputs[t] {
+			if a.to == "move_tokens" {
+				continue
+			}
+			if isDetector(t) && a.to != "win_x" && a.to != "win_o" {
+				continue // no cell return: the detector consumes the line
+			}
+			net.AddArc(t, a.to, a.weight, false)
+		}
+	}
+	return evalNet{net, m.cloneRates()}
+}
+
+// toPetriIncidence: play deposits weighted by the incidence matrix — a
+// mark on cell c lands count(c) tokens, where count(c) is the number of
+// win lines through c (center 4, corners 3, edges 2). The incidence
+// prior enters the stoichiometry itself instead of being recovered
+// numerically by the solver. Built on the one-shot (consuming detector)
+// or minimal (looped detector) base.
+func (m *model) toPetriIncidence(oneShot bool) evalNet {
+	count := map[string]int{}
+	for _, line := range winLines {
+		for _, c := range line {
+			count[c]++
+		}
+	}
+	base := m.toPetriMinimal()
+	if oneShot {
+		base = m.toPetriOneShot()
+	}
+	// raise each play deposit from 1 to count(c) by topping up
+	for _, c := range cells {
+		for _, side := range []string{"x", "o"} {
+			if count[c] > 1 {
+				base.net.AddArc(side+"_play_"+c, side+c, count[c]-1, false)
+			}
+		}
+	}
+	return base
+}
+
 // drawVariant is one answer to "which draw structure does the evaluation
 // net carry?" — build the base net, and name O's undecided coordinate.
 type drawVariant struct {
@@ -227,6 +336,14 @@ var drawVariants = []drawVariant{
 	{"nodraw", func(m *model) evalNet { return m.toPetriNoDraw() },
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
 	{"counter", func(m *model) evalNet { return evalNet{m.toPetriDraw(nil), m.cloneRates()} },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"minimal", func(m *model) evalNet { return m.toPetriMinimal() },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"oneshot", func(m *model) evalNet { return m.toPetriOneShot() },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"inc-oneshot", func(m *model) evalNet { return m.toPetriIncidence(true) },
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"inc-minimal", func(m *model) evalNet { return m.toPetriIncidence(false) },
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
 }
 

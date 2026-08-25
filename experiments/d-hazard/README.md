@@ -176,6 +176,27 @@ stronger than the tournaments can show — see finding 9.
     the headroom, which is what robustness to rate perturbation is
     made of.
 
+13. **The detector return arcs are load-bearing — by exactly two games.**
+    `oneshot`: drop the cell-return arcs so a win detector consumes the
+    line it detects (each line pays once; threats self-extinguish as
+    they are counted). Refit: (5.66, 1.87), and the referee finds 2
+    game-losing moves as O (X stays perfect). The read-loop form keeps
+    threat pressure a persistent rate signal instead of a self-consuming
+    pulse, and that persistence is worth the last two defensive
+    rankings. Close enough to be tempting for diagram legibility; not
+    equivalent.
+14. **Incidence-weighting the deposits double-counts the prior.**
+    Setting each play's cell deposit to the cell's win-line count
+    (center 4, corners 3, edges 2) — the incidence prior in the
+    stoichiometry — makes everything worse on both detector bases:
+    train loss 1.38–1.57 (vs 0.25–0.51), 2 losses + 8–10 missed wins as
+    O, and on the looped base even 4 missed wins as X, the only variant
+    to degrade that seat. Finding 2 said the flow already recovers the
+    incidence ranking from topology; feeding the counts in again
+    multiplies them into every detector product — the prior squared,
+    not the prior applied. A prior the structure already computes must
+    not also be written into the weights.
+
 ## Resolution
 
 The open question — can a structural adjustment make some ODE-evaluable
