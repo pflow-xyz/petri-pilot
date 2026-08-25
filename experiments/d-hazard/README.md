@@ -19,19 +19,16 @@ ODE *evaluation* net varies.
 ## Run it
 
 ```
-make quick     # audits + 1 seeded game per pairing (~1s)
-make tie       # (win_x, win_o, tie) per candidate, both draw wirings, rates 1 and 720
-make sweep     # does any (horizon, win-rate, draw-rate) fix the tactics? (27 cells)
-make play100   # 100-game tournaments vs minimax, all variants
-go run . tempo             # structural variants: coordinate tables + scorer scan
-go run . biasscan          # one-knob block-bias window vs three audits
-go run . bias2d            # two-knob (winBias x blockBias) vs four audits
-go run . tempo100 policy 2 6   # tournament for the policy-bias evaluator
-go run . verify 2 6 1.8    # exhaustive referee: every opponent line, both seats
-go run . trace bias 6      # replay losses, report the first off-optimal move
-go run . fit 40 60         # optimize the constants from (1,1,1); referee the result
-go run . fitv              # refit per draw variant: hazard / no draw / counter
+make quick     # tactical audits + 100-game tournaments vs minimax
+make verify    # exhaustive referee: every legal opponent line, both seats
+make fit       # refit (blockBias, lambda) from (1,1); referee the result
 ```
+
+The working tree keeps only the champion (`champion.go`), the referee and
+fitter (`fit.go`), and the declared game (`model.go`, `players.go`). The
+variant zoo the findings below refer to — draw wirings, threat
+coordinates, bias scans, incidence weightings — was pruned once the
+experiment resolved; it is all recoverable from this branch's history.
 
 ## Results
 

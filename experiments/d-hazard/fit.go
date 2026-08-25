@@ -75,9 +75,9 @@ func collectPositions(m *model, games int, seed int64) []trainPos {
 
 // rankLoss: per position, the worst hinge violation of "some optimal
 // move must outscore every non-optimal move by margin".
-func rankLoss(m *model, positions []trainPos, wb, bb, lam float64) float64 {
+func rankLoss(m *model, positions []trainPos, bias, lam float64) float64 {
 	const margin = 0.0005
-	ev := m.toPetriPolicyBias(wb, bb)
+	ev := m.toPetriChampion(bias)
 	loss := 0.0
 	for _, p := range positions {
 		bestOpt, bestNon := math.Inf(-1), math.Inf(-1)
@@ -85,7 +85,7 @@ func rankLoss(m *model, positions []trainPos, wb, bb, lam float64) float64 {
 			f := m.odeFinal(ev.net, m.fire(mv, p.mk), ev.rates)
 			s := f["win_x"] - f["win_o"]
 			if !p.maximizes {
-				s = f["tie"] + lam*f["win_o"]
+				s = f["x_turn"] + f["o_turn"] + lam*f["win_o"]
 			}
 			if p.optimal[mv] {
 				if s > bestOpt {

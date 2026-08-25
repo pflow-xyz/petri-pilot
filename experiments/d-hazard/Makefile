@@ -2,13 +2,10 @@ build:
 	go build -o d-hazard .
 
 quick: build
-	./d-hazard quick
+	./d-hazard
 
-tie: build
-	./d-hazard tie
+verify: build
+	./d-hazard verify
 
-sweep: build
-	./d-hazard sweep
-
-play100: build
-	./d-hazard play100
+fit: build
+	./d-hazard fit
