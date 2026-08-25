@@ -369,6 +369,28 @@ var drawVariants = []drawVariant{
 		return ev
 	},
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	// inc-rate: weight-1 deposits, detector rates MULTIPLIED by the
+	// product of their cells' line counts — the incidence prior applied
+	// purely to the rates, no mass inflation, no consumption change.
+	{"inc-rate", func(m *model) evalNet {
+		ev := m.toPetriMinimal()
+		count := map[string]float64{}
+		for _, line := range winLines {
+			for _, c := range line {
+				count[c]++
+			}
+		}
+		for name, line := range winLines {
+			boost := 1.0
+			for _, c := range line {
+				boost *= count[c]
+			}
+			ev.rates["x_win_"+name] = boost
+			ev.rates["o_win_"+name] = boost
+		}
+		return ev
+	},
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
 }
 
 // odePlayScored: X maximizes win_x - win_o, O maximizes oscore(final, lam).

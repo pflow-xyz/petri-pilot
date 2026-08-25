@@ -202,8 +202,13 @@ stronger than the tournaments can show — see finding 9.
     X — the worst variant tried. Mass action has no per-consumer
     shares: a place's value multiplies into every consuming rate at
     once, so out-degree deposits either inflate all the products or,
-    normalized, starve them. A prior the structure already computes
-    must not also be written into the weights.
+    normalized, starve them. The third direction — weight-1 deposits
+    with detector rates *multiplied* by the count product (`inc-rate`) —
+    fails as well: 6 game-losing moves and 22 missed wins as O, the
+    worst training surface of any variant (loss 5.3), with λ fitted
+    down to ~1.0. A prior the structure already computes must not also
+    be written into the weights, the masses, or the rates — the
+    topology applies it exactly once, and every duplicate is paid for.
 
 ## Resolution
 
