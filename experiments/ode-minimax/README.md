@@ -36,10 +36,10 @@ them: the champion net is the declared net plus three `derive` transforms
 (`DropTransitions`, `DropPlaces`, `AddCatalyzedCopy` ×48), and the fitter
 is `learn.Minimize` over `learn.HingeRankLoss`. What stays here is
 exactly the game knowledge: the discrete referee, minimax labels, and
-the exhaustive walk. `go.mod` carries a temporary `replace` to the
-sibling go-pflow checkout (branch `evaluation-derivations`); per the
-adoption convention it comes out when that work is released and the
-`require` line names the tag.
+the exhaustive walk. The `require` line names the release that ships
+them (go-pflow v0.23.0, which also added `Solution.Truncated` — a
+solve that exhausts Maxiters short of the horizon now says so instead
+of silently answering for an earlier time).
 
 ## Results
 
