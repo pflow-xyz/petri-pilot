@@ -210,6 +210,18 @@ stronger than the tournaments can show — see finding 9.
     be written into the weights, the masses, or the rates — the
     topology applies it exactly once, and every duplicate is paid for.
 
+15. **`game_active` is removable too.** With the draw and counter gone,
+    the place had two remaining jobs, and both turn out to be duplicates:
+    halting is already enforced by the detectors consuming the turn
+    tokens, and the undecided coordinate is the surviving turn-token
+    mass itself. `noga` — cells, turn tokens, win places, nothing else —
+    fits to (2.72, 1.87) with O scoring `x_turn + o_turn + λ·win_o` and
+    passes the referee **0/0 on both seats** (train loss 0.62 vs
+    minimal's 0.51: slightly thinner margins, same perfect argmax). The
+    champion evaluation net is now 31 places (27 board, 2 turn, 2 win)
+    and 82 transitions (18 plays, 16 detectors, 48 block-bias copies):
+    the board, whose turn it is, who won, and the forced-reply prior.
+
 ## Resolution
 
 The open question — can a structural adjustment make some ODE-evaluable

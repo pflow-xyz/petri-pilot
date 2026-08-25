@@ -322,6 +322,39 @@ func (m *model) toPetriIncidence(oneShot bool) evalNet {
 	return base
 }
 
+// toPetriNoGA: the minimal net with game_active removed as well. The
+// detectors' turn-token consumption is already a halting gate, and the
+// undecided mass then lives in the turn tokens themselves — O's
+// coordinate becomes x_turn + o_turn.
+func (m *model) toPetriNoGA() evalNet {
+	net := petri.NewPetriNet()
+	for _, p := range m.places {
+		if p == "move_tokens" || p == "game_active" {
+			continue
+		}
+		net.AddPlace(p, m.initial[p], nil, 0, 0, nil)
+	}
+	for _, t := range m.transitions {
+		if t == "draw" {
+			continue
+		}
+		net.AddTransition(t, "", 0, 0, nil)
+		for _, a := range m.inputs[t] {
+			if a.from == "game_active" {
+				continue
+			}
+			net.AddArc(a.from, t, a.weight, false)
+		}
+		for _, a := range m.outputs[t] {
+			if a.to == "move_tokens" || a.to == "game_active" {
+				continue
+			}
+			net.AddArc(t, a.to, a.weight, false)
+		}
+	}
+	return evalNet{net, m.cloneRates()}
+}
+
 // drawVariant is one answer to "which draw structure does the evaluation
 // net carry?" — build the base net, and name O's undecided coordinate.
 type drawVariant struct {
@@ -369,6 +402,8 @@ var drawVariants = []drawVariant{
 		return ev
 	},
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	{"noga", func(m *model) evalNet { return m.toPetriNoGA() },
+		func(f map[string]float64, lam float64) float64 { return f["x_turn"] + f["o_turn"] + lam*f["win_o"] }},
 	// inc-rate: weight-1 deposits, detector rates MULTIPLIED by the
 	// product of their cells' line counts — the incidence prior applied
 	// purely to the rates, no mass inflation, no consumption change.
