@@ -345,6 +345,30 @@ var drawVariants = []drawVariant{
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
 	{"inc-minimal", func(m *model) evalNet { return m.toPetriIncidence(false) },
 		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
+	// inc-norm: out-degree deposits with detector rates normalized by the
+	// product of their cells' counts — the deposit no longer inflates the
+	// rates (no double-counted prior), but a one-shot detector firing
+	// takes 1 from a cell holding n, so a mark no longer extinguishes its
+	// other lines. The shared-resource reading of "one token per line".
+	{"inc-norm", func(m *model) evalNet {
+		ev := m.toPetriIncidence(true)
+		count := map[string]float64{}
+		for _, line := range winLines {
+			for _, c := range line {
+				count[c]++
+			}
+		}
+		for name, line := range winLines {
+			norm := 1.0
+			for _, c := range line {
+				norm *= count[c]
+			}
+			ev.rates["x_win_"+name] = 1 / norm
+			ev.rates["o_win_"+name] = 1 / norm
+		}
+		return ev
+	},
+		func(f map[string]float64, lam float64) float64 { return f["game_active"] + lam*f["win_o"] }},
 }
 
 // odePlayScored: X maximizes win_x - win_o, O maximizes oscore(final, lam).

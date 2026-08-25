@@ -194,8 +194,16 @@ stronger than the tournaments can show — see finding 9.
     to degrade that seat. Finding 2 said the flow already recovers the
     incidence ranking from topology; feeding the counts in again
     multiplies them into every detector product — the prior squared,
-    not the prior applied. A prior the structure already computes must
-    not also be written into the weights.
+    not the prior applied. The shared-resource reading ("deposit n, each
+    line consumes its own token") fares even worse: normalizing the
+    detector rates by the product of their cells' counts (`inc-norm`)
+    removes the double-count but crushes the win channels' absolute
+    rates, and the referee reports 59 game-losing moves as O and 19 as
+    X — the worst variant tried. Mass action has no per-consumer
+    shares: a place's value multiplies into every consuming rate at
+    once, so out-degree deposits either inflate all the products or,
+    normalized, starve them. A prior the structure already computes
+    must not also be written into the weights.
 
 ## Resolution
 
