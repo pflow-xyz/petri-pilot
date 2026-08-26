@@ -4,12 +4,16 @@
 // lives in this branch's git history.
 //
 // Modes:
-//   (default)      tactical audits + 100-game tournaments vs minimax
-//   verify [b] [l] exhaustive referee: every legal opponent line, both
-//                  seats; the champion's move must never worsen the
-//                  exact game value
-//   fit [g] [i]    refit (blockBias, lambda) from (1,1) against minimax
-//                  labels on random-self-play positions, then referee
+//
+//	(default)        tactical audits + 100-game tournaments vs minimax
+//	verify [b] [l]   exhaustive referee: every legal opponent line, both
+//	                 seats; the champion's move must never worsen the
+//	                 exact game value
+//	fit [g] [i]      refit (blockBias, lambda) from (1,1) against minimax
+//	                 labels on random-self-play positions, then referee
+//	fitgrad [g] [i]  the same refit by gradient: one tied parameter across
+//	                 the 48 derived copies, forward sensitivities + adam,
+//	                 then referee and a solve-count comparison vs Nelder-Mead
 package main
 
 import (
@@ -152,6 +156,49 @@ func main() {
 			fmt.Printf("exhaustive referee as %s: %d decisions, %d game-losing, %d missed wins\n",
 				name, d, b, mi)
 		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "fitgrad" {
+		games, iters := 40, 200
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		totalMoves := 0
+		for _, p := range positions {
+			totalMoves += len(p.moves)
+		}
+		fmt.Printf("training positions: %d (random self-play + 4 audits), %d candidate moves\n",
+			len(positions), totalMoves)
+		bias, lam, sensSolves := fitChampionGrad(m, positions, iters, true)
+		fmt.Printf("\nfitted: blockBias %.3f  lambda %.3f  (train loss %.6f)\n",
+			bias, lam, rankLoss(m, positions, bias, lam))
+		p := championPlayer(m.toPetriChampion(bias), lam)
+		for _, seat := range []bool{false, true} {
+			d, b, mi := exhaustiveCheck(m, p, seat)
+			name := "O"
+			if seat {
+				name = "X"
+			}
+			fmt.Printf("exhaustive referee as %s: %d decisions, %d game-losing, %d missed wins\n",
+				name, d, b, mi)
+		}
+		// Cost comparison. A sensitivity solve at P=1 costs 2 plain-solve
+		// equivalents; the Nelder-Mead baseline (fit mode's default 60
+		// iterations) pays one plain solve per (position, move) per f call.
+		fCalls := 0
+		fitChampionCounted(m, positions, 60, false, &fCalls)
+		nmSolves := fCalls * totalMoves
+		fmt.Printf("\ncost: gradient %d sensitivity solves (= %d plain-solve equivalents at P=1)\n",
+			sensSolves, 2*sensSolves)
+		fmt.Printf("      nelder-mead baseline (60 iters): %d f calls x %d moves = %d plain solves\n",
+			fCalls, totalMoves, nmSolves)
+		fmt.Printf("      equivalents ratio (gradient/NM): %.2f\n",
+			float64(2*sensSolves)/float64(nmSolves))
 		return
 	}
 
