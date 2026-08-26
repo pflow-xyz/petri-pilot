@@ -42,11 +42,15 @@ func odeSensitivityTool() mcp.Tool {
 		mcp.WithString("title",
 			mcp.Description("Title shown above the sensitivity diagram"),
 		),
+		mcp.WithString("method",
+			mcp.Description(`"fd" (default): finite-difference perturbation runs, one per transition. "analytic": exact forward sensitivities from ONE augmented solve (go-pflow learn) — faster for many transitions and derivative-exact; measures d(observable at t_end)/d(rate) rather than a +delta%% re-run`),
+		),
 	)
 }
 
 type odeSensitivityResponse struct {
 	Observable      string             `json:"observable"`
+	Method          string             `json:"method"`
 	BaseEquilibrium float64            `json:"baseEquilibrium"`
 	BaseRates       map[string]float64 `json:"baseRates"`
 	Delta           float64            `json:"delta"`
@@ -123,26 +127,40 @@ func handleOdeSensitivity(ctx context.Context, request mcp.CallToolRequest) (*mc
 		initial[p.ID] = float64(p.Initial)
 	}
 
+	method := request.GetString("method", "fd")
+
 	// Base run.
 	baseEq := runToEquilibrium(net, initial, tspan, baseRates, observable)
 
-	// Per-transition perturbation runs.
 	elasticities := map[string]float64{}
-	for tid, base := range baseRates {
-		perturbed := make(map[string]float64, len(baseRates))
-		for k, v := range baseRates {
-			perturbed[k] = v
-		}
-		perturbed[tid] = base * (1 + delta)
-		eq := runToEquilibrium(net, initial, tspan, perturbed, observable)
+	switch method {
+	case "", "fd":
+		method = "fd"
+		// Per-transition perturbation runs.
+		for tid, base := range baseRates {
+			perturbed := make(map[string]float64, len(baseRates))
+			for k, v := range baseRates {
+				perturbed[k] = v
+			}
+			perturbed[tid] = base * (1 + delta)
+			eq := runToEquilibrium(net, initial, tspan, perturbed, observable)
 
-		// Dimensionless elasticity: (dE/E) / (dk/k). Guard against base
-		// equilibrium == 0 (use absolute change instead).
-		if math.Abs(baseEq) > 1e-9 {
-			elasticities[tid] = (eq - baseEq) / baseEq / delta
-		} else {
-			elasticities[tid] = (eq - baseEq) / delta
+			// Dimensionless elasticity: (dE/E) / (dk/k). Guard against base
+			// equilibrium == 0 (use absolute change instead).
+			if math.Abs(baseEq) > 1e-9 {
+				elasticities[tid] = (eq - baseEq) / baseEq / delta
+			} else {
+				elasticities[tid] = (eq - baseEq) / delta
+			}
 		}
+	case "analytic":
+		var aerr error
+		elasticities, aerr = analyticElasticities(net, initial, tspan, baseRates, observable, baseEq)
+		if aerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("analytic sensitivities: %v", aerr)), nil
+		}
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("unknown method %q (use \"fd\" or \"analytic\")", method)), nil
 	}
 
 	// Rank by absolute elasticity for the response and for the visualization
@@ -157,6 +175,7 @@ func handleOdeSensitivity(ctx context.Context, request mcp.CallToolRequest) (*mc
 
 	resp := odeSensitivityResponse{
 		Observable:      observable,
+		Method:          method,
 		BaseEquilibrium: baseEq,
 		BaseRates:       baseRates,
 		Delta:           delta,

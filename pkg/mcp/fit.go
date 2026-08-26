@@ -48,8 +48,11 @@ func fitTool() mcp.Tool {
 		mcp.WithString("fixed_rates",
 			mcp.Description("JSON object of rates for transitions NOT being fit (default 1.0)"),
 		),
+		mcp.WithString("method",
+			mcp.Description(`Optimizer: "nelder-mead" (default, gradient-free) or "adam" (gradient-based on analytic forward sensitivities — typically fewer solves for smooth fits)`),
+		),
 		mcp.WithNumber("max_iter",
-			mcp.Description("Max Nelder-Mead iterations (default 200, max 1000)"),
+			mcp.Description("Max optimizer iterations (default 200, max 1000)"),
 		),
 		mcp.WithNumber("tol",
 			mcp.Description("Convergence tolerance on simplex spread (default 1e-6)"),
@@ -71,6 +74,8 @@ type fitResponse struct {
 	FinalLoss    float64                 `json:"finalLoss"`
 	Iterations   int                     `json:"iterations"`
 	Converged    bool                    `json:"converged"`
+	Method       string                  `json:"method"`
+	Evals        int                     `json:"evals,omitempty"`
 	ParamOrder   []string                `json:"paramOrder"`
 	Observations map[string][][2]float64 `json:"observations"`
 	Explanation  string                  `json:"explanation,omitempty"`
@@ -242,7 +247,28 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		x0[i] = initialGuess[k]
 	}
 
-	bestX, bestLoss, iters, converged := nelderMead(loss, x0, maxIter, tol)
+	method := request.GetString("method", "nelder-mead")
+	var (
+		bestX     []float64
+		bestLoss  float64
+		iters     int
+		converged bool
+		evals     int
+	)
+	switch method {
+	case "", "nelder-mead":
+		method = "nelder-mead"
+		bestX, bestLoss, iters, converged = nelderMead(loss, x0, maxIter, tol)
+	case "adam":
+		var gerr error
+		bestX, bestLoss, iters, converged, evals, gerr = fitAdam(
+			net, initial, tspan, fixedRates, paramOrder, bounds, observations, x0, maxIter, tol)
+		if gerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("gradient fit: %v", gerr)), nil
+		}
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("unknown method %q (use \"nelder-mead\" or \"adam\")", method)), nil
+	}
 
 	fittedRates := map[string]float64{}
 	for i, k := range paramOrder {
@@ -262,6 +288,8 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		FinalLoss:    bestLoss,
 		Iterations:   iters,
 		Converged:    converged,
+		Method:       method,
+		Evals:        evals,
 		ParamOrder:   paramOrder,
 		Observations: rawObs,
 	}
