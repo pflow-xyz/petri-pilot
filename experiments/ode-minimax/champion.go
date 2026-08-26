@@ -70,19 +70,17 @@ func (m *model) toPetriDeclared() *petri.PetriNet {
 	return net
 }
 
-// toPetriChampion derives the champion evaluation net from the declared
-// net at the given block bias.
-func (m *model) toPetriChampion(blockBias float64) evalNet {
+// deriveChampionNet applies the champion's derive transforms to the
+// declared net and returns the result together with the 48 blk_*
+// transition names, in sortedLineNames order. Both evaluators —
+// toPetriChampion's fixed-rate net and toChampionGrad's learnable one —
+// derive from this single sequence, so the structure cannot fork.
+func (m *model) deriveChampionNet() (*petri.PetriNet, []string) {
 	net := m.toPetriDeclared()
 	derive.DropTransitions(net, "draw")
 	derive.DropPlaces(net, "move_tokens", "game_active")
 
-	rates := make(map[string]float64, len(m.transitions)+48)
-	for _, t := range m.transitions {
-		if t != "draw" {
-			rates[t] = 1
-		}
-	}
+	blks := make([]string, 0, 48)
 	for _, name := range sortedLineNames() {
 		line := winLines[name]
 		for i, c := range line {
@@ -98,9 +96,25 @@ func (m *model) toPetriChampion(blockBias float64) evalNet {
 				if err := derive.AddCatalyzedCopy(net, side+"_play_"+c, blk, catalysts); err != nil {
 					panic(err) // structural bug in this file, not a runtime condition
 				}
-				rates[blk] = blockBias
+				blks = append(blks, blk)
 			}
 		}
+	}
+	return net, blks
+}
+
+// toPetriChampion derives the champion evaluation net from the declared
+// net at the given block bias.
+func (m *model) toPetriChampion(blockBias float64) evalNet {
+	net, blks := m.deriveChampionNet()
+	rates := make(map[string]float64, len(m.transitions)+48)
+	for _, t := range m.transitions {
+		if t != "draw" {
+			rates[t] = 1
+		}
+	}
+	for _, blk := range blks {
+		rates[blk] = blockBias
 	}
 	return evalNet{net, rates}
 }

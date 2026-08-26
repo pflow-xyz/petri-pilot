@@ -230,6 +230,25 @@ stronger than the tournaments can show — see finding 9.
     and 82 transitions (18 plays, 16 detectors, 48 block-bias copies):
     the board, whose turn it is, who won, and the forced-reply prior.
 
+16. **A sharper optimizer exposes a weaker proxy.** `fitgrad` calibrates
+    (blockBias, λ) by exact gradient: `learn.TiedScalar` shares one bias
+    parameter across all 48 forced-reply copies, one forward-sensitivity
+    solve per candidate move gives d(final state)/d(bias), and the hinge
+    subgradient chains through in log space (finite-difference-gated per
+    decision, ~14 of 16 coordinates checked — a whole-loss FD gate turned
+    out to be near-vacuous, silently skipping itself whenever any
+    near-tie flipped inside ±h). The result is finding 11's mirror
+    image: on broad random-self-play positions Adam converges to a
+    LOWER train loss than the champion point (0.100 vs 0.166) that
+    FAILS the referee — 2 game-losing moves, 10 missed wins as O. The
+    hinge loss over sampled positions is a proxy, and the gradient
+    optimizer exploits its slack where Nelder-Mead's bumbling did not:
+    Goodhart, in miniature, with an exhaustive referee to catch it. On
+    the four tactical audit positions the same machinery reaches loss
+    exactly 0 in ~8 iterations at (2.03, 1.84), and that point passes
+    the referee 0/0 on both seats. Train loss can overstate failure
+    (finding 11) and understate it (this one); only the referee decides.
+
 ## Resolution
 
 The open question — can a structural adjustment make some ODE-evaluable
