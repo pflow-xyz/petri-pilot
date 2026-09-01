@@ -234,6 +234,33 @@ func main() {
 		}
 		fmt.Printf("deep+policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
 		printReferee(m, "deep+policy", odeLookaheadPlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "verify-deep2":
+		// 2-ply extension of finding 8 on the plain calibrated evaluator.
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &lam)
+		}
+		fmt.Printf("deep2: horizon %.3f lambda %.3f\n", odeHorizon, lam)
+		printReferee(m, "deep2", odeSearchPlayer(m.toPetriBaseline(), lam, 2))
+	case "fit-deep":
+		// Retry finding 7's question -- does retuning help? -- against
+		// finding 8's lookahead evaluator instead of a single static solve.
+		plies, games, iters := 1, 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &games)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-deep: plies=%d training positions: %d\n", plies, len(positions))
+		winBias, blockBias, lam := fitPolicyDeep(m, positions, plies, iters, true)
+		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
+			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
+		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
 	case "diagnose-naive":
 		diagnose(m, "naive", baseline, 20)
 	case "diagnose-deep":

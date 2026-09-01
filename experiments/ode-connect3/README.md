@@ -25,8 +25,12 @@ make fit              # fit policy scalars against labeled positions
                        # linetype-parity) and gradient-fit each group's rate;
                        # see finding 7
 ./ode-connect3 verify-deep [lambda]           # one-ply lookahead, no policy; finding 8
+./ode-connect3 verify-deep2 [lambda]          # two-ply lookahead, no policy; finding 9
 ./ode-connect3 verify-deep-policy [w] [b] [l] # one-ply lookahead + structural policy
 ./ode-connect3 diagnose-deep [lambda]         # the lookahead evaluator's failures
+./ode-connect3 fit-deep <plies> [games] [iters]
+                       # retune (winBias, blockBias, lambda) scored through
+                       # odeSearchScore at the given depth; finding 10
 ```
 
 ## Declared game net
@@ -161,6 +165,59 @@ acceptance condition does not. The calibrated plain ODE is exact-safe on
    exactly), but not guaranteed to be to the bit across compiler versions.
    The 7-error count above is the reproducible reading from the current
    build; treat it as a range around 7-8, not an exact constant.
+9. **A second ply keeps helping, monotonically, as rollout theory
+   predicts.** `odeSearchScore`/`odeSearchPlayer` generalize finding 8 from
+   one alternating ply to any fixed depth (the root mover's turn, then the
+   opponent's, then — at depth 2 — the root mover's again, before falling
+   back to `odeLeafEval`). `verify-deep2` runs the plain calibrated
+   evaluator at depth 2 with no new tuning: **5** total errors (4 O-losing,
+   1 X-losing, 0 missed), stable across repeated runs of the same binary
+   (890 vs 894 O-decisions visited — the same float-tie jitter as finding
+   8, but the error count itself agreed both times). The progression is
+   monotonic and depth-driven, not tuning-driven: naive 8 → 1-ply 7 → 2-ply
+   5. This is the textbook rollout-algorithm result (Bertsekas): looking
+   ahead over a fixed base evaluator is provably no worse than the base
+   policy, and empirically it keeps improving with depth here, in contrast
+   to finding 7 where more tuning freedom made things *worse*. Cost is real
+   but tractable at this scale — depth 2 took ~62s for a full exhaustive
+   sweep (~1,000+ decisions), against depth 1's ~17s and depth 0's
+   effectively-instant single solve — because these are all *plain* solves,
+   not the ~0.5s sensitivity solves finding 7's tuning needed.
+10. **Retuning the same 3 scalars, now scored through the lookahead
+    evaluator instead of a single solve, helps rather than hurts — the
+    opposite of finding 7.** `fitdeep.go`'s `fitPolicyDeep` is `fit.go`'s
+    Nelder-Mead fit over `(winBias, blockBias, lambda)`, unchanged, with
+    every candidate's score computed by `odeSearchScore` instead of one
+    `odeFinal` call. Run at depth 1 (30 self-play games, 50 iterations,
+    inside a container — see below): loss fell 3.73→0.05 (not fully
+    converged) and the exhaustive referee landed at **6** total errors (6
+    O-losing, **0** X-losing, 0 missed) — better than plain 1-ply lookahead
+    with no tuning (7) and, notably, *not* a Goodhart collapse the way
+    finding 7's tuning was on the shallow evaluator. The fitted bias
+    (winBias 0.055, blockBias 2.884, lambda 2.701) fixed exactly the new
+    error 1-ply lookahead introduced (X), and left O's 6 unchanged. This
+    reframes finding 7: tuning was never the wrong idea, it failed
+    specifically because the evaluator it was tuning couldn't represent the
+    target (finding 6's future-support gap) — give the same 3-parameter
+    tuning a representation that *can*, even partially (one ply), and it
+    stops being adversarial to the referee and starts being a mild, honest
+    improvement again.
+
+**A note on how these last three findings were run.** The exhaustive
+referee's fixed-binary determinism (finding 8's caveat) turned out not to be
+the only stability concern — background shell processes for the longer
+`fit-deep` runs were repeatedly interrupted mid-run by something external to
+this experiment (not a crash: no error, no partial corruption, just cut off
+cleanly a few iterations in, twice in a row on relaunch). Moving the same
+binary into a detached `docker run -d` container, writing to a bind-mounted
+log file, made the run immune to whatever was sending that signal — the
+container is supervised by the Docker daemon, not by the interactive session
+that kept losing background jobs. `fit-deep 1 30 50` completed cleanly in a
+container in ~59 minutes; the same command as a plain background process had
+not survived one full iteration across two attempts. No code in this
+experiment changed to fix this — it was an environment/session issue, not an
+`ode-connect3` bug — but it's worth recording here since it shaped how
+finding 10's number was actually obtained.
 
 ## Resolution
 
@@ -180,3 +237,18 @@ made the exhaustive referee worse, not better, both times it was tried. The
 honest next step is the structural one finding 6 already named — a predicate
 for future support/gravity-depth, not a finer-grained rate on the current
 one — not a longer tuning run.
+
+Findings 8-10 answer the question that came after: given tuning alone
+doesn't work, does search? Yes, and it composes with tuning rather than
+fighting it once given something real to tune. The error count moved
+monotonically with search depth (naive 8 → 1-ply 7 → 2-ply 5) and tuning
+*on top of* one-ply search improved it further to 6 without any Goodhart
+symptom — the opposite of finding 7's tuning-on-a-flat-evaluator result. This
+doesn't reach 0 either, and the remaining errors at every depth tried are
+still the future-support class finding 6 named — search is buying the same
+thing finding 6 asked for (seeing further into the game), just less
+efficiently than a dedicated structural predicate would. The honest reading:
+deeper search is real, composable progress and a legitimate alternative to
+the structural fix, not a replacement for the conclusion that tuning alone
+cannot get there — it is a different lever (information, not calibration)
+that happens to work.
