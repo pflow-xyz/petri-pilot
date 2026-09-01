@@ -55,10 +55,63 @@ func (m *model) toPetriBaseline() evalNet {
 	return evalNet{net, rates}
 }
 
-func (m *model) derivePolicyNet() (*petri.PetriNet, []string, []string) {
-	net := m.evaluationBase()
-	wins := make([]string, 0, len(winLines)*connectN*2)
-	blks := make([]string, 0, len(winLines)*connectN*2)
+// groupKeyFn labels a force_*/blk_* transition by (side, win-line name, the
+// cell it acts on, its index within the line). Two transitions returning the
+// same label share one fitted rate. The plain, ungrouped policy (below) uses
+// one label for everything in each family — the untuned baseline that
+// fitgrad.go's finer grouping schemes are compared against.
+type groupKeyFn func(side, lineName, cell string, i int) string
+
+func groupSingle(string, string, string, int) string { return "all" }
+
+// groupByRow labels by the gravity depth of the cell the transition acts on
+// — the strongest hypothesis for the "future support" failure mode (see
+// README finding 6): the residual referee errors are late gravity-tempo
+// positions, and row is the direct proxy for how many drops a cell is from
+// the floor.
+func groupByRow(side, _, cell string, _ int) string { return side + "_row" + cell[:1] }
+
+// groupByRowParity is a coarser version of groupByRow: turn-parity-at-opening
+// (who is due to move when a supporting cell opens) collapses to row%2.
+func groupByRowParity(side, _, cell string, _ int) string {
+	row := int(cell[0] - '0')
+	return side + "_parity" + strconv.Itoa(row%2)
+}
+
+// groupByLineType labels by row/col/diag/anti. Weak hypothesis: nothing about
+// gravity distinguishes one line orientation from another once dropped into.
+func groupByLineType(side, lineName, _ string, _ int) string { return side + "_" + lineTypeOf(lineName) }
+
+// groupByCellIndex labels by position within the line (0,1,2). Weak
+// hypothesis: doesn't correlate with gravity depth.
+func groupByCellIndex(side, _, _ string, i int) string { return side + "_idx" + strconv.Itoa(i) }
+
+// groupByLineTypeRowParity is the finest scheme worth trying — line-type x
+// row-parity, ~16 groups. Past this point, grouping starts approximating one
+// rate per known counterexample rather than a generalizable rule.
+func groupByLineTypeRowParity(side, lineName, cell string, _ int) string {
+	row := int(cell[0] - '0')
+	return side + "_" + lineTypeOf(lineName) + "_parity" + strconv.Itoa(row%2)
+}
+
+// lineTypeOf strips the trailing "%d_%d" winLines suffixes any of
+// row/col/diag/anti carries, leaving the type prefix.
+func lineTypeOf(name string) string {
+	i := 0
+	for i < len(name) && (name[i] < '0' || name[i] > '9') {
+		i++
+	}
+	return name[:i]
+}
+
+// derivePolicyNetGrouped is derivePolicyNet's structure — identical net,
+// identical 144 force_* and 144 blk_* transitions, no new derive calls — with
+// each transition labeled by winGroup/blkGroup instead of returned as a flat
+// list. derivePolicyNet is this with both families collapsed to one label.
+func (m *model) derivePolicyNetGrouped(winGroup, blkGroup groupKeyFn) (net *petri.PetriNet, winGroups, blkGroups map[string]string) {
+	net = m.evaluationBase()
+	winGroups = make(map[string]string, len(winLines)*connectN*2)
+	blkGroups = make(map[string]string, len(winLines)*connectN*2)
 	for _, name := range sortedLineNames() {
 		line := winLines[name]
 		for i, c := range line {
@@ -88,16 +141,47 @@ func (m *model) derivePolicyNet() (*petri.PetriNet, []string, []string) {
 				}
 				net.AddArc(finish, side+c, 1, false)
 				net.AddArc(finish, "win_"+side, 1, false)
-				wins = append(wins, finish)
+				winGroups[finish] = winGroup(side, name, c, i)
 				blk := "blk_" + side + "_" + name + "_" + strconv.Itoa(i)
 				if err := derive.AddCatalyzedCopy(net, side+"_play_"+c, blk, catalysts); err != nil {
 					panic(err)
 				}
-				blks = append(blks, blk)
+				blkGroups[blk] = blkGroup(side, name, c, i)
 			}
 		}
 	}
+	return net, winGroups, blkGroups
+}
+
+func (m *model) derivePolicyNet() (*petri.PetriNet, []string, []string) {
+	net, winGroups, blkGroups := m.derivePolicyNetGrouped(groupSingle, groupSingle)
+	wins := make([]string, 0, len(winGroups))
+	for t := range winGroups {
+		wins = append(wins, t)
+	}
+	blks := make([]string, 0, len(blkGroups))
+	for t := range blkGroups {
+		blks = append(blks, t)
+	}
 	return net, wins, blks
+}
+
+// toPetriPolicyGrouped rebuilds a plain (fixed-rate) evaluation net from
+// fitted per-group rates — the acceptance-gate form of a fitgrad.go fit,
+// used by the exhaustive referee exactly as toPetriPolicy is.
+func (m *model) toPetriPolicyGrouped(winGroup, blkGroup groupKeyFn, winRates, blkRates map[string]float64) evalNet {
+	net, winGroups, blkGroups := m.derivePolicyNetGrouped(winGroup, blkGroup)
+	rates := make(map[string]float64, len(net.Transitions))
+	for t := range net.Transitions {
+		rates[t] = 1
+	}
+	for t, g := range winGroups {
+		rates[t] = winRates[g]
+	}
+	for t, g := range blkGroups {
+		rates[t] = blkRates[g]
+	}
+	return evalNet{net, rates}
 }
 
 func (m *model) toPetriPolicy(winBias, blockBias float64) evalNet {

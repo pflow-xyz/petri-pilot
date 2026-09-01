@@ -168,6 +168,31 @@ func diagnose(m *model, name string, p player, limit int) {
 	}
 }
 
+// groupSchemes are the tuning-only hypotheses fitgrad.go's fitPolicyGrad
+// compares, strongest first (see README's fitgrad-policy findings). Each
+// scheme's groupKeyFn is applied independently to the win and block
+// families — same function, disjoint parameter sets ("win:"/"blk:" prefixes
+// in fitgrad.go never collide).
+var groupSchemes = []struct {
+	name string
+	fn   groupKeyFn
+}{
+	{"row", groupByRow},
+	{"parity", groupByRowParity},
+	{"linetype", groupByLineType},
+	{"cellindex", groupByCellIndex},
+	{"linetype-parity", groupByLineTypeRowParity},
+}
+
+func groupScheme(name string) (groupKeyFn, bool) {
+	for _, s := range groupSchemes {
+		if s.name == name {
+			return s.fn, true
+		}
+	}
+	return nil, false
+}
+
 func main() {
 	m := buildModel()
 	mode := "quick"
@@ -234,6 +259,34 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLoss(m, positions, winBias, blockBias, lam))
 		printReferee(m, "fitted", odePlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "fitgrad-policy":
+		scheme := "row"
+		games, iters := 30, 200
+		if len(os.Args) > 2 {
+			scheme = os.Args[2]
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &games)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &iters)
+		}
+		fn, ok := groupScheme(scheme)
+		if !ok {
+			names := make([]string, len(groupSchemes))
+			for i, s := range groupSchemes {
+				names[i] = s.name
+			}
+			fmt.Printf("unknown scheme %q; choices: %s\n", scheme, strings.Join(names, " "))
+			return
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("scheme=%s training positions: %d\n", scheme, len(positions))
+		winRates, blkRates, lam, solves := fitPolicyGrad(m, positions, fn, fn, iters, true)
+		fmt.Printf("fitted: %d win-groups, %d block-groups, lambda %.4f (%d sensitivity solves)\n",
+			len(winRates), len(blkRates), lam, solves)
+		ev := m.toPetriPolicyGrouped(fn, fn, winRates, blkRates)
+		printReferee(m, "fitgrad-"+scheme, odePlayer(ev, lam))
 	default:
 		fmt.Printf("model: %d cells, %d win lines, %d declared transitions\n",
 			len(cells), len(winLines), len(m.transitions))

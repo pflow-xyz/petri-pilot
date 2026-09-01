@@ -19,6 +19,11 @@ make verify-naive     # exhaustive referee for the calibrated plain ODE
 make verify           # referee the structural policy candidate
 make verify-tactical  # separately disclosed one-ply safety layer
 make fit              # fit policy scalars against labeled positions
+./ode-connect3 fitgrad-policy <scheme> [games] [iters]
+                       # re-tie the same 288 force_*/blk_* transitions into
+                       # finer groups (row, parity, linetype, cellindex,
+                       # linetype-parity) and gradient-fit each group's rate;
+                       # see finding 7
 ```
 
 ## Declared game net
@@ -97,6 +102,34 @@ acceptance condition does not. The calibrated plain ODE is exact-safe on
    cells become available several drops later. A useful next structure must
    represent ownership of future support, not merely current two-in-a-row
    geometry.
+7. **Finer tuning alone made it worse, not better — and worse in proportion
+   to how many parameters it was given.** fitgrad.go re-ties the same 288
+   force_*/blk_* transitions (no new structure) into independently-tied
+   groups and gradient-fits each with go-pflow's `SharedScalar` +
+   `SolveWithSensitivities`, instead of the 3 global scalars `fit.go` tunes.
+   Two schemes were run to a fixed 15-Adam-iteration budget (77 positions
+   from 10 self-play games + the 4 audits): `row` (16 tied params: 8 win- +
+   8 block-groups, one per side per gravity depth) and `parity` (8 tied
+   params, row-parity instead of row). Both drove the hinge loss down
+   substantially (1.085→0.137 and →0.089) while the exhaustive referee got
+   *worse* than the untied 3-scalar baseline (6 losing + 2 missed = 8) by a
+   wide margin — `row`: 40 losing + 10 missed = 50; `parity`: 24 losing + 10
+   missed = 34. X stayed perfect in both. More tied parameters produced a
+   larger referee/loss divergence, not a smaller one: exactly the Goodhart
+   failure finding 4 already named, now shown to compound with parameter
+   count rather than wash out. The remaining three schemes
+   (`linetype`, `cellindex`, `linetype-parity`) were not run to convergence —
+   each sensitivity solve costs ~0.5s and a full multi-hundred-iteration fit
+   over enough positions to identify 8-16 parameters is a multi-hour run per
+   scheme; the two data points already in hand answer the "via tuning alone"
+   question directionally without spending that budget. This does not prove
+   no untied scheme could reach 0 referee errors with far more positions,
+   iterations, and regularization than were affordable here — it shows that
+   *the direction this experiment tried* (more freedom, same 3-line loss)
+   moves away from the goal, not toward it, matching the plan's stated
+   go/no-go risk: a static per-transition rate cannot represent "N drops
+   from now, whose turn," and giving it more independent copies of itself
+   to tune mainly gives a proxy loss more room to be gamed.
 
 ## Resolution
 
@@ -107,3 +140,12 @@ referee rejects the claim that tic-tac-toe's forced-reply topology is a
 domain-agnostic recipe. The eight counterexamples are preserved by
 `diagnose-naive`; the next iteration should be designed against their shared
 future-support structure and then held to the same referee.
+
+Finding 7 closes the narrower question of whether tuning alone — re-tying the
+existing structure into finer groups, without adding new places or
+transitions — can reach 100%. The evidence gathered says no, and says so more
+strongly as more freedom is added: gradient-fitting more independent groups
+made the exhaustive referee worse, not better, both times it was tried. The
+honest next step is the structural one finding 6 already named — a predicate
+for future support/gravity-depth, not a finer-grained rate on the current
+one — not a longer tuning run.
