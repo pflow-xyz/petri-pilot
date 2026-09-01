@@ -215,8 +215,33 @@ func main() {
 		printReferee(m, "naive", odePlayer(m.toPetriBaseline(), lam))
 	case "verify-tactical":
 		printReferee(m, "naive+tactical", tacticalGuard(baseline))
+	case "verify-deep":
+		// One real ply of search with the calibrated naive evaluator as
+		// leaf, isolated from any structural policy — tests whether
+		// lookahead alone (vs. more tuning, finding 7) closes the gap.
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &lam)
+		}
+		fmt.Printf("deep: horizon %.3f lambda %.3f\n", odeHorizon, lam)
+		printReferee(m, "deep", odeLookaheadPlayer(m.toPetriBaseline(), lam))
+	case "verify-deep-policy":
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[2], "%f", &winBias)
+			fmt.Sscanf(os.Args[3], "%f", &blockBias)
+			fmt.Sscanf(os.Args[4], "%f", &lam)
+		}
+		fmt.Printf("deep+policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
+		printReferee(m, "deep+policy", odeLookaheadPlayer(m.toPetriPolicy(winBias, blockBias), lam))
 	case "diagnose-naive":
 		diagnose(m, "naive", baseline, 20)
+	case "diagnose-deep":
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &lam)
+		}
+		diagnose(m, "deep", odeLookaheadPlayer(m.toPetriBaseline(), lam), 20)
 	case "diagnose":
 		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
 		if len(os.Args) > 4 {

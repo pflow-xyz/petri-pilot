@@ -24,6 +24,9 @@ make fit              # fit policy scalars against labeled positions
                        # finer groups (row, parity, linetype, cellindex,
                        # linetype-parity) and gradient-fit each group's rate;
                        # see finding 7
+./ode-connect3 verify-deep [lambda]           # one-ply lookahead, no policy; finding 8
+./ode-connect3 verify-deep-policy [w] [b] [l] # one-ply lookahead + structural policy
+./ode-connect3 diagnose-deep [lambda]         # the lookahead evaluator's failures
 ```
 
 ## Declared game net
@@ -130,6 +133,34 @@ acceptance condition does not. The calibrated plain ODE is exact-safe on
    go/no-go risk: a static per-transition rate cannot represent "N drops
    from now, whose turn," and giving it more independent copies of itself
    to tune mainly gives a proxy loss more room to be gamed.
+8. **One real ply of lookahead helps more than any amount of tuning tried so
+   far — and does it with zero new fitting.** `lookahead.go`'s
+   `odeLookaheadPlayer` scores a candidate by firing it, then — if the game
+   isn't over — taking the WORST leaf score across every legal opponent
+   reply (one-ply minimax with the existing static `odeFinal` solve as
+   leaf), instead of scoring the position after one move directly. Applied
+   to the plain calibrated evaluator with no structural policy and no new
+   parameters, exhaustive referee errors drop from naive's 8 (6 O-losing, 2
+   O-missed-wins, X perfect) to **7** (6 O-losing, 1 X-losing, X's first
+   failure in this experiment, 0 missed wins on either seat). Both of O's
+   missed-win errors are gone — lookahead sees the immediate follow-up a
+   single static solve cannot — but it also introduces one new X error at a
+   position that was previously exact, and the 6 O-losing failures are
+   unchanged: `diagnose-deep` shows all 6 have no immediate opponent win
+   after the evaluator's choice, i.e. they're the same future-support class
+   named in finding 6, one ply of lookahead is not enough ply to reach them.
+   This is consistent with the ensembling question that motivated it: a
+   *different* single-solve evaluator (varied horizon, varied bias, several
+   averaged) only varies the read; nesting one more real ply changes what
+   information is available to it, and that is why it moved the number at
+   all where tuning (finding 7) did not. **A caveat worth recording**: the
+   exhaustive referee sweep showed run-to-run jitter between builds (73 vs
+   61 vs 75 X-decisions visited, 0 vs 1 X-losing) traced to float-level
+   sensitivity at near-exact ties in `odeLookaheadPlayer`'s worst-reply
+   scan — reproducible within one fixed binary (three repeated runs agreed
+   exactly), but not guaranteed to be to the bit across compiler versions.
+   The 7-error count above is the reproducible reading from the current
+   build; treat it as a range around 7-8, not an exact constant.
 
 ## Resolution
 
