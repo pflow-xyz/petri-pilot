@@ -31,6 +31,11 @@ make fit              # fit policy scalars against labeled positions
 ./ode-connect3 fit-deep <plies> [games] [iters]
                        # retune (winBias, blockBias, lambda) scored through
                        # odeSearchScore at the given depth; finding 10
+./ode-connect3 check-neuralode-grad             # verify neuralode.go's hand-rolled
+                                                 # backprop against finite differences
+./ode-connect3 fit-neuralode [hidden] [games] [iters] [l2]
+                       # train dx/dt = MLP(x) from scratch, no declared
+                       # structure at all; finding 11
 ```
 
 ## Declared game net
@@ -235,6 +240,61 @@ experiment changed to fix this — it was an environment/session issue, not an
 `ode-connect3` bug — but it's worth recording here since it shaped how
 finding 10's number was actually obtained.
 
+11. **A REAL Neural ODE — no mass-action, no declared structure — is far
+    worse, and more data/regularization doesn't close the gap.**
+    `neuralode.go` throws away everything else in this file: instead of a
+    Petri net's stoichiometry dictating the RHS, `dx/dt = MLP(x; theta)` is
+    an unconstrained 2-layer network. Scope, stated plainly: the 4 dims
+    actually integrated are the ones every evaluator here reads out
+    (`win_x, win_o, x_turn, o_turn`), conditioned on the 48 raw board
+    features held fixed across the horizon — not the full 52-place system
+    under an MLP, but the observable sub-state under one that sees the whole
+    board. Trained discretize-then-optimize: forward with a fixed-step
+    Euler integrator, backprop exactly through the unrolled steps (no
+    continuous adjoint — `go-pflow`'s `SolveAdjoint` is built for the
+    RateFunc/mass-action framework and doesn't apply to an arbitrary
+    vector-valued RHS). `checkNeuralGrad` confirmed the hand-rolled backward
+    pass against central finite differences (max error 3e-11) before any of
+    it was trusted.
+
+    Three configurations, referee-gated exactly like everything else here
+    (baseline to beat: naive's 8 total errors):
+
+    | hidden | positions | L2 | params | training loss | referee errors |
+    |---|---|---|---|---|---|
+    | 16 | 197 | 0 | 916 | 0.000000 (converged) | 158 (105 O, 53 X) |
+    | 6 | 797 | 0.01 | 346 | 0.108 | 120 (59 O, 61 X) |
+    | 4 | 1336 | 0.05 | 232 | 0.289 | 118 (66 O, 52 X) |
+
+    The unregularized run is the cleanest possible Goodhart case yet: it
+    drove the training rank loss to *exactly* zero — every hinge margin
+    satisfied on every training decision — while the exhaustive referee got
+    dramatically worse than anything else tried in this experiment,
+    including finding 7's tied-scalar tuning. Adding L2 weight decay and 4x
+    more self-play positions to correct for that helped (158→120) but
+    plateaued almost immediately — a further ~2.4x more positions and 5x
+    more regularization (232 params, 1336 positions) bought almost nothing
+    more (120→118). That flatness is the informative part: this isn't an
+    under-tuned regularization problem that a bit more data would fix, it's
+    the structural tradeoff predicted before writing any of this code — an
+    unconstrained function approximator has to *learn* what the declared net
+    gets for free (which cells threaten which line, gravity, whose turn),
+    and a few hundred to a couple thousand self-play positions from a game
+    this small is nowhere near enough signal to learn it, while the
+    structured relaxation's worst score in this entire experiment (finding
+    7's most-parameters tuning attempt, 50 errors) still beats every Neural
+    ODE configuration tried by more than 2x.
+
+    Also worth recording: each fit here is dramatically *cheaper* per
+    iteration than the mass-action-based fits — no adaptive ODE solver, just
+    two small dense-layer matmuls per fixed Euler step — so the largest
+    configuration above (1336 positions, 300 Adam iterations) ran in under 3
+    minutes on a plain foreground process, versus the ~1 hour a single
+    197-position, 50-iteration mass-action `fit-deep` run needed in a
+    container. The bottleneck moved entirely from compute to data/inductive
+    bias, which is exactly the case the declarative-modeling framing this
+    whole ecosystem is built on predicts.
+
 ## Resolution
 
 This experiment satisfies the “comes close” branch, not the equivalence
@@ -271,3 +331,19 @@ deeper search is real, composable progress and a legitimate alternative to
 the structural fix, not a replacement for the conclusion that tuning alone
 cannot get there — it is a different lever (information, not calibration)
 that happens to work.
+
+Finding 11 answers a fourth, different question — not "does tuning work" or
+"does search work" but "does keeping the declared Petri-net structure matter
+at all." It does, decisively. A real Neural ODE with no mass-action
+structure — the same rank-loss training, the same referee gate, three
+configurations spanning a 4x data and 5x regularization range — never got
+below 118 total errors, worse than every other evaluator in this experiment
+including finding 7's worst tuning attempt (50). The gap didn't close with
+more data or regularization; it was flat across all three runs, which is the
+signature of a representational/sample-efficiency problem, not a
+hyperparameter one. This is the empirical case for the declare-then-fit
+approach every other finding here used: the Petri net's stoichiometry is a
+free, correct prior about which cells interact through which win-lines, and
+an unconstrained function approximator has to spend data learning what the
+declared structure never had to guess at — data this small, bounded game
+does not have enough of to give up.

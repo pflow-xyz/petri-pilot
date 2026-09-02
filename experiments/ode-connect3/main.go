@@ -261,6 +261,29 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
 		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
+	case "check-neuralode-grad":
+		rng := rand.New(rand.NewSource(1))
+		fmt.Printf("max |analytic - finite-diff| gradient error: %.3e\n", checkNeuralGrad(rng))
+	case "fit-neuralode":
+		h, games, iters := 16, 30, 50
+		l2 := 0.0
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &h)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &games)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &iters)
+		}
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[5], "%f", &l2)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-neuralode: hidden=%d training positions: %d l2=%g\n", h, len(positions), l2)
+		net, lam := fitNeuralODE(m, positions, h, iters, l2, true)
+		fmt.Printf("fitted: lambda %.4f (%d params)\n", lam, net.numParams())
+		printReferee(m, "neuralode", neuralODEPlayer(net, lam))
 	case "diagnose-naive":
 		diagnose(m, "naive", baseline, 20)
 	case "diagnose-deep":
