@@ -14,6 +14,12 @@
 //	fitgrad [g] [i]  the same refit by gradient: one tied parameter across
 //	                 the 48 derived copies, forward sensitivities + adam,
 //	                 then referee and a solve-count comparison vs Nelder-Mead
+//	check-neuralode-grad
+//	                 verify neuralode.go's hand-rolled backprop against
+//	                 finite differences
+//	fit-neuralode [h] [g] [i] [l2]
+//	                 train dx/dt = MLP(x) from scratch, no declared
+//	                 structure at all, then referee
 package main
 
 import (
@@ -199,6 +205,44 @@ func main() {
 			fCalls, totalMoves, nmSolves)
 		fmt.Printf("      equivalents ratio (gradient/NM): %.2f\n",
 			float64(2*sensSolves)/float64(nmSolves))
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "check-neuralode-grad" {
+		rng := rand.New(rand.NewSource(1))
+		fmt.Printf("max |analytic - finite-diff| gradient error: %.3e\n", checkNeuralGrad(rng))
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "fit-neuralode" {
+		h, games, iters := 16, 40, 300
+		l2 := 0.0
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &h)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &games)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &iters)
+		}
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[5], "%f", &l2)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-neuralode: hidden=%d training positions: %d l2=%g\n", h, len(positions), l2)
+		net, lam := fitNeuralODE(m, positions, h, iters, l2, true)
+		fmt.Printf("\nfitted: lambda %.4f (%d params)\n", lam, net.numParams())
+		p := neuralODEPlayer(net, lam)
+		for _, seat := range []bool{false, true} {
+			d, b, mi := exhaustiveCheck(m, p, seat)
+			name := "O"
+			if seat {
+				name = "X"
+			}
+			fmt.Printf("exhaustive referee as %s: %d decisions, %d game-losing, %d missed wins\n",
+				name, d, b, mi)
+		}
 		return
 	}
 
