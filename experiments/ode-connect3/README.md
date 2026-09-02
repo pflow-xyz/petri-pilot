@@ -36,6 +36,10 @@ make fit              # fit policy scalars against labeled positions
 ./ode-connect3 fit-neuralode [hidden] [games] [iters] [l2]
                        # train dx/dt = MLP(x) from scratch, no declared
                        # structure at all; finding 11
+./ode-connect3 fit-hybrid [games] [iters]
+                       # keep the declared structure, learn each family's
+                       # rate as a learn.LinearRateFunc regression over
+                       # board state instead of a constant; finding 12
 ```
 
 ## Declared game net
@@ -294,6 +298,45 @@ finding 10's number was actually obtained.
     container. The bottleneck moved entirely from compute to data/inductive
     bias, which is exactly the case the declarative-modeling framing this
     whole ecosystem is built on predicts.
+12. **The hybrid — keep the structure, learn one family's rate as a
+    regression over board state — landed in the same disappointing range as
+    finding 7's finest tuning, not better.** `hybridrate.go` installs two
+    `learn.LinearRateFunc`s (go-pflow's own hybrid RateFunc, already shipped
+    — no bespoke backprop, reused `SolveWithSensitivities`/
+    `MinimizeGradient` end to end) on the exact same 288-transition
+    structure as every other finding here: one tied across all 144 `force_*`
+    transitions, one across all 144 `blk_*`, each reading all 16
+    landing-token places `p<c>` (the closest cheap proxy to "which columns
+    are filled how deep" without hand-deriving the exact predicate). 34
+    parameters total, the smallest gradient-fit configuration tried in this
+    file besides the plain scalar biases. Trained to convergence (loss
+    1.019→0.019, 15 Adam iterations, 63 positions): exhaustive referee
+    **36** total errors (24 O-losing, 12 missed, X still perfect) — a real
+    improvement over the full Neural ODE's best case (118), but worse than
+    the untied 3-scalar baseline (8) and squarely in finding 7's
+    Goodhart-prone range (34-50), not near lookahead's 5-6.
+
+    The likely reason is a design choice flagged as a risk before running
+    it, now confirmed: the feature set is *global*, identical for every
+    transition sharing a RateFunc regardless of which specific column that
+    transition acts on. A `blk_*` transition for column 2 and one for
+    column 0 see the exact same 16-place reading and can only respond to it
+    through the same shared weight vector — the model can express "the
+    board is generally fuller/emptier" but not "my own column specifically
+    is close to opening," which is the part of finding 6's future-support
+    predicate a per-transition-relevant feature (e.g. that transition's own
+    column's fill state) would need. That's a concrete, testable next step
+    — untie per-column or make the feature relative to the acting
+    transition's own column instead of global — not attempted here given
+    the cost already spent (this run took a little over 2 hours in a
+    container: ~1h20m to fit, the rest on the exhaustive referee's live,
+    uncached rate evaluation). The finding stands regardless of what a
+    better feature set might do: *this* hybrid, with *this* feature choice,
+    did not beat anything already on the board, which is itself useful
+    evidence that "give it board state and let regression figure out
+    what matters" is not sufficient on its own — the feature has to be
+    locally relevant to the transition reading it, the same lesson finding
+    7's grouping schemes ran into from the tuning side.
 
 ## Resolution
 
@@ -347,3 +390,15 @@ free, correct prior about which cells interact through which win-lines, and
 an unconstrained function approximator has to spend data learning what the
 declared structure never had to guess at — data this small, bounded game
 does not have enough of to give up.
+
+Finding 12 completes the square this experiment set out to fill: pure
+structure (findings 1-10), pure tuning-of-structure (finding 7, fails),
+pure black box (finding 11, fails worse), and structure-plus-regression
+(finding 12, the genuine middle ground go-pflow's `learn.LinearRateFunc`
+already supports end to end). It did not win — 36 errors, in finding 7's
+range, not lookahead's — but it failed for a legible, fixable reason (a
+global feature shared identically across every transition in a family,
+when the missing predicate is inherently per-transition-local), not an
+opaque one. That is a meaningfully different kind of negative result than
+finding 11's: the middle ground is real and the tooling for it works, this
+particular feature choice inside it just wasn't the right one.

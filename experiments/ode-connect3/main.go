@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 func boardKey(mk marking) string {
@@ -261,6 +262,46 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
 		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
+	case "debug-hybrid-one":
+		net, rfs, _, _, repWin, repBlk := m.toHybridRateNet()
+		positions := collectPositions(m, 5, 7)
+		fmt.Printf("positions=%d\n", len(positions))
+		worst := time.Duration(0)
+		worstDesc := ""
+		total := time.Duration(0)
+		n := 0
+		for pi, p := range positions {
+			for _, mv := range p.moves {
+				start := time.Now()
+				_, _, _, _, ok := hybridScoreGrad(m, net, rfs, repWin, repBlk, m.fire(mv, p.mk), 1.0, p.maximizes)
+				d := time.Since(start)
+				total += d
+				n++
+				if d > worst {
+					worst, worstDesc = d, fmt.Sprintf("pos=%d mv=%s ok=%v", pi, mv, ok)
+				}
+				if d > 3*time.Second {
+					fmt.Printf("  SLOW: pos=%d mv=%s took %v (ok=%v)\n", pi, mv, d, ok)
+				}
+			}
+		}
+		fmt.Printf("n=%d total=%v avg=%v worst=%v (%s)\n", n, total, total/time.Duration(n), worst, worstDesc)
+		return
+	case "fit-hybrid":
+		games, iters := 30, 100
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-hybrid: training positions: %d\n", len(positions))
+		net, rfs, winRF, blkRF, lam := fitHybridRate(m, positions, iters, true)
+		fmt.Printf("fitted: lambda %.4f\n", lam)
+		fmt.Printf("win  params: bias %.4f  board-weight L2 norm %.4f\n", winRF.GetParams()[0], l2Norm(winRF.GetParams()[1:]))
+		fmt.Printf("blk  params: bias %.4f  board-weight L2 norm %.4f\n", blkRF.GetParams()[0], l2Norm(blkRF.GetParams()[1:]))
+		printReferee(m, "hybrid", hybridPlayer(net, rfs, lam))
 	case "check-neuralode-grad":
 		rng := rand.New(rand.NewSource(1))
 		fmt.Printf("max |analytic - finite-diff| gradient error: %.3e\n", checkNeuralGrad(rng))
