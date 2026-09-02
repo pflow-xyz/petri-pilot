@@ -203,6 +203,22 @@ acceptance condition does not. The calibrated plain ODE is exact-safe on
     stops being adversarial to the referee and starts being a mild, honest
     improvement again.
 
+    A same-shape run at depth 2 does **not** continue this trend: `fit-deep 2
+    15 25` (a reduced budget — 104 positions, 25 iterations, vs. depth 1's
+    197/50 — chosen to keep the container run under an hour, since 2-ply
+    solves cost roughly 4x depth 1's) landed at **8** total errors (8
+    O-losing, 0 missed, X still perfect) — worse than plain 2-ply lookahead
+    with no tuning (5) and worse than depth-1's tuned result (6). Depth and
+    training budget both changed between these two runs, so this does not
+    cleanly show "tuning fights deeper search" — it may simply be
+    under-converged (25 iterations on roughly half the positions) rather
+    than a real regression from depth. Disambiguating would need a
+    matched-budget depth-2 run (197 positions, 50 iterations), which
+    extrapolates to several hours at this per-solve cost; not run here.
+    Recorded as an open question rather than a confirmed finding: depth
+    alone helps monotonically (finding 9), and depth-1 tuning helps (above),
+    but depth-2 tuning's sign is not yet known cleanly.
+
 **A note on how these last three findings were run.** The exhaustive
 referee's fixed-binary determinism (finding 8's caveat) turned out not to be
 the only stability concern — background shell processes for the longer
@@ -239,12 +255,15 @@ for future support/gravity-depth, not a finer-grained rate on the current
 one — not a longer tuning run.
 
 Findings 8-10 answer the question that came after: given tuning alone
-doesn't work, does search? Yes, and it composes with tuning rather than
-fighting it once given something real to tune. The error count moved
-monotonically with search depth (naive 8 → 1-ply 7 → 2-ply 5) and tuning
-*on top of* one-ply search improved it further to 6 without any Goodhart
-symptom — the opposite of finding 7's tuning-on-a-flat-evaluator result. This
-doesn't reach 0 either, and the remaining errors at every depth tried are
+doesn't work, does search? Yes: the error count moved monotonically with
+search depth alone (naive 8 → 1-ply 7 → 2-ply 5, no new tuning at either
+step), which finding 7's tuning never achieved. Tuning *on top of* one-ply
+search also helped (7→6) without any Goodhart symptom — the opposite of
+finding 7's tuning-on-a-flat-evaluator result — but the same combination at
+two plies did not (5→8, confounded with a smaller training budget, not run
+to convergence); read that as depth doing the real work here, with tuning's
+contribution on top of it still unsettled past one ply. This doesn't reach 0
+either, and the remaining errors at every depth tried are
 still the future-support class finding 6 named — search is buying the same
 thing finding 6 asked for (seeing further into the game), just less
 efficiently than a dedicated structural predicate would. The honest reading:
