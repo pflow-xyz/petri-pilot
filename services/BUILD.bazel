@@ -4,6 +4,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 # read them as test data (the tests read the JSON from disk via a relative path
 # rather than the embedded copy).
 exports_files([
+    "coffeeshop.json",
     "tic-tac-toe.json",
     "vet-clinic.json",
 ])
