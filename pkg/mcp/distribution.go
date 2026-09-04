@@ -14,6 +14,8 @@ import (
 	"github.com/fogleman/gg"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/pflow-xyz/go-pflow/solver"
+
+	"github.com/pflow-xyz/petri-pilot/pkg/runtime/sim"
 )
 
 // petri_distribution runs N stochastic paths (SDE or SSA) and renders the
@@ -141,12 +143,8 @@ func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 
 	// Initial state from the model.
 	initial := map[string]float64{}
-	initialInt := []int{}
-	placeIdx := map[string]int{}
-	for i, p := range model.Places {
+	for _, p := range model.Places {
 		initial[p.ID] = float64(p.Initial)
-		initialInt = append(initialInt, p.Initial)
-		placeIdx[p.ID] = i
 	}
 	net := buildOdeNet(model)
 
@@ -192,15 +190,18 @@ func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 			finals = append(finals, out[observable][0])
 		}
 	case "ssa":
-		transitions := buildTransitionEntries(model, placeIdx, rates)
-		obsIdx := placeIdx[observable]
-		samples := []float64{tspan[1]} // record only final time
 		for p := 0; p < paths; p++ {
 			sub := rng.Int63()
-			// nil: this tool reports the distribution of one observable, and
-			// has no field to carry a contention report even if it measured one.
-			out := runSSA(initialInt, transitions, len(initialInt), samples, sub, nil)
-			finals = append(finals, out[obsIdx][0])
+			out, serr := sim.Simulate(model, nil, sim.Options{
+				Horizon: tspan[1] - tspan[0],
+				Samples: 2, // only the final time matters here
+				Rates:   rates,
+				Seed:    sub,
+			})
+			if serr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("simulate: %v", serr)), nil
+			}
+			finals = append(finals, out.Final[observable])
 		}
 	}
 

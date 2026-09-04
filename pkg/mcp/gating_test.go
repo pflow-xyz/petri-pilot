@@ -1,10 +1,12 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 )
 
@@ -109,79 +111,104 @@ func TestCaveatsAreAddedOnlyForGatedModels(t *testing.T) {
 	}
 }
 
-// TestStochasticHonoursGating: the discrete engine has a firing instant, so
-// unlike the ODE it can enforce all of this exactly. It simply was not.
+// TestStochasticHonoursGating is a black-box regression test through the
+// petri_stochastic tool itself, not through the engine's internals: the
+// engine is go-pflow's stochastic package via pkg/runtime/sim (see
+// stochastic.go), and its gating is already pinned at the algorithm level by
+// go-pflow's own gating_test.go/kinetic_test.go and by
+// pkg/runtime/sim.TestSSAAgreesWithTheSharedRule. What this test protects is
+// the wiring at this call site — that handleStochastic actually reaches that
+// engine and does not silently fall back to some other rule.
 func TestStochasticHonoursGating(t *testing.T) {
-	m := gatedModel()
-	places := []string{}
-	idx := map[string]int{}
-	for _, p := range m.Places {
-		idx[p.ID] = len(places)
-		places = append(places, p.ID)
-	}
-	rates := map[string]float64{"serve": 5, "refill": 5}
-
-	t.Run("read arc gates and is not consumed", func(t *testing.T) {
-		entries := buildTransitionEntries(m, idx, rates)
-		serve := entryByID(t, entries, "serve")
-		for _, in := range serve.inputs {
-			if places[in.placeIdx] == "licence" {
-				t.Fatal("licence is an input to serve; a read arc must not be consumed")
+	variant := func(licence, closedSign, hopperInitial int) *goflowmetamodel.Model {
+		m := gatedModel()
+		for i := range m.Places {
+			switch m.Places[i].ID {
+			case "licence":
+				m.Places[i].Initial = licence
+			case "closed_sign":
+				m.Places[i].Initial = closedSign
+			case "hopper":
+				m.Places[i].Initial = hopperInitial
 			}
 		}
-		if len(serve.reads) != 1 || places[serve.reads[0].placeIdx] != "licence" {
-			t.Fatalf("serve does not read licence: %+v", serve.reads)
+		return m
+	}
+
+	run := func(t *testing.T, m *goflowmetamodel.Model) stochasticResponse {
+		t.Helper()
+		req := mcp.CallToolRequest{}
+		req.Params.Name = "petri_stochastic"
+		req.Params.Arguments = map[string]any{
+			"model":   mustJSON(t, m),
+			"rates":   `{"serve": 5, "refill": 5}`,
+			"tspan":   "[0, 5]",
+			"samples": 60,
+			"seed":    42,
+		}
+		res, err := handleStochastic(context.Background(), req)
+		if err != nil {
+			t.Fatalf("handleStochastic: %v", err)
+		}
+		if res.IsError {
+			t.Fatalf("error: %s", textBlock(t, res))
+		}
+		var resp stochasticResponse
+		if err := json.Unmarshal([]byte(textBlock(t, res)), &resp); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return resp
+	}
+
+	t.Run("read arc gates and is not consumed", func(t *testing.T) {
+		without := run(t, variant(0, 0, 0))
+		for _, v := range without.Mean["done"] {
+			if v != 0 {
+				t.Fatalf("serve fired with no licence: done = %v", without.Mean["done"])
+			}
+		}
+		for _, v := range without.Mean["licence"] {
+			if v != 0 {
+				t.Fatalf("a read arc consumed licence: %v", without.Mean["licence"])
+			}
 		}
 
-		marking := make([]int, len(places))
-		marking[idx["licence"]] = 0
-		if serve.gated(marking) {
-			t.Error("serve is enabled with no licence")
+		with := run(t, variant(1, 0, 0))
+		last := with.Mean["done"][len(with.Mean["done"])-1]
+		if last == 0 {
+			t.Fatal("serve never fired with a licence present")
 		}
-		marking[idx["licence"]] = 1
-		if !serve.gated(marking) {
-			t.Error("serve is blocked with a licence present")
+		for _, v := range with.Mean["licence"] {
+			if v != 1 {
+				t.Fatalf("a read arc consumed licence: %v", with.Mean["licence"])
+			}
 		}
 	})
 
 	t.Run("inhibitor blocks rather than feeds", func(t *testing.T) {
-		entries := buildTransitionEntries(m, idx, rates)
-		serve := entryByID(t, entries, "serve")
-		for _, out := range serve.outputs {
-			if places[out.placeIdx] == "closed_sign" {
-				t.Fatal("closed_sign is an output of serve; an inhibitor is not a production")
+		blocked := run(t, variant(1, 1, 0))
+		for _, v := range blocked.Mean["done"] {
+			if v != 0 {
+				t.Fatalf("serve fired while the shop is closed: done = %v", blocked.Mean["done"])
 			}
 		}
-		marking := make([]int, len(places))
-		marking[idx["licence"]] = 1
-		marking[idx["closed_sign"]] = 1
-		if serve.gated(marking) {
-			t.Error("serve fired while the shop is closed")
+		for _, v := range blocked.Mean["closed_sign"] {
+			if v != 1 {
+				t.Fatalf("the inhibitor fed the transition it blocks: closed_sign = %v", blocked.Mean["closed_sign"])
+			}
 		}
 	})
 
 	t.Run("capacity is a post-firing bound", func(t *testing.T) {
-		entries := buildTransitionEntries(m, idx, rates)
-		refill := entryByID(t, entries, "refill")
-		marking := make([]int, len(places))
-		marking[idx["hopper"]] = 3
-		if refill.gated(marking) {
-			t.Error("refill would push the hopper over its capacity")
+		resp := run(t, variant(0, 0, 0))
+		for _, v := range resp.Mean["hopper"] {
+			if v > 3 {
+				t.Fatalf("hopper exceeded its capacity of 3: %v", resp.Mean["hopper"])
+			}
 		}
-		marking[idx["hopper"]] = 2
-		if !refill.gated(marking) {
-			t.Error("refill blocked with room to spare")
+		last := resp.Mean["hopper"][len(resp.Mean["hopper"])-1]
+		if last < 3 {
+			t.Fatalf("refill stopped well short of the capacity it could still fill: hopper = %v", last)
 		}
 	})
-}
-
-func entryByID(t *testing.T, entries []transitionEntry, id string) *transitionEntry {
-	t.Helper()
-	for i := range entries {
-		if entries[i].id == id {
-			return &entries[i]
-		}
-	}
-	t.Fatalf("no transition %q", id)
-	return nil
 }

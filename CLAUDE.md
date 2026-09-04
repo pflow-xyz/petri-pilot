@@ -402,11 +402,14 @@ every static claim about the net.
 
 Before it existed, five implementations disagreed. `pkg/mcp/simulate.go` and the
 bundle setup search were right; `pkg/runtime/sim`'s SSA **dropped** read and
-inhibitor arcs, and `pkg/mcp/stochastic.go` and `buildOdeNet` **consumed** them —
-turning a read arc into a drain and an inhibitor into a *source* feeding the
-transition it blocks. `buildOdeNet` is shared by twelve tools, so one line
-mis-modelled every gated net across the whole analytic surface, silently and in
-the same direction each time. Nothing compared them, so nothing failed.
+inhibitor arcs, and `pkg/mcp/stochastic.go` (then its own copy of the same loop)
+and `buildOdeNet` **consumed** them — turning a read arc into a drain and an
+inhibitor into a *source* feeding the transition it blocks. `buildOdeNet` is
+shared by twelve tools, so one line mis-modelled every gated net across the
+whole analytic surface, silently and in the same direction each time. Nothing
+compared them, so nothing failed. `pkg/mcp/stochastic.go`'s copy is gone now —
+`petri_stochastic` calls `sim.Simulate` (pkg/runtime/sim) directly, so there is
+one SSA engine in this repo, not two.
 
 **Never re-derive it from `arc.From`/`arc.To`.** Classify through `Inputs`,
 `Outputs` and `Tests`; index-address the result if the inner loop needs speed
@@ -466,8 +469,9 @@ how the composed app came to ship with no simulation at all.
   so a resource consumed exactly as fast as it is supplied is invisible to it.
   The café shipped in that state on milk (990 units an hour of demand against
   1000 of supply) and a run reported eight idle baristas losing half the trade,
-  an empty `Depleted`, and nothing anywhere naming the cause. Both SSA engines
-  report it; `pkg/mcp/stochastic.go` carries the same rule under `contended`.
+  an empty `Depleted`, and nothing anywhere naming the cause. `pkg/runtime/sim`
+  reports it, and `petri_stochastic` reports the same `sim.Contention` values
+  under `contended` — one engine, read by both.
   **A scheduled run reports it too**, over one ledger merged across every
   segment. It has to be merged rather than assembled from the segments' own:
   a segment's fractions are shares of that segment, so a two-hour rush's 100%
@@ -507,9 +511,9 @@ barista pool in the product, two drinks in progress made *both* finish twice as
 fast, and a drink was favoured over its neighbour for using more milk. An arc
 marked `"kinetic": false` (go-pflow `Arc.Kinetic`, absent means true, so every
 existing model is byte-identical) still gates the firing and is still consumed by
-it — it just leaves the product. Both SSA engines honour it (`pkg/runtime/sim`
-and `pkg/mcp/stochastic.go`, which are separate copies of the propensity loop;
-change them together).
+it — it just leaves the product. `pkg/runtime/sim` honours it, and
+`petri_stochastic` (`pkg/mcp/stochastic.go`) gets it for free by calling into
+the same engine rather than carrying its own copy of the propensity loop.
 
 The queue is one of these too, and less obviously. `pending_X -> start_X` kinetic
 meant a waiting order was picked up at 60/h *per waiting customer* against

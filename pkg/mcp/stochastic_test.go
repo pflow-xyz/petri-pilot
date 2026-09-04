@@ -95,26 +95,6 @@ func TestStochastic_MultipleRealizations(t *testing.T) {
 	}
 }
 
-func TestStochastic_Combinations(t *testing.T) {
-	cases := []struct {
-		m, w int
-		want float64
-	}{
-		{0, 1, 0},
-		{1, 1, 1},
-		{5, 1, 5},
-		{5, 2, 10}, // C(5, 2) = 10
-		{5, 3, 10}, // C(5, 3) = 10
-		{10, 0, 1},
-	}
-	for _, c := range cases {
-		got := combinations(c.m, c.w)
-		if got != c.want {
-			t.Errorf("combinations(%d, %d) = %v, want %v", c.m, c.w, got, c.want)
-		}
-	}
-}
-
 func TestStochastic_Reproducible(t *testing.T) {
 	// Same seed should produce identical realizations.
 	args := map[string]any{
@@ -199,7 +179,7 @@ func TestStochastic_ReportsWhatTheRunWasWaitingFor(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	var stock *contendedPlace
+	var stock *sim.Contention
 	for i := range resp.Contended {
 		if resp.Contended[i].Place == "stock" {
 			stock = &resp.Contended[i]

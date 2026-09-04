@@ -8,12 +8,9 @@ import (
 	"fmt"
 	"image/png"
 	"math"
-	"math/rand"
-	"sort"
 
 	"github.com/fogleman/gg"
 	"github.com/mark3labs/mcp-go/mcp"
-	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
 
 	"github.com/pflow-xyz/petri-pilot/pkg/runtime/sim"
 )
@@ -38,6 +35,12 @@ import (
 //
 // With n_realizations > 1, runs are independent replicates whose mean and
 // ±stdev band are plotted alongside the underlying trajectories.
+//
+// The engine itself is sim.Simulate (pkg/runtime/sim, a thin wrapper over
+// go-pflow's stochastic package) — this file used to carry a second,
+// independent copy of the same loop, seeded and gated differently from
+// every other engine in this repo. See go-pflow/stochastic/stochastic.go
+// and pkg/runtime/sim/sim.go for the algorithm and the DSL guard injection.
 
 func stochasticTool() mcp.Tool {
 	return mcp.NewTool("petri_stochastic",
@@ -79,204 +82,17 @@ type stochasticResponse struct {
 	Mean         map[string][]float64 `json:"mean"`
 	Stdev        map[string][]float64 `json:"stdev,omitempty"`
 	FinalMean    map[string]float64   `json:"finalMean"`
-	Contended    []contendedPlace     `json:"contended,omitempty"`
-	Explanation  string               `json:"explanation,omitempty"`
-}
-
-// contendedPlace reports how much of the run a place spent being the only thing
-// standing between a transition and firing.
-//
-// A trajectory shows what happened; this says what stopped happening, which is
-// the question anyone running this tool on a capacity model is really asking. A
-// mean that sits at a comfortable level all run is not evidence a place is
-// plentiful: a resource consumed exactly as fast as it is delivered is refilled
-// and drained all day and never looks short in the plot. The café shipped in
-// that state on milk, and the only visible symptom was an arithmetic
-// contradiction elsewhere — idle servers alongside heavy loss.
-//
-// Fraction is a share of the horizon, over every realization, in which this
-// place was short while everything else Blocking's transitions needed was
-// present. Places short of nothing much are left out entirely (see
-// minContention); a work queue with no work in it will legitimately appear —
-// and Kind is what stops that being read as a bottleneck.
-type contendedPlace struct {
-	Place    string  `json:"place"`
-	Fraction float64 `json:"fraction"`
-	// Kind says whether waiting on this place is a capacity finding
-	// ("conserved" — a fixed pool whose size was set once, such as staff;
-	// "bounded" — a shelf with a declared capacity, such as stock) or something
-	// that claims nothing: "queue" (unbounded and fed by the net's own flow, so
-	// an empty one means the work has not arrived) and "state" (a conserved
-	// marker whose tokens serve nothing, such as a stoplight's colour). An empty queue is
-	// the opposite of a bottleneck, so capacity kinds sort ahead of every queue
-	// however large the fractions: on the café the three emptiest order queues
-	// read 80-90% while the staff pool that actually decided throughput read
-	// 26%, and a caller ranking on fraction alone was told the shop's idleness
-	// was its constraint. See sim.SupplyKind.
-	Kind     sim.SupplyKind `json:"kind"`
-	Blocking []string       `json:"blocking"`
-}
-
-// minContention keeps the list an answer rather than an inventory: over a long
-// enough run almost every place is briefly short of something.
-const minContention = 0.01
-
-// shortages accumulates the blocked-time bookkeeping across realizations. The
-// rule it implements is the same one pkg/runtime/sim uses, deliberately: two
-// engines that report different constraints for one model is the failure both
-// files' comments were written about.
-type shortages struct {
-	waited     []float64
-	holding    []map[string]bool
-	candidates []int
-	seen       []bool
-}
-
-func newShortages(nPlaces int) *shortages {
-	return &shortages{
-		waited:  make([]float64, nPlaces),
-		holding: make([]map[string]bool, nPlaces),
-		seen:    make([]bool, nPlaces),
-	}
-}
-
-// note records that place is the sole unmet input of transition id at the
-// current marking. One short place commonly holds up several transitions, so it
-// is credited once per step however many it blocks.
-func (s *shortages) note(place int, id string) {
-	if s.holding[place] == nil {
-		s.holding[place] = map[string]bool{}
-	}
-	s.holding[place][id] = true
-	if !s.seen[place] {
-		s.seen[place] = true
-		s.candidates = append(s.candidates, place)
-	}
-}
-
-func (s *shortages) credit(dt float64) {
-	for _, p := range s.candidates {
-		s.waited[p] += dt
-		s.seen[p] = false
-	}
-	s.candidates = s.candidates[:0]
-}
-
-// report ranks the shortages. Capacity constraints come first and the longest
-// wait first within each kind — same order pkg/runtime/sim produces, from the
-// same classification, because two engines disagreeing about what a model is
-// limited by is the failure this file's comments are about.
-func (s *shortages) report(m *goflowmetamodel.Model, labels []string, totalTime float64) []contendedPlace {
-	if totalTime <= 0 {
-		return nil
-	}
-	kinds := sim.ClassifySupply(m)
-	var out []contendedPlace
-	for i, label := range labels {
-		f := s.waited[i] / totalTime
-		if f < minContention {
-			continue
-		}
-		held := make([]string, 0, len(s.holding[i]))
-		for id := range s.holding[i] {
-			held = append(held, id)
-		}
-		sort.Strings(held)
-		kind := kinds[label]
-		if kind == "" {
-			kind = sim.SupplyQueue
-		}
-		out = append(out, contendedPlace{Place: label, Fraction: f, Kind: kind, Blocking: held})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		ci, cj := out[i].Kind.IsCapacity(), out[j].Kind.IsCapacity()
-		if ci != cj {
-			return ci
-		}
-		if out[i].Fraction != out[j].Fraction {
-			return out[i].Fraction > out[j].Fraction
-		}
-		return out[i].Place < out[j].Place
-	})
-	return out
-}
-
-// soleShortInput returns the index of the only input place this transition is
-// short of, or -1 when it is short of none or of more than one. With two things
-// missing neither is the reason the firing did not happen.
-func (e *transitionEntry) soleShortInput(marking []int) int {
-	short := -1
-	for _, in := range e.inputs {
-		if marking[in.placeIdx] >= in.weight {
-			continue
-		}
-		if short >= 0 {
-			return -1
-		}
-		short = in.placeIdx
-	}
-	return short
-}
-
-// transitionEntry holds the pre-indexed input/output arcs for one
-// transition, in terms of place indices in a stable order. Used by the SSA
-// inner loop so we don't keep doing map lookups per step.
-type transitionEntry struct {
-	id      string
-	rate    float64
-	inputs  []arcEntry
-	outputs []arcEntry
-
-	// Constraints that decide enablement without moving tokens. Unlike the
-	// continuous solver, a discrete engine has a firing instant and so can
-	// honour all of these exactly — this tool was simply not doing it, and
-	// treated a read arc as an input and an inhibitor as a *source*.
-	reads    []arcEntry
-	inhibits []arcEntry
-	caps     []capEntry
-}
-
-type arcEntry struct {
-	placeIdx int
-	weight   int
-
-	// kinetic reports whether this input belongs in the rate law as well as in
-	// the enablement test. A non-kinetic input is a prerequisite, not an
-	// accelerant: it gates the firing and is consumed by it, but does not scale
-	// how often it happens. Mass action over every input is right for chemistry
-	// and wrong for a service system — a barista is not a reactant, and a full
-	// pantry does not make a drink pour faster.
-	kinetic bool
-}
-
-// capEntry is a post-firing capacity bound: firing raises placeIdx by delta,
-// and the place may not end above limit.
-type capEntry struct {
-	placeIdx int
-	delta    int
-	limit    int
-}
-
-// gated reports whether the non-consuming constraints allow this transition to
-// fire. Consuming arcs are checked by the propensity loop, which needs the
-// counts anyway.
-func (e *transitionEntry) gated(marking []int) bool {
-	for _, r := range e.reads {
-		if marking[r.placeIdx] < r.weight {
-			return false
-		}
-	}
-	for _, h := range e.inhibits {
-		if marking[h.placeIdx] >= h.weight {
-			return false
-		}
-	}
-	for _, c := range e.caps {
-		if marking[c.placeIdx]+c.delta > c.limit {
-			return false
-		}
-	}
-	return true
+	// Contended reports how much of the run a place spent being the only
+	// thing standing between a transition and firing — what stopped
+	// happening, not what happened. See sim.Contention and
+	// sim.ClassifySupply: Fraction is a share of the horizon, over every
+	// realization, that this place was the sole unmet input while
+	// everything else Blocking's transitions needed was present, and Kind
+	// ranks a capacity finding ("conserved"/"bounded") ahead of an idle
+	// queue however large its fraction — an empty queue is the opposite of
+	// a bottleneck.
+	Contended   []sim.Contention `json:"contended,omitempty"`
+	Explanation string           `json:"explanation,omitempty"`
 }
 
 func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -289,6 +105,9 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if len(model.Transitions) == 0 {
+		return mcp.NewToolResultError("model has no transitions"), nil
+	}
 
 	rates := map[string]float64{}
 	for _, t := range model.Transitions {
@@ -341,71 +160,37 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	}
 	seed := int64(request.GetInt("seed", 42))
 
-	// Build stable place ordering and look-up table.
-	placeIdx := map[string]int{}
 	stateLabels := make([]string, len(model.Places))
-	initialMarking := make([]int, len(model.Places))
 	for i, p := range model.Places {
-		placeIdx[p.ID] = i
 		stateLabels[i] = p.ID
-		initialMarking[i] = p.Initial
 	}
 
-	// Pre-index transitions with arc lookups in place-index form.
-	transitions := buildTransitionEntries(model, placeIdx, rates)
-	if len(transitions) == 0 {
-		return mcp.NewToolResultError("model has no transitions"), nil
+	res, err := sim.Simulate(model, nil, sim.Options{
+		Horizon:      tspan[1] - tspan[0],
+		Samples:      samples,
+		Rates:        rates,
+		Seed:         seed,
+		Realizations: realizations,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("simulate: %v", err)), nil
 	}
 
-	// Time grid for sampling — all realizations record values at the same
-	// grid points so we can compute mean/stdev cleanly.
-	times := make([]float64, samples)
-	for i := 0; i < samples; i++ {
-		times[i] = tspan[0] + (tspan[1]-tspan[0])*float64(i)/float64(samples-1)
+	// sim.Simulate always starts its own clock at 0; shift its grid by the
+	// caller's t0 so a nonzero tspan[0] still reads as wall-clock time. The
+	// dynamics themselves do not depend on when the clock started.
+	times := make([]float64, len(res.Times))
+	for i, t := range res.Times {
+		times[i] = t + tspan[0]
 	}
 
-	// Run all realizations. trajectories[r][p][t] = marking of place p at
-	// time t in realization r.
-	trajectories := make([][][]float64, realizations)
-	rng := rand.New(rand.NewSource(seed))
-	short := newShortages(len(stateLabels))
-	for r := 0; r < realizations; r++ {
-		// Each realization uses an independent stream derived from the
-		// master seed so the result is reproducible across runs.
-		subSeed := rng.Int63()
-		trajectories[r] = runSSA(initialMarking, transitions, len(stateLabels), times, subSeed, short)
-	}
-
-	// Aggregate: mean and stdev per (place, time).
-	mean := make(map[string][]float64, len(stateLabels))
-	stdev := make(map[string][]float64, len(stateLabels))
-	for p, label := range stateLabels {
-		m := make([]float64, samples)
-		s := make([]float64, samples)
-		for t := 0; t < samples; t++ {
-			sum := 0.0
-			for r := 0; r < realizations; r++ {
-				sum += trajectories[r][p][t]
-			}
-			m[t] = sum / float64(realizations)
-			if realizations > 1 {
-				ss := 0.0
-				for r := 0; r < realizations; r++ {
-					d := trajectories[r][p][t] - m[t]
-					ss += d * d
-				}
-				s[t] = math.Sqrt(ss / float64(realizations-1))
-			}
+	mean := make(map[string][]float64, len(res.Series))
+	stdev := make(map[string][]float64, len(res.Series))
+	for _, s := range res.Series {
+		mean[s.Place] = s.Values
+		if len(s.StdDev) > 0 {
+			stdev[s.Place] = s.StdDev
 		}
-		mean[label] = m
-		if realizations > 1 {
-			stdev[label] = s
-		}
-	}
-
-	finalMean := map[string]float64{}
-	for label, vals := range mean {
-		finalMean[label] = vals[len(vals)-1]
 	}
 
 	resp := stochasticResponse{
@@ -416,8 +201,8 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		Times:        times,
 		Mean:         mean,
 		Stdev:        stdev,
-		FinalMean:    finalMean,
-		Contended:    short.report(model, stateLabels, (tspan[1]-tspan[0])*float64(realizations)),
+		FinalMean:    res.Final,
+		Contended:    res.Contended,
 	}
 
 	if request.GetBool("verbose", false) {
@@ -430,229 +215,16 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		return mcp.NewToolResultError(fmt.Sprintf("marshal response: %v", err)), nil
 	}
 
-	if pngBytes, perr := renderStochasticPNG(resp, variables, trajectories, placeIdx); perr == nil {
+	if pngBytes, perr := renderStochasticPNG(resp, variables); perr == nil {
 		return mcp.NewToolResultImage(string(text), base64.StdEncoding.EncodeToString(pngBytes), "image/png"), nil
 	}
 	return mcp.NewToolResultText(string(text)), nil
 }
 
-// buildTransitionEntries precomputes per-transition arc indices so the SSA
-// inner loop can compute propensities without map lookups.
-// buildTransitionEntries precomputes per-transition arc indices so the SSA
-// inner loop can compute propensities without map lookups.
-//
-// The classification comes from metamodel's firing rule rather than being
-// re-derived from arc.From/arc.To here. That is the whole point: this function
-// used to sort arcs itself and got read and inhibitor arcs exactly backwards,
-// while three other engines in the same two repos got them right.
-func buildTransitionEntries(model *goflowmetamodel.Model, placeIdx map[string]int, rates map[string]float64) []transitionEntry {
-	limits := map[string]int{}
-	for i := range model.Places {
-		if p := &model.Places[i]; p.IsToken() && p.Capacity > 0 {
-			limits[p.ID] = p.Capacity
-		}
-	}
-
-	out := make([]transitionEntry, 0, len(model.Transitions))
-	for _, t := range model.Transitions {
-		e := transitionEntry{id: t.ID, rate: rates[t.ID]}
-		delta := map[string]int{}
-
-		for _, in := range model.Inputs(t.ID) {
-			if idx, ok := placeIdx[in.Place]; ok {
-				e.inputs = append(e.inputs, arcEntry{placeIdx: idx, weight: in.Weight, kinetic: in.Kinetic})
-				delta[in.Place] -= in.Weight
-			}
-		}
-		for _, o := range model.Outputs(t.ID) {
-			if idx, ok := placeIdx[o.Place]; ok {
-				// kinetic is carried for uniformity; it means nothing on an
-				// output or a test arc, neither of which is ever in a rate law.
-				e.outputs = append(e.outputs, arcEntry{placeIdx: idx, weight: o.Weight, kinetic: o.Kinetic})
-				delta[o.Place] += o.Weight
-			}
-		}
-		for _, test := range model.Tests(t.ID) {
-			idx, ok := placeIdx[test.Place]
-			if !ok {
-				continue
-			}
-			a := arcEntry{placeIdx: idx, weight: test.Weight, kinetic: test.Kinetic}
-			if test.Type == goflowmetamodel.InhibitorArc {
-				e.inhibits = append(e.inhibits, a)
-			} else {
-				e.reads = append(e.reads, a)
-			}
-		}
-		// Only a net increase can breach a bound, netted against what the same
-		// firing consumes — so a full place still admits a self-loop.
-		for place, limit := range limits {
-			idx, ok := placeIdx[place]
-			if d := delta[place]; ok && d > 0 {
-				e.caps = append(e.caps, capEntry{placeIdx: idx, delta: d, limit: limit})
-			}
-		}
-		sort.Slice(e.caps, func(i, j int) bool { return e.caps[i].placeIdx < e.caps[j].placeIdx })
-
-		out = append(out, e)
-	}
-	return out
-}
-
-// runSSA executes one Gillespie realization, recording markings at every
-// time in samples. Returns trajectories[placeIdx][sampleIdx].
-func runSSA(initial []int, transitions []transitionEntry, nPlaces int, samples []float64, seed int64, short *shortages) [][]float64 {
-	rng := rand.New(rand.NewSource(seed))
-	if short != nil {
-		short.credit(0) // a run cut short by maxSteps leaves scratch behind
-	}
-	marking := make([]int, nPlaces)
-	copy(marking, initial)
-
-	trajectories := make([][]float64, nPlaces)
-	for i := range trajectories {
-		trajectories[i] = make([]float64, len(samples))
-	}
-
-	t := samples[0]
-	nextSample := 0
-	// Pre-fill samples at t=samples[0] with the initial state.
-	for nextSample < len(samples) && samples[nextSample] <= t {
-		for p := 0; p < nPlaces; p++ {
-			trajectories[p][nextSample] = float64(marking[p])
-		}
-		nextSample++
-	}
-
-	tEnd := samples[len(samples)-1]
-	const maxSteps = 1_000_000
-
-	for step := 0; step < maxSteps && t < tEnd; step++ {
-		// Compute propensities.
-		totalRate := 0.0
-		propensities := make([]float64, len(transitions))
-		for i, tr := range transitions {
-			a := tr.rate
-			enabled := true
-			for _, in := range tr.inputs {
-				m := marking[in.placeIdx]
-				if m < in.weight {
-					enabled = false
-					break
-				}
-				// Combinatorial selection: C(m, w), for kinetic inputs only.
-				if in.kinetic {
-					a *= combinations(m, in.weight)
-				}
-			}
-			// Read arcs, inhibitors and capacity decide enablement without
-			// appearing in the propensity: a blocked transition has rate zero,
-			// it does not merely fire more slowly. A non-kinetic input is the
-			// third case — enabled by it, consumed from it, not sped up by it.
-			if !enabled || !transitions[i].gated(marking) {
-				a = 0
-			}
-			propensities[i] = a
-			totalRate += a
-
-			// Why this transition is not firing, when it is not. Only the
-			// consuming arcs are attributed: a read arc or an inhibitor is the
-			// model refusing outright, not a shortage anyone can go and fix.
-			if a == 0 && short != nil {
-				if p := transitions[i].soleShortInput(marking); p >= 0 && transitions[i].gated(marking) {
-					short.note(p, transitions[i].id)
-				}
-			}
-		}
-		if totalRate <= 0 {
-			// Dead state — no transition can fire, and no amount of time
-			// changes that, so the rest of the horizon was spent waiting for
-			// whatever is short.
-			if short != nil {
-				short.credit(tEnd - t)
-			}
-			break
-		}
-
-		// Time to next event ~ Exp(totalRate).
-		u := rng.Float64()
-		if u <= 0 {
-			u = 1e-300
-		}
-		dt := -math.Log(u) / totalRate
-		if short != nil {
-			short.credit(math.Min(dt, tEnd-t))
-		}
-		t += dt
-
-		// Record any sample points we crossed at the pre-firing marking.
-		for nextSample < len(samples) && samples[nextSample] <= t {
-			for p := 0; p < nPlaces; p++ {
-				trajectories[p][nextSample] = float64(marking[p])
-			}
-			nextSample++
-		}
-		if t > tEnd {
-			break
-		}
-
-		// Choose which transition fires.
-		r := rng.Float64() * totalRate
-		chosen := -1
-		acc := 0.0
-		for i, a := range propensities {
-			acc += a
-			if r <= acc {
-				chosen = i
-				break
-			}
-		}
-		if chosen < 0 {
-			chosen = len(propensities) - 1
-		}
-		tr := transitions[chosen]
-		for _, in := range tr.inputs {
-			marking[in.placeIdx] -= in.weight
-		}
-		for _, out := range tr.outputs {
-			marking[out.placeIdx] += out.weight
-		}
-	}
-
-	// Carry final marking forward through any remaining sample points.
-	for ; nextSample < len(samples); nextSample++ {
-		for p := 0; p < nPlaces; p++ {
-			trajectories[p][nextSample] = float64(marking[p])
-		}
-	}
-	return trajectories
-}
-
-// combinations returns C(m, w) — the number of distinct multisets of size w
-// drawn from m available tokens. C(m, 0) = 1, C(m, 1) = m. For arc weights
-// >1 this enforces the requirement that enough indistinguishable tokens are
-// present to support the firing.
-func combinations(m, w int) float64 {
-	if w == 0 {
-		return 1
-	}
-	if w == 1 {
-		return float64(m)
-	}
-	out := 1.0
-	for i := 0; i < w; i++ {
-		out *= float64(m - i)
-	}
-	for i := 2; i <= w; i++ {
-		out /= float64(i)
-	}
-	return out
-}
-
 // renderStochasticPNG plots the stochastic trajectories. With one
 // realization, draws the trajectory as a step function (color per place).
 // With >1 realizations, shows mean + shaded ±stdev band per variable.
-func renderStochasticPNG(resp stochasticResponse, variables []string, trajectories [][][]float64, placeIdx map[string]int) ([]byte, error) {
+func renderStochasticPNG(resp stochasticResponse, variables []string) ([]byte, error) {
 	const W, H = 760, 460
 	dc := gg.NewContext(W, H)
 	dc.SetHexColor("#ffffff")
