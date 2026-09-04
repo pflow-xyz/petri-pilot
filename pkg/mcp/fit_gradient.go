@@ -88,6 +88,18 @@ func fitAdam(
 	opts.Method = "adam"
 	opts.MaxIters = maxIter
 	opts.GradTol = tol
+	// DefaultFitOptions' loss-delta convergence check (Tolerance=1e-4) is a
+	// second, unconfigurable stopping rule alongside GradTol: it reports
+	// "converged" the moment consecutive-iteration loss stops moving by
+	// more than 1e-4, which a coarser adaptive step (correct, but noisier
+	// evaluation-to-evaluation than a needlessly over-refined solver) can
+	// trip far from the true optimum — observed on coffeeShopModel after
+	// go-pflow v0.26.0's Tsit5 fix: Adam plateaued at loss 0.0102 after 99
+	// evals (rates off by up to 21%) where Nelder-Mead reached 4.6e-6.
+	// GradTol is this tool's one exposed, meaningful stopping criterion
+	// (via petri_fit's "tol" argument), so the loss-delta check is
+	// tightened to the point it can no longer fire first.
+	opts.Tolerance = 1e-10
 	res, merr := learn.MinimizeGradient(fg, x0, opts)
 	if merr != nil {
 		return nil, 0, 0, false, evals, merr
