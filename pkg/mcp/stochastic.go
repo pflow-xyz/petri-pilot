@@ -44,7 +44,7 @@ import (
 
 func stochasticTool() mcp.Tool {
 	return mcp.NewTool("petri_stochastic",
-		mcp.WithDescription("Gillespie Stochastic Simulation Algorithm (SSA) over the Petri net's discrete marking. Distinct from petri_ode's continuous ODE — token counts stay integer, firings are random events, results have visible noise. Use when token counts are small enough that variance matters. Multiple realizations show mean ± stdev band."),
+		mcp.WithDescription("Gillespie Stochastic Simulation Algorithm (SSA) over the Petri net's discrete marking. Distinct from petri_ode's continuous ODE — token counts stay integer, firings are random events, results have visible noise. Use when token counts are small enough that variance matters, or when the model has a read arc, inhibitor, reached capacity or guard that petri_ode refuses to model. Multiple realizations show mean ± stdev band. See the simulation_choice topic (petri_explain) for the full decision rule."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),

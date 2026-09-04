@@ -22,7 +22,7 @@ import (
 
 func odeTool() mcp.Tool {
 	return mcp.NewTool("petri_ode",
-		mcp.WithDescription("Run an ODE (mass-action kinetics) simulation of the Petri net using the Tsit5 solver (matches pflow.xyz). Returns a downsampled time series of place concentrations and an inline PNG plot. Use mode=equilibrium to integrate until the system stabilizes."),
+		mcp.WithDescription("Run an ODE (mass-action kinetics) simulation of the Petri net using the Tsit5 solver (matches pflow.xyz). Returns a downsampled time series of place concentrations and an inline PNG plot. Use mode=equilibrium to integrate until the system stabilizes. Refuses (Diverged=true) a model with a read arc, inhibitor, reached capacity or guard rather than silently ignore it — use petri_stochastic for those. See the simulation_choice topic (petri_explain) for the full decision rule, including why weight>1 arcs get a genuinely different rate law here than in petri_stochastic."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),

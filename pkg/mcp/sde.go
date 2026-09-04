@@ -34,7 +34,7 @@ import (
 
 func sdeTool() mcp.Tool {
 	return mcp.NewTool("petri_sde",
-		mcp.WithDescription("Stochastic Differential Equation simulation. Mass-action drift (as in petri_ode) plus geometric Brownian motion on user-selected places — for DeFi price processes, interest rate models, anywhere continuous noise scales with state value. Returns mean ± stdev band over N paths."),
+		mcp.WithDescription("Stochastic Differential Equation simulation. Mass-action drift (as in petri_ode) plus EXOGENOUS geometric Brownian motion on user-selected places — for DeFi price processes, interest rate models, anywhere continuous noise scales with state value. This is not the net's own firing noise (that's petri_stochastic's job); it layers external uncertainty on top of the ODE. Returns mean ± stdev band over N paths."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),
