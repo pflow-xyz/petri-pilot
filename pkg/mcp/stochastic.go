@@ -67,6 +67,9 @@ func stochasticTool() mcp.Tool {
 		mcp.WithNumber("seed",
 			mcp.Description("Random seed for reproducibility (default 42)"),
 		),
+		mcp.WithBoolean("record_events",
+			mcp.Description("Also return every firing of every realization as `paths` — the input shape petri_fit_discrete takes, so a simulated run can be fitted back (or a real event log can be checked against one). Off by default: a busy net over a long horizon is thousands of events"),
+		),
 		mcp.WithBoolean("verbose",
 			mcp.Description("Include the Gillespie SSA algorithm description in the response. Default false"),
 		),
@@ -91,8 +94,12 @@ type stochasticResponse struct {
 	// ranks a capacity finding ("conserved"/"bounded") ahead of an idle
 	// queue however large its fraction — an empty queue is the opposite of
 	// a bottleneck.
-	Contended   []sim.Contention `json:"contended,omitempty"`
-	Explanation string           `json:"explanation,omitempty"`
+	Contended []sim.Contention `json:"contended,omitempty"`
+	// Paths is every firing of every realization, one path per realization,
+	// in the place-keyed shape petri_fit_discrete accepts. Only populated
+	// with record_events=true.
+	Paths       []discretePathJSON `json:"paths,omitempty"`
+	Explanation string             `json:"explanation,omitempty"`
 }
 
 func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -165,13 +172,44 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		stateLabels[i] = p.ID
 	}
 
-	res, err := sim.Simulate(model, nil, sim.Options{
+	opts := sim.Options{
 		Horizon:      tspan[1] - tspan[0],
 		Samples:      samples,
 		Rates:        rates,
 		Seed:         seed,
 		Realizations: realizations,
-	})
+	}
+
+	var recorded []discretePathJSON
+	if request.GetBool("record_events", false) {
+		tokenPlaces, err := sim.TokenPlaces(model)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		recorded = make([]discretePathJSON, realizations)
+		for r := range recorded {
+			initial := make(map[string]int, len(tokenPlaces))
+			for _, p := range model.Places {
+				if p.IsToken() {
+					initial[p.ID] = p.Initial
+				}
+			}
+			recorded[r] = discretePathJSON{Initial: initial, Horizon: opts.Horizon}
+		}
+		opts.OnFire = func(realization int, t float64, transition string, marking []int) {
+			mk := make(map[string]int, len(tokenPlaces))
+			for i, p := range tokenPlaces {
+				mk[p] = marking[i]
+			}
+			// Event times are on the simulator's own clock (t0 = 0), matching
+			// Horizon; the caller's tspan[0] shift below applies to the sampled
+			// grid only, so a recorded path stays self-consistent for fitting.
+			recorded[realization].Events = append(recorded[realization].Events,
+				discreteEventJSON{Time: t, Transition: transition, Marking: mk})
+		}
+	}
+
+	res, err := sim.Simulate(model, nil, opts)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("simulate: %v", err)), nil
 	}
@@ -203,6 +241,7 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		Stdev:        stdev,
 		FinalMean:    res.Final,
 		Contended:    res.Contended,
+		Paths:        recorded,
 	}
 
 	if request.GetBool("verbose", false) {

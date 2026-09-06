@@ -148,6 +148,10 @@ go-pflow exactly):
   percentiles, max drawdown, CVaR (expected shortfall, worst 5%).
 - `petri_fit` — fit transition rates to observed (t, value) data by
   Nelder-Mead under the mass-action ODE; fitted rates plus a plot.
+- `petri_fit_discrete` — fit transition rates to observed discrete events
+  (which transition fired when) by maximising the exact CTMC log-likelihood;
+  the stochastic counterpart of `petri_fit`. Takes the `paths` that
+  `petri_stochastic` emits with `record_events=true`.
 - `petri_optimize` — multi-objective Monte Carlo over rates; Pareto frontier
   with every sample flagged `is_pareto`, scatter or parallel-coordinates plot.
 - `petri_corr_matrix` — render a correlation matrix heatmap (pre-flight check

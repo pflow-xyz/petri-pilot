@@ -35,6 +35,7 @@ tool and CLI command accepts both.
 - Tools (all prefixed `petri_`): validate, analyze, verify, conformance,
   simulate, scenario, ode, ode_sweep, ode_sensitivity, rate_scan,
   param_heatmap, phase_plot, stochastic, sde, distribution, risk, fit,
+  fit_discrete,
   optimize, sankey, heatmap, corr_matrix, visualize, docs, explain, template,
   amm_quote, amm_il, amm_depth, diff, extend, migrate, preview, codegen,
   frontend, application, bundle, code_to_flow — one-line descriptions in the

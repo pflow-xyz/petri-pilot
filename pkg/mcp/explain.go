@@ -95,7 +95,7 @@ func defiConcepts() map[string]concept {
 			Formula:    "Per step:\n  a_i = k_i · ∏_(p ∈ •t_i, kinetic) C(m(p), w(p, t_i))    propensities\n  A   = Σ a_i                          total rate\n  τ   ~ Exp(A)                         wait time to next event\n  P(t_i) = a_i / A                     which transition fires\n\nThe product runs over the KINETIC inputs only. An input arc marked\nnon-kinetic is left out of it — but if that input is unsatisfied the\ntransition is not enabled and a_i = 0 regardless, and when t_i fires the\ninput is consumed like any other.",
 			Derivation: "In a continuous-time Markov chain with total leaving rate A, the time to the next jump is Exponential(A) — that's a basic Markov property. Which jump happens is independent of when, and proportional to each transition's propensity.\n\nWhy some inputs are excluded from the product: multiplying every input into the rate is the law of mass action, which is right for chemistry and wrong for a service system. A barista is a prerequisite for making a drink, not a reactant, and a fuller pantry does not make a drink pour faster. Left kinetic, a staff pool made two drinks in progress each finish twice as fast, and a queue arc made pickup scale with the number of people waiting — so the wait, and the walkouts, stopped responding to staffing at all. Marking those arcs non-kinetic keeps them as gates and as consumption while taking them out of the rate law. Both SSA engines honour this; a continuous solve cannot express it, which is why petri_ode caveats or refuses such a model.",
 			Example:    "Two transitions: a_1 = 2, a_2 = 3. Total A = 5.\n  Wait time: τ ~ Exp(5), mean = 1/5 = 0.2 time units.\n  Probability t_1 fires: 2/5 = 40%.\n  Probability t_2 fires: 3/5 = 60%.\nDraw u_1, u_2 ∈ U(0,1) → τ = −ln(u_1)/5; if u_2 < 0.4 fire t_1 else t_2.\n\nNon-kinetic input: 'start_brew' takes 1 order (kinetic) and 1 free barista\n(non-kinetic), k = 720/h. With 4 orders waiting and 3 baristas free:\n  a = 720 × 4 = 2880/h        (the 3 does not enter)\n  With 0 baristas free: a = 0 — not enabled.\nFiring still consumes one order and one barista.",
-			SeeAlso:    []string{"petri_stochastic", "petri_simulate"},
+			SeeAlso:    []string{"petri_stochastic", "petri_simulate", "petri_fit_discrete", "ctmc_likelihood"},
 		},
 
 		"euler_maruyama": {
@@ -151,6 +151,17 @@ func defiConcepts() map[string]concept {
 			Derivation: "Pure function evaluation — no gradients required. Works on noisy losses where gradient methods fail. The simplex 'rolls downhill' through reflection, expanding when finding new territory, contracting when stuck. Convergence is heuristic: stop when the simplex spread (vertex value range) drops below tolerance.",
 			Example:    "Fitting 3 ODE rates against 14 observations. Initial simplex: 4 points around guess [1, 1, 1]. After ~200 iterations of reflect/expand/contract, simplex converges to [2.00, 1.49, 1.00] with loss ≈ 1e-7.",
 			SeeAlso:    []string{"petri_fit"},
+		},
+
+		"ctmc_likelihood": {
+			Name:       "ctmc_likelihood",
+			Category:   "fitting",
+			Summary:    "Recover rate constants from which-transition-fired-when data by exact CTMC maximum likelihood.",
+			Intuition:  "A Petri net under mass action is a continuous-time Markov chain. Every observed firing says two things: this transition was the one that won (reward its propensity at that moment) and nothing else fired during the wait (penalise everyone's propensity for the wait's duration). Add those up over the whole path and you have the exact probability the model assigns to what you saw. The rates that maximise it are the fit.",
+			Formula:    "log L(k) = Σ_events log a_chosen(x_pre) − ∫_0^T a0(x(t)) dt\n  a_j(x) = k_j · C_j(x)   (C_j = product of C(m, w) over kinetic inputs, 0 where not enabled)\n  a0 = Σ_j a_j\n\n∂(−log L)/∂k_j = ∫_0^T C_j(x(t)) dt − n_j / k_j\n\nSetting it to zero: k_j* = n_j / exposure_j, where n_j is how often j fired and exposure_j = ∫ C_j dt.",
+			Derivation: "Between events the marking is constant, so the survival integral is a sum of (segment length × a0 at that marking) — piecewise, cheap, no ODE solve. Each propensity is linear in its own rate, so differentiating a0 with respect to k_j leaves exactly C_j and nothing about any other rate: the gradient is closed-form and the objective is separable and convex in each log-rate. petri_fit_discrete runs Adam anyway (it is the shared learn.MinimizeGradient entry point) and reports the closed-form MLE beside the optimiser's answer; if they disagree, the fit stopped early.",
+			Example:    "Coffee shop with 300 orders, 4 baristas, true rates {start_brew: 2.0, finish_brew: 0.7, deliver: 1.3}. One SSA path over 40 time units yields ~900 firings. Fitting all three rates from a unit start recovers each within a few percent, and each matches n_j / exposure_j. With three paths the error halves — likelihoods sum.\n\nWhat it cannot do: fit from a smoothed population curve (use petri_fit), or from partially observed paths where some firings were missed — every event must be in the record.",
+			SeeAlso:    []string{"petri_fit_discrete", "petri_stochastic", "petri_fit", "gillespie_ssa", "simulation_choice"},
 		},
 
 		"equilibrium_detection": {
@@ -271,6 +282,12 @@ func verboseAnnotation(kind string, runSummary string) string {
 			"Algorithm: Nelder-Mead simplex — gradient-free minimization of squared residual loss.",
 			"Simplex: N+1 points in N-dim parameter space.\nPer iteration:\n  1. Sort by loss\n  2. Reflect worst through centroid of others (α=1)\n  3. If reflection beats best: expand further (γ=2)\n  4. Else if reflection beats second-worst: replace worst\n  5. Else: contract (ρ=0.5) or shrink (σ=0.5)\nLoss: Σ (model(t_i) − observed_i)² over observation points.",
 			"nelder_mead",
+		)
+	case "ctmc_likelihood":
+		return header(
+			"Algorithm: exact CTMC maximum likelihood over observed firings, minimised by Adam on the closed-form gradient.",
+			"log L(k) = Σ_events log a_chosen(x_pre) − ∫_0^T a0(x(t)) dt\na_j(x) = k_j · C_j(x), so ∂(−log L)/∂k_j = ∫C_j dt − n_j / k_j\nClosed-form optimum: k_j* = n_j / ∫C_j(x(t)) dt (firings / exposure).\nPaths are independent: their log-likelihoods and gradients sum.",
+			"ctmc_likelihood",
 		)
 	case "optimize":
 		return header(

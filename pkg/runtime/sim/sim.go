@@ -69,6 +69,9 @@ const (
 // Rates is the rate table the model declares, DefaultRate where it declares none.
 func Rates(m *metamodel.Model) map[string]float64 { return stochastic.Rates(m) }
 
+// TokenPlaces is the place order every Options.OnFire marking uses.
+func TokenPlaces(m *metamodel.Model) ([]string, error) { return stochastic.TokenPlaces(m) }
+
 // ClassifySupply names what each token place is, structurally, so a contention
 // report can rank a capacity constraint above an idle queue.
 func ClassifySupply(m *metamodel.Model) map[string]SupplyKind { return stochastic.ClassifySupply(m) }
