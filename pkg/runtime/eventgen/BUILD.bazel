@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "eventgen",
+    srcs = [
+        "engine.go",
+        "playout.go",
+        "writers.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/eventgen",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/prng",
+        "@com_github_pflow_xyz_go_pflow//eventlog",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "eventgen_test",
+    srcs = ["playout_test.go"],
+    embed = [":eventgen"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//eventlog",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//mining",
+        "@com_github_pflow_xyz_go_pflow//petri",
+    ],
+)

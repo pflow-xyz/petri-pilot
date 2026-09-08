@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "prng",
+    srcs = ["prng.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/prng",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "prng_test",
+    srcs = ["prng_test.go"],
+    embed = [":prng"],
+)
