@@ -18,11 +18,11 @@ package eventgen
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"time"
 
 	"github.com/pflow-xyz/go-pflow/eventlog"
 	"github.com/pflow-xyz/go-pflow/metamodel"
-	"github.com/pflow-xyz/petri-pilot/pkg/prng"
 )
 
 // Options sizes a playout.
@@ -91,7 +91,10 @@ func Playout(m *metamodel.Model, opts Options) (*eventlog.EventLog, error) {
 			m.Name)
 	}
 
-	rng := prng.New(opts.Seed)
+	// Seeded math/rand: the log is deterministic for a seed, which is all a
+	// dataset promises. Cross-language byte parity belongs to the engine's
+	// portable sampler, not to a generator.
+	rng := rand.New(rand.NewSource(opts.Seed)) //nolint:gosec // not cryptographic
 	log := eventlog.NewEventLog()
 	log.Attributes["generator"] = "sim.pflow.xyz eventgen"
 	log.Attributes["model"] = m.Name

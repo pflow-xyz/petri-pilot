@@ -10,9 +10,9 @@ go_library(
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/eventgen",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/prng",
         "@com_github_pflow_xyz_go_pflow//eventlog",
         "@com_github_pflow_xyz_go_pflow//metamodel",
+        "@com_github_pflow_xyz_go_pflow//stochastic",
     ],
 )
 

@@ -4,39 +4,37 @@ import (
 	"fmt"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/go-pflow/stochastic"
 )
 
-// The playout engine mirrors pkg/runtime/sim's SSA law exactly — enablement
-// by the shared firing rule (consuming weight, read threshold, inhibitor
-// threshold, post-firing capacity netting), propensity as rate times
-// C(marking, weight) over KINETIC consuming inputs only. Arcs are classified
-// through metamodel.Inputs/Outputs/Tests, never re-derived from From/To.
-// The cross-check test in playout_test.go holds this copy's throughput to
-// sim.Simulate's on the same model, because a second implementation of one
-// definition is a way to be confidently wrong unless something diffs them.
+// The playout runs on go-pflow's own compiled net (stochastic.Compile):
+// enablement, gating, capacity netting and the C(marking, weight) propensity
+// over kinetic inputs are the sampler's, not a copy held to it by a test.
+// What this file adds is the case bookkeeping a log needs — which case each
+// token belongs to — and the drain phase after the last requested arrival.
 
 type arcRef struct {
-	place   int
-	weight  int
-	kinetic bool
+	place  int
+	weight int
 }
 
 type trans struct {
 	id       string
-	rate     float64
 	inputs   []arcRef // consuming
-	reads    []arcRef
-	inhibits []arcRef
 	outputs  []arcRef
 	isSource bool // no consuming inputs: fires spontaneously, starts a case
 }
 
+// engine is the playout state: the engine's compiled net for the rate law,
+// plus the case bookkeeping the log needs and the sampler does not — which
+// case each token belongs to, FIFO per place.
 type engine struct {
+	compiled *stochastic.Compiled
 	places   []string
-	capacity []int
 	sink     []bool // no consuming arc leaves the place: tokens there are done
 	trs      []trans
 	marking  []int
+	props    []float64
 	// queues holds the case id of each token, FIFO per place, aligned with
 	// marking: len(queues[p]) == marking[p] always. "" is a case-less token
 	// (initial marking: resource pools, gates).
@@ -44,53 +42,34 @@ type engine struct {
 }
 
 func compile(m *metamodel.Model) (*engine, error) {
-	e := &engine{}
-	index := map[string]int{}
 	for i := range m.Places {
-		p := &m.Places[i]
-		if p.Kind != "" && p.Kind != "token" {
+		if p := &m.Places[i]; p.Kind != "" && p.Kind != "token" {
 			return nil, fmt.Errorf("eventgen: place %q has kind %q; only token places play out", p.ID, p.Kind)
 		}
-		index[p.ID] = len(e.places)
-		e.places = append(e.places, p.ID)
-		e.capacity = append(e.capacity, p.Capacity)
-		e.marking = append(e.marking, p.Initial)
-		q := make([]string, p.Initial)
-		e.queues = append(e.queues, q)
 	}
-
-	// Rates mirror sim.Rates: unset defaults to 1, the model-level solver
-	// map overrides.
-	rates := map[string]float64{}
-	for i := range m.Transitions {
-		r := m.Transitions[i].Rate
-		if r == 0 {
-			r = 1
-		}
-		rates[m.Transitions[i].ID] = r
+	compiled, err := stochastic.Compile(m, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("eventgen: %w", err)
 	}
-	if m.Simulation != nil && m.Simulation.Solver != nil {
-		for id, r := range m.Simulation.Solver.Rates {
-			rates[id] = r
-		}
+	e := &engine{compiled: compiled, places: compiled.Places()}
+	index := map[string]int{}
+	for i, p := range e.places {
+		index[p] = i
 	}
-
-	for i := range m.Transitions {
-		t := &m.Transitions[i]
-		tr := trans{id: t.ID, rate: rates[t.ID]}
-		for _, in := range m.Inputs(t.ID) {
-			tr.inputs = append(tr.inputs, arcRef{place: index[in.Place], weight: in.Weight, kinetic: in.Kinetic})
+	e.marking = compiled.InitialMarking(m, nil)
+	e.queues = make([][]string, len(e.places))
+	for i, n := range e.marking {
+		e.queues[i] = make([]string, n)
+	}
+	ids := compiled.Transitions()
+	e.props = make([]float64, len(ids))
+	for _, id := range ids {
+		tr := trans{id: id}
+		for _, in := range m.Inputs(id) {
+			tr.inputs = append(tr.inputs, arcRef{place: index[in.Place], weight: in.Weight})
 		}
-		for _, o := range m.Outputs(t.ID) {
+		for _, o := range m.Outputs(id) {
 			tr.outputs = append(tr.outputs, arcRef{place: index[o.Place], weight: o.Weight})
-		}
-		for _, test := range m.Tests(t.ID) {
-			a := arcRef{place: index[test.Place], weight: test.Weight}
-			if test.Type == metamodel.InhibitorArc {
-				tr.inhibits = append(tr.inhibits, a)
-			} else {
-				tr.reads = append(tr.reads, a)
-			}
 		}
 		tr.isSource = len(tr.inputs) == 0
 		e.trs = append(e.trs, tr)
@@ -118,72 +97,20 @@ func (e *engine) hasSource() bool {
 	return false
 }
 
-// propensities returns per-transition rates under the current marking.
-// sourcesOff zeroes source transitions — the drain phase after the last
-// requested case has arrived.
+// propensities returns per-transition rates under the current marking — the
+// engine's own rate law, through the compiled net. sourcesOff zeroes source
+// transitions: the drain phase after the last requested case has arrived.
 func (e *engine) propensities(sourcesOff bool) ([]float64, float64) {
-	props := make([]float64, len(e.trs))
-	total := 0.0
-	for i := range e.trs {
-		tr := &e.trs[i]
-		if sourcesOff && tr.isSource {
-			continue
-		}
-		a := tr.rate
-		for _, in := range tr.inputs {
-			m := e.marking[in.place]
-			if m < in.weight {
-				a = 0
-				break
+	total := e.compiled.Propensities(e.marking, e.props)
+	if sourcesOff {
+		for i := range e.trs {
+			if e.trs[i].isSource && e.props[i] > 0 {
+				total -= e.props[i]
+				e.props[i] = 0
 			}
-			if in.kinetic {
-				a *= combinations(m, in.weight)
-			}
-		}
-		if a > 0 {
-			for _, rd := range tr.reads {
-				if e.marking[rd.place] < rd.weight {
-					a = 0
-					break
-				}
-			}
-		}
-		if a > 0 {
-			for _, inh := range tr.inhibits {
-				if e.marking[inh.place] >= inh.weight {
-					a = 0
-					break
-				}
-			}
-		}
-		if a > 0 && !e.capacityAdmits(tr) {
-			a = 0
-		}
-		props[i] = a
-		total += a
-	}
-	return props, total
-}
-
-// capacityAdmits applies the post-firing bound, netting production against
-// what the same firing consumes from the same place.
-func (e *engine) capacityAdmits(tr *trans) bool {
-	for _, out := range tr.outputs {
-		cap := e.capacity[out.place]
-		if cap == 0 {
-			continue
-		}
-		next := e.marking[out.place] + out.weight
-		for _, in := range tr.inputs {
-			if in.place == out.place {
-				next -= in.weight
-			}
-		}
-		if next > cap {
-			return false
 		}
 	}
-	return true
+	return e.props, total
 }
 
 // fire applies transition i: consumes FIFO tokens from its inputs, produces
@@ -233,15 +160,4 @@ func (e *engine) inFlight() int {
 		}
 	}
 	return n
-}
-
-// combinations is C(m, w) — the number of distinct token combinations a
-// weight-w arc can draw, the stochastic mass-action coefficient. Mirrors
-// pkg/runtime/sim.
-func combinations(m, w int) float64 {
-	c := 1.0
-	for i := 0; i < w; i++ {
-		c *= float64(m-i) / float64(i+1)
-	}
-	return c
 }

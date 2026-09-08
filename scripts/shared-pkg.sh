@@ -20,7 +20,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 LOCK=shared-pkg.lock
-SHARED=(pkg/dsl pkg/metamodel pkg/validator pkg/extensions pkg/prng pkg/runtime/eventgen)
+SHARED=(pkg/dsl pkg/metamodel pkg/validator pkg/extensions pkg/runtime/eventgen)
 
 files() {
   for d in "${SHARED[@]}"; do
