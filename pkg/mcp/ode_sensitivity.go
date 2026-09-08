@@ -31,7 +31,7 @@ func odeSensitivityTool() mcp.Tool {
 			mcp.Description("Place ID whose equilibrium value is the target metric"),
 		),
 		mcp.WithString("base_rates",
-			mcp.Description("JSON object of base rates per transition (default 1.0)"),
+			mcp.Description("JSON object of base rates per transition (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithNumber("delta",
 			mcp.Description("Perturbation fraction (default 0.05 = 5%)"),
@@ -78,6 +78,9 @@ func handleOdeSensitivity(ctx context.Context, request mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	observableFound := false
 	for _, p := range model.Places {
@@ -90,10 +93,7 @@ func handleOdeSensitivity(ctx context.Context, request mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(fmt.Sprintf("observable %q is not a place in the model", observable)), nil
 	}
 
-	baseRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		baseRates[t.ID] = 1.0
-	}
+	baseRates := modelRates(model)
 	if s := request.GetString("base_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

@@ -42,7 +42,7 @@ func distributionTool() mcp.Tool {
 			mcp.Description("Required for mode=sde. JSON object mapping place_id → sigma"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of rate constants (default 1.0 per transition)"),
+			mcp.Description("JSON object of rate constants (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 1])"),
@@ -101,11 +101,15 @@ func handleDistribution(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	if mode != "sde" && mode != "ssa" {
 		return mcp.NewToolResultError(fmt.Sprintf("mode must be 'sde' or 'ssa', got %q", mode)), nil
 	}
-
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
+	if mode == "sde" {
+		// The SSA mode honours gates and schedules; only the continuous mode
+		// has to refuse them.
+		if refused := refuseContinuous(model); refused != nil {
+			return refused, nil
+		}
 	}
+
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

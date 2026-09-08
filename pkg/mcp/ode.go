@@ -28,7 +28,7 @@ func odeTool() mcp.Tool {
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("Optional JSON object mapping transition_id to rate (default 1.0 for each transition)"),
+			mcp.Description("Optional JSON object mapping transition_id to rate (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Optional JSON array [t0, tf] (default [0, 10])"),
@@ -92,11 +92,11 @@ func handleOde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
-
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
 	}
+
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {
@@ -348,6 +348,40 @@ func buildOdeNet(model *goflowmetamodel.Model) *petri.PetriNet {
 // on every tool that shares this builder.
 func odeCaveats(model *goflowmetamodel.Model) []string {
 	return model.Gating()
+}
+
+// refuseContinuous is the engine-selection rule every continuous tool shares.
+// A model with a rate schedule, or one whose stage-expanded net is gated (read
+// arc, inhibitor, reachable capacity, guard, non-kinetic arc), is refused with
+// the reasons rather than answered as a looser system. petri_ode's description
+// has promised this since the caveat work, but the code only annotated, while
+// petri_scenario (through go-pflow's Forecast) refused — so the two continuous
+// surfaces disagreed on the same file. Stages alone are not a refusal: the
+// check runs on the stage-expanded net, as sim.pflow.xyz does, so an Erlang
+// service time is not mistaken for a gate.
+//
+// Returns nil when the continuous reading is honest; otherwise a non-error
+// result carrying diverged=true, the reasons, and the engine to use instead.
+func refuseContinuous(model *goflowmetamodel.Model) *mcp.CallToolResult {
+	var reasons []string
+	if model.HasSchedules() {
+		reasons = append(reasons, "a rate schedule varies a transition's rate over time; a continuous mass-action solve has one constant per transition")
+	}
+	checked := model
+	if expanded, _, err := model.ExpandStages(); err == nil && expanded != nil {
+		checked = expanded
+	}
+	gating := checked.Gating()
+	if len(reasons) == 0 && len(gating) == 0 {
+		return nil
+	}
+	out, _ := json.MarshalIndent(map[string]any{
+		"diverged": true,
+		"reason":   "the continuous solver cannot represent this model; running it would answer a less constrained question than the one asked",
+		"caveats":  append(reasons, gating...),
+		"use":      "petri_stochastic or petri_scenario (engine ssa) honour every one of these; petri_explain simulation_choice has the decision rule",
+	}, "", "  ")
+	return mcp.NewToolResultText(string(out))
 }
 
 // withCaveats adds a "caveats" field to a tool's JSON summary when the model

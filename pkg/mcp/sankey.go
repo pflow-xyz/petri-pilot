@@ -31,7 +31,7 @@ func sankeyTool() mcp.Tool {
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of rate constants (default 1.0 per transition)"),
+			mcp.Description("JSON object of rate constants (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 10])"),
@@ -125,11 +125,11 @@ func handleSankey(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model: %v", err)), nil
 	}
 	model := parsed.Model
-
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
 	}
+
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

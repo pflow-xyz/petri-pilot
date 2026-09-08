@@ -43,7 +43,7 @@ func riskTool() mcp.Tool {
 			mcp.Description("Optional pairwise correlation dict (same format as petri_sde)"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of rate constants (default 1.0)"),
+			mcp.Description("JSON object of rate constants (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 1])"),
@@ -85,6 +85,9 @@ func handleRisk(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	observable, err := request.RequireString("observable")
 	if err != nil {
@@ -114,10 +117,7 @@ func handleRisk(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		}
 	}
 
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
-	}
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

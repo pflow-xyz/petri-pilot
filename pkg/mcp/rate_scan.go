@@ -40,7 +40,7 @@ func rateScanTool() mcp.Tool {
 			mcp.Description("JSON array of place IDs to track at equilibrium (default: all places)"),
 		),
 		mcp.WithString("fixed_rates",
-			mcp.Description("JSON object of other transition rates held constant during the sweep (default 1.0 for unspecified)"),
+			mcp.Description("JSON object of other transition rates held constant during the sweep (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Per-run integration span (default [0, 50]). Must be long enough for the system to settle at each rate"),
@@ -82,6 +82,9 @@ func handleRateScan(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	// Verify the swept transition exists.
 	transitionFound := false
@@ -119,11 +122,8 @@ func handleRateScan(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 	sort.Float64s(values)
 
-	// Fixed rates for other transitions (default 1.0).
-	baseRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		baseRates[t.ID] = 1.0
-	}
+	// Fixed rates for other transitions (default: the rate each transition declares in the model, 1.0 where none).
+	baseRates := modelRates(model)
 	if s := request.GetString("fixed_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

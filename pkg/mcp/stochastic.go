@@ -50,7 +50,7 @@ func stochasticTool() mcp.Tool {
 			mcp.Description("Petri net model JSON or tokenmodel DSL"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of mass-action rate constants per transition (default 1.0)"),
+			mcp.Description("JSON object of mass-action rate constants per transition (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span [t0, tf] (default [0, 10])"),
@@ -116,10 +116,7 @@ func handleStochastic(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		return mcp.NewToolResultError("model has no transitions"), nil
 	}
 
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
-	}
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

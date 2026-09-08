@@ -310,14 +310,54 @@ type MarkingAggregator interface {
 	Aggregates(tokens map[string]int) map[string]GuardFunc
 }
 
+// DataAwareEvaluator is an optional interface a GuardEvaluator may implement
+// to see data states — maps and scalars — as well as token counts.
+//
+// Without it, guards and constraints were evaluated against Snapshot.Tokens
+// alone, so a ledger declared as `map[string]int64` was invisible to the
+// very guard written to protect it: `balances[from] >= amount` failed with
+// "unknown identifier: balances" on every DSL schema that had one, including
+// the shipped ERC-20. Optional for the same reason MarkingAggregator is.
+type DataAwareEvaluator interface {
+	// EvaluateConstraintWithData evaluates a constraint against token counts
+	// and data-state values together.
+	EvaluateConstraintWithData(expr string, tokens map[string]int, data map[string]any) (bool, error)
+	// DataAggregates returns marking-aware guard functions that also reach
+	// into data-state maps (sum over a ledger, count of its keys, ...).
+	DataAggregates(tokens map[string]int, data map[string]any) map[string]GuardFunc
+}
+
 // markingFuncs returns the marking-aware guard functions for the current state,
 // or nil when the evaluator does not provide them.
 func (r *Runtime) markingFuncs() map[string]GuardFunc {
+	if r.Snapshot == nil {
+		return nil
+	}
+	if da, ok := r.GuardEvaluator.(DataAwareEvaluator); ok {
+		return da.DataAggregates(r.Snapshot.Tokens, r.Snapshot.Data)
+	}
 	ma, ok := r.GuardEvaluator.(MarkingAggregator)
-	if !ok || r.Snapshot == nil {
+	if !ok {
 		return nil
 	}
 	return ma.Aggregates(r.Snapshot.Tokens)
+}
+
+// guardBindings is the identifier environment a guard is evaluated in: every
+// data state by name, then the action's own bindings on top (a parameter
+// named like a state wins, as it always did).
+func (r *Runtime) guardBindings(bindings Bindings) Bindings {
+	if r.Snapshot == nil || len(r.Snapshot.Data) == 0 {
+		return bindings
+	}
+	merged := make(Bindings, len(r.Snapshot.Data)+len(bindings))
+	for k, v := range r.Snapshot.Data {
+		merged[k] = v
+	}
+	for k, v := range bindings {
+		merged[k] = v
+	}
+	return merged
 }
 
 // Runtime holds the execution state of a schema.
@@ -469,7 +509,7 @@ func (r *Runtime) guardAllows(a *Action, bindings Bindings) bool {
 	if a.Guard == "" || r.GuardEvaluator == nil {
 		return true
 	}
-	ok, err := r.GuardEvaluator.Evaluate(a.Guard, bindings, r.markingFuncs())
+	ok, err := r.GuardEvaluator.Evaluate(a.Guard, r.guardBindings(bindings), r.markingFuncs())
 	if err != nil {
 		return true // undecidable here, not refused
 	}
@@ -590,7 +630,7 @@ func (r *Runtime) ExecuteWithBindings(actionID string, bindings Bindings) error 
 	// Marking-aware functions are supplied alongside the bindings, so a guard
 	// may read token counts — tokens("p") > 0 — as well as its parameters.
 	if a.Guard != "" && r.GuardEvaluator != nil {
-		ok, err := r.GuardEvaluator.Evaluate(a.Guard, bindings, r.markingFuncs())
+		ok, err := r.GuardEvaluator.Evaluate(a.Guard, r.guardBindings(bindings), r.markingFuncs())
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrGuardEvaluation, err)
 		}
@@ -861,8 +901,15 @@ func (r *Runtime) Constraints() []ConstraintViolation {
 		return violations // No evaluator, no constraint checking
 	}
 
+	da, dataAware := r.GuardEvaluator.(DataAwareEvaluator)
 	for _, c := range r.Schema.Constraints {
-		ok, err := r.GuardEvaluator.EvaluateConstraint(c.Expr, r.Snapshot.Tokens)
+		var ok bool
+		var err error
+		if dataAware {
+			ok, err = da.EvaluateConstraintWithData(c.Expr, r.Snapshot.Tokens, r.Snapshot.Data)
+		} else {
+			ok, err = r.GuardEvaluator.EvaluateConstraint(c.Expr, r.Snapshot.Tokens)
+		}
 		if err != nil {
 			violations = append(violations, ConstraintViolation{
 				Constraint: c,

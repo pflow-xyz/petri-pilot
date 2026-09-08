@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -48,6 +50,10 @@ func NewServer() *server.MCPServer {
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(verifyTool(), handleVerify)
 	s.AddTool(conformanceTool(), handleConformance)
+	s.AddTool(invariantsTool(), handleInvariants)
+	s.AddTool(canonicalTool(), handleCanonical)
+	s.AddTool(lumpingTool(), handleLumping)
+	s.AddTool(datasetTool(), handleDataset)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)
@@ -560,6 +566,8 @@ func handlePreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
 	}
+
+	gen.WithAccess(parsed.Roles, parsed.Access)
 
 	// Preview the requested file
 	content, err := gen.Preview(model, templateName)
@@ -1261,6 +1269,7 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	if app.HasRoles() || app.HasViews() || app.HasNavigation() || app.HasAdmin() {
 		files, err = gen.GenerateFilesFromApp(app)
 	} else {
+		gen.WithAccess(parseResult.Roles, parseResult.Access)
 		files, err = gen.GenerateFiles(model)
 	}
 	if err != nil {
@@ -1839,7 +1848,38 @@ func parsePflowNet(jsonStr string) (*petri.PetriNet, *pflowProbe, bool, error) {
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("pflow.xyz model: %w", err)
 	}
+	net.Token = shortColorNames(net.Token)
 	return net, &probe, true, nil
+}
+
+// shortColorNames turns pflow.xyz token URIs into the names color unfolding
+// uses. The editor declares colors as "https://pflow.xyz/tokens/red", and
+// go-pflow's ExpandColors names each per-color place base + "." + token
+// verbatim, so an unfolded place came out as
+// "queue.https://pflow.xyz/tokens/red": unreadable in every verdict, and an
+// invalid Go identifier for codegen. The last path segment is the color.
+// Names are only shortened when the result stays unique, so two tokens that
+// differ only in host keep their full form.
+func shortColorNames(tokens []string) []string {
+	if len(tokens) == 0 {
+		return tokens
+	}
+	short := make([]string, len(tokens))
+	seen := make(map[string]bool, len(tokens))
+	for i, tok := range tokens {
+		name := tok
+		if u, err := url.Parse(tok); err == nil && u.Scheme != "" && u.Path != "" {
+			if base := path.Base(u.Path); base != "" && base != "/" && base != "." {
+				name = base
+			}
+		}
+		if seen[name] {
+			return tokens
+		}
+		seen[name] = true
+		short[i] = name
+	}
+	return short
 }
 
 // schemaV2 represents the enveloped schema format with nested net and
@@ -1858,20 +1898,70 @@ type ParseResult struct {
 	Model      *goflowmetamodel.Model
 	Extensions map[string]json.RawMessage
 	Version    string
+
+	// Roles and Access are the model's own access-control declarations:
+	// top-level "roles"/"access" on a flat v1 document, or the
+	// petri-pilot/roles and petri-pilot/access extensions on a v2 envelope
+	// (the shape petri_migrate emits). go-pflow's Model has no field for
+	// them, so json.Unmarshal used to drop them silently and petri_preview
+	// reported "No access control rules defined" for a model that declared
+	// six.
+	Roles  []goflowmetamodel.Role
+	Access []goflowmetamodel.AccessRule
+}
+
+// accessDecls is the slice of a document that carries access control.
+type accessDecls struct {
+	Roles  []goflowmetamodel.Role       `json:"roles,omitempty"`
+	Access []goflowmetamodel.AccessRule `json:"access,omitempty"`
+}
+
+// HasAccess reports whether the parsed document declared any roles or rules.
+func (p *ParseResult) HasAccess() bool {
+	return p != nil && (len(p.Roles) > 0 || len(p.Access) > 0)
 }
 
 // parseModelV2 parses a model and returns both the model and any v2 extensions.
 // Supports JSON (v1/v2) and tokenmodel DSL (S-expression) formats.
+// dslBody returns the input with leading ';' comment lines and blank lines
+// removed, so format detection sees the first S-expression.
+func dslBody(input string) string {
+	for {
+		input = strings.TrimLeft(input, " \t\r\n")
+		if !strings.HasPrefix(input, ";") {
+			return input
+		}
+		if i := strings.IndexByte(input, '\n'); i >= 0 {
+			input = input[i+1:]
+		} else {
+			return ""
+		}
+	}
+}
+
 func parseModelV2(input string) (*ParseResult, error) {
 	trimmed := strings.TrimSpace(input)
 
-	// DSL format: starts with '('
-	if strings.HasPrefix(trimmed, "(") {
+	// DSL format: starts with '(' — after any leading ';' comment lines. A
+	// schema that opened with a comment block used to be routed to the JSON
+	// parser and fail on the semicolon.
+	if strings.HasPrefix(dslBody(trimmed), "(") {
 		schema, err := tokenmodelds.ParseSchema(input)
 		if err != nil {
 			return nil, fmt.Errorf("DSL parse error: %w", err)
 		}
 		model := goflowmetamodel.FromTokenModel(schema)
+		// FromTokenModel sets Initial = 0 for every data state and never
+		// copies the DSL's :initial value, so a ledger declared
+		// `:initial 0` or a map with seed entries started life as nil. The
+		// runtime then had nothing to bind the name to.
+		for i := range model.Places {
+			for _, st := range schema.States {
+				if st.ID == model.Places[i].ID && !st.IsToken() && st.Initial != nil {
+					model.Places[i].InitialValue = st.Initial
+				}
+			}
+		}
 		return &ParseResult{
 			Model:   model,
 			Version: "dsl",
@@ -1896,11 +1986,22 @@ func parseModelV2(input string) (*ParseResult, error) {
 		if version == "" {
 			version = "2.0"
 		}
-		return &ParseResult{
+		res := &ParseResult{
 			Model:      model,
 			Extensions: v2.Extensions,
 			Version:    version,
-		}, nil
+		}
+		if raw, ok := v2.Extensions[extensions.RolesExtensionName]; ok {
+			if err := json.Unmarshal(raw, &res.Roles); err != nil {
+				return nil, fmt.Errorf("parsing %s: %w", extensions.RolesExtensionName, err)
+			}
+		}
+		if raw, ok := v2.Extensions["petri-pilot/access"]; ok {
+			if err := json.Unmarshal(raw, &res.Access); err != nil {
+				return nil, fmt.Errorf("parsing petri-pilot/access: %w", err)
+			}
+		}
+		return res, nil
 	}
 
 	// Fall back to v1 parsing
@@ -1908,10 +2009,16 @@ func parseModelV2(input string) (*ParseResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ParseResult{
+	res := &ParseResult{
 		Model:   model,
 		Version: "1.0",
-	}, nil
+	}
+	var decls accessDecls
+	if err := json.Unmarshal([]byte(input), &decls); err == nil {
+		res.Roles = decls.Roles
+		res.Access = decls.Access
+	}
+	return res, nil
 }
 
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
@@ -1926,7 +2033,20 @@ func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 		}
 		// Multi-color nets are unfolded to per-color places so the metamodel
 		// (whose Initial/Weight are scalars) represents them exactly.
-		net, _ = net.ExpandColors()
+		net, colors := net.ExpandColors()
+
+		// Unfolding creates one place per color per base place whether or
+		// not any arc touches that color: a queue of people in a net that
+		// also has beans and cups gets queue.beans and queue.cups with no
+		// arcs at all. Those copies failed UNCONNECTED_PLACE validation,
+		// blocked codegen, and made sensitivity analysis collapse the net.
+		// A color copy no arc touches carries no behaviour; drop it. Base
+		// places of a single-color net are kept as declared.
+		touched := make(map[string]bool, len(net.Arcs))
+		for _, a := range net.Arcs {
+			touched[a.Source] = true
+			touched[a.Target] = true
+		}
 
 		model := &goflowmetamodel.Model{
 			Name:        probe.Name,
@@ -1939,11 +2059,29 @@ func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
 		sort.Strings(placeIDs)
 		for _, id := range placeIDs {
 			pl := net.Places[id]
+			x, y := int(pl.X), int(pl.Y)
+			if colors != nil {
+				ref, isCopy := colors.Base[id]
+				if isCopy && !touched[id] {
+					continue
+				}
+				// Every color copy inherits the base place's coordinates,
+				// so a rendered colored net stacked all of them on one
+				// pixel. Fan the copies out below the base position.
+				if isCopy {
+					y += ref.Color * 60
+				}
+			}
+			capacity := 0
+			for _, c := range pl.Capacity {
+				capacity += int(c)
+			}
 			model.Places = append(model.Places, goflowmetamodel.Place{
-				ID:      id,
-				Initial: int(pl.GetTokenCount()),
-				X:       int(pl.X),
-				Y:       int(pl.Y),
+				ID:       id,
+				Initial:  int(pl.GetTokenCount()),
+				Capacity: capacity,
+				X:        x,
+				Y:        y,
 			})
 		}
 		transIDs := make([]string, 0, len(net.Transitions))

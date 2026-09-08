@@ -47,7 +47,7 @@ func sdeTool() mcp.Tool {
 			mcp.Description(`Optional JSON object of pairwise correlation coefficients in [-1, 1], keyed by "placeA-placeB" (sorted alphabetically). e.g. {"btc-eth": 0.7, "btc-sol": 0.6, "eth-sol": 0.5}. Missing pairs default to 0 (independent). Matrix must be positive semi-definite or the call errors.`),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of mass-action rate constants (default 1.0 per transition)"),
+			mcp.Description("JSON object of mass-action rate constants (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 1])"),
@@ -97,6 +97,9 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	volStr, err := request.RequireString("volatility")
 	if err != nil {
@@ -165,10 +168,7 @@ func handleSde(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(fmt.Sprintf("correlation matrix not positive semi-definite: %v", err)), nil
 	}
 
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
-	}
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

@@ -46,7 +46,7 @@ func fitTool() mcp.Tool {
 			mcp.Description(`JSON object of starting rates for parameters being fit (default: midpoint of bounds)`),
 		),
 		mcp.WithString("fixed_rates",
-			mcp.Description("JSON object of rates for transitions NOT being fit (default 1.0)"),
+			mcp.Description("JSON object of rates for transitions NOT being fit (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("method",
 			mcp.Description(`Optimizer: "nelder-mead" (default, gradient-free) or "adam" (gradient-based on analytic forward sensitivities — typically fewer solves for smooth fits)`),
@@ -91,6 +91,9 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	obsStr, err := request.RequireString("observations")
 	if err != nil {
@@ -163,10 +166,7 @@ func handleFit(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolR
 		}
 	}
 
-	fixedRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		fixedRates[t.ID] = 1.0
-	}
+	fixedRates := modelRates(model)
 	if s := request.GetString("fixed_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

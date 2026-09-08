@@ -109,6 +109,15 @@ Model checking and behaviour:
   against the model: fitness (can the model reproduce observed traces?),
   precision (does it permit behaviour never seen?), per-trace diagnostics,
   worst-fitting first.
+- `petri_invariants` — conservation laws (Farkas P-invariants), T-invariants,
+  siphons and traps with deadlock witnesses; caveats name what the analysis
+  net encoded lossily (capacity bound, read arc, inhibitor weight).
+- `petri_canonical` — exact automorphism orbits and a canonical id that two
+  models share when they differ only by renaming.
+- `petri_lumping` — proved place-level reductions of the mass-action ODE
+  (backward differential equivalence; constrained lumping for a named sum).
+- `petri_dataset` — a seeded synthetic event log (CSV: case_id, activity,
+  timestamp), the shape `petri_conformance` replays: generate → fit → conform.
 - `petri_simulate` — fire a transition sequence and return the step-by-step
   state trace.
 - `petri_scenario` — what-if: override the initial marking and/or rates
