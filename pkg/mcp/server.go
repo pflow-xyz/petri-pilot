@@ -6,11 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -1834,52 +1831,26 @@ type pflowProbe struct {
 	Places      map[string]json.RawMessage `json:"places"`
 }
 
-// parsePflowNet returns the go-pflow petri net for a pflow.xyz-format model,
-// or ok=false when the input is some other format. The returned net keeps
-// its color vectors and inhibitor flags — callers that can consume a
-// petri.PetriNet directly (verify) should, rather than round-tripping
-// through the scalar metamodel.
+// parsePflowNet returns the go-pflow petri net for an editor-shape
+// (pflow.xyz JSON-LD) model, or ok=false when the input is some other shape.
+// Only petri_verify wants the colored net itself, so that base-name
+// properties resolve as per-color sums; every other tool takes the metamodel
+// that parser.ModelFromJSON produces. Detection and the color-name rule both
+// live in go-pflow now, so this repo carries no opinion of its own about the
+// editor shape.
 func parsePflowNet(jsonStr string) (*petri.PetriNet, *pflowProbe, bool, error) {
-	var probe pflowProbe
-	if err := json.Unmarshal([]byte(jsonStr), &probe); err != nil || len(probe.Places) == 0 {
+	data := []byte(jsonStr)
+	if !goflowparser.IsPflowJSON(data) {
 		return nil, nil, false, nil
 	}
-	net, err := goflowparser.FromJSON([]byte(jsonStr))
+	var probe pflowProbe
+	_ = json.Unmarshal(data, &probe)
+	net, err := goflowparser.FromJSON(data)
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("pflow.xyz model: %w", err)
 	}
-	net.Token = shortColorNames(net.Token)
+	net.Token = goflowparser.ShortColorNames(net.Token)
 	return net, &probe, true, nil
-}
-
-// shortColorNames turns pflow.xyz token URIs into the names color unfolding
-// uses. The editor declares colors as "https://pflow.xyz/tokens/red", and
-// go-pflow's ExpandColors names each per-color place base + "." + token
-// verbatim, so an unfolded place came out as
-// "queue.https://pflow.xyz/tokens/red": unreadable in every verdict, and an
-// invalid Go identifier for codegen. The last path segment is the color.
-// Names are only shortened when the result stays unique, so two tokens that
-// differ only in host keep their full form.
-func shortColorNames(tokens []string) []string {
-	if len(tokens) == 0 {
-		return tokens
-	}
-	short := make([]string, len(tokens))
-	seen := make(map[string]bool, len(tokens))
-	for i, tok := range tokens {
-		name := tok
-		if u, err := url.Parse(tok); err == nil && u.Scheme != "" && u.Path != "" {
-			if base := path.Base(u.Path); base != "" && base != "/" && base != "." {
-				name = base
-			}
-		}
-		if seen[name] {
-			return tokens
-		}
-		seen[name] = true
-		short[i] = name
-	}
-	return short
 }
 
 // schemaV2 represents the enveloped schema format with nested net and
@@ -2022,94 +1993,13 @@ func parseModelV2(input string) (*ParseResult, error) {
 }
 
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
-	// First try pflow.xyz format (places as object with string keys). This
-	// path goes through go-pflow's own parser and colored-net unfolding
-	// rather than a hand-rolled conversion: the previous converter kept only
-	// Initial[0] and Weight[0] — silently truncating multi-color models to
-	// their first color — and dropped inhibitor flags entirely.
-	if net, probe, isPflow, err := parsePflowNet(jsonStr); isPflow {
-		if err != nil {
-			return nil, err
-		}
-		// Multi-color nets are unfolded to per-color places so the metamodel
-		// (whose Initial/Weight are scalars) represents them exactly.
-		net, colors := net.ExpandColors()
-
-		// Unfolding creates one place per color per base place whether or
-		// not any arc touches that color: a queue of people in a net that
-		// also has beans and cups gets queue.beans and queue.cups with no
-		// arcs at all. Those copies failed UNCONNECTED_PLACE validation,
-		// blocked codegen, and made sensitivity analysis collapse the net.
-		// A color copy no arc touches carries no behaviour; drop it. Base
-		// places of a single-color net are kept as declared.
-		touched := make(map[string]bool, len(net.Arcs))
-		for _, a := range net.Arcs {
-			touched[a.Source] = true
-			touched[a.Target] = true
-		}
-
-		model := &goflowmetamodel.Model{
-			Name:        probe.Name,
-			Description: probe.Description,
-		}
-		placeIDs := make([]string, 0, len(net.Places))
-		for id := range net.Places {
-			placeIDs = append(placeIDs, id)
-		}
-		sort.Strings(placeIDs)
-		for _, id := range placeIDs {
-			pl := net.Places[id]
-			x, y := int(pl.X), int(pl.Y)
-			if colors != nil {
-				ref, isCopy := colors.Base[id]
-				if isCopy && !touched[id] {
-					continue
-				}
-				// Every color copy inherits the base place's coordinates,
-				// so a rendered colored net stacked all of them on one
-				// pixel. Fan the copies out below the base position.
-				if isCopy {
-					y += ref.Color * 60
-				}
-			}
-			capacity := 0
-			for _, c := range pl.Capacity {
-				capacity += int(c)
-			}
-			model.Places = append(model.Places, goflowmetamodel.Place{
-				ID:       id,
-				Initial:  int(pl.GetTokenCount()),
-				Capacity: capacity,
-				X:        x,
-				Y:        y,
-			})
-		}
-		transIDs := make([]string, 0, len(net.Transitions))
-		for id := range net.Transitions {
-			transIDs = append(transIDs, id)
-		}
-		sort.Strings(transIDs)
-		for _, id := range transIDs {
-			tr := net.Transitions[id]
-			model.Transitions = append(model.Transitions, goflowmetamodel.Transition{
-				ID: id,
-				X:  int(tr.X),
-				Y:  int(tr.Y),
-			})
-		}
-		for _, a := range net.Arcs {
-			arc := goflowmetamodel.Arc{
-				From:   a.Source,
-				To:     a.Target,
-				Weight: int(a.GetWeightSum()),
-			}
-			if a.InhibitTransition {
-				arc.Type = goflowmetamodel.InhibitorArc
-			}
-			model.Arcs = append(model.Arcs, arc)
-		}
-
-		return model, nil
+	// The editor shape reaches every tool through go-pflow's one converter:
+	// color unfolding, the read-arc encoding of an output-side inhibitor,
+	// pruning of arc-less color copies and capacity all happen there, once,
+	// for this server, for sim.pflow.xyz and for anyone else.
+	if data := []byte(jsonStr); goflowparser.IsPflowJSON(data) {
+		model, _, err := goflowparser.ModelFromJSON(data)
+		return model, err
 	}
 
 	// Standard go-pflow format (places as array)
