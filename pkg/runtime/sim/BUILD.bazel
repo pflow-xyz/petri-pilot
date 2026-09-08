@@ -49,8 +49,10 @@ go_test(
     # disk; supply it as a data runfile so the test is hermetic.
     # golden_test.go reads services/coffeeshop.json the same way and compares
     # against the pre-move goldens under testdata/.
+    # The ported siphon/orbit catalog tests walk every services/*.json.
     data = [
         "//services:coffeeshop.json",
+        "//services:models",
         "//services:vet-clinic.json",
     ] + glob(["testdata/**"]),  # keep
     embed = [":sim"],

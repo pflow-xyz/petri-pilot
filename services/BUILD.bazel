@@ -9,6 +9,14 @@ exports_files([
     "vet-clinic.json",
 ])
 
+# Every catalog model, for tests that walk services/*.json as a corpus
+# (the ported structural-reading tests in //pkg/runtime/sim).
+filegroup(
+    name = "models",
+    srcs = glob(["*.json"]),
+    visibility = ["//visibility:public"],
+)
+
 go_library(
     name = "services",
     srcs = ["embed.go"],

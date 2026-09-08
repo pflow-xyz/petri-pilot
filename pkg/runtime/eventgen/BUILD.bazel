@@ -19,6 +19,8 @@ go_library(
 go_test(
     name = "eventgen_test",
     srcs = ["playout_test.go"],
+    # The vet-clinic playout test reads ../../../services/vet-clinic.json.
+    data = ["//services:vet-clinic.json"],  # keep
     embed = [":eventgen"],
     deps = [
         "@com_github_pflow_xyz_go_pflow//eventlog",
