@@ -248,6 +248,41 @@ stronger than the tournaments can show — see finding 9.
     exactly 0 in ~8 iterations at (2.03, 1.84), and that point passes
     the referee 0/0 on both seats. Train loss can overstate failure
     (finding 11) and understate it (this one); only the referee decides.
+17. **A REAL Neural ODE — no declared structure at all — loses badly, on
+    the one game this repo can certify exact equivalence for.**
+    `neuralode.go` (reproducing ode-connect3's finding 11 here, for direct
+    comparison) replaces the champion's mass-action RHS with
+    `dx/dt = MLP(x; theta)`: no `derive.AddCatalyzedCopy`, no forced-reply
+    structure, nothing hand-derived. Scope: integrates the 4 quantities
+    every evaluator here reads (`win_x, win_o, x_turn, o_turn`), conditioned
+    on the 27 raw board features held fixed across the horizon. Trained
+    discretize-then-optimize (fixed-step Euler forward, exact backprop
+    through the unrolled steps — `checkNeuralGrad` confirmed the hand-rolled
+    backward pass against finite differences, 3e-11 max error, before
+    trusting any fit).
+
+    Two configurations, referee-gated exactly like every other finding
+    here — and this game is the one where the baseline to beat is **0**,
+    not 8 or 50, since finding 9 already reached exact minimax equivalence:
+
+    | hidden | positions | L2 | params | referee errors |
+    |---|---|---|---|---|
+    | 16 | 241 | 0 | 580 | 163 (110 O, 53 X) |
+    | 6 | 426 | 0.02 | 220 | 92 (73 O, 19 X) |
+
+    Regularization plus ~1.8x more data roughly halved the error count
+    (163→92) but came nowhere near the champion's exact 0 — on a smaller,
+    fully-solved game than ode-connect3's Connect-3, where the gap is if
+    anything starker precisely because the target here is provably
+    reachable and the champion already reaches it with 2 scalars. This is
+    the same finding as ode-connect3's 11, now confirmed on a second game:
+    the declared net's stoichiometry (which cells complete which line) is a
+    free, correct prior a black-box approximator has to spend data
+    learning, and a few hundred self-play positions from a 9-cell game is
+    not enough to learn it from scratch. See ode-connect3/README.md finding
+    11 for the fuller writeup (cost characteristics, the L2 ablation
+    pattern, the discretize-then-optimize training method) — this entry
+    exists to record that the result reproduces here, not to restate it.
 
 ## Resolution
 
@@ -274,3 +309,13 @@ prediction to carry there: a static (flow-integral) evaluator's quality
 should track initiative — near-complete for the side attacking, failing
 exactly at the defender's trap positions — so the seats to instrument
 first in any new game are the ones without the tempo.
+
+Finding 17 answers a different question — not "does a structural adjustment
+reach equivalence" but "does the structure matter at all, or would a
+flexible-enough function have found the same answer from data alone." It
+does, decisively: a real Neural ODE with the same rank-loss training and
+the same referee gate never got below 92 total errors, on the exact game
+this experiment proved a 2-scalar structured evaluator solves perfectly.
+That is the empirical case for policy-in-structure over policy-from-data at
+this scale — the declared net is a free, correct prior; a black-box
+approximator has to spend data learning what it never had to guess.
