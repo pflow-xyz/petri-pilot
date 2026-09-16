@@ -76,9 +76,9 @@ petri-pilot mcp
 | `petri_dataset` | Seeded synthetic event log (CSV) in the shape `petri_conformance` replays |
 | `petri_simulate` | Fire transitions, trace state |
 | `petri_code_to_flow` | Convert source code into a Petri net model |
-| `petri_codegen` | Generate Go backend |
+| `petri_codegen` | Generate ZK circuits / dependency-free state-machine core / Lean proofs |
 | `petri_frontend` | Generate ES modules frontend |
-| `petri_application` | Full-stack from high-level spec |
+| `petri_build` | Generate, write to disk, build and (by default) runtime-verify a full Go application — from a model, an entity spec, or a raw bundle document |
 | `petri_extend` | Modify existing models |
 | `service_start/stop/logs` | Manage running services |
 

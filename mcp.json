@@ -49,7 +49,7 @@
     "petri_codegen",
     "petri_frontend",
     "petri_visualize",
-    "petri_application",
+    "petri_build",
     "petri_docs",
     "petri_migrate",
     "petri_code_to_flow",

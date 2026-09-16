@@ -241,7 +241,7 @@ An LLM workflow:
 2. Validate against schema (client-side)
 3. Call `petri_validate` for Petri net analysis
 4. Iterate on feedback
-5. Call `petri_codegen` to generate application
+5. Call `petri_build` to generate, build and verify the application
 
 The model is the contract. Everything else is derivable.
 

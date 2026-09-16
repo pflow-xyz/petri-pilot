@@ -6,8 +6,8 @@
 //
 //   - Load: a bundle document (JSON) whose subnets carry their models inline
 //     or by file reference — the raw form for hand-authored bundles.
-//   - CompileApplication (compile.go): the petri_application entity spec,
-//     compiled into a Bundle — the form LLM-driven design produces.
+//   - CompileApplication (compile.go): the petri_build entity spec ("spec"
+//     parameter), compiled into a Bundle — the form LLM-driven design produces.
 //
 // Either way the result is a validated *metamodel.Bundle; FlattenWithMap
 // hands codegen the flat model plus the per-subnet rewrite map.

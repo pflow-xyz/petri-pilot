@@ -100,21 +100,45 @@ there, tagging, and bumping the `require` line here.
 
 ### 2. Generate Code
 
-For a composed application where every entity is its own Petri net (the
-entities compile into a metamodel.Bundle — one subnet per entity, cross-entity
+**`petri_build` is the one tool that produces a full Go application**, and it
+is the only MCP tool that actually runs the result. It replaces the retired
+`petri_application` and `petri_bundle` tools outright (same compilation
+pipeline underneath, `pkg/bundle`), and it also took over `petri_codegen`'s
+old `language='go'` option — `petri_codegen` no longer accepts `'go'` at all;
+passing it returns an error pointing here. `output_dir` is required (this
+tool always writes to disk, never previews), and `verify` defaults to `true`:
+after generating and type-checking, it runs `go build ./...`, then — unless
+`verify=false` — starts the real binary on a free port and runs
+`pkg/appverify` against it (health check, schema check, initial-marking
+check, then a bounded walk of reachable states firing whichever transition
+the model's own firing rule enables next and diffing the live marking against
+an oracle `pkg/metamodel.Runtime` after every firing). The returned report is
+`{output_dir, files_written, build: {ok, errors}, verify: {ran, passed,
+transitions_fired, mismatches}}` — mirroring how sim-pflow-xyz calibrates a
+model before publishing it, but for "does this generated app actually run
+correctly" rather than "does this model fit the data".
+
+A single-net model:
+
+```
+petri_build(model='...', output_dir='generated/ordertracker', module_path='github.com/example/ordertracker')
+```
+
+A composed application where every entity is its own Petri net (the entities
+compile into a metamodel.Bundle — one subnet per entity, cross-entity
 FieldReferences validated, declared fusions become atomic cross-entity
 commands with coordinators; see pkg/bundle):
 
 ```
-petri_application(spec='{"name":"shop","entities":[...]}',
-                  fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
-                  output_dir='examples/shop')
+petri_build(spec='{"name":"shop","entities":[...]}',
+            fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
+            output_dir='examples/shop')
 ```
 
 For a raw bundle document (subnets + token/data/event/guard links):
 
 ```
-petri_bundle(bundle='{"name":"shop","subnets":[{"id":"order","model":{...}}],"links":[...]}', output_dir='...')
+petri_build(bundle='{"name":"shop","subnets":[{"id":"order","model":{...}}],"links":[...]}', output_dir='...')
 ```
 
 CLI equivalent — `*.bundle.json` routes to the composed generator
@@ -130,13 +154,23 @@ event log) plus a root package: bundle.go (composition tables), flatmodel.go
 fires atomically across member entities via eventsource.MultiAppender, HTTP
 POST /fire/<transition>, refusals are 409 and append nothing). examples/shop
 is the reference app; cmd/petri-pilot/bundle_freeze_test.go diffs the
-generator's output against it byte-for-byte.
+generator's output against it byte-for-byte (that freeze target is
+`GenerateBundleFiles` alone — `petri_build`'s own combined run harness,
+below, is additional and not part of the frozen tree).
 
-For just a backend from a Petri net model:
-
-```
-petri_codegen(model='...', language='go', package='ordertracker')
-```
+**A composed app previously had no single HTTP entry point that could reach
+an entity at all** — `app.go`'s `Handler()` only ever mounted the fused
+`/fire/<transition>` commands, registered as a *separate* `serve.Register`
+service from each entity's own (only reachable with `IncludeInfra`, and even
+then as N independent services on N ports). `petri_build` closes that gap
+for real by generating one more file outside the frozen tree,
+`cmd/server/main.go`: a combined harness that mounts the bundle-level
+`/health`, `/ready`, `/api/schema`, the fused commands at `/fire/<transition>`
+unchanged, and every entity's own generated `BuildRouter` at
+`/<subnet-id>/...` via `http.StripPrefix` (so its internal routes —
+`/api/<slug>`, `/api/<transition>`, `/api/<slug>/{id}/events` — resolve
+exactly as they do served standalone). This is what makes a composed app
+verifiable — and runnable — at all.
 
 For a dependency-free, single-file state-machine core to embed in an existing
 codebase — no API, no persistence, just marking/enablement/firing plus a demo
@@ -214,7 +248,7 @@ If something isn't working:
 4. Regenerate and restart:
    ```
    service_stop(service_id='svc-1')
-   petri_application(spec='...')  # or petri_codegen
+   petri_build(spec='...', output_dir='...')  # or model=/bundle=
    service_start(directory='...', port=8080)
    ```
 5. Refresh browser and retest
@@ -935,7 +969,7 @@ viewExtensions.stateRenderers['balance'] = (value) =>
 
 ### Workflow for Adding Customizations
 
-1. Generate the app: `petri_codegen(model='...', package='myapp')`
+1. Generate the app: `petri_build(model='...', package='myapp', output_dir='...')`
 2. Edit `custom/extensions.js` to add your customizations
 3. Regenerate when model changes - customizations are preserved
 4. For universal features, add to templates instead

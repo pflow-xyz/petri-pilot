@@ -65,7 +65,7 @@ jobs:
           1. Use petri-pilot MCP tools to design a Petri net model:
              - `petri_validate` to check the model
              - `petri_analyze` for deadlock detection
-             - `petri_codegen` to generate code
+             - `petri_build` to generate, build and verify the app
 
           2. Create the model JSON in `examples/${{ steps.extract.outputs.app_name }}.json`
 
