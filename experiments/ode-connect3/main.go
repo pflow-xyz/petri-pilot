@@ -262,6 +262,16 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
 		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
+	case "debug-hybrid-col-one":
+		hg := m.toHybridColumnNet()
+		positions := collectPositions(m, 5, 7)
+		p := positions[0]
+		mv := p.moves[0]
+		start := time.Now()
+		s, gTheta, gl, ok := hg.scoreGrad(m, m.fire(mv, p.mk), 1.0, p.maximizes)
+		fmt.Printf("one adjoint scoreGrad call: %v  ok=%v s=%.4f len(gTheta)=%d gl=%.4f\n",
+			time.Since(start), ok, s, len(gTheta), gl)
+		return
 	case "debug-hybrid-one":
 		net, rfs, _, _, repWin, repBlk := m.toHybridRateNet()
 		positions := collectPositions(m, 5, 7)
@@ -302,6 +312,27 @@ func main() {
 		fmt.Printf("win  params: bias %.4f  board-weight L2 norm %.4f\n", winRF.GetParams()[0], l2Norm(winRF.GetParams()[1:]))
 		fmt.Printf("blk  params: bias %.4f  board-weight L2 norm %.4f\n", blkRF.GetParams()[0], l2Norm(blkRF.GetParams()[1:]))
 		printReferee(m, "hybrid", hybridPlayer(net, rfs, lam))
+	case "fit-hybrid-col":
+		games, iters := 5, 10
+		l2 := 0.0
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%f", &l2)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-hybrid-col: training positions: %d l2=%g\n", len(positions), l2)
+		hg, lam := fitHybridColumn(m, positions, iters, l2, true)
+		fmt.Printf("fitted: lambda %.4f (%d groups, %d params)\n", lam, len(hg.order), hg.numParams())
+		for _, key := range hg.order {
+			p := hg.groups[key].GetParams()
+			fmt.Printf("  %-10s bias %.4f  col-weights %.4f %.4f %.4f %.4f\n", key, p[0], p[1], p[2], p[3], p[4])
+		}
+		printReferee(m, "hybrid-col", hybridPlayer(hg.net, hg.rfs, lam))
 	case "check-neuralode-grad":
 		rng := rand.New(rand.NewSource(1))
 		fmt.Printf("max |analytic - finite-diff| gradient error: %.3e\n", checkNeuralGrad(rng))
