@@ -382,6 +382,19 @@ func main() {
 			fmt.Sscanf(os.Args[4], "%f", &lam)
 		}
 		diagnose(m, "policy", odePlayer(m.toPetriPolicy(winBias, blockBias), lam), 20)
+	case "diagnose-parity":
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := candidateParityForceBias, candidateParityBlockBias, candidateTempoBias
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &parityForceBias)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &parityBlockBias)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%f", &tempoBias)
+		}
+		diagnose(m, "parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam), 20)
 	case "verify":
 		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
 		if len(os.Args) > 4 {
@@ -431,6 +444,79 @@ func main() {
 		start := time.Now()
 		printReferee(m, "fit-fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam))
 		fmt.Printf("exhaustive sweep wall clock: %v\n", time.Since(start))
+	case "verify-parity":
+		// The structural "future support" construction: champion
+		// winBias/blockBias/lambda held fixed, parityForceBias/
+		// parityBlockBias/tempoBias as the only new knobs (default:
+		// untuned, the candidate* constants in parity.go).
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := candidateParityForceBias, candidateParityBlockBias, candidateTempoBias
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &parityForceBias)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &parityBlockBias)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%f", &tempoBias)
+		}
+		fmt.Printf("parity: winBias %.3f blockBias %.3f parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f lambda %.3f\n",
+			winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam)
+		printReferee(m, "parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
+	case "fit-parity":
+		// Minimal-freedom fit: hold the champion's winBias/blockBias/lambda
+		// fixed, calibrate only the three new rate constants.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-parity: training positions: %d\n", len(positions))
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := fitParityOnly(m, positions, winBias, blockBias, lam, iters, true)
+		fmt.Printf("fitted: parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f loss %.6g\n",
+			parityForceBias, parityBlockBias, tempoBias, rankLossParity(m, positions, winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam))
+		printReferee(m, "fit-parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
+	case "fit-tempo":
+		// The single-knob fit: hold everything else at the champion/
+		// untuned values and fit only tempoBias -- the one live knob the
+		// manual scan (README finding 14) found.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-tempo: training positions: %d\n", len(positions))
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		tempoBias := fitTempoOnly(m, positions, winBias, blockBias, 0, 0, lam, iters, true)
+		fmt.Printf("fitted: tempoBias %.4f loss %.6g\n",
+			tempoBias, rankLossParity(m, positions, winBias, blockBias, 0, 0, tempoBias, lam))
+		printReferee(m, "fit-tempo", parityOdePlayer(m.toPetriParity(winBias, blockBias, 0, 0, tempoBias), lam))
+	case "fit-parity-joint":
+		// Comparison point: all six scalars fit together. Expected, per
+		// findings 7/12, to risk re-diffusing the already-good
+		// winBias/blockBias calibration -- kept for the record, not the
+		// primary claim.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-parity-joint: training positions: %d\n", len(positions))
+		winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam := fitPolicyParity(m, positions, iters, true)
+		fmt.Printf("fitted: winBias %.4f blockBias %.4f parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f lambda %.4f loss %.6g\n",
+			winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam,
+			rankLossParity(m, positions, winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam))
+		printReferee(m, "fit-parity-joint", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
 	case "fit":
 		games, iters := 30, 50
 		if len(os.Args) > 2 {

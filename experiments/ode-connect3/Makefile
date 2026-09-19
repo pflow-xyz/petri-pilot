@@ -18,3 +18,12 @@ verify-tactical: build
 
 fit: build
 	./ode-connect3 fit
+
+verify-parity: build
+	./ode-connect3 verify-parity
+
+fit-parity: build
+	./ode-connect3 fit-parity
+
+fit-tempo: build
+	./ode-connect3 fit-tempo

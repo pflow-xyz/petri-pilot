@@ -46,6 +46,24 @@ make verify-fork       # referee the blk2_* "block-the-block" tier, sibling
 ./ode-connect3 fit-fork [games] [iters]
                        # extend fit.go's Nelder-Mead to a fourth parameter,
                        # forkBias, the blk2_* tier's shared rate; finding 13
+./ode-connect3 verify-parity [parityForceBias] [parityBlockBias] [tempoBias]
+                       # champion winBias/blockBias/lambda held fixed; the
+                       # structural "future support"/gravity-parity claim
+                       # tier (parity.go) as the only new knobs; finding 14
+./ode-connect3 diagnose-parity [parityForceBias] [parityBlockBias] [tempoBias]
+                       # the parity evaluator's failures, same format as
+                       # diagnose-naive/diagnose-deep
+./ode-connect3 fit-parity [games] [iters]
+                       # minimal-freedom fit: winBias/blockBias/lambda fixed
+                       # at champion values, fit parityForceBias/
+                       # parityBlockBias/tempoBias only; finding 14
+./ode-connect3 fit-tempo [games] [iters]
+                       # fit-parity narrowed to the one live knob (tempoBias
+                       # alone); finding 14
+./ode-connect3 fit-parity-joint [games] [iters]
+                       # comparison point: all six scalars (winBias,
+                       # blockBias, parityForceBias, parityBlockBias,
+                       # tempoBias, lambda) fit together; finding 14
 ```
 
 ## Declared game net
@@ -411,6 +429,119 @@ finding 10's number was actually obtained.
     Depth genuinely buys information about *future* board states that no
     declared pattern over the *current* one can encode, confirming finding
     9/10's resolution from the structural side instead of the tuning side.
+14. **A declared future-support/gravity-parity place (ROADMAP.md Phase 1a,
+    `parity.go`) ties the referee, it does not beat it — and the two
+    mechanisms tried inside it fail for two different, both legible,
+    reasons.** The construction: a Claimeven pairing fact fixed by board
+    size alone (4 rows is even, so rows {1,3} are X's "on-parity" rows and
+    rows {0,2} are O's, uniformly across every column, no game history, no
+    fitting) seeds a new place `claim_<side>_<col>` per column and per side
+    — populated both from cells that side has *already* played on-parity in
+    the position being scored (a derived readout of `mk`, exactly as
+    `m.position()` already derives landing tokens from occupancy) and, for
+    the rest of the horizon, from the *same* existing `x_play_/o_play_`
+    transitions continuing to fire fractionally (one extra output arc
+    apiece, no new inputs) — so claim mass keeps accruing from hypothetical
+    future on-parity plays inside the solve. `TestParityZeroBiasesReproducesBaseline`
+    pins the plumbing: with every new rate at 0 the construction reproduces
+    the champion's 462/6/2 and 45/0/0 exactly, decision for decision.
+
+    Two independent tiers read that place, both calibrated the same way
+    finding 10 calibrates its scalars — Nelder-Mead + hinge rank loss over
+    197 positions (30 self-play games, seed 7, plus the 4 standing audits),
+    with `winBias`/`blockBias`/`lambda` held at the champion's values so
+    only the new tier's own knob(s) move (the minimal-freedom experiment
+    findings 7/12 both argue for):
+
+    - **`pforce_/pblk_`: a parity-gated catalyzed copy of every force_/blk_
+      transition (`derive.AddCatalyzedCopy`, the same tool `blk_` itself is
+      built from), gated on the mover's own claim place for that cell's
+      column.** This is provably inert on this referee's 8 residual
+      failures, not just empirically flat: `AddCatalyzedCopy` multiplies
+      every catalyst together (AND, not OR), and `force_`/`blk_`'s own
+      pre-existing two-mark catalyst is 0 at every position among these 8
+      — six of them are finding 6's "deep" class, with no line anywhere
+      near complete. Zero times any `parityForceBias`/`parityBlockBias` is
+      still zero. Confirmed by sweeping both individually and jointly over
+      `[0.01, 0.3]` (`verify-parity`): the referee count does not move at
+      all (stays exactly 6 losing + 2 missed = 8) until the bias is large
+      enough to start doing unrelated damage elsewhere on the board
+      (`parityForceBias 1.0` → 56 losing).
+    - **`tempo_<side>_<col>`: a read-arc transition whose only reactant is
+      `claim_<side>_<col>` itself, depositing straight into `win_<side>`.**
+      Under mass action this is `d(win_side)/dt += tempoBias*claim`, the
+      literal "the flow integral reads the claim place directly" mechanism
+      the pforce_/pblk_ tier turned out not to be. This tier is genuinely
+      live: sweeping `tempoBias` alone (`parityForceBias = parityBlockBias
+      = 0`) gives 18-24 total O errors (worse than baseline) below 0.045,
+      a **floor of exactly 8** (8 losing, 0 missed — X still perfect) across
+      `[0.048, 0.06]`, and new X-side failures (2+ losing) from 0.062 up —
+      a strictly worse trade regardless of O's count, since the stop
+      condition forbids any new X failure. Four manual `(parityForceBias,
+      parityBlockBias, tempoBias)` combinations in the same tempo sweet
+      spot (e.g. `0.01 0.05 0.055`) land at the same floor, never below.
+      `fit-tempo` (Nelder-Mead, 29 iterations to convergence) drove the
+      sampled hinge loss from 24.59 to 0.11 and landed on `tempoBias =
+      0.0084` — an order of magnitude below the manual sweet spot — whose
+      referee result is 478/10/2 for O and 48/0/0 for X, **12 total errors,
+      worse than the untouched champion's 8**: another clean instance of
+      the Goodhart pattern findings 4, 7 and 12 already established, this
+      time on a construction with real, non-inert structure behind it.
+
+    `diagnose-parity` at the manual floor (`tempoBias 0.055`) shows the
+    tempo tier is not merely tied with the champion by coincidence: **the 8
+    residual failures are a different set of positions than the original
+    8**, and shallower — mostly 4-8 pieces on the board (e.g.
+    `........O...X..XO`) against the original set's mostly 10-13
+    (`.....OX.XXO.OXOXO`, finding 6's "late gravity-tempo" class). The
+    construction appears to genuinely route around several of the original
+    deep failures while introducing an unrelated new set of early ones —
+    a lateral trade at the referee's total, not a reduction, and a
+    different failure mode than either "inert" (`pforce_/pblk_` above) or
+    "Goodharts under fitting" (the auto-fit result above): here a
+    hand-picked point in the live tier's range is simply not better on
+    net, even though it is doing something real.
+
+    **Stop condition: not met.** The best configuration found across every
+    variant tried — a ~20-point manual scan (both tiers, individually and
+    jointly) and the single-knob `fit-tempo` auto-fit — is an 8-error tie
+    with the champion, never fewer, and several configurations that reach 8
+    do so with X still perfect but others (`tempoBias >= 0.062`, the
+    auto-fit point) cost X correctness or make O strictly worse. The
+    3-parameter joint fit (`fit-parity`, all of `parityForceBias`,
+    `parityBlockBias` and `tempoBias` free at once) and the 6-parameter
+    joint fit (`fit-parity-joint`, adding `winBias`/`blockBias`/`lambda`)
+    were started but not run to convergence inside this session's time
+    budget — each sensitivity-free solve over this net (664 transitions,
+    roughly double the champion's 368) costs noticeably more than the
+    champion's own fits, and a 3-4 dimensional Nelder-Mead needs several
+    times the function evaluations per iteration that `fit-tempo`'s single
+    dimension did (finding 7's own unrun schemes are the same shape of gap
+    for the same reason: cost, not a decision that they wouldn't matter).
+    Given `pforce_/pblk_`'s parameters are separately *proven* inert
+    (not merely observed flat) on these 8 positions, and every point found
+    so far in the live tempo tier's own successful range plateaus at
+    exactly 8 rather than trending toward fewer, there is no positive
+    signal in this data that finishing those two runs would cross the
+    "fewer than 8" bar — but that is an inference, not a completed
+    measurement, and is recorded as an open question rather than folded
+    into the result above. This is the same class of negative result as
+    finding 7, arrived at differently: finding 7 showed
+    *more freedom on the existing structure* moves away from the goal;
+    this shows a genuinely *new* piece of structure, built to the letter of
+    ROADMAP.md's Phase 1a description and gated the same way this file's
+    working tiers are gated, still does not supply the missing predicate —
+    because the two ways tried to *read* the claim place are either gated
+    behind evidence (line-completion catalysts) that is exactly what is
+    missing at these positions, or ungated and therefore rewards on-parity
+    investment independent of whether it was ever going to matter, which
+    trades one failure set for another rather than closing the gap. Finding
+    6's own diagnosis — "ownership of future support" needs representing,
+    not "current two-in-a-row geometry" — is not refuted by this result:
+    what this finding adds is that *a* structural, non-fitted, per-column
+    parity place is not automatically sufficient by itself; it still needs
+    a way to matter to the score that neither an AND-gate on existing
+    line-completion catalysts nor an ungated pump into `win_side` provides.
 
 ## Resolution
 
@@ -444,7 +575,7 @@ either, and the remaining errors at every depth tried are
 still the future-support class finding 6 named — search is buying the same
 thing finding 6 asked for (seeing further into the game), just less
 efficiently than a dedicated structural predicate would *if one could be
-built* — finding 13 tests that parenthetical directly and finds it does not
+built* — finding 14 tests that parenthetical directly and finds it does not
 hold: the predicate it built could not be constructed search-free at all.
 The honest reading:
 deeper search is real, composable progress and a legitimate alternative to
