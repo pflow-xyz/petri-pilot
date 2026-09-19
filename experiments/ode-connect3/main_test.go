@@ -66,6 +66,10 @@ func TestEvaluationNetShapes(t *testing.T) {
 	if got := len(policy.net.Transitions); got != 368 {
 		t.Errorf("policy transitions: got %d, want 368", got)
 	}
+	fork := m.toPetriPolicyFork(candidateForceBias, candidateBlockBias, candidateForkBias)
+	if got := len(fork.net.Transitions); got != 656 {
+		t.Errorf("fork transitions: got %d, want 656 (368 + 288 blk2_*)", got)
+	}
 }
 
 func TestCalibratedNaiveExhaustiveReferee(t *testing.T) {

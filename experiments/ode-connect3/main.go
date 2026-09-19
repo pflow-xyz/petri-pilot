@@ -381,6 +381,46 @@ func main() {
 		}
 		fmt.Printf("policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
 		printReferee(m, "policy", odePlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "verify-fork":
+		// blk2_* tier, sibling to force_*/blk_*; still one odeFinal solve
+		// per candidate move (no search). See fork.go.
+		winBias, blockBias, forkBias, lam := candidateForceBias, candidateBlockBias, candidateForkBias, scoreLambda
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[2], "%f", &winBias)
+			fmt.Sscanf(os.Args[3], "%f", &blockBias)
+			fmt.Sscanf(os.Args[4], "%f", &forkBias)
+			fmt.Sscanf(os.Args[5], "%f", &lam)
+		}
+		fmt.Printf("policy+fork: winBias %.3f blockBias %.3f forkBias %.3f lambda %.3f\n",
+			winBias, blockBias, forkBias, lam)
+		start := time.Now()
+		printReferee(m, "policy+fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam))
+		fmt.Printf("exhaustive sweep wall clock: %v\n", time.Since(start))
+	case "diagnose-fork":
+		winBias, blockBias, forkBias, lam := candidateForceBias, candidateBlockBias, candidateForkBias, scoreLambda
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[2], "%f", &winBias)
+			fmt.Sscanf(os.Args[3], "%f", &blockBias)
+			fmt.Sscanf(os.Args[4], "%f", &forkBias)
+			fmt.Sscanf(os.Args[5], "%f", &lam)
+		}
+		diagnose(m, "policy+fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam), 20)
+	case "fit-fork":
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-fork: training positions: %d\n", len(positions))
+		winBias, blockBias, forkBias, lam := fitPolicyFork(m, positions, iters, true)
+		fmt.Printf("fitted: winBias %.4f blockBias %.4f forkBias %.4f lambda %.4f loss %.6g\n",
+			winBias, blockBias, forkBias, lam, rankLossFork(m, positions, winBias, blockBias, forkBias, lam))
+		start := time.Now()
+		printReferee(m, "fit-fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam))
+		fmt.Printf("exhaustive sweep wall clock: %v\n", time.Since(start))
 	case "fit":
 		games, iters := 30, 50
 		if len(os.Args) > 2 {
