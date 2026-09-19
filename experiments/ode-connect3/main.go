@@ -235,6 +235,75 @@ func main() {
 		}
 		fmt.Printf("deep+policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
 		printReferee(m, "deep+policy", odeLookaheadPlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "verify-oracle":
+		// The oracle-ceiling experiment: seed the exact forced-reply
+		// projection (oraclefuture.go) into the marking before the single
+		// static ODE solve, no search, no structural policy, no new
+		// tuning. Establishes an upper bound on the flow integral given
+		// the future-support predicate findings 6/7 asked for, solved
+		// exactly instead of approximated.
+		plies := oracleSeedPlies
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &lam)
+		}
+		fmt.Printf("oracle: horizon %.3f lambda %.3f maxPlies %d\n", odeHorizon, lam, plies)
+		printReferee(m, "oracle", odeOraclePlayer(m.toPetriBaseline(), lam, plies, false))
+	case "verify-oracle-canonical":
+		// The stronger cheat: don't stop at a tie, take the row-major-first
+		// optimal move and keep projecting (oraclefuture.go's `canonical`).
+		// Distinguishes "the representation has a ceiling" from "the
+		// forced-reply-only predicate was too conservative to reach it".
+		plies := oracleSeedPlies
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &lam)
+		}
+		fmt.Printf("oracle-canonical: horizon %.3f lambda %.3f maxPlies %d\n", odeHorizon, lam, plies)
+		printReferee(m, "oracle-canonical", odeOraclePlayer(m.toPetriBaseline(), lam, plies, true))
+	case "debug-oracle-terminal":
+		// How often does the canonical seed just finish the game outright
+		// (leaf marking already has win_x/win_o set, so odeFinal has
+		// nothing left to relax) vs. leaving real work for the ODE? Answers
+		// whether verify-oracle-canonical's 0 errors is a meaningful test
+		// of the flow integral or a near-tautology at the plies it needed.
+		plies := oracleSeedPlies
+		canonical := true
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%t", &canonical)
+		}
+		positions := collectPositions(m, 60, 7)
+		total, terminal := 0, 0
+		for _, p := range positions {
+			for _, mv := range p.moves {
+				seeded := m.oracleForcedSeed(m.fire(mv, p.mk), plies, canonical)
+				total++
+				if m.hasLine(seeded, "x") || m.hasLine(seeded, "o") {
+					terminal++
+				}
+			}
+		}
+		fmt.Printf("plies=%d canonical=%v: %d/%d seeded leaves already terminal (%.1f%%)\n",
+			plies, canonical, terminal, total, 100*float64(terminal)/float64(total))
+	case "diagnose-oracle":
+		plies := oracleSeedPlies
+		canonical := false
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%t", &canonical)
+		}
+		diagnose(m, "oracle", odeOraclePlayer(m.toPetriBaseline(), scoreLambda, plies, canonical), 20)
 	case "verify-deep2":
 		// 2-ply extension of finding 8 on the plain calibrated evaluator.
 		lam := scoreLambda

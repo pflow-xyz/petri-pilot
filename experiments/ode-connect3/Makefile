@@ -13,5 +13,8 @@ verify-naive: build
 verify-tactical: build
 	./ode-connect3 verify-tactical
 
+verify-oracle: build
+	./ode-connect3 verify-oracle
+
 fit: build
 	./ode-connect3 fit

@@ -40,6 +40,18 @@ make fit              # fit policy scalars against labeled positions
                        # keep the declared structure, learn each family's
                        # rate as a learn.LinearRateFunc regression over
                        # board state instead of a constant; finding 12
+./ode-connect3 verify-oracle [maxPlies] [lambda]
+                       # seed the exact oracle's strict forced-reply
+                       # projection into the marking before one static ODE
+                       # solve, no search, no tuning; finding 13
+./ode-connect3 verify-oracle-canonical [maxPlies] [lambda]
+                       # same, but the projection also breaks ties instead
+                       # of stopping at the first real choice; finding 13
+./ode-connect3 diagnose-oracle [maxPlies] [canonical]   # the oracle evaluator's failures
+./ode-connect3 debug-oracle-terminal [maxPlies] [canonical]
+                       # what fraction of seeded leaves are already a
+                       # completed line, i.e. how much relaxation the ODE
+                       # actually still has left to do; finding 13
 ```
 
 ## Declared game net
@@ -337,6 +349,87 @@ finding 10's number was actually obtained.
     what matters" is not sufficient on its own — the feature has to be
     locally relevant to the transition reading it, the same lesson finding
     7's grouping schemes ran into from the tuning side.
+13. **Handed the exact predicate instead of a heuristic approximation of it,
+    the flow integral gets most — not all — of the way to 0, and the
+    remainder is informative about where the two prior heuristic attempts'
+    failure actually lived.** Two follow-ups not otherwise recorded in this
+    file tried to derive "future support" (finding 6) from the CURRENT
+    marking alone — a parity/tempo place and a richer now-only AND-gate
+    "block-the-block" tier — and both failed to move naive's 8 errors;
+    diagnose-fork proved the second one's catalysts never fire on any of
+    the 8 failures, because those are about cells not yet open under
+    gravity, which no predicate over current marks can see. `oraclefuture.go`
+    stops approximating: `oracleForcedSeed` walks forward from a candidate
+    move using the exact memoized oracle (`m.minimax`/`m.optimalSet`,
+    players.go), but only through plies where the mover's `optimalSet` has
+    exactly one member — a genuine forced reply, not a tie broken
+    arbitrarily — and seeds `x<cell>`/`o<cell>` for every cell filled along
+    that forced prefix directly into the marking `odeFinal` starts from.
+    Net structure, rates, horizon and score readout are byte-identical to
+    every other evaluator in this file; the only change is what the single
+    relaxed solve is allowed to start from, computed entirely offline
+    before the solve runs. This is deliberately unavailable to a real
+    player and is offered as an upper bound, per the experiment's stated
+    purpose.
+
+    `verify-oracle` (`odeOraclePlayer`, strict/forced-only): exhaustive
+    referee errors drop from naive's 8 (6 O-losing, 2 missed, X perfect) to
+    **4** (4 O-losing, 0 missed, X still perfect) — already at 1 ply, and
+    completely flat from 1 ply through 32 plies tried. This is not "not
+    enough plies allowed": `debug-oracle-terminal` shows the fraction of
+    seeded leaves that already contain a completed line plateaus at 32.9%
+    by 4 plies and never rises through 16 — the strict predicate itself,
+    not a ply budget, is what stops. `diagnose-oracle` shows the same 4
+    positions fail at every plies value tried; two are exact board-for-board
+    repeats of naive's original 8 (the `.XX..OO..OX.XXO.O`/`o_play_20` and
+    `.XX..OO..XO..OXXO`/`o_play_23` positions), and two are new — reachable
+    only once the other naive failures were fixed and the referee's fixed
+    O-seat walk found a different path through the game. All 4 share naive's
+    original signature exactly: no immediate opponent win after the
+    evaluator's choice (finding 6's future-support class), X untouched.
+
+    `verify-oracle-canonical` (same function, `canonical=true`: don't stop
+    at a tie, take the row-major-first optimal move and keep projecting)
+    reaches **0** total errors, stable from 8 plies through 24. Read alone
+    this would be the "representation is not the ceiling" branch of the
+    plan's stop condition. But `debug-oracle-terminal` shows why it needed
+    exactly that many plies and why it should not be over-read: the
+    fraction of *canonical* seeded leaves already containing a completed
+    line rises from 46.5% at 1 ply to 91.3% at 8 to 98.7% at 16 — canonical
+    seeding at the depth it needed to succeed is, the large majority of the
+    time, not leaving the ODE a partially-open position to relax at all,
+    it is handing it an already-finished game and asking it to notice.
+    That the flow integral does correctly read out an already-complete
+    line is a real, useful confirmation (a wrong final-state readout would
+    have failed even that), but it is a much weaker claim than "the flow
+    integral can rank moves correctly given perfect partial information" —
+    the strict variant is the test of that claim, and it does not reach 0.
+
+    **Stop condition:** this lands in the "does not reach 0" branch, but
+    not the pessimistic reading of it. The literal predicate the plan asked
+    for — forced-reply/parity-decided future ownership, computed exactly
+    and fed in before the solve, with the *same* net and *same* readout as
+    every other evaluator here — closes half the gap (8→4) with no new
+    tuning and, per the terminal-fraction check, while still doing genuine
+    relaxation on two-thirds of the positions it's asked about (67.1% of
+    seeded leaves are non-terminal at the plateau). It does not close the
+    other half, and the canonical control shows that gap is not obviously a
+    final-state-coordinate ceiling in finding 11's sense (win_x/win_o read
+    out correctly once the position is actually decided) — it is that the 4
+    residual positions hit a genuine strategic choice, not a forced fact,
+    soon enough after the candidate move that "already decided" is false
+    for them under any non-arbitrary reading of that phrase. That reframes
+    the open question rather than closing it: the remaining gap is not
+    "find a cheaper way to compute the predicate this file hand-fed" — the
+    exact version of that predicate provably cannot reach further for these
+    4 positions, because for them there is no such fact to find. What
+    would have to change is the same lever findings 8-10 already used
+    (real search over the actual choice), not a better predicate over the
+    current one. This experiment therefore narrows, rather than replaces,
+    the roadmap: predicate-seeding and search are not competing
+    explanations for the residual gap, they cover disjoint subsets of it —
+    4 of naive's 8 errors were forced-fact-shaped and are now closed for
+    free, and the other 4 were never predicate-shaped to begin with.
 
 ## Resolution
 
@@ -402,3 +495,27 @@ when the missing predicate is inherently per-transition-local), not an
 opaque one. That is a meaningfully different kind of negative result than
 finding 11's: the middle ground is real and the tooling for it works, this
 particular feature choice inside it just wasn't the right one.
+
+Finding 13 answers the question every earlier finding in this file left
+open by construction: findings 1-7 and 12 all tried to *derive* the
+future-support predicate finding 6 named, cheaply, from current marks, and
+none of them could reduce naive's 8 errors even once. Handed the same
+predicate exactly instead of approximated — the oracle's strict forced-reply
+projection, no arbitrary tie-breaks, seeded into the same net with the same
+readout — the flow integral closes exactly half the gap (8→4) and then
+provably cannot close the rest, not for lack of plies but because the
+remaining 4 positions contain a genuine strategic choice rather than a
+forced fact this early after the candidate move. The canonical control
+(break ties too) does reach 0, but the terminal-fraction check shows it
+gets there mostly by handing the ODE an already-finished game to confirm,
+not by ranking a genuinely open position — so it does not overturn that
+reading. Combined with findings 8-10, this experiment's honest map of the
+remaining 4-8 errors is: some are a fact about the position that a smarter
+predicate could in principle supply (finding 13 closes exactly those, for
+free, with zero tuning), and the rest are a choice that only looking ahead
+over the actual game tree can resolve (findings 8-10's lever, not this
+one's). Neither lever, alone or as implemented here, reaches 507/507; the
+two together — an exact or well-approximated future-support predicate as
+the *leaf* evaluator inside real search, rather than either technique
+substituting for the other — is the combination this experiment did not
+try and is the concrete next step it leaves behind.
