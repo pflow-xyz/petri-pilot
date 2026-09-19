@@ -94,10 +94,10 @@ func countDiscs(mk marking) int {
 }
 
 // rankLoss scores every candidate move at every training position on the
-// champion net at (blockBias, winBias, parityBias, lam) and returns the
-// hinge ranking loss against the oracle's optimal-move labels.
-func rankLoss(m *model, positions []trainPos, blockBias, winBias, parityBias, lam float64) float64 {
-	ev := m.toPetriChampion(blockBias, winBias, parityBias)
+// champion net at (blockBias, winBias, parityBias, claimBias, lam) and
+// returns the hinge ranking loss against the oracle's optimal-move labels.
+func rankLoss(m *model, positions []trainPos, blockBias, winBias, parityBias, claimBias, lam float64) float64 {
+	ev := m.toPetriChampion(blockBias, winBias, parityBias, claimBias)
 	score := championScore(lam)
 	decisions := make([]learn.RankedDecision, 0, len(positions))
 	for _, p := range positions {
@@ -120,7 +120,7 @@ func rankLoss(m *model, positions []trainPos, blockBias, winBias, parityBias, la
 // oracle labels; parityBias is held at 0 (the prt_* tier is silent).
 func fitChampion(m *model, positions []trainPos, iters int, verbose bool) (blockBias, winBias, lam float64) {
 	f := func(logp []float64) float64 {
-		return rankLoss(m, positions, math.Exp(logp[0]), math.Exp(logp[1]), 0, math.Exp(logp[2]))
+		return rankLoss(m, positions, math.Exp(logp[0]), math.Exp(logp[1]), 0, 0, math.Exp(logp[2]))
 	}
 	opts := learn.DefaultFitOptions()
 	opts.MaxIters = iters
@@ -139,7 +139,7 @@ func fitChampion(m *model, positions []trainPos, iters int, verbose bool) (block
 // existing block-bias tier rather than replacing it.
 func fitChampionBlockParity(m *model, positions []trainPos, iters int, verbose bool) (blockBias, parityBias, lam float64) {
 	f := func(logp []float64) float64 {
-		return rankLoss(m, positions, math.Exp(logp[0]), 0, math.Exp(logp[1]), math.Exp(logp[2]))
+		return rankLoss(m, positions, math.Exp(logp[0]), 0, math.Exp(logp[1]), 0, math.Exp(logp[2]))
 	}
 	opts := learn.DefaultFitOptions()
 	opts.MaxIters = iters
@@ -158,7 +158,46 @@ func fitChampionBlockParity(m *model, positions []trainPos, iters int, verbose b
 // tier standing in for the untargeted block-bias tier entirely.
 func fitChampionParityOnly(m *model, positions []trainPos, iters int, verbose bool) (parityBias, lam float64) {
 	f := func(logp []float64) float64 {
-		return rankLoss(m, positions, 0, 0, math.Exp(logp[0]), math.Exp(logp[1]))
+		return rankLoss(m, positions, 0, 0, math.Exp(logp[0]), 0, math.Exp(logp[1]))
+	}
+	opts := learn.DefaultFitOptions()
+	opts.MaxIters = iters
+	opts.Tolerance = 1e-9
+	opts.Verbose = verbose
+	res, err := learn.Minimize(f, []float64{0, 0}, opts)
+	if err != nil {
+		panic(err)
+	}
+	return math.Exp(res.Params[0]), math.Exp(res.Params[1])
+}
+
+// fitChampionClaim optimizes (blockBias, claimBias, lambda) in log space
+// from (1, 1, 1), holding winBias AND parityBias at 0 — README finding 9 /
+// ROADMAP 1a's configuration: the STRUCTURAL column parity-claim account
+// tier (clm_*, champion.go) calibrated alongside the proven block-bias
+// tier, in place of the rate-only prt_* tier finding 7 rejected.
+func fitChampionClaim(m *model, positions []trainPos, iters int, verbose bool) (blockBias, claimBias, lam float64) {
+	f := func(logp []float64) float64 {
+		return rankLoss(m, positions, math.Exp(logp[0]), 0, 0, math.Exp(logp[1]), math.Exp(logp[2]))
+	}
+	opts := learn.DefaultFitOptions()
+	opts.MaxIters = iters
+	opts.Tolerance = 1e-9
+	opts.Verbose = verbose
+	res, err := learn.Minimize(f, []float64{0, 0, 0}, opts)
+	if err != nil {
+		panic(err)
+	}
+	return math.Exp(res.Params[0]), math.Exp(res.Params[1]), math.Exp(res.Params[2])
+}
+
+// fitChampionClaimOnly optimizes (claimBias, lambda) in log space from
+// (1, 1), holding blockBias, winBias AND parityBias at 0 — the "replacing"
+// configuration mirroring finding 7's config B: the structural claim-account
+// tier standing in for block-bias entirely, not just for prt_*.
+func fitChampionClaimOnly(m *model, positions []trainPos, iters int, verbose bool) (claimBias, lam float64) {
+	f := func(logp []float64) float64 {
+		return rankLoss(m, positions, 0, 0, 0, math.Exp(logp[0]), math.Exp(logp[1]))
 	}
 	opts := learn.DefaultFitOptions()
 	opts.MaxIters = iters
