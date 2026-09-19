@@ -80,3 +80,35 @@ func TestCalibratedNaiveExhaustiveReferee(t *testing.T) {
 		t.Errorf("X referee: got (%d,%d,%d), want (45,0,0)", xDecisions, xBlown, xMissed)
 	}
 }
+
+func TestParityNetShape(t *testing.T) {
+	m := buildModel()
+	ev := m.toPetriParity(candidateForceBias, candidateBlockBias, 0, 0, 0)
+	// baseline policy net (368 transitions, 52 places) plus 8 claim places,
+	// a parity-gated copy of every one of the 288 force_/blk_ transitions,
+	// and one tempo transition per (side, column).
+	if got := len(ev.net.Places); got != 60 {
+		t.Errorf("parity places: got %d, want 60 (52 + 8 claim)", got)
+	}
+	if got := len(ev.net.Transitions); got != 664 {
+		t.Errorf("parity transitions: got %d, want 664 (368 + 288 pforce/pblk + 8 tempo)", got)
+	}
+}
+
+// TestParityZeroBiasesReproducesBaseline pins the plumbing: with the two
+// new tiers' rates at zero, parityOdePlayer must make the identical
+// decisions odePlayer does at every one of the 507 exhaustive-referee
+// decision points, not merely "close" -- the augmented marking and the new
+// (rate-0, hence inert) transitions must not perturb the ODE solve at all.
+func TestParityZeroBiasesReproducesBaseline(t *testing.T) {
+	m := buildModel()
+	p := parityOdePlayer(m.toPetriParity(candidateForceBias, candidateBlockBias, 0, 0, 0), scoreLambda)
+	oDecisions, oBlown, oMissed := exhaustiveCheck(m, p, false)
+	xDecisions, xBlown, xMissed := exhaustiveCheck(m, p, true)
+	if oDecisions != 462 || oBlown != 6 || oMissed != 2 {
+		t.Errorf("O referee: got (%d,%d,%d), want (462,6,2)", oDecisions, oBlown, oMissed)
+	}
+	if xDecisions != 45 || xBlown != 0 || xMissed != 0 {
+		t.Errorf("X referee: got (%d,%d,%d), want (45,0,0)", xDecisions, xBlown, xMissed)
+	}
+}
