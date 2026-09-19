@@ -29,6 +29,16 @@
 //	                      held-out sample as the single-tier champion, and
 //	                      report which wins — the structural counterpart to
 //	                      fitparity's rate-only tier
+//	robustclaim [g] [i]  README finding 10: repeat finding 9's config A fit
+//	                      (clm_* alongside blk_*) on 5 more independently-
+//	                      seeded training samples, referee every point (the
+//	                      2 already on record plus the 5 new ones) on the
+//	                      SAME primary held-out sample (seed 13) every
+//	                      other finding uses, gate any apparent win against
+//	                      a SECOND, independent held-out sample, and
+//	                      referee the ensemble average of all fitted points
+//	                      too. Trains at g games/i iterations per fit
+//	                      (default 15/20, finding 9 fit 1's recipe).
 //	lookahead [depth] [maxDecisions]  README finding 8: N-ply minimax with
 //	                      the champion ODE evaluator as the LEAF scorer
 //	                      (lookahead.go) — a genuine search+eval hybrid,
@@ -140,6 +150,31 @@ func main() {
 			fmt.Sscanf(os.Args[3], "%d", &iters)
 		}
 		runFitClaim(m, games, iters)
+		return
+
+	case len(os.Args) > 1 && os.Args[1] == "robustclaim":
+		games, iters, refereeGames := 15, 20, 250
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &refereeGames)
+		}
+		// 5 independently-seeded training samples, none reusing seed 7
+		// (finding 9's fits) or 13 (the primary held-out referee sample).
+		// A trailing "n=<k>" arg (any position after the first 4) trims to
+		// the first k seeds, for a fast smoke test.
+		trainSeeds := []int64{101, 202, 303, 404, 505}
+		for _, a := range os.Args {
+			var k int
+			if n, _ := fmt.Sscanf(a, "n=%d", &k); n == 1 && k >= 0 && k <= len(trainSeeds) {
+				trainSeeds = trainSeeds[:k]
+			}
+		}
+		runRobustClaim(m, games, iters, trainSeeds, 29, refereeGames)
 		return
 
 	case len(os.Args) > 1 && os.Args[1] == "lookahead":
