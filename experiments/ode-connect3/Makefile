@@ -7,6 +7,9 @@ quick: build
 verify: build
 	./ode-connect3 verify
 
+verify-fork: build
+	./ode-connect3 verify-fork
+
 verify-naive: build
 	./ode-connect3 verify-naive
 

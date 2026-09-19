@@ -40,6 +40,12 @@ make fit              # fit policy scalars against labeled positions
                        # keep the declared structure, learn each family's
                        # rate as a learn.LinearRateFunc regression over
                        # board state instead of a constant; finding 12
+make verify-fork       # referee the blk2_* "block-the-block" tier, sibling
+                       # to force_*/blk_*, still one solve per move; finding 13
+./ode-connect3 diagnose-fork [w] [b] [f] [l]  # the blk2_* evaluator's failures
+./ode-connect3 fit-fork [games] [iters]
+                       # extend fit.go's Nelder-Mead to a fourth parameter,
+                       # forkBias, the blk2_* tier's shared rate; finding 13
 ```
 
 ## Declared game net
@@ -337,6 +343,74 @@ finding 10's number was actually obtained.
     what matters" is not sufficient on its own — the feature has to be
     locally relevant to the transition reading it, the same lesson finding
     7's grouping schemes ran into from the tuning side.
+13. **A structural "block-the-block" tier does not reproduce 2-ply search's
+    gain, and diagnosis shows exactly why: it never engages the decisions
+    that are actually wrong.** `fork.go`'s `blk2_*` family adds a third
+    catalytic tier, sibling to force_*/blk_*: one more catalyzed copy of
+    `side_play_c` per (side, cell, unordered pair of win lines through that
+    cell) — 288 transitions (16 cells give 144 (cell, line-pair)
+    combinations, x2 sides), the same order as force_*/blk_*'s own 288.
+    Each copy's catalysts are the *union* of both lines' "opponent holds the
+    other two cells" pattern — blk_*'s own per-line predicate, applied to a
+    pair instead of one line. Mass action multiplies every catalyst marking
+    together, so the copy's rate turns on only when a cell is a genuine
+    two-line fork square for the opponent (all four opponent marks present
+    at once) — a pattern no single blk_* copy, and no amount of scanning
+    blk_*'s own scalar (finding 3), can express. Still exactly one
+    `odeFinal` solve per candidate move: the exhaustive sweep at the best
+    point found below ran in 12.5s, the same order as the plain calibrated
+    evaluator's own referee runs (10-12s), not 2-ply search's reported 62s
+    — the "search-free" cost claim holds.
+
+    Swept at blockBias=0 — the value finding 3 already established as
+    exhaustive-optimal for the two existing tiers — forkBias in
+    {0, 0.5, 1, 2, 4, 8} crossed with winBias in {0.01, 0.05, 0.1} (18
+    points, `verify-fork`): every point either reproduced the naive
+    baseline's 8 errors exactly (6 O-losing + 2 O-missed, X perfect) or was
+    strictly worse, monotonically worse as forkBias grew past roughly 1-2
+    (e.g. winBias 0.01: 8 at forkBias<=1, 10 at forkBias=2, 12 at
+    forkBias>=4). No point in the grid beat 8. `fit-fork` — the fourth free
+    parameter dropped into `fit.go`'s existing Nelder-Mead machinery
+    (`fitPolicyFork`/`rankLossFork`) — confirms the same direction from the
+    tuning side: an 8-game/63-position, 15-iteration run (not converged,
+    loss 1.019→0.077) landed at winBias 0.2014, blockBias 1.1141, forkBias
+    1.2876, lambda 1.7426 — **12** total errors (8 O-losing, 4 O-missed),
+    *worse* than the untuned baseline, reproducing finding 3/4's Goodhart
+    pattern (positive blockBias trades one defensive line for another) with
+    blk2_* riding along rather than compensating for it.
+
+    The diagnostic reason is sharper than "it didn't help." At one
+    representative grid point that reproduces the baseline exactly
+    (winBias 0.01, blockBias 0, forkBias 1.0 — the decision path shifts
+    from 462 to 442 O-decisions visited, but the error count does not),
+    `diagnose-fork` reports the *exact same eight failure positions*,
+    byte-for-byte, as `diagnose-naive` at forkBias 0: same boards, same
+    wrong choices, same optimal sets, the same 2-immediate-win/6-no-
+    immediate-win split finding 6 already named. blk2_*'s catalysts never
+    reach a nonzero product on any of the eight decisions that are actually
+    wrong; the tier only perturbs *already-correct* decisions elsewhere in
+    the game tree, and once its bias is large enough to perturb anything at
+    all, it starts breaking those instead of ever touching the real eight.
+    This is not a new failure mode — it is finding 6's diagnosis holding a
+    second time against a strictly richer catalyst pattern: an *immediate*
+    two-line-fork predicate is still a snapshot of marks already on the
+    board, and six of the eight failures were never about the current
+    board. They are the "late gravity-tempo positions where the unique
+    defense controls which upper cells become available several drops
+    later" — cells that have not opened yet, which no product over
+    currently-placed marks, however many lines it multiplies together, can
+    read. Depth-2 search closes part of this gap not by reading the board
+    differently but by *simulating forward* through the exact discrete
+    game — two real turns of gravity actually resolving — which is
+    information a fixed-horizon catalyst product over the present marking
+    structurally cannot contain. **Net result: this construction is a
+    legitimate negative result, not an inconclusive one.** The search-free
+    cost claim holds (12.5s vs. 2-ply's 62s), but the accuracy claim does
+    not transfer: fixed-depth structure plateaus exactly at the naive
+    baseline's 8 and degrades from there, while 2-ply search reaches 5.
+    Depth genuinely buys information about *future* board states that no
+    declared pattern over the *current* one can encode, confirming finding
+    9/10's resolution from the structural side instead of the tuning side.
 
 ## Resolution
 
@@ -369,7 +443,10 @@ contribution on top of it still unsettled past one ply. This doesn't reach 0
 either, and the remaining errors at every depth tried are
 still the future-support class finding 6 named — search is buying the same
 thing finding 6 asked for (seeing further into the game), just less
-efficiently than a dedicated structural predicate would. The honest reading:
+efficiently than a dedicated structural predicate would *if one could be
+built* — finding 13 tests that parenthetical directly and finds it does not
+hold: the predicate it built could not be constructed search-free at all.
+The honest reading:
 deeper search is real, composable progress and a legitimate alternative to
 the structural fix, not a replacement for the conclusion that tuning alone
 cannot get there — it is a different lever (information, not calibration)
@@ -402,3 +479,28 @@ when the missing predicate is inherently per-transition-local), not an
 opaque one. That is a meaningfully different kind of negative result than
 finding 11's: the middle ground is real and the tooling for it works, this
 particular feature choice inside it just wasn't the right one.
+
+Finding 13 closes the specific question findings 8-10 left open: can the
+2-ply search result (naive 8 → 5 errors) be reached *structurally*, at the
+same search-free, one-solve-per-move cost as every other tier in this file?
+The answer is no, and the mechanism is now diagnosed rather than assumed. A
+strictly richer catalyst — an AND over two win lines instead of one, the
+natural next step past blk_*'s own single-line predicate, and past finding
+7's conclusion that retuning blk_*'s *existing* scalar cannot do it — still
+computes a function of marks already on the board. It reproduces the naive
+baseline exactly (8 errors) at its best, and `diagnose-fork` shows why: the
+same eight failures, unchanged down to the exact board and choice, because
+the tier's catalysts never activate on any of them. Search does not merely
+see the same threats sooner; two-ply lookahead is evaluating positions after
+real, discrete drops have happened — cells that were not on the board yet
+when the static evaluator (structural or not) had to decide. No fixed
+catalytic pattern over the *present* marking, however many lines it
+multiplies together, can be gated on a cell's *future* value, because that
+value depends on whose turn it is when the cell opens — a fact about play
+that has not happened, not about tokens that are already placed. This is the
+plan's original go/no-go risk (quoted under finding 7) restated one level
+up: a static rate cannot represent "N drops from now, whose turn," and a
+richer static predicate is still a static predicate. Search remains the only
+mechanism in this experiment that closes part of that gap, and it does so by
+spending runtime (62s at depth 2 vs. this tier's 12.5s), not by being
+smarter about the current board.
