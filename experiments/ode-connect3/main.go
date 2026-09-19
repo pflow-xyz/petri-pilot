@@ -262,6 +262,16 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
 		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
+	case "count-positions":
+		for g := 1; g <= 40; g++ {
+			pos := collectPositions(m, g, 7)
+			total := 0
+			for _, p := range pos {
+				total += len(p.moves)
+			}
+			fmt.Printf("games=%d positions=%d totalMoveEvals=%d\n", g, len(pos), total)
+		}
+		return
 	case "debug-hybrid-col-one":
 		hg := m.toHybridColumnNet()
 		positions := collectPositions(m, 5, 7)
