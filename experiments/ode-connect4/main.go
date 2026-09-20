@@ -21,6 +21,24 @@
 //	                      blockBias" configurations, referee both against
 //	                      the SAME held-out sample as the single-tier
 //	                      champion, and report which wins
+//	fitclaim [g] [i]     README finding 9 / ROADMAP 1a: calibrate the
+//	                      STRUCTURAL column parity-claim account tier
+//	                      (clm_*, champion.go) in both the "alongside
+//	                      blockBias" and "replacing blockBias"
+//	                      configurations, referee both against the SAME
+//	                      held-out sample as the single-tier champion, and
+//	                      report which wins — the structural counterpart to
+//	                      fitparity's rate-only tier
+//	robustclaim [g] [i]  README finding 10: repeat finding 9's config A fit
+//	                      (clm_* alongside blk_*) on 5 more independently-
+//	                      seeded training samples, referee every point (the
+//	                      2 already on record plus the 5 new ones) on the
+//	                      SAME primary held-out sample (seed 13) every
+//	                      other finding uses, gate any apparent win against
+//	                      a SECOND, independent held-out sample, and
+//	                      referee the ensemble average of all fitted points
+//	                      too. Trains at g games/i iterations per fit
+//	                      (default 15/20, finding 9 fit 1's recipe).
 //	lookahead [depth] [maxDecisions]  README finding 8: N-ply minimax with
 //	                      the champion ODE evaluator as the LEAF scorer
 //	                      (lookahead.go) — a genuine search+eval hybrid,
@@ -52,6 +70,11 @@ const (
 	championParityBias = 0.0
 	championLambda     = 0.238
 
+	// championClaimBias: the structural clm_* tier's rate (README finding
+	// 9 / ROADMAP 1a). 0.0 unless finding 9 shows it wins the referee
+	// without regressing X — see fitclaim / verifyclaim.
+	championClaimBias = 0.0
+
 	defaultOracleBudget = 800_000 // nodes per Solve call
 	defaultMinDiscs     = 14      // ply floor for sampled positions (see oracle.go's honesty note;
 	// 14 discs / 28 empty cells is deep enough that most self-play decision
@@ -75,7 +98,25 @@ func main() {
 		if len(os.Args) > 6 {
 			fmt.Sscanf(os.Args[6], "%d", &games)
 		}
-		runVerify(m, bias, win, par, lam, games)
+		runVerify(m, bias, win, par, championClaimBias, lam, games)
+		return
+
+	case len(os.Args) > 1 && os.Args[1] == "verifyclaim":
+		// README finding 9's "equivalent verify invocation" for the new
+		// structural tier: blockBias claimBias lambda [games]. winBias and
+		// parityBias are always 0 here (the clm_* tier stands in for
+		// prt_*, exactly as fitclaim calibrates it).
+		bias, claim, lam := championBlockBias, 0.0, championLambda
+		games := 250
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[2], "%f", &bias)
+			fmt.Sscanf(os.Args[3], "%f", &claim)
+			fmt.Sscanf(os.Args[4], "%f", &lam)
+		}
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[5], "%d", &games)
+		}
+		runVerify(m, bias, 0, 0, claim, lam, games)
 		return
 
 	case len(os.Args) > 1 && os.Args[1] == "fit":
@@ -98,6 +139,42 @@ func main() {
 			fmt.Sscanf(os.Args[3], "%d", &iters)
 		}
 		runFitParity(m, games, iters)
+		return
+
+	case len(os.Args) > 1 && os.Args[1] == "fitclaim":
+		games, iters := 15, 20
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		runFitClaim(m, games, iters)
+		return
+
+	case len(os.Args) > 1 && os.Args[1] == "robustclaim":
+		games, iters, refereeGames := 15, 20, 250
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%d", &refereeGames)
+		}
+		// 5 independently-seeded training samples, none reusing seed 7
+		// (finding 9's fits) or 13 (the primary held-out referee sample).
+		// A trailing "n=<k>" arg (any position after the first 4) trims to
+		// the first k seeds, for a fast smoke test.
+		trainSeeds := []int64{101, 202, 303, 404, 505}
+		for _, a := range os.Args {
+			var k int
+			if n, _ := fmt.Sscanf(a, "n=%d", &k); n == 1 && k >= 0 && k <= len(trainSeeds) {
+				trainSeeds = trainSeeds[:k]
+			}
+		}
+		runRobustClaim(m, games, iters, trainSeeds, 29, refereeGames)
 		return
 
 	case len(os.Args) > 1 && os.Args[1] == "lookahead":
@@ -131,8 +208,8 @@ func runQuick(m *model) {
 	fmt.Printf("sampled %d decision points (%d skipped: oracle exceeded budget)\n", len(positions), skipped)
 	auditPlayer(m, o, "naive", naive, positions, defaultOracleBudget)
 
-	fmt.Println("\n== champion (three-tier, single active) ODE net vs oracle, same sample ==")
-	champ := championPlayer(m, championBlockBias, championWinBias, championParityBias, championLambda)
+	fmt.Println("\n== champion (four-tier, single active) ODE net vs oracle, same sample ==")
+	champ := championPlayer(m, championBlockBias, championWinBias, championParityBias, championClaimBias, championLambda)
 	auditPlayer(m, o, "champion", champ, positions, defaultOracleBudget)
 
 	fmt.Println("\n== self-play tournaments (small: each ODE solve is expensive on this net) ==")
@@ -162,8 +239,8 @@ func auditPlayer(m *model, o *Oracle, name string, p player, positions []trainPo
 	}
 }
 
-func runVerify(m *model, bias, win, par, lam float64, verifyGames int) {
-	fmt.Printf("champion: blockBias %.3f  winBias %.3f  parityBias %.3f  lambda %.3f\n", bias, win, par, lam)
+func runVerify(m *model, bias, win, par, claim, lam float64, verifyGames int) {
+	fmt.Printf("champion: blockBias %.3f  winBias %.3f  parityBias %.3f  claimBias %.3f  lambda %.3f\n", bias, win, par, claim, lam)
 	o := NewOracle()
 	positions, skipped := collectPositions(m, o, verifyGames, defaultMinDiscs, defaultOracleBudget, 13)
 	fmt.Printf("sampled %d decision points from %d self-play games (%d skipped: oracle exceeded a %d-node budget)\n",
@@ -181,7 +258,7 @@ func runVerify(m *model, bias, win, par, lam float64, verifyGames int) {
 	auditPlayer(m, o, "naive", naive, positions, defaultOracleBudget)
 
 	fmt.Println("\nchampion net:")
-	champ := championPlayer(m, bias, win, par, lam)
+	champ := championPlayer(m, bias, win, par, claim, lam)
 	auditPlayer(m, o, "champion", champ, positions, defaultOracleBudget)
 
 	fmt.Println("\nNOTE: this is a sampled referee, not an exhaustive one. It checks every")
@@ -201,14 +278,14 @@ func runFit(m *model, games, iters int) {
 	}
 	bias, win, lam := fitChampion(m, positions, iters, true)
 	fmt.Printf("\nfitted: blockBias %.3f  winBias %.3f  lambda %.3f  (train loss %.6f)\n",
-		bias, win, lam, rankLoss(m, positions, bias, win, 0, lam))
+		bias, win, lam, rankLoss(m, positions, bias, win, 0, 0, lam))
 
-	champ := championPlayer(m, bias, win, 0, lam)
+	champ := championPlayer(m, bias, win, 0, 0, lam)
 	fmt.Println("\nreferee on the training sample itself (not held-out):")
 	auditPlayer(m, o, "champion", champ, positions, defaultOracleBudget)
 
 	fmt.Println("\nreferee on a fresh sample:")
-	runVerify(m, bias, win, 0, lam, 25)
+	runVerify(m, bias, win, 0, 0, lam, 25)
 }
 
 // runFitParity implements README finding 7: calibrate the parity-bias tier
@@ -229,8 +306,8 @@ func runFitParity(m *model, games, iters int) {
 	fmt.Println("== configuration A: parityBias ALONGSIDE blockBias ==")
 	blockA, parA, lamA := fitChampionBlockParity(m, positions, iters, true)
 	fmt.Printf("fitted: blockBias %.3f  parityBias %.3f  lambda %.3f  (train loss %.6f)\n",
-		blockA, parA, lamA, rankLoss(m, positions, blockA, 0, parA, lamA))
-	champA := championPlayer(m, blockA, 0, parA, lamA)
+		blockA, parA, lamA, rankLoss(m, positions, blockA, 0, parA, 0, lamA))
+	champA := championPlayer(m, blockA, 0, parA, 0, lamA)
 	fmt.Println("referee on a fresh held-out sample:")
 	verifyGames := 250
 	oA := NewOracle()
@@ -241,13 +318,57 @@ func runFitParity(m *model, games, iters int) {
 	fmt.Println("\n== configuration B: parityBias REPLACING blockBias ==")
 	parB, lamB := fitChampionParityOnly(m, positions, iters, true)
 	fmt.Printf("fitted: parityBias %.3f  lambda %.3f  (train loss %.6f)\n",
-		parB, lamB, rankLoss(m, positions, 0, 0, parB, lamB))
-	champB := championPlayer(m, 0, 0, parB, lamB)
+		parB, lamB, rankLoss(m, positions, 0, 0, parB, 0, lamB))
+	champB := championPlayer(m, 0, 0, parB, 0, lamB)
 	fmt.Println("referee on the SAME held-out sample as config A:")
 	auditPlayer(m, oA, "config B (parity-only)", champB, posA, defaultOracleBudget)
 
 	fmt.Println("\n== baseline for comparison: single-tier champion (blockBias only) ==")
-	champBase := championPlayer(m, championBlockBias, 0, 0, championLambda)
+	champBase := championPlayer(m, championBlockBias, 0, 0, 0, championLambda)
+	auditPlayer(m, oA, "baseline (block-only)", champBase, posA, defaultOracleBudget)
+
+	fmt.Println("\nNOTE: sampled referee, not exhaustive — see README.md.")
+}
+
+// runFitClaim implements README finding 9 / ROADMAP 1a: calibrate the
+// STRUCTURAL column parity-claim account tier (clm_*, champion.go) in both
+// configurations (alongside blockBias, and replacing it), then referee BOTH
+// against the same held-out sample as the existing single-tier champion
+// (blockBias=1.342, winBias=0, parityBias=0, claimBias=0, lambda=0.238;
+// baseline on the 2077-decision/250-game sample: O 129/1003, X 19/1074) —
+// the structural counterpart to runFitParity's rate-only tier.
+func runFitClaim(m *model, games, iters int) {
+	o := NewOracle()
+	positions, skipped := collectPositions(m, o, games, defaultMinDiscs, defaultOracleBudget, 7)
+	fmt.Printf("training positions: %d (%d skipped: oracle exceeded budget) from %d self-play games\n\n",
+		len(positions), skipped, games)
+	if len(positions) == 0 {
+		fmt.Println("no training positions resolved; raise the oracle budget or lower defaultMinDiscs")
+		return
+	}
+
+	fmt.Println("== configuration A: claimBias ALONGSIDE blockBias ==")
+	blockA, claimA, lamA := fitChampionClaim(m, positions, iters, true)
+	fmt.Printf("fitted: blockBias %.3f  claimBias %.3f  lambda %.3f  (train loss %.6f)\n",
+		blockA, claimA, lamA, rankLoss(m, positions, blockA, 0, 0, claimA, lamA))
+	champA := championPlayer(m, blockA, 0, 0, claimA, lamA)
+	fmt.Println("referee on a fresh held-out sample:")
+	verifyGames := 250
+	oA := NewOracle()
+	posA, skippedA := collectPositions(m, oA, verifyGames, defaultMinDiscs, defaultOracleBudget, 13)
+	fmt.Printf("  sampled %d decision points from %d self-play games (%d skipped)\n", len(posA), verifyGames, skippedA)
+	auditPlayer(m, oA, "config A (block+claim)", champA, posA, defaultOracleBudget)
+
+	fmt.Println("\n== configuration B: claimBias REPLACING blockBias ==")
+	claimB, lamB := fitChampionClaimOnly(m, positions, iters, true)
+	fmt.Printf("fitted: claimBias %.3f  lambda %.3f  (train loss %.6f)\n",
+		claimB, lamB, rankLoss(m, positions, 0, 0, 0, claimB, lamB))
+	champB := championPlayer(m, 0, 0, 0, claimB, lamB)
+	fmt.Println("referee on the SAME held-out sample as config A:")
+	auditPlayer(m, oA, "config B (claim-only)", champB, posA, defaultOracleBudget)
+
+	fmt.Println("\n== baseline for comparison: single-tier champion (blockBias only) ==")
+	champBase := championPlayer(m, championBlockBias, 0, 0, 0, championLambda)
 	auditPlayer(m, oA, "baseline (block-only)", champBase, posA, defaultOracleBudget)
 
 	fmt.Println("\nNOTE: sampled referee, not exhaustive — see README.md.")
@@ -278,7 +399,7 @@ func runLookahead(m *model, depth, maxDecisions int) {
 		fmt.Printf("using the FULL sample (%d decisions), no truncation.\n", total)
 	}
 
-	ev := m.toPetriChampion(championBlockBias, 0, 0)
+	ev := m.toPetriChampion(championBlockBias, 0, 0, 0)
 	p := lookaheadPlayer(ev, depth)
 
 	start := time.Now()

@@ -12,13 +12,20 @@ much bigger, genuinely hard game (first player wins with perfect play;
 brute enumeration). The honest headline: **policy-in-structure produces a
 real, substantial improvement — not full minimax-equivalence.** The
 defending seat's blunder rate drops by more than half (a sampled 300/1003 →
-129/1003) under a single calibrated bias tier; three further attempts to
+129/1003) under a single calibrated bias tier; four further attempts to
 close the remaining gap — a second blind structural tier, a
-theory-motivated structural tier built from Victor Allis's actual Connect
-Four parity theory, and a full change of paradigm to genuine shallow
-minimax search with the ODE evaluator as the leaf scorer — all fail to beat
-that single-tier result, each for a distinct, characterized reason. That
-plateau, and the three separate ways of trying and failing to move it, is
+theory-motivated RATE tier built from Victor Allis's actual Connect Four
+parity theory, a full change of paradigm to genuine shallow minimax search
+with the ODE evaluator as the leaf scorer, and a theory-motivated
+STRUCTURAL (place/token) tier built from the same parity theory — all fail
+to reliably beat that single-tier result, each for a distinct, characterized
+reason (the last one is real but not reliable — see finding 9). A
+robustness gate applied to that last, real-but-unreliable structural tier
+(finding 10: 7 independently-seeded fits, refereed against a fixed primary
+sample and gated against a second, independent one) confirms the
+unreliability is the norm, not a one-off, and would have caught the single
+fit that ever looked like a win before it was reported as one. That
+plateau, and the five separate ways of trying and failing to move it, is
 this experiment's result — not a bug to be fixed by more tuning.
 
 ## The one thing to get right before reading any number below
@@ -368,6 +375,230 @@ marked, at both the discrete and the ODE layer.
    ships as a separate CLI mode (`go run . lookahead <depth> [maxDecisions]`)
    for anyone who wants to explore deeper plies or a different leaf formula.
 
+9. **The untried option the README explicitly left open — a structural,
+   place-based encoding of Claimeven parity instead of a rate multiplier —
+   was built and tested (ROADMAP "Phase 1a"), and it is genuinely not
+   placebo: it moves the referee by a large margin in EITHER direction
+   depending on which self-play sample calibrated it, which is itself the
+   finding.** Finding 7's closing hypothesis was that `prt_*` fails because
+   a rate multiplier can only reward a play that completes a
+   favorable-parity line *right now*, with no memory of anything earlier in
+   the column. `champion.go`'s new `clm_*` tier fixes exactly that gap
+   structurally: 14 new places (`claim_<side>_<col>`, one per side per
+   column) accumulate real token mass over the flow integral — every
+   declared play transition landing on a row that favors that side gets one
+   extra, *fixed-rate* (never calibrated) output arc depositing into that
+   column's claim place, so favorable-parity moves earlier in the
+   continuation literally leave more mass for `clm_*`'s own catalyzed
+   copies (same triples as `prt_*`, i.e. own-3-cells-on-the-line, PLUS a
+   read of that cell's column's claim account) to multiply on later. The
+   deposit is wired *after* every catalyzed-copy tier is built in
+   `deriveChampionNet` — `AddCatalyzedCopy` only copies a source
+   transition's output arcs at call time, so `clm_*`'s own copies cannot
+   retroactively inherit an arc into the very place they read, which is
+   what keeps this a one-directional information flow (earlier deposit →
+   later read) rather than a transition catalyzing its own supply into
+   runaway self-reinforcement. This is topology carrying information across
+   the continuation, not a coefficient computed from the instantaneous
+   marking — the thing the brief asked for and finding 7 said was untried.
+
+   **Calibrated exactly per the brief: `learn.Minimize` + `learn.HingeRankLoss`,
+   two configurations mirroring finding 7's (alongside blockBias, replacing
+   it), refereed on the identical 2077-decision/250-game/seed-13 held-out
+   sample as every other finding** (`go run . fitclaim 15 20`; CLI doc in
+   `main.go`, fit functions in `fit.go`, `go run . verifyclaim
+   <blockBias> <claimBias> <lambda> [games]` is the equivalent verify
+   invocation the brief asked for). First run, 15 self-play games / 105
+   training positions / 20 iterations:
+
+   | config | fitted | train loss | O game-losing | X game-losing |
+   |---|---|---|---|---|
+   | baseline (same sample, this run) | block 1.342, lambda 0.238 | — | 128/1003 (12.8%) | 19/1074 (1.8%) |
+   | A: `clm_*` alongside `blk_*` | block 1.258, claim 2.202, lambda 0.259 | 0.8126 | **122/1003 (12.2%)** | 20/1074 (1.9%) |
+   | B: `clm_*` replacing `blk_*` | claim 2.059, lambda 0.434 | 0.7413 | 123/1003 (12.3%) | 23/1074 (2.1%) |
+
+   Config A beats the same-sample baseline on O (128→122, a 4.7% relative
+   reduction) at a cost of exactly **+1** decision on X (19→20) — nowhere
+   near finding 6/7's regression scale (+12 to +28 decisions, 63%-147%
+   relative). Config B's O improvement is comparable but X's cost is larger
+   (19→23, four decisions) — the same "alongside beats replacing" pattern
+   finding 7 found for the rate-only `prt_*` tier repeats for the
+   structural version, at this fit. Config A's numbers were independently
+   reproduced — not just re-read from the same fit run — via `go run .
+   verifyclaim 1.258 2.202 0.259 250` as a second, separate process: O
+   123/1003 (one decision off config A's own internal re-check — a real,
+   if small, per-process nondeterminism: identical constants, identical
+   seed, different Go process, different answer on one close call, most
+   likely map-iteration order feeding into floating-point summation order
+   somewhere in the solve path), X 20/1074 (exact match).
+
+   **A second, larger calibration run — done specifically because finding
+   5 established that this repo does not trust one fit — does NOT confirm
+   config A's win, and lands on the opposite side of the trade-off; config
+   B, by contrast, replicates its direction (if not its exact margin).**
+   20 self-play games / 160 training positions / 30 iterations (`go run .
+   fitclaim 20 30`) fits materially different points than run 1 for BOTH
+   configs — not "the same point to three decimals" the way finding 5's
+   longer run reproduced the single-tier champion:
+
+   | config | fitted (fit 2) | train loss | O game-losing | X game-losing |
+   |---|---|---|---|---|
+   | baseline (same sample, this run) | block 1.342, lambda 0.238 | — | 128/1003 (12.8%) | 19/1074 (1.8%) |
+   | A: `clm_*` alongside `blk_*` | block 1.395, claim 1.845, lambda 0.146 | 0.8879 | **137/1003 (13.7%)** | 16/1074 (1.5%) |
+   | B: `clm_*` replacing `blk_*` | claim 1.830, lambda 0.440 | 1.1594 | 127/1003 (12.7%) | 21/1074 (2.0%) |
+
+   Config A flips sign entirely: fit 1 bought O -6/X +1, fit 2 buys O +9/X
+   -3 — the SAME configuration, refereed on the SAME held-out sample, wins
+   on O in one fit and loses on O in the other. Config B does not flip:
+   both fits buy a small O improvement (-5, then -1) for a small X cost
+   (+4, then +2) — consistent in *direction* across two independently fit
+   training samples, unlike config A, even though neither fit's margin is
+   large enough on its own to call a clean win.
+
+   **Reading all four fits together, not any one of them alone, is the
+   honest conclusion.** The claim-account tier is clearly not inert — four
+   different fits (two configs × two training samples) pull its free
+   constants to different points, and those points produce real,
+   non-trivial movement on a 2077-decision held-out referee in every case.
+   A placebo tier (one whose catalyst carries no real signal) would not do
+   that; it would sit near the baseline regardless of which sample fit it.
+   So the structural mechanism finding 7 asked for is real, and config B's
+   direction (small, consistent O gain, small, consistent X cost) is the
+   more trustworthy read of the two configurations tried. But neither
+   configuration clears this experiment's own bar on its own: config A is
+   unreliable (wins big, then loses), and config B's more reliable direction
+   still spends X (+4, then +2 decisions) for less than it buys back on O
+   in both fits — the same shape of trade this experiment has already
+   rejected once, in finding 7's own config A. The specific recipe used to
+   calibrate this tier — 15-20 self-play games, 20-30 Nelder-Mead
+   iterations, the same recipe that reliably reproduced finding 4's single
+   point for the block-only tier — does not reliably land either
+   configuration of `clm_*` in a region that beats the baseline without
+   qualification. That is a materially different, weaker claim than "the
+   structural fix works," and this experiment reports it as such rather
+   than keeping only the most favorable of the four fits. Per the stop
+   condition given for this work — O must improve without X rising
+   materially, *reliably*, not on a single fit — this does not clear the
+   bar, and `championClaimBias` therefore ships at its declared default of
+   `0.0`, same as `championWinBias` and `championParityBias` before it.
+
+   **A plausible reason, left as an open question rather than a diagnosis:**
+   the claim account's marking always starts at zero for every candidate-move
+   ODE solve (`deriveChampionNet`'s comment says this explicitly) — nothing
+   seeds it from the REAL moves already played earlier in the actual game,
+   only from flow generated during the hypothetical continuation the solver
+   integrates from the candidate move forward. That makes the account a
+   record of "what the simulated continuation itself does with favorable-parity
+   moves," not a record of "what this specific game's history already
+   committed" — a real, stated scope gap (see `deriveChampionNet`'s own
+   comment) that a from-history-seeded version does not share, and is the
+   natural next thing to try if this direction is revisited.
+
+10. **A robustness gate — refereeing every fit on one fixed sample and
+    requiring a second, independent sample to agree — answers finding 9's
+    open question directly: the instability is not a rare unlucky draw, it
+    is close to the norm for this calibration recipe, and the gate would
+    have caught the original apparent win before it was ever reported.**
+    Finding 9 left two questions open: is the config A sign-flip (O
+    122→137 across two same-recipe fits) typical or a one-off, and could a
+    stricter calibration discipline rescue a reliable win from the `clm_*`
+    tier. Both are answered here by (a) fitting config A on 5 MORE
+    independently-seeded training samples (self-play seeds 101, 202, 303,
+    404, 505 — 15 games / 20 Nelder-Mead iterations each, the same recipe as
+    finding 9's fit 1; none reuses seed 7), (b) refereeing all 7 fitted
+    points (the 2 already on record plus the 5 new ones) IN ONE PROCESS
+    against the exact same primary held-out sample every other finding in
+    this file uses (seed 13, 250 games, 2077 decisions — the identical
+    sample `verify`/`verifyclaim` build), so the comparison is genuinely
+    apples-to-apples rather than across separate `go run .` invocations (see
+    finding 9's own ±1-decision cross-process noise note), and (c) applying
+    a robustness gate: any point that appears to beat baseline on the
+    primary sample is additionally checked against a SECOND, independent
+    held-out sample (seed 29, 250 games, 1816 decisions) it was never fit or
+    compared on before, and is only called a validated win if it beats
+    baseline on BOTH. `robust.go`'s `runRobustClaim` (`go run . robustclaim
+    15 20 250`, ~43 minutes) implements exactly this; `beatsBaseline` in
+    that file states the acceptance rule precisely — O's blunder count
+    strictly below the SAME-run baseline's, X's no more than +3 above it,
+    the same margin finding 9 itself treated as noise-scale for its own fit
+    1 (+1 decision).
+
+    **Full table — all 7 fitted points, the baseline, and the ensemble,
+    refereed on the SAME two samples throughout (not cherry-picked):**
+
+    | point | block | claim | lambda | primary O | primary X | beats baseline (primary) | validation O | validation X | validation gate |
+    |---|---|---|---|---|---|---|---|---|---|
+    | baseline (block-only) | 1.342 | — | 0.238 | 128/1003 (12.8%) | 19/1074 (1.8%) | — | 79/869 (9.1%) | 19/947 (2.0%) | — |
+    | finding 9 fit 1 (seed 7, 15g/20i) | 1.258 | 2.202 | 0.259 | **123/1003 (12.3%)** | 20/1074 (1.9%) | **yes** | 89/869 (10.2%) | 13/947 (1.4%) | **FAIL** |
+    | finding 9 fit 2 (seed 7, 20g/30i) | 1.395 | 1.845 | 0.146 | 137/1003 (13.7%) | 16/1074 (1.5%) | no | 93/869 (10.7%) | 14/947 (1.5%) | n/a |
+    | new fit 1 (seed 101, 15g/20i) | 1.601 | 2.559 | 0.189 | 133/1003 (13.3%) | 18/1074 (1.7%) | no | 93/869 (10.7%) | 14/947 (1.5%) | n/a |
+    | new fit 2 (seed 202, 15g/20i) | 1.272 | 1.641 | 0.353 | 147/1003 (14.7%) | 18/1074 (1.7%) | no | 104/869 (12.0%) | 14/947 (1.5%) | n/a |
+    | new fit 3 (seed 303, 15g/20i) | 1.392 | 1.509 | 0.386 | 164/1003 (16.4%) | 14/1074 (1.3%) | no | 109/869 (12.5%) | 15/947 (1.6%) | n/a |
+    | new fit 4 (seed 404, 15g/20i) | 1.287 | 1.361 | 0.381 | 159/1003 (15.9%) | 18/1074 (1.7%) | no | 107/869 (12.3%) | 14/947 (1.5%) | n/a |
+    | new fit 5 (seed 505, 15g/20i) | 1.369 | 1.542 | 0.302 | 144/1003 (14.4%) | 17/1074 (1.6%) | no | 92/869 (10.6%) | 13/947 (1.4%) | n/a |
+    | ENSEMBLE (mean of all 7 above) | 1.368 | 1.808 | 0.288 | 136/1003 (13.6%) | 17/1074 (1.6%) | no | 97/869 (11.2%) | 14/947 (1.5%) | n/a |
+
+    Training-sample sizes varied by seed the same way finding 9's own two
+    fits did — 62 to 174 resolved positions from the same "15 self-play
+    games" recipe, before the oracle-budget skip (finding 9's fits landed at
+    105 and 160 from the same nominal recipe at different game counts) —
+    further evidence this isn't a controlled ablation, just what a handful
+    of random self-play games happens to produce.
+
+    **Reading the table plainly, per the stop condition: 1 of 7 fitted
+    points (14%) beats baseline on the primary referee sample; 0 of that 1
+    survives the independent validation gate — so 0 of 7 total fits is a
+    validated win.** Stronger still: on the validation sample alone, EVERY
+    one of the 7 points — including the one that looked like a win on the
+    primary sample — has a WORSE O blunder count than baseline's 79/869;
+    there is no seed among the 7 tried at which config A's structural
+    claim-account tier reliably beats the shipped single-tier champion once
+    a second sample is consulted. Finding 9's instability was not an unlucky
+    pair of draws: across 7 independently-fit points, only one ever even
+    LOOKED like a win, and that one look is itself the noise this gate
+    exists to catch.
+
+    **Applied retroactively, this gate would have caught the original
+    apparent win before it was ever reported as one.** Finding 9 reported
+    config A's fit 1 as beating the same-sample baseline (its own
+    contemporaneous numbers: O 122, then 123 via a second, independent
+    `verifyclaim` process) without ever checking it against a second
+    *sample* — exactly the gap this finding closes. Refereed here against
+    seed 29 in the same process, that same fit 1 loses to baseline (89 vs.
+    79) — the gate's FAIL verdict is not a new failure mode turning up on
+    fresh data, it is the one fit finding 9 came closest to accepting,
+    caught by the exact mechanism the brief asked for.
+
+    **Ensembling narrows the spread but does not rescue a win.** The plain
+    average of all 7 fitted `(block, claim, lambda)` triples —
+    `1.368, 1.808, 0.288` — scores primary O 136, better than the raw fits'
+    own mean O-count (≈144) but still worse than baseline's 128, and worse
+    than baseline on the validation sample too (97 vs. 79). Averaging the
+    constants pulls the wilder fits (O 164, O 159) back toward the pack,
+    which is a real stabilizing effect on the *spread*, but the pack itself
+    sits on the losing side of baseline: there is no free lunch here — the
+    ensemble is a smoothed version of a construction that loses more often
+    than it wins, not a way to manufacture a win the individual fits didn't
+    have.
+
+    **What this changes and what it doesn't.** `championClaimBias` remains
+    `0.0`, exactly as finding 9 left it — this finding does not reopen that
+    question, it closes finding 9's own follow-up ("is the instability
+    typical?") with a much larger sample (7 fits instead of 2) and answers
+    "can a robustness-checked discipline rescue a win?" with a clear no, at
+    this calibration recipe (15 games / 20 Nelder-Mead iterations from
+    `(1,1,1)`). It does NOT show the `clm_*` mechanism is placebo — the 7
+    fitted points still land in visibly different places (claimBias ranges
+    1.36 to 2.56, lambda 0.15 to 0.39) and produce a real spread of
+    non-baseline referee outcomes, consistent with finding 9's own "not
+    placebo" reading — it shows that THIS recipe, even with 7 independent
+    draws and an averaging fallback, does not reliably find a point in that
+    space that beats the single-tier baseline. Whether a larger training
+    sample per fit (more self-play games, more Nelder-Mead iterations)
+    would stabilize the fit enough to clear this bar is the natural next
+    thing to try, and is a cheaper, more targeted experiment than either
+    abandoning the tier outright or trusting a single favorable fit again.
+
 ## Results
 
 All numbers are from `go run . verify` with `defaultMinDiscs=14`,
@@ -399,6 +630,20 @@ just to the naive row.
 | finding 8: lookahead depth=1 | X | 1074 | 24 (2.2%) | 2 |
 | finding 8: lookahead depth=2 (*first 300 decisions only*) | O | 143 | 29 (20.3%) | 0 |
 | finding 8: lookahead depth=2 (*first 300 decisions only*) | X | 157 | 1 (0.6%) | 0 |
+| finding 9, fit 1: `clm_*` alongside `blk_*` (block 1.258, claim 2.202, lambda 0.259) † | O | 1003 | **122 (12.2%)** | 14 |
+| finding 9, fit 1: `clm_*` alongside `blk_*` † | X | 1074 | 20 (1.9%) | 6 |
+| finding 9, fit 1: `clm_*` replacing `blk_*` (claim 2.059, lambda 0.434) † | O | 1003 | 123 (12.3%) | 17 |
+| finding 9, fit 1: `clm_*` replacing `blk_*` † | X | 1074 | 23 (2.1%) | 6 |
+| finding 9, fit 2 (20 games/30 iters): `clm_*` alongside `blk_*` (block 1.395, claim 1.845, lambda 0.146) † | O | 1003 | 137 (13.7%) | 14 |
+| finding 9, fit 2: `clm_*` alongside `blk_*` † | X | 1074 | **16 (1.5%)** | 5 |
+| finding 9, fit 2: `clm_*` replacing `blk_*` (claim 1.830, lambda 0.440) † | O | 1003 | 127 (12.7%) | 18 |
+| finding 9, fit 2: `clm_*` replacing `blk_*` † | X | 1074 | 21 (2.0%) | 6 |
+| finding 10: config A, 7 fits total, best of them (seed 7, same as finding 9 fit 1) ‡ | O | 1003 | 123 (12.3%) | — |
+| finding 10: best of 7 ‡ | X | 1074 | 20 (1.9%) | — |
+| finding 10: config A, 7 fits total, worst of them (seed 303) ‡ | O | 1003 | 164 (16.4%) | — |
+| finding 10: worst of 7 ‡ | X | 1074 | 14 (1.3%) | — |
+| finding 10: ENSEMBLE, mean of all 7 fits (block 1.368, claim 1.808, lambda 0.288) ‡ | O | 1003 | 136 (13.6%) | — |
+| finding 10: ensemble ‡ | X | 1074 | 17 (1.6%) | — |
 
 (*finding 6's X regression was originally measured at a smaller 178-decision
 scale during its own calibration run — 2/93 → 6/93 — and is re-measured here
@@ -406,18 +651,48 @@ at the full 2077-decision scale for the first time: 19/1074 → 31/1074,
 confirming the same direction and roughly the same relative size. Finding
 8's depth=2 row is NOT on the same 2077-decision sample as every other row —
 see finding 8 for the exact 300-decision subsample and the matching
-apples-to-apples baseline measured on that same subsample.)
+apples-to-apples baseline measured on that same subsample. † finding 9's rows
+are from separate `go run .` process invocations, not this table's own run —
+same seed 13 / 250 games / defaultMinDiscs / defaultOracleBudget, but a
+same-sample rerun of the plain baseline inside those processes read
+128/1003, one decision off this table's 129/1003, which is the size of the
+run-to-run floating-point/map-iteration noise this experiment carries
+throughout — see finding 9's own same-sample baseline comparison, not this
+table's 129, for the apples-to-apples read. ‡ finding 10's rows are also
+from a separate process — its own same-run baseline read O 128/1003, X
+19/1074, matching this table's naming convention within the same ±1-decision
+noise as finding 9's marker above. Finding 10's full table (all 7 fits, not
+just the best/worst/ensemble excerpted here) plus the independent-sample
+validation gate applied to each is in finding 10 itself — of the 7, only
+the one shown as "best" here ever beat that run's own baseline at all, and
+it failed the validation gate.)
 
 Every non-baseline row above **loses** to the shipped default on at least
 one seat: finding 6 and finding 7's config A both regress X for no gain (or
 a loss) on O; config B's marginal O improvement (129→125) is bought with
 more than double X's blunder count (19→47); finding 8's lookahead rows
 regress O substantially at every depth tried, at 1x-45x the per-decision
-cost of the shipped default (see finding 8's cost table). The shipped
+cost of the shipped default (see finding 8's cost table). Finding 9's
+structural `clm_*` tier beats the shipped default outright *in one of its
+four fits* (config A, fit 1: O 122 vs 128 same-run baseline, X essentially
+flat at 20 vs 19) — but the same configuration's second fit lands worse on
+O (137) while better on X (16), a sign flip, not a smaller win. Config B
+(claim-only) does not flip sign across its two fits (O 123 then 127,
+both under baseline's 128; X 23 then 21, both over baseline's 19) but never
+buys more on O than it spends on X either. Finding 9 does not change the
+shipped default for either reason: config A is not reliable and config B is
+reliable but not a net win. Finding 10 then repeated config A on 5 more
+independently-seeded fits (7 total) and refereed every one of them against
+the same primary sample plus a second, independent validation sample: only
+1 of 7 ever beat baseline on the primary sample, that 1 failed against the
+independent sample, and the mean-of-7 ensemble also loses to baseline on
+both samples — so the instability finding 9 found in 2 fits is confirmed,
+not resolved, by a larger and more rigorously refereed one. The shipped
 default (`championBlockBias=1.342, championWinBias=0.0,
-championParityBias=0.0, championLambda=0.238`) remains the single-tier
-block-bias construction from finding 4 — it is the only configuration tried
-across findings 4-8 that improves on the naive net's worst seat without
+championParityBias=0.0, championClaimBias=0.0, championLambda=0.238`)
+remains the single-tier block-bias construction from finding 4 — it is the
+only configuration tried across findings 4-10 that reliably improves on the
+naive net's worst seat without
 regressing its strong seat.
 
 Small self-play tournaments (`go run . quick`, oracle plays its own
@@ -457,20 +732,35 @@ check that nothing in `players.go`'s plumbing is silently broken.
   decisions were suboptimal"; the true rate over all ~10^12 positions is
   unknown and this experiment does not estimate it.
 - **Is NOT claimed:** that no further structural tier could close the gap.
-  Three were tried beyond the winning single tier — finding 6's blind
-  "complete your own line," and finding 7's two configurations of a
-  row-parity-restricted version motivated directly by Allis's Connect Four
-  theory — and all three lose to the single-tier baseline on the exact same
-  held-out sample. That is a warning against assuming more structure
-  monotonically helps, and specifically against assuming the theoretically
-  "right" asymmetry transfers cleanly into a mass-action rate multiplier
-  (finding 7's closing hypothesis is that it can't, structurally, in the
-  form tried here) — not a proof that no fourth tier (fork detectors, a
-  genuine multi-ply Claimeven encoding, something else) could do better.
-  Untried and left as an open question: encoding the pairing argument as a
-  place/token structure (e.g. a per-column "parity account") rather than as
-  a rate multiplier on an already-playable move, which might carry the
-  turn-order information the rate-only tiers above provably cannot.
+  Four were tried beyond the winning single tier — finding 6's blind
+  "complete your own line," finding 7's two configurations of a
+  row-parity-restricted RATE version motivated directly by Allis's Connect
+  Four theory, and finding 9's STRUCTURAL place/token version of the same
+  theory (a per-column "parity claim account", the option finding 7 itself
+  left open) — and none of the five configurations across those four
+  findings reliably beats the single-tier baseline on the exact same
+  held-out sample (finding 9's config A wins on one fit and loses on
+  another; config B is directionally consistent but never a net win). That
+  is a warning against assuming more structure monotonically helps, and
+  specifically against assuming the theoretically "right" asymmetry
+  transfers cleanly into either a rate multiplier OR a naively-built token
+  account — not a proof that no fifth tier (fork detectors, a
+  history-seeded claim account rather than one that starts at zero every
+  solve, something else) could do better. Finding 9's own closing
+  paragraph names the most likely next thing to try: seeding the claim
+  account from the real game history already played, not only from the
+  hypothetical continuation the solver integrates forward from the
+  candidate move.
+- **Is claimed:** finding 9's config A instability is not a small-sample
+  fluke. Finding 10 refit it 5 more times (7 fits total, 5 different
+  self-play seeds beyond the original 2 fits' shared seed 7), refereed
+  every fit on one fixed primary sample and gated any apparent win against
+  a second, independent sample — only 1 of 7 beat baseline on the primary
+  sample, 0 of 7 beat baseline on the independent sample (including that
+  1), and the mean-of-7 ensemble point loses to baseline on both. The
+  calibration-reliability problem this experiment has been fighting since
+  findings 3/4/7/11/16 is not specific to config A's two on-record fits —
+  it is what this recipe does most of the time on this tier.
 - **Is claimed:** shallow full-width minimax with the champion ODE
   evaluator as the leaf scorer (finding 8) is strictly worse than the
   search-free 0-ply champion on this game, at every depth tried (0, 1, and
@@ -544,21 +834,63 @@ producing instead of a win. The value of the search-free construction
 search enters the picture, this experiment's own numbers say to use the
 oracle, not a hybrid.
 
+A fourth attempt returned to structure, this time building the exact thing
+finding 7 named as untried: finding 9's `clm_*` tier replaces the rate-only
+parity check with a real place/token account that a play transition
+deposits into and a later transition reads, carrying information across the
+continuation the way finding 7 said a coefficient on the instantaneous
+marking cannot. It is not placebo — four independent fits (two
+configurations, two training samples) all produce real, non-trivial,
+non-baseline referee numbers — but it is not reliable either: the
+"alongside blockBias" configuration wins clearly on one fit and loses
+clearly on another, a sign flip on the exact same held-out sample, and the
+directionally-consistent "replacing blockBias" configuration never buys
+back more on O than it spends on X. Structure alone was not enough here;
+this specific structure needed either a better calibration recipe or a
+different scope (seeding the account from real game history, not only the
+hypothetical continuation) that this experiment leaves as the next thing to
+try, exactly as finding 7 left the structural idea itself.
+
+A fifth attempt asked a different kind of question about the fourth: not
+whether `clm_*` could win, but whether its one apparent win was trustworthy.
+Finding 10 refit config A five more times on independently-seeded training
+samples (seven fits total), refereed every one of them — in a single
+process, so there is no cross-run noise to explain away — against the same
+fixed primary sample plus a second, wholly independent validation sample.
+One of seven fits beat baseline on the primary sample; none beat it on the
+independent one, including that fit; and averaging all seven fitted points
+into one ensemble still lost on both samples. Applied to finding 9's own
+two fits before they were ever reported, the same gate would have flagged
+the one that looked like a win. The calibration-instability problem this
+experiment has carried since findings 3/4/7/11/16 is therefore not an
+artifact of an unlucky pair of fits in finding 9 — it is this recipe's
+typical behavior on a real, non-placebo structural tier, and a robustness
+gate that compares against an independent sample (not just a better
+optimizer, and not just more of the same sample) is what it takes to see
+that reliably.
+
 The honest summary: **partial success, clearly bounded, and the bound
-survived three separate, well-motivated attempts to move it** — a second
-blind structural tier (finding 6), a theory-motivated structural tier
-(finding 7), and a change of paradigm to genuine shallow search (finding
-8). The recipe that solved tic-tac-toe completely reduces Connect Four's
+survived five separate, well-motivated attempts to move it** — a second
+blind structural tier (finding 6), a theory-motivated RATE tier (finding
+7), a change of paradigm to genuine shallow search (finding 8), a
+theory-motivated STRUCTURAL tier (finding 9) that is real but not reliable,
+and a robustness-gated re-examination of that same structural tier (finding
+10) that confirms the unreliability rather than resolving it.
+The recipe that solved tic-tac-toe completely reduces Connect Four's
 defender-side failure by roughly half; closing the rest remains future
-work — and findings 6-8 collectively narrow *where* that work should look:
-not more of the same rate-multiplier structure, and not shallow search over
-the existing leaf formula, but something that can represent turn-order
-information without either sacrificing the leaf formula's asymmetry or
-paying search-tree costs that exceed the exact oracle's. This experiment's
-main contribution beyond the headline number is the infrastructure to keep
-answering the question precisely — a real bitboard alpha-beta oracle with
-an honest budget/skip contract, and a sampled-not-exhaustive referee that
-never blurs the two together.
+work — and findings 6-10 collectively narrow *where* that work should look:
+not more of the same rate-multiplier structure, not shallow search over the
+existing leaf formula, not a first attempt at token-based structure without
+also solving the calibration-stability problem that a place with real
+memory turns out to introduce (finding 9), and — finding 10's addition —
+not this same calibration recipe again, however many extra times it is
+re-run, without either a larger per-fit training sample or a genuinely
+different scope for the account. This experiment's main contribution beyond
+the headline number is the infrastructure to keep answering the question
+precisely — a real bitboard alpha-beta oracle with an honest budget/skip
+contract, a sampled-not-exhaustive referee that never blurs the two
+together, and now a robustness gate that separates a real structural effect
+from a fit that merely looks like a win once.
 
 ## Run it
 
@@ -592,21 +924,56 @@ go run . lookahead 2 300    # same, N=2, truncated to the first 300
                             # decisions as this README's finding 8 does
                             # (~4-5 min; a full-sample N=2 run would take
                             # over half an hour)
+go run . fitclaim 15 20     # finding 9: calibrate the STRUCTURAL clm_*
+                            # tier (champion.go's column parity-claim
+                            # account) both alongside and instead of
+                            # blockBias, referee both against the SAME
+                            # held-out sample as the existing champion,
+                            # print the comparison (~10-25 min depending on
+                            # CPU contention: same shape of run as
+                            # fitparity, over a slightly larger net —
+                            # 222+552+552+276+276 = 1878 transitions)
+go run . verifyclaim 1.258 2.202 0.259 250   # finding 9's "equivalent
+                                              # verify invocation": args are
+                                              # blockBias claimBias lambda
+                                              # games (winBias and
+                                              # parityBias always 0)
+go run . robustclaim 15 20 250   # finding 10: refit config A (clm_*
+                                  # alongside blk_*) on 5 more independently-
+                                  # seeded training samples, referee all 7
+                                  # fits (2 on record + 5 new) plus their
+                                  # ensemble average against a fixed primary
+                                  # held-out sample (seed 13) AND gate any
+                                  # apparent win against a second,
+                                  # independent held-out sample (seed 29) —
+                                  # args are training games, Nelder-Mead
+                                  # iterations, referee games (~40-45 min:
+                                  # 5 full fits plus two ~2000-decision
+                                  # oracle-labeled samples reused across 9
+                                  # referee evaluations). A trailing `n=<k>`
+                                  # arg trims to the first k new seeds, for
+                                  # a fast smoke test.
 ```
 
 ## Performance notes
 
 - Each ODE solve (`solver.GameAIOptions()`, Tsit5) over the naive
   131-place/222-transition declared net takes roughly 1ms; over the
-  champion's derived net (130 places after dropping `game_active`, 1602
-  transitions) roughly 7ms. `deriveChampionNet` always builds all three
-  catalyzed tiers (`blk_*`, `own_*`, `prt_*` — 222 + 552 + 552 + 276 = 1602)
-  regardless of which rates are active, so the shipped default (only
-  `blockBias` nonzero) pays the same per-solve cost as the full
-  three-constant `fitparity` sweep — the zero-rate tiers still cost one
-  rate evaluation each, they just contribute nothing to the flow. Measured
-  directly (`go test -run TestTimingProbeParity`, not committed — see git
-  history of this experiment's working tree if it's needed again).
+  three-tier champion's derived net (130 places after dropping
+  `game_active`, 1602 transitions) roughly 7ms. `deriveChampionNet` always
+  builds all three catalyzed-COPY tiers (`blk_*`, `own_*`, `prt_*` —
+  222 + 552 + 552 + 276 = 1602) regardless of which rates are active, so the
+  shipped default (only `blockBias` nonzero) pays the same per-solve cost as
+  the full three-constant `fitparity` sweep — the zero-rate tiers still cost
+  one rate evaluation each, they just contribute nothing to the flow.
+  Measured directly (`go test -run TestTimingProbeParity`, not committed —
+  see git history of this experiment's working tree if it's needed again).
+  Finding 9's `clm_*` tier (276 more copies) plus 14 claim places brings the
+  full net to 144 places / 1878 transitions — proportionally larger
+  (+17% transitions), not separately re-measured with the same timing
+  probe; `go run . fitclaim`'s own wall-clock (~10-25 min for two fits plus
+  three held-out referee passes, printed by `time` when backgrounded) is
+  the closest apples-to-apples comparison available in this checkout.
 - The oracle's transposition table is **not** reset between `Solve` calls
   within one `Oracle`, so repeated queries against overlapping game trees
   (self-play sampling, the referee re-checking a chosen move) get
