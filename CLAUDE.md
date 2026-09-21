@@ -253,6 +253,69 @@ If something isn't working:
    ```
 5. Refresh browser and retest
 
+### 4b. Iterative refinement with a persistent history (pkg/appstore)
+
+`petri_extend` and `petri_build` can optionally persist to a content-addressed
+store (`pkg/appstore`, SQLite at `~/.petri-pilot/appstore.db`, overridable via
+`PETRI_APPSTORE_DB`) instead of the stateless "JSON in, JSON out" shape above.
+This turns "an app" into (spec + the sequence of prompts/edits/builds that
+produced it), so a session can pick a model back up by id days later with its
+full history intact — rather than every tool call starting from whatever JSON
+the caller happens to still have around.
+
+**Nothing changes unless you ask for it.** Calling `petri_extend`/`petri_build`
+exactly as documented above — no `id`, no `prompt` — behaves identically to
+before and writes nothing to the store. Passing either `id` or `prompt` opts
+into persistence for that call.
+
+Start a spec and record why, in one call — `petri_extend` with a `prompt` and
+no `id` stores the incoming model as a fresh root (idempotently — the same
+content always hashes to the same id) and the edited result as a new spec,
+returning both:
+
+```
+petri_extend(model='...', operations='[...]', prompt='add a cancelled state for the refund path')
+# => {"id": "<new spec id>", "parentId": "<root spec id>", "model": "...", ...}
+```
+
+Keep refining by id instead of re-pasting the model — pass the id back in and
+give the next edit its own prompt:
+
+```
+petri_extend(id='<spec id>', operations='[...]', prompt='add a transition to clear the jam')
+```
+
+Inspect the whole chain — root first, one entry per prompt/edit/build, each
+naming its `activity` (`petri_extend`, `petri_build`, ...), its `prompt` (if
+any) and a short outcome `note`:
+
+```
+petri_history(id='<spec id>')
+```
+
+Name it, so it can be found again without remembering the hash:
+
+```
+petri_app_save(name='order-tracker', id='<spec id>')
+petri_app_get(name='order-tracker')   # -> {id, kind, content}
+petri_app_list()                      # every named app and its current head id
+```
+
+Build the named app's current spec — `petri_build(id=...)` resolves the spec
+from the store instead of taking `model`/`spec`/`bundle` inline, and (since
+`id` was given) records a `petri_build` lineage edge on that same spec noting
+the outcome (`"build ok, verify passed, N transition(s) fired"` or
+`"build failed: ..."`), whether or not the build succeeded:
+
+```
+petri_build(id='<spec id>', output_dir='generated/order-tracker')
+petri_history(id='<spec id>')   # now shows the build too
+```
+
+A build never derives a *new* spec — it annotates the one it was given — so
+its lineage edge carries no parent of its own; `petri_history` still finds the
+real parent chain from the earlier `petri_extend` edges on that same id.
+
 ### 5. Cleanup
 
 When done testing:

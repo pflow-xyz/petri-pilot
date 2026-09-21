@@ -35,18 +35,24 @@ import (
 
 func buildTool() mcp.Tool {
 	return mcp.NewTool("petri_build",
-		mcp.WithDescription("Generate a full, runnable Go application from a Petri net model, an Application spec, or a raw bundle document, write it to output_dir, and (by default) actually build and run it and verify it behaves correctly — not just that it compiles. Accepts exactly one of 'model' (single-net), 'spec' (+optional 'fusions', composed via one subnet per entity), or 'bundle' (raw bundle document). Replaces petri_application, petri_bundle, and petri_codegen's language='go' option."),
+		mcp.WithDescription("Generate a full, runnable Go application from a Petri net model, an Application spec, or a raw bundle document, write it to output_dir, and (by default) actually build and run it and verify it behaves correctly — not just that it compiles. Accepts exactly one of 'model' (single-net), 'spec' (+optional 'fusions', composed via one subnet per entity), 'bundle' (raw bundle document), or 'id' (a previously stored spec — wins over the others if given). Replaces petri_application, petri_bundle, and petri_codegen's language='go' option. Whenever the build resolves through a spec id (given directly via 'id', or freshly stored from 'model'/'spec'/'bundle'), a lineage edge recording this build's outcome is written to the app store — pass 'prompt' to also attach free-text intent. The result carries the resolved spec 'id'."),
 		mcp.WithString("model",
-			mcp.Description("Single-net Petri net model as JSON or tokenmodel DSL. Mutually exclusive with 'spec' and 'bundle'."),
+			mcp.Description("Single-net Petri net model as JSON or tokenmodel DSL. Mutually exclusive with 'spec', 'bundle' and 'id'."),
 		),
 		mcp.WithString("spec",
-			mcp.Description("Application specification as JSON (entities with fields/states/actions). Mutually exclusive with 'model' and 'bundle'."),
+			mcp.Description("Application specification as JSON (entities with fields/states/actions). Mutually exclusive with 'model', 'bundle' and 'id'."),
 		),
 		mcp.WithString("fusions",
 			mcp.Description("Optional JSON array of cross-entity rendezvous, used only with 'spec': [{\"id\":\"...\",\"members\":[{\"entity\":\"...\",\"action\":\"...\"}]}]"),
 		),
 		mcp.WithString("bundle",
-			mcp.Description("Raw bundle document JSON: {name, subnets: [{id, net_type, model}], links: [...]}. Mutually exclusive with 'model' and 'spec'."),
+			mcp.Description("Raw bundle document JSON: {name, subnets: [{id, net_type, model}], links: [...]}. Mutually exclusive with 'model', 'spec' and 'id'."),
+		),
+		mcp.WithString("id",
+			mcp.Description("Optional: build from a previously stored spec id instead of 'model'/'spec'/'bundle'. Wins over the others if given."),
+		),
+		mcp.WithString("prompt",
+			mcp.Description("Optional free-text description of intent, recorded alongside this build's lineage edge in the app store."),
 		),
 		mcp.WithString("output_dir",
 			mcp.Required(),
@@ -70,6 +76,7 @@ func buildTool() mcp.Tool {
 // buildReport is petri_build's structured return value.
 type buildReport struct {
 	OutputDir    string   `json:"output_dir"`
+	ID           string   `json:"id,omitempty"`
 	FilesWritten []string `json:"files_written"`
 	Build        struct {
 		OK     bool   `json:"ok"`
@@ -85,18 +92,44 @@ type buildReport struct {
 }
 
 func handleBuild(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	idParam := request.GetString("id", "")
+	promptParam := request.GetString("prompt", "")
+	persist := idParam != "" || promptParam != ""
+
 	modelJSON := request.GetString("model", "")
 	specJSON := request.GetString("spec", "")
 	bundleJSON := request.GetString("bundle", "")
 
-	inputsGiven := 0
-	for _, s := range []string{modelJSON, specJSON, bundleJSON} {
-		if s != "" {
-			inputsGiven++
+	if idParam != "" {
+		store, serr := getAppStore()
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", serr)), nil
 		}
-	}
-	if inputsGiven != 1 {
-		return mcp.NewToolResultError("petri_build requires exactly one of 'model', 'spec', or 'bundle'"), nil
+		kind, content, gerr := store.Get(idParam)
+		if gerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("loading spec %q: %v", idParam, gerr)), nil
+		}
+		modelJSON, specJSON, bundleJSON = "", "", ""
+		switch kind {
+		case "model":
+			modelJSON = string(content)
+		case "spec":
+			specJSON = string(content)
+		case "bundle":
+			bundleJSON = string(content)
+		default:
+			return mcp.NewToolResultError(fmt.Sprintf("spec %q has unrecognized kind %q", idParam, kind)), nil
+		}
+	} else {
+		inputsGiven := 0
+		for _, s := range []string{modelJSON, specJSON, bundleJSON} {
+			if s != "" {
+				inputsGiven++
+			}
+		}
+		if inputsGiven != 1 {
+			return mcp.NewToolResultError("petri_build requires exactly one of 'model', 'spec', 'bundle', or 'id'"), nil
+		}
 	}
 
 	outputDir := request.GetString("output_dir", "")
@@ -254,9 +287,42 @@ func handleBuild(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToo
 		}
 	}
 
+	// Resolve the spec id this build is against, when persistence was
+	// requested ('id' or 'prompt' given). 'model' may be DSL text rather
+	// than JSON, so store the already-parsed-and-marshaled form
+	// (verifyModel) under kind "model" rather than the raw input; 'spec' and
+	// 'bundle' are stored as the original JSON text they were given as,
+	// since that is what a later petri_build(id=...) needs to reconstruct
+	// the same input path.
+	var resolvedSpecID string
+	if persist {
+		if idParam != "" {
+			resolvedSpecID = idParam
+		} else {
+			store, serr := getAppStore()
+			if serr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", serr)), nil
+			}
+			var storeKind string
+			var storeContent []byte
+			switch {
+			case modelJSON != "":
+				storeKind, storeContent = "model", verifyModel
+			case specJSON != "":
+				storeKind, storeContent = "spec", []byte(specJSON)
+			default:
+				storeKind, storeContent = "bundle", []byte(bundleJSON)
+			}
+			resolvedSpecID, serr = store.Put(storeKind, storeContent)
+			if serr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("storing spec: %v", serr)), nil
+			}
+		}
+	}
+
 	modulePath := request.GetString("module_path", "app/"+bundle.PackageNameFor(appName))
 
-	report := &buildReport{OutputDir: outputDir}
+	report := &buildReport{OutputDir: outputDir, ID: resolvedSpecID}
 	for _, f := range files {
 		p := filepath.Join(outputDir, f.Name)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -301,14 +367,12 @@ func handleBuild(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToo
 	if out, err := appverify.Tidy(outputDir, buildEnv...); err != nil {
 		report.Build.OK = false
 		report.Build.Errors = fmt.Sprintf("%v\n%s", err, string(out))
-		resultJSON, _ := json.MarshalIndent(report, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return finishBuild(report, persist, resolvedSpecID, promptParam)
 	}
 	if out, err := appverify.BuildAll(outputDir, buildEnv...); err != nil {
 		report.Build.OK = false
 		report.Build.Errors = fmt.Sprintf("%v\n%s", err, string(out))
-		resultJSON, _ := json.MarshalIndent(report, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return finishBuild(report, persist, resolvedSpecID, promptParam)
 	}
 	report.Build.OK = true
 
@@ -342,6 +406,54 @@ func handleBuild(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToo
 				}
 			}
 			os.Remove(binPath)
+		}
+	}
+
+	return finishBuild(report, persist, resolvedSpecID, promptParam)
+}
+
+// finishBuild records this build's outcome as a lineage edge (when
+// persistence was requested) and marshals the final report. Called from
+// every exit point past spec resolution — including the early returns on a
+// failed `go mod tidy`/`go build` — so a failed build is recorded too, not
+// just a successful one.
+func finishBuild(report *buildReport, persist bool, resolvedSpecID, promptParam string) (*mcp.CallToolResult, error) {
+	if persist && resolvedSpecID != "" {
+		store, serr := getAppStore()
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", serr)), nil
+		}
+
+		var note string
+		switch {
+		case !report.Build.OK:
+			errs := report.Build.Errors
+			if len(errs) > 200 {
+				errs = errs[:200] + "..."
+			}
+			note = fmt.Sprintf("build failed: %s", errs)
+		case report.Verify.Ran && report.Verify.Passed:
+			note = fmt.Sprintf("build ok, verify passed, %d transition(s) fired", len(report.Verify.TransitionsFired))
+		case report.Verify.Ran:
+			note = fmt.Sprintf("build ok, verify failed, %d mismatch(es)", len(report.Verify.Mismatches))
+		default:
+			note = "build ok, verify skipped"
+		}
+
+		// A build doesn't derive a new spec from a parent — it annotates an
+		// existing one — so the lineage edge carries no parent; any real
+		// parent (from an earlier petri_extend) is already recorded on that
+		// spec id and History finds it there.
+		var promptID *string
+		if promptParam != "" {
+			pid, perr := store.RecordPrompt(promptParam, resolvedSpecID, resolvedSpecID)
+			if perr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("recording prompt: %v", perr)), nil
+			}
+			promptID = &pid
+		}
+		if lerr := store.RecordLineage(resolvedSpecID, nil, "petri_build", promptID, note); lerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("recording lineage: %v", lerr)), nil
 		}
 	}
 

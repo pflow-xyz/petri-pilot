@@ -78,6 +78,10 @@ func NewServer() *server.MCPServer {
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
 	s.AddTool(buildTool(), handleBuild)
+	s.AddTool(historyTool(), handleHistory)
+	s.AddTool(appSaveTool(), handleAppSave)
+	s.AddTool(appGetTool(), handleAppGet)
+	s.AddTool(appListTool(), handleAppList)
 	s.AddTool(docsTool(), handleDocs)
 	s.AddTool(migrateTool(), handleMigrate)
 
@@ -307,14 +311,19 @@ func diffTool() mcp.Tool {
 
 func extendTool() mcp.Tool {
 	return mcp.NewTool("petri_extend",
-		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_event, remove_binding. Returns the modified model."),
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_event, remove_binding. Returns the modified model. Optionally persists to the content-addressed app store: pass 'id' to load the starting model from a previously stored spec instead of 'model' (if both are given, 'id' wins and 'model' is ignored), and/or 'prompt' to record the free-text intent behind this edit. Giving either triggers persistence — the starting spec (stored fresh as a root if 'id' was not given), the resulting spec, the prompt (if any), and a lineage edge are all recorded, and the result carries 'id' (the new spec's id) and 'parentId'. Calling with neither 'id' nor 'prompt' (the original shape) persists nothing and behaves exactly as before."),
 		mcp.WithString("model",
-			mcp.Required(),
-			mcp.Description("The Petri net model as JSON"),
+			mcp.Description("The Petri net model as JSON. Required unless 'id' is given."),
 		),
 		mcp.WithString("operations",
 			mcp.Required(),
 			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"transfer\",\"event\":\"transferred\",\"guard\":\"balances[from] >= amount\",\"bindings\":[{\"name\":\"from\",\"type\":\"string\",\"keys\":[\"from\"]},{\"name\":\"amount\",\"type\":\"number\",\"value\":true}]}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_event\",\"id\":\"transferred\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"number\"}]}, {\"op\":\"add_binding\",\"transition\":\"transfer\",\"name\":\"to\",\"type\":\"string\",\"keys\":[\"to\"]}"),
+		),
+		mcp.WithString("id",
+			mcp.Description("Optional: load the starting model from this previously stored spec id instead of 'model'. Wins over 'model' if both are given. Triggers persistence of the result."),
+		),
+		mcp.WithString("prompt",
+			mcp.Description("Optional: free-text description of the intent behind this edit, recorded in the app store's lineage. Triggers persistence of the result."),
 		),
 	)
 }
@@ -684,9 +693,29 @@ func compareModels(a, b *goflowmetamodel.Model) ModelDiff {
 }
 
 func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	modelJSON, err := request.RequireString("model")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	specID := request.GetString("id", "")
+	prompt := request.GetString("prompt", "")
+	persist := specID != "" || prompt != ""
+
+	modelJSON := request.GetString("model", "")
+
+	var startSpecID string
+	if specID != "" {
+		store, err := getAppStore()
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", err)), nil
+		}
+		kind, content, err := store.Get(specID)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("loading spec %q: %v", specID, err)), nil
+		}
+		if kind != "model" {
+			return mcp.NewToolResultError(fmt.Sprintf("spec %q is a %q, not a model", specID, kind)), nil
+		}
+		modelJSON = string(content)
+		startSpecID = specID
+	} else if modelJSON == "" {
+		return mcp.NewToolResultError("missing model parameter (or pass 'id' to load a stored spec)"), nil
 	}
 
 	opsJSON, err := request.RequireString("operations")
@@ -745,18 +774,64 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal model: %v", err)), nil
 	}
 
+	var newSpecID, parentSpecID string
+	if persist {
+		store, serr := getAppStore()
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", serr)), nil
+		}
+
+		// Resolve the starting spec: 'id' already resolved it above
+		// (startSpecID); otherwise the incoming model JSON becomes a fresh
+		// root spec (Put is idempotent, so re-persisting an already-known
+		// root is a no-op).
+		if startSpecID == "" {
+			startSpecID, serr = store.Put("model", []byte(modelJSON))
+			if serr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("storing starting spec: %v", serr)), nil
+			}
+		}
+		parentSpecID = startSpecID
+
+		newSpecID, serr = store.Put("model", modelOutput)
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("storing result spec: %v", serr)), nil
+		}
+
+		var promptID *string
+		if prompt != "" {
+			pid, perr := store.RecordPrompt(prompt, startSpecID, newSpecID)
+			if perr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("recording prompt: %v", perr)), nil
+			}
+			promptID = &pid
+		}
+
+		note := fmt.Sprintf("applied %d operation(s)", len(applied))
+		if len(errors) > 0 {
+			note = fmt.Sprintf("%s, %d error(s)", note, len(errors))
+		}
+		if lerr := store.RecordLineage(newSpecID, &parentSpecID, "petri_extend", promptID, note); lerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("recording lineage: %v", lerr)), nil
+		}
+	}
+
 	result := struct {
-		Success bool     `json:"success"`
-		Applied []string `json:"applied"`
-		Errors  []string `json:"errors,omitempty"`
-		Valid   bool     `json:"valid"`
-		Model   string   `json:"model"`
+		Success  bool     `json:"success"`
+		Applied  []string `json:"applied"`
+		Errors   []string `json:"errors,omitempty"`
+		Valid    bool     `json:"valid"`
+		Model    string   `json:"model"`
+		ID       string   `json:"id,omitempty"`
+		ParentID string   `json:"parentId,omitempty"`
 	}{
-		Success: len(errors) == 0,
-		Applied: applied,
-		Errors:  errors,
-		Valid:   validationResult.Valid,
-		Model:   string(modelOutput),
+		Success:  len(errors) == 0,
+		Applied:  applied,
+		Errors:   errors,
+		Valid:    validationResult.Valid,
+		Model:    string(modelOutput),
+		ID:       newSpecID,
+		ParentID: parentSpecID,
 	}
 
 	outputJSON, err := json.MarshalIndent(result, "", "  ")
