@@ -116,6 +116,10 @@ func (s *Scenario) options() Options {
 		// "" -> SSA, "ode" -> ODE; Validate already rejects anything else.
 		Method: stochastic.Method(s.Engine),
 		Guard:  guardFunc,
+		// One random stream per realization across schedule segments, as in
+		// Simulate; the engine's default restarts it at every boundary. No
+		// effect on an unscheduled run, and the ODE path ignores it.
+		ContinueStreams: true,
 	}
 }
 

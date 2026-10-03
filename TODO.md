@@ -87,6 +87,16 @@ npm run test:headed  # Watch tests in browser
 
 ## Known Issues
 
+### go-pflow is pinned to a pseudo-version; swap to v0.33.0 once tagged
+
+`go.mod` requires `github.com/pflow-xyz/go-pflow
+v0.32.1-0.20261002183802-4ce00409d43b` — go-pflow main at `4ce0040`, which is
+exactly the content of the unreleased v0.33.0 (opt-in
+`Options.ContinueStreams`, on top of v0.32.0's `Context`/`MaxSteps`/
+`MaxPlaceTokens`). The tag could not be pushed when this was bumped. Once
+`v0.33.0` exists, run `go get github.com/pflow-xyz/go-pflow@v0.33.0 && go mod
+tidy && bazel mod tidy`; the code is identical, so nothing else should move.
+
 ### `pflow-engine.js` can't join the pflow-js lock as-is
 
 `frontends/vet-clinic/pflow-engine.js` is *derived* from pflow-xyz's

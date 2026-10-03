@@ -542,6 +542,12 @@ how the composed app came to ship with no simulation at all.
 - **`schedule`** is piecewise-constant, run segment by segment because SSA draws
   a waiting time from the current total propensity. The last segment holds to the
   horizon rather than reverting to the model's rate.
+  Each realization keeps **one random stream across every segment** (go-pflow
+  `Options.ContinueStreams`, set in `sim.Simulate` and `Scenario.options`): the
+  engine's default restarts it at each boundary, replaying the same draws
+  segment after segment, which inflated a Poisson source's spread and moved
+  the café's mean. A boundary that changes no rate is therefore invisible —
+  `continue_streams_test.go` pins it on both entry points.
 - **`Compare` forces one seed.** Two SSA runs of the same shop differ; without a
   shared seed a caller cannot tell staffing from dice. That is enforceable only
   server-side, which is why it is one request.

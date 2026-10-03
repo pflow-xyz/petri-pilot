@@ -83,8 +83,16 @@ func Forecast(m *metamodel.Model, marking map[string]int, opts Options) (*Result
 
 // Simulate is the discrete engine: Gillespie's SSA over integer counts, with
 // marking-decidable guards enforced through pkg/dsl.
+//
+// A scheduled run (Options.Schedule or a model-declared Transition.Schedule)
+// always keeps one random stream per realization across its segments
+// (go-pflow Options.ContinueStreams). The engine's default restarts each
+// realization's stream at every segment boundary, which replays the same
+// draws segment after segment: it inflated a Poisson source's spread and
+// moved the café's mean. Unscheduled runs are unaffected.
 func Simulate(m *metamodel.Model, marking map[string]int, opts Options) (*Result, error) {
 	opts.Guard = guardFunc
+	opts.ContinueStreams = true
 	return stochastic.Simulate(m, marking, opts)
 }
 

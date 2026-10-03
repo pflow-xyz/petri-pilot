@@ -4,6 +4,9 @@ go_library(
     name = "mcp",
     srcs = [
         "amm.go",
+        "appstore.go",
+        "appstore_tools.go",
+        "build.go",
         "codetoflow.go",
         "composite.go",
         "conformance.go",
@@ -49,6 +52,8 @@ go_library(
     deps = [
         "//internal/llm",
         "//internal/version",
+        "//pkg/appstore",
+        "//pkg/appverify",
         "//pkg/bundle",
         "//pkg/codegen/core",
         "//pkg/codegen/esmodules",
@@ -90,7 +95,9 @@ go_test(
     srcs = [
         "alt_views_test.go",
         "amm_test.go",
+        "appstore_integration_test.go",
         "bench_test.go",
+        "build_test.go",
         "codegen_core_test.go",
         "conformance_test.go",
         "diff_visual_test.go",
@@ -132,6 +139,7 @@ go_test(
     args = ["-test.short"],  # keep
     embed = [":mcp"],
     deps = [
+        "//pkg/appstore",
         "//pkg/extensions",
         "//pkg/runtime/sim",
         "@com_github_mark3labs_mcp_go//mcp",

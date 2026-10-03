@@ -136,6 +136,9 @@ func TestExtend_LegacyShapeUntouched(t *testing.T) {
 // (no id, no prompt) leaves the store untouched and the report shape is
 // additive-only (an empty 'id').
 func TestBuild_LegacyShapeUntouched(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	store := withTestAppStore(t)
 
 	res := callTool(t, "petri_build", map[string]any{
@@ -224,6 +227,10 @@ func TestIterativeRefinementRoundTrip(t *testing.T) {
 	}
 	if hist.History[1].ID != out2.ID || hist.History[1].Prompt == nil || *hist.History[1].Prompt != "add a transition to clear the jam and reopen" {
 		t.Errorf("entry 1 = %+v, want id=%s with the second prompt", hist.History[1], out2.ID)
+	}
+
+	if testing.Short() {
+		t.Skip("the petri_build round builds a generated app with the go toolchain; skipped in -short")
 	}
 
 	// petri_build against the same spec id: it must build and verify, and
