@@ -136,6 +136,9 @@ func TestExtend_LegacyShapeUntouched(t *testing.T) {
 // (no id, no prompt) leaves the store untouched and the report shape is
 // additive-only (an empty 'id').
 func TestBuild_LegacyShapeUntouched(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	store := withTestAppStore(t)
 
 	res := callTool(t, "petri_build", map[string]any{
