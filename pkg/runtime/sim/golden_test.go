@@ -22,6 +22,14 @@ import (
 // After the switch, the same seed must reproduce the same bytes. Anything
 // that changes them is either a real change to the engine (bump the goldens
 // with -update, and say why in the commit) or a bug in the move.
+//
+// run_cafe_rush_seed42.golden was regenerated once since, deliberately, when
+// scheduled runs switched to one random stream per realization across
+// segments (go-pflow Options.ContinueStreams, go-pflow v0.33.0): the restarted
+// streams replayed each realization's first draws every segment. At seed 42,
+// 5 realizations, orders_complete moved 127.4 -> 121.6 and walked_out
+// 29.2 -> 37.2, and the result gained Series.StdDev.
+// simulate_coffeeshop_seed42.golden is unscheduled and did not move.
 var updateGolden = flag.Bool("update", false, "regenerate the goldens under testdata/")
 
 func goldenCoffeeshop(t *testing.T) *metamodel.Model {

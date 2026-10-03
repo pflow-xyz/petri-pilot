@@ -34,6 +34,7 @@ go_test(
         "cafe_e2e_test.go",
         "cafe_fitness_test.go",
         "cafe_service_test.go",
+        "continue_streams_test.go",
         "gating_test.go",
         "golden_test.go",
         "http_smoke_test.go",
