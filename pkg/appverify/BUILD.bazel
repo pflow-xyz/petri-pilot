@@ -19,6 +19,7 @@ go_library(
 go_test(
     name = "appverify_test",
     srcs = ["appverify_test.go"],
+    args = ["-test.short"],  # keep
     embed = [":appverify"],
     deps = [
         "//pkg/codegen/golang",

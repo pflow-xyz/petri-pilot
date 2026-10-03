@@ -226,6 +226,10 @@ func TestIterativeRefinementRoundTrip(t *testing.T) {
 		t.Errorf("entry 1 = %+v, want id=%s with the second prompt", hist.History[1], out2.ID)
 	}
 
+	if testing.Short() {
+		t.Skip("the petri_build round builds a generated app with the go toolchain; skipped in -short")
+	}
+
 	// petri_build against the same spec id: it must build and verify, and
 	// the lineage must now show a petri_build entry too.
 	buildDir := t.TempDir()

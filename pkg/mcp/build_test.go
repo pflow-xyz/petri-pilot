@@ -105,6 +105,9 @@ func TestBuildRequiresOutputDir(t *testing.T) {
 // language='go'): it writes a standalone app with its own go.mod and main.go
 // and, with verify disabled, only checks that it compiles.
 func TestBuildFromModel(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	dir := t.TempDir()
 	result := callBuild(t, map[string]any{
 		"model":      coreModelJSON,
@@ -141,6 +144,9 @@ func TestBuildFromModel(t *testing.T) {
 // generated tree must include the new run harness (cmd/server/main.go) and
 // go.mod that make it independently runnable.
 func TestBuildFromSpec(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	spec := `{
 	  "name": "shopdemo",
 	  "entities": [
@@ -192,6 +198,9 @@ func TestBuildFromSpec(t *testing.T) {
 
 // TestBuildFromBundleDoc takes a raw bundle document with inline models.
 func TestBuildFromBundleDoc(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	doc := `{
 	  "name": "duo",
 	  "subnets": [
@@ -237,6 +246,9 @@ func TestBuildFromBundleDoc(t *testing.T) {
 // generates a small app, actually builds and runs the real binary, and
 // checks the report shows verify.passed == true.
 func TestBuildVerifiesRunningApp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	model := `{
 	  "name": "verifydemo2",
 	  "places": [{"id": "pending", "initial": 1}, {"id": "done"}],
@@ -278,6 +290,9 @@ func TestBuildVerifiesRunningApp(t *testing.T) {
 // POST /fire/<transition>, and confirm the marking on both subnets matches
 // the oracle.
 func TestBuildVerifiesRunningBundleApp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a generated app with the go toolchain; skipped in -short")
+	}
 	doc := `{
 	  "name": "duoverify",
 	  "subnets": [
