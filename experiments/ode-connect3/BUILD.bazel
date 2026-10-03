@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "ode-connect3_lib",
+    srcs = [
+        "fit.go",
+        "fitdeep.go",
+        "fitgrad.go",
+        "fitparity.go",
+        "fork.go",
+        "hybridcolumn.go",
+        "hybridrate.go",
+        "lookahead.go",
+        "main.go",
+        "model.go",
+        "neuralode.go",
+        "oraclefuture.go",
+        "parity.go",
+        "players.go",
+        "policy.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/experiments/ode-connect3",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//derive",
+        "@com_github_pflow_xyz_go_pflow//learn",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)
+
+go_binary(
+    name = "ode-connect3",
+    embed = [":ode-connect3_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "ode-connect3_test",
+    srcs = ["main_test.go"],
+    embed = [":ode-connect3_lib"],
+)

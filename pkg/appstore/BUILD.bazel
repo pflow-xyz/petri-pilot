@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "appstore",
+    srcs = ["store.go"],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/appstore",
+    visibility = ["//visibility:public"],
+    deps = ["@org_modernc_sqlite//:sqlite"],
+)
+
+go_test(
+    name = "appstore_test",
+    srcs = ["store_test.go"],
+    embed = [":appstore"],
+)

@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "ode-connect4_lib",
+    srcs = [
+        "champion.go",
+        "fit.go",
+        "lookahead.go",
+        "main.go",
+        "model.go",
+        "oracle.go",
+        "players.go",
+        "robust.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/experiments/ode-connect4",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_pflow_xyz_go_pflow//derive",
+        "@com_github_pflow_xyz_go_pflow//learn",
+        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//solver",
+    ],
+)
+
+go_binary(
+    name = "ode-connect4",
+    embed = [":ode-connect4_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "ode-connect4_test",
+    srcs = ["oracle_test.go"],
+    embed = [":ode-connect4_lib"],
+)
