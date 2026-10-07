@@ -1334,6 +1334,11 @@ func eventFieldTypeToGo(typ string) string {
 	}
 }
 
+// SanitizeAPISlug is the exported form of sanitizeAPISlug, for callers (e.g.
+// pkg/appverify) that need to derive the same "/api/<slug>" path a generated
+// app will expose without re-running the whole generator.
+func SanitizeAPISlug(name string) string { return sanitizeAPISlug(name) }
+
 // sanitizeAPISlug converts a model name to a URL-safe slug for API paths.
 // This removes hyphens, underscores, and spaces to create a consistent identifier.
 func sanitizeAPISlug(name string) string {

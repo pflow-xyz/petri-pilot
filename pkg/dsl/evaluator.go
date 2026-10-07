@@ -40,8 +40,30 @@ func (e *Evaluator) EvaluateConstraint(expr string, tokens map[string]int) (bool
 	return EvaluateInvariant(expr, Marking(tokens))
 }
 
-// Ensure Evaluator implements metamodel.GuardEvaluator
+// EvaluateConstraintWithData evaluates a constraint against token counts and
+// data-state values together, implementing metamodel.DataAwareEvaluator.
+func (e *Evaluator) EvaluateConstraintWithData(expr string, tokens map[string]int, data map[string]any) (bool, error) {
+	return EvaluateInvariantWithData(expr, Marking(tokens), data)
+}
+
+// DataAggregates is Aggregates with the data states in reach: sum("points")
+// or sum(points) totals a ledger map, count counts its keys, minOf/maxOf
+// range over its values.
+func (e *Evaluator) DataAggregates(tokens map[string]int, data map[string]any) map[string]metamodel.GuardFunc {
+	aggregates := MakeAggregatesWithData(Marking(tokens), data)
+
+	out := make(map[string]metamodel.GuardFunc, len(aggregates))
+	for name, fn := range aggregates {
+		fn := fn // capture loop variable
+		out[name] = func(args ...any) (any, error) { return fn(args...) }
+	}
+	return out
+}
+
+// Ensure Evaluator implements metamodel.GuardEvaluator and the optional
+// data-aware extension.
 var _ metamodel.GuardEvaluator = (*Evaluator)(nil)
+var _ metamodel.DataAwareEvaluator = (*Evaluator)(nil)
 
 // Aggregates exposes the marking-aware guard functions — tokens, sum, count,
 // minOf, maxOf — to transition guards, implementing metamodel.MarkingAggregator.

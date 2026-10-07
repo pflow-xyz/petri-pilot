@@ -96,6 +96,44 @@ func fitPolicy(m *model, positions []trainPos, iters int, verbose bool) (winBias
 	return math.Exp(result.Params[0]), math.Exp(result.Params[1]), math.Exp(result.Params[2])
 }
 
+// rankLossFork is rankLoss scored through toPetriPolicyFork (the blk2_*
+// tier added on top of force_*/blk_*) instead of toPetriPolicy.
+func rankLossFork(m *model, positions []trainPos, winBias, blockBias, forkBias, lam float64) float64 {
+	ev := m.toPetriPolicyFork(winBias, blockBias, forkBias)
+	decisions := make([]learn.RankedDecision, 0, len(positions))
+	for _, p := range positions {
+		d := learn.RankedDecision{
+			Scores: make([]float64, len(p.moves)), Preferred: make([]bool, len(p.moves)),
+		}
+		for i, mv := range p.moves {
+			f := m.odeFinal(ev.net, m.fire(mv, p.mk), ev.rates)
+			score := f["win_x"] - f["win_o"]
+			if !p.maximizes {
+				score = f["x_turn"] + f["o_turn"] + lam*f["win_o"]
+			}
+			d.Scores[i], d.Preferred[i] = score, p.optimal[mv]
+		}
+		decisions = append(decisions, d)
+	}
+	return learn.HingeRankLoss(decisions, 0.0005)
+}
+
+// fitPolicyFork is fitPolicy with a fourth free parameter, forkBias, the
+// blk2_* tier's shared rate constant. Same Nelder-Mead machinery
+// (learn.Minimize), one more dimension.
+func fitPolicyFork(m *model, positions []trainPos, iters int, verbose bool) (winBias, blockBias, forkBias, lam float64) {
+	f := func(logp []float64) float64 {
+		return rankLossFork(m, positions, math.Exp(logp[0]), math.Exp(logp[1]), math.Exp(logp[2]), math.Exp(logp[3]))
+	}
+	opts := learn.DefaultFitOptions()
+	opts.MaxIters, opts.Tolerance, opts.Verbose = iters, 1e-9, verbose
+	result, err := learn.Minimize(f, []float64{0, 0, 0, 0}, opts)
+	if err != nil {
+		panic(err)
+	}
+	return math.Exp(result.Params[0]), math.Exp(result.Params[1]), math.Exp(result.Params[2]), math.Exp(result.Params[3])
+}
+
 // exhaustiveCheck follows every legal opponent continuation while the ODE
 // evaluator occupies one fixed seat. Every distinct evaluator decision is
 // compared with the exact oracle; only equal game value passes.

@@ -391,6 +391,119 @@ func EvaluateInvariant(expr string, marking Marking) (bool, error) {
 	return Evaluate(expr, bindings, funcs)
 }
 
+// EvaluateInvariantWithData is EvaluateInvariant with the data states bound
+// as well: a map state is reachable by name (`points[member]`), and the
+// aggregates total it (`sum(points)` or `sum("points")`).
+func EvaluateInvariantWithData(expr string, marking Marking, data map[string]any) (bool, error) {
+	if expr == "" {
+		return true, nil
+	}
+	bindings := make(map[string]any, len(marking)+len(data))
+	for placeID, count := range marking {
+		bindings[placeID] = int64(count)
+	}
+	for id, v := range data {
+		bindings[id] = v
+	}
+	return Evaluate(expr, bindings, MakeAggregatesWithData(marking, data))
+}
+
+// MakeAggregatesWithData wraps MakeAggregates so each aggregate also accepts a
+// data-state map — passed directly (`sum(points)`) or named by a string that
+// matches a map-valued data state (`sum("points")`). Anything else falls
+// through to the marking-based behaviour unchanged.
+func MakeAggregatesWithData(marking Marking, data map[string]any) map[string]GuardFunc {
+	base := MakeAggregates(marking)
+	if len(data) == 0 {
+		return base
+	}
+	resolve := func(args []any) (map[string]any, bool) {
+		if len(args) < 1 {
+			return nil, false
+		}
+		switch a := args[0].(type) {
+		case map[string]any:
+			return a, true
+		case string:
+			if m, ok := data[a].(map[string]any); ok {
+				return m, true
+			}
+		}
+		return nil, false
+	}
+	values := func(m map[string]any) []float64 {
+		out := make([]float64, 0, len(m))
+		for _, v := range m {
+			if n, ok := toNumber(v); ok {
+				out = append(out, n)
+			}
+		}
+		return out
+	}
+	asInt := func(f float64) any {
+		if f == float64(int64(f)) {
+			return int64(f)
+		}
+		return f
+	}
+	wrap := func(name string, over func(m map[string]any) any) GuardFunc {
+		fallback := base[name]
+		return func(args ...any) (any, error) {
+			if m, ok := resolve(args); ok {
+				return over(m), nil
+			}
+			return fallback(args...)
+		}
+	}
+	out := make(map[string]GuardFunc, len(base))
+	for name, fn := range base {
+		out[name] = fn
+	}
+	out["sum"] = wrap("sum", func(m map[string]any) any {
+		total := 0.0
+		for _, v := range values(m) {
+			total += v
+		}
+		return asInt(total)
+	})
+	out["count"] = wrap("count", func(m map[string]any) any {
+		n := int64(0)
+		for _, v := range values(m) {
+			if v > 0 {
+				n++
+			}
+		}
+		return n
+	})
+	out["minOf"] = wrap("minOf", func(m map[string]any) any {
+		vs := values(m)
+		if len(vs) == 0 {
+			return int64(0)
+		}
+		min := vs[0]
+		for _, v := range vs[1:] {
+			if v < min {
+				min = v
+			}
+		}
+		return asInt(min)
+	})
+	out["maxOf"] = wrap("maxOf", func(m map[string]any) any {
+		vs := values(m)
+		if len(vs) == 0 {
+			return int64(0)
+		}
+		max := vs[0]
+		for _, v := range vs[1:] {
+			if v > max {
+				max = v
+			}
+		}
+		return asInt(max)
+	})
+	return out
+}
+
 // MakeAggregates creates aggregate functions bound to a specific marking.
 // These are used for invariant evaluation.
 func MakeAggregates(marking Marking) map[string]GuardFunc {

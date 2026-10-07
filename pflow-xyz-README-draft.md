@@ -73,9 +73,9 @@ Every model becomes a typed API: **[pilot.pflow.xyz/graphql/i](https://pilot.pfl
 | `petri_validate` | Check model for structural correctness |
 | `petri_simulate` | Fire transitions and verify behavior |
 | `petri_analyze` | Reachability, deadlocks, liveness analysis |
-| `petri_codegen` | Generate Go backend from model |
+| `petri_codegen` | Generate ZK circuits / state-machine core / Lean proofs |
 | `petri_frontend` | Generate ES modules frontend |
-| `petri_application` | Generate complete full-stack app |
+| `petri_build` | Generate, write to disk, build and verify a full-stack app |
 
 ### Example: AI-Driven App Generation
 
@@ -85,7 +85,7 @@ User: "Create a task management app with todo, in-progress, and done states"
 Claude (via MCP):
 1. petri_validate() - Design and validate the workflow model
 2. petri_simulate() - Test state transitions
-3. petri_application() - Generate Go backend + ES modules frontend
+3. petri_build() - Generate, build and verify the Go backend
 4. service_start() - Launch the application
 ```
 
@@ -253,7 +253,7 @@ petri-pilot codegen -o ./myapp -pkg myapp model.json
 petri-pilot frontend -o ./myapp/frontend model.json
 
 # Or generate both via MCP
-petri_application(spec='{"name":"myapp", ...}')
+petri_build(spec='{"name":"myapp", ...}', output_dir='./myapp')
 ```
 
 ---

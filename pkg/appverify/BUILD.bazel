@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "appverify",
+    srcs = [
+        "appverify.go",
+        "process.go",
+    ],
+    importpath = "github.com/pflow-xyz/petri-pilot/pkg/appverify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/golang",
+        "//pkg/dsl",
+        "//pkg/metamodel",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)
+
+go_test(
+    name = "appverify_test",
+    srcs = ["appverify_test.go"],
+    args = ["-test.short"],  # keep
+    embed = [":appverify"],
+    deps = [
+        "//pkg/codegen/golang",
+        "@com_github_pflow_xyz_go_pflow//metamodel",
+    ],
+)

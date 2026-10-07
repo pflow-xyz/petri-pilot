@@ -26,6 +26,20 @@ func ToLegacyModel(app *ApplicationSpec) *goflowmodel.Model {
 	return app.Net
 }
 
+// placeTypeFor maps a field's declared type to the Go-level type name the
+// codegen templates understand. FieldTypeReference has no Go type of its
+// own: a reference field stores the target entity's aggregate id, which is
+// always a string — passing "reference" straight through used to emit
+// "var ItemID reference" and fail to compile the moment a generated app with
+// a reference field was actually built (as opposed to only diffed as text
+// against a frozen fixture, which is how this went unnoticed).
+func placeTypeFor(t FieldType) string {
+	if t == FieldTypeReference {
+		return string(FieldTypeString)
+	}
+	return string(t)
+}
+
 // EntityToModel converts an Entity to a standalone go-pflow Model.
 // This is useful when generating code for a single entity.
 func EntityToModel(entity Entity) *goflowmodel.Model {
@@ -40,7 +54,7 @@ func EntityToModel(entity Entity) *goflowmodel.Model {
 			ID:          f.ID,
 			Description: f.Description,
 			Kind:        goflowmodel.DataKind,
-			Type:        string(f.Type),
+			Type:        placeTypeFor(f.Type),
 			Exported:    true,
 		})
 	}

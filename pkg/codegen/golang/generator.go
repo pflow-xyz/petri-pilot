@@ -75,6 +75,21 @@ type GeneratedFile struct {
 type Generator struct {
 	opts      Options
 	templates *Templates
+
+	// roles and access are the model's own access-control declarations,
+	// applied when generating or previewing from a plain model (the
+	// ApplicationSpec path carries its own through NewContextFromApp).
+	roles  []metamodel.Role
+	access []metamodel.AccessRule
+}
+
+// WithAccess sets the roles and access rules the model declared so that the
+// permissions template — and every template that keys on HasAccessControl —
+// sees them when generating or previewing from a plain model.
+func (g *Generator) WithAccess(roles []metamodel.Role, rules []metamodel.AccessRule) *Generator {
+	g.roles = roles
+	g.access = rules
+	return g
 }
 
 // New creates a new Generator with the given options.
@@ -220,6 +235,8 @@ func (g *Generator) GenerateFiles(model *metamodel.Model) ([]GeneratedFile, erro
 		StreamPrefix:           g.opts.StreamPrefix,
 		CrossEntityTransitions: g.opts.CrossEntityTransitions,
 		HasSimulation:          g.opts.IncludeSimulation,
+		AccessRules:            buildAccessRuleContextsFromModel(g.access),
+		Roles:                  buildRoleContextsFromModel(g.roles),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)
@@ -454,6 +471,8 @@ func (g *Generator) Preview(model *metamodel.Model, templateName string) ([]byte
 		PackageName:   g.opts.PackageName,
 		StreamPrefix:  g.opts.StreamPrefix,
 		HasSimulation: g.opts.IncludeSimulation,
+		AccessRules:   buildAccessRuleContextsFromModel(g.access),
+		Roles:         buildRoleContextsFromModel(g.roles),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("building context: %w", err)

@@ -45,7 +45,7 @@ func optimizeTool() mcp.Tool {
 			mcp.Description("Number of Monte Carlo samples (default 200, max 2000)"),
 		),
 		mcp.WithString("fixed_rates",
-			mcp.Description("JSON object of transition rates held constant during the sweep (default 1.0 for unspecified)"),
+			mcp.Description("JSON object of transition rates held constant during the sweep (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Per-run integration span (default [0, 50])"),
@@ -89,6 +89,9 @@ func handleOptimize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	paramsStr, err := request.RequireString("parameters")
 	if err != nil {
@@ -152,10 +155,7 @@ func handleOptimize(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	seed := int64(request.GetInt("seed", 42))
 
-	baseRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		baseRates[t.ID] = 1.0
-	}
+	baseRates := modelRates(model)
 	if s := request.GetString("fixed_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

@@ -11,13 +11,17 @@
 // unnecessary once lambda was free — a block-only tier here plateaus well
 // short of the referee (README finding 5), and a second blind "complete
 // your own line" tier makes it worse, not better (README finding 6). This
-// champion net carries THREE catalyzed-copy tiers: `blk_*` (opponent's
+// champion net carries FOUR catalyzed-copy tiers: `blk_*` (opponent's
 // other 3 cells — "answer this threat"), `own_*` (mover's own other 3
-// cells, every row — the tier finding 6 rejected, shipped at rate 0), and
+// cells, every row — the tier finding 6 rejected, shipped at rate 0),
 // `prt_*` (mover's own other 3 cells, but ONLY on rows whose parity favors
-// that mover — the theory-motivated tier from Allis's Connect Four thesis,
-// tested in finding 7). Whether each tier earns its keep is a fitted-value
-// question decided against the held-out referee, never an assumption.
+// that mover — the theory-motivated RATE tier from Allis's Connect Four
+// thesis, tested and rejected in finding 7), and `clm_*` (finding 9 /
+// ROADMAP 1a: a STRUCTURAL, place-based encoding of the same Claimeven
+// asymmetry — see this file's "column parity-claim account" section below
+// for why it is a different mechanism from prt_*, not a retuning of it).
+// Whether each tier earns its keep is a fitted-value question decided
+// against the held-out referee, never an assumption.
 package main
 
 import (
@@ -63,8 +67,12 @@ func favorableParity(side string, row int) bool {
 	return row%2 == 0
 }
 
+// claimPlace names the per-(side,column) parity-claim account place — see
+// "column parity-claim account" below.
+func claimPlace(side string, col int) string { return "claim_" + side + "_" + strconv.Itoa(col) }
+
 // deriveChampionNet applies the champion's derive transforms to the
-// declared net: drop game_active, then add THREE catalyzed-copy tiers per
+// declared net: drop game_active, then add FOUR catalyzed-copy tiers per
 // (line, cell-in-line, side):
 //
 //   - blk_* (552 copies) — catalyzed by the OPPONENT's other 3 cells on the
@@ -77,16 +85,48 @@ func favorableParity(side string, row int) bool {
 //   - prt_* (fewer than 552 — only the (line, cell, side) triples where
 //     favorableParity holds) — catalyzed the same way as own_*, but ONLY
 //     added for cells whose row favors the mover under the theory above.
-//     This is the tier README finding 7 tests: unlike own_*, it is not
-//     blind to row — it specifically encodes the odd/even asymmetry rather
-//     than rewarding "any 3-of-4" uniformly across all six rows.
-func (m *model) deriveChampionNet() (net *petri.PetriNet, blks, owns, prts []string) {
+//     This is the RATE tier README finding 7 tests and rejects: unlike
+//     own_*, it is not blind to row, but it can only reward a play that is
+//     ALREADY an immediate winning completion on a favorable row, right
+//     now — it has no memory of anything that happened earlier in the
+//     column.
+//   - clm_* (same triples as prt_*) — the STRUCTURAL fix finding 7 leaves
+//     open and ROADMAP 1a names: a persistent per-(side,column) "parity
+//     claim account" place (`claim_<side>_<col>`, added below), fed by a
+//     plain fixed-rate output arc on the BASE declared play transition
+//     whenever a play lands on a row that favors that side — a deposit,
+//     not a rate — and READ (as an extra catalyst, alongside the same
+//     own-3-cells pattern prt_* uses) only by clm_*'s own copies. Firing a
+//     favorable-parity move earlier in a column literally leaves more
+//     token mass sitting in that column's claim place for every later
+//     completion attempt to read, for as long as the flow integral runs —
+//     information carried by topology across the continuation, which is
+//     exactly what a rate multiplier computed from the instantaneous
+//     marking (prt_*) cannot represent. See the deposit-wiring comment
+//     below for why the deposit is added only to the BASE transition,
+//     never to any catalyzed copy (self-catalysis / runaway feedback).
+func (m *model) deriveChampionNet() (net *petri.PetriNet, blks, owns, prts, clms []string) {
 	net = m.toPetriDeclared()
 	derive.DropPlaces(net, "game_active")
+
+	// Column parity-claim account places: one per (side, column), starting
+	// empty. Nothing pre-seeds them from real game history (odeFinal always
+	// starts every evaluation-net place not in the discrete marking at 0,
+	// same as every other derived place here) — the account accrues purely
+	// from flow through the deposit arcs added below, over the SAME
+	// continuous relaxation the candidate move is already being scored
+	// under. That is a real, stated scope limitation of this construction,
+	// not an oversight — see the README finding this tier is written up as.
+	for c := 0; c < Width; c++ {
+		for _, side := range []string{"x", "o"} {
+			net.AddPlace(claimPlace(side, c), 0, nil, 0, 0, nil)
+		}
+	}
 
 	blks = make([]string, 0, len(winLines)*4*2)
 	owns = make([]string, 0, len(winLines)*4*2)
 	prts = make([]string, 0, len(winLines)*4) // at most half of 552, by construction
+	clms = make([]string, 0, len(winLines)*4)
 	for _, ln := range winLines {
 		for i, rc := range ln.cells {
 			c, r := rc[0], rc[1]
@@ -118,20 +158,58 @@ func (m *model) deriveChampionNet() (net *petri.PetriNet, blks, owns, prts []str
 						panic(err)
 					}
 					prts = append(prts, prt)
+
+					// clm_*: identical catalyst pattern to prt_* (mover's
+					// own other 3 cells on the line) PLUS a read of this
+					// cell's column's claim account. Built here, BEFORE the
+					// deposit arcs below exist, so AddCatalyzedCopy (which
+					// copies src's CURRENT output arcs) cannot let clm_*
+					// inherit a deposit arc into the very place it reads —
+					// no self-catalysis, no runaway feedback.
+					clmCat := make(map[string]float64, len(ownCat)+1)
+					for p, w := range ownCat {
+						clmCat[p] = w
+					}
+					clmCat[claimPlace(side, c)] = 1
+					clm := "clm_" + side + "_" + ln.id + "_" + strconv.Itoa(i)
+					if err := derive.AddCatalyzedCopy(net, playTrans(side, c, r), clm, clmCat); err != nil {
+						panic(err)
+					}
+					clms = append(clms, clm)
 				}
 			}
 		}
 	}
-	return net, blks, owns, prts
+
+	// Deposit wiring, added LAST and only to the BASE declared play
+	// transitions (never to blk_/own_/prt_/clm_ — all already built above,
+	// so they cannot retroactively inherit this arc): whenever playing at
+	// (c, r) lands on a row that favors that side, the move also produces
+	// one token into that column's claim account for that side. The base
+	// transition's own rate is fixed at 1 (never calibrated), so this
+	// deposit cannot itself be amplified by a fitted constant — only clm_*'s
+	// READ of the resulting mass is calibrated.
+	for c := 0; c < Width; c++ {
+		for r := 0; r < Height; r++ {
+			for _, side := range []string{"x", "o"} {
+				if favorableParity(side, r) {
+					net.AddArc(playTrans(side, c, r), claimPlace(side, c), 1, false)
+				}
+			}
+		}
+	}
+
+	return net, blks, owns, prts, clms
 }
 
 // toPetriChampion derives the champion evaluation net at the given
-// (blockBias, winBias, parityBias) triple; every declared transition keeps
-// rate 1, every blk_* copy gets blockBias, every own_* copy gets winBias,
-// every prt_* copy gets parityBias.
-func (m *model) toPetriChampion(blockBias, winBias, parityBias float64) evalNet {
-	net, blks, owns, prts := m.deriveChampionNet()
-	rates := make(map[string]float64, len(m.transitions)+len(blks)+len(owns)+len(prts))
+// (blockBias, winBias, parityBias, claimBias) quadruple; every declared
+// transition keeps rate 1, every blk_* copy gets blockBias, every own_*
+// copy gets winBias, every prt_* copy gets parityBias, every clm_* copy
+// gets claimBias.
+func (m *model) toPetriChampion(blockBias, winBias, parityBias, claimBias float64) evalNet {
+	net, blks, owns, prts, clms := m.deriveChampionNet()
+	rates := make(map[string]float64, len(m.transitions)+len(blks)+len(owns)+len(prts)+len(clms))
 	for _, t := range m.transitions {
 		rates[t] = 1
 	}
@@ -143,6 +221,9 @@ func (m *model) toPetriChampion(blockBias, winBias, parityBias float64) evalNet 
 	}
 	for _, prt := range prts {
 		rates[prt] = parityBias
+	}
+	for _, clm := range clms {
+		rates[clm] = claimBias
 	}
 	return evalNet{net, rates}
 }
@@ -159,6 +240,6 @@ func championScore(lam float64) scoreFn {
 	}
 }
 
-func championPlayer(m *model, blockBias, winBias, parityBias, lam float64) player {
-	return evalPlayer(m, m.toPetriChampion(blockBias, winBias, parityBias), championScore(lam))
+func championPlayer(m *model, blockBias, winBias, parityBias, claimBias, lam float64) player {
+	return evalPlayer(m, m.toPetriChampion(blockBias, winBias, parityBias, claimBias), championScore(lam))
 }

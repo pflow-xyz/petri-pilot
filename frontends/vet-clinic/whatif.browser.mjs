@@ -110,7 +110,9 @@ const summarise = (err) => {
 }
 process.on('unhandledRejection', summarise)
 
-const browser = await chromium.launch()
+// PFLOW_BROWSER names a Chromium/Chrome binary to drive when Playwright has no
+// bundled build for this host (its downloads lag new Ubuntu releases).
+const browser = await chromium.launch(process.env.PFLOW_BROWSER ? { executablePath: process.env.PFLOW_BROWSER } : {})
 const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
 
 const consoleErrors = []
@@ -192,7 +194,12 @@ try {
   // to show up in the table — diversions become possible and the routine day
   // gets worse, which is what the inhibitor arcs are for.
   const baselineWalked = walked[0]
-  await page.fill('#emergencies', '5')
+  // The table rounds to whole patients and the run averages sixteen
+  // realizations, so the disruption has to be large enough that its effect
+  // on walkouts survives both: a full waiting room of emergencies (the
+  // control's maximum) plus the wave. Five at the door moved walkouts by
+  // two or three at 400 realizations and by nothing visible at sixteen.
+  await page.fill('#emergencies', '10')
   await page.check('#emergency-stream')
   await page.click('#run')
   await page.waitForFunction(() => {

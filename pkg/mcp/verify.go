@@ -9,6 +9,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	goflowmetamodel "github.com/pflow-xyz/go-pflow/metamodel"
+	"github.com/pflow-xyz/go-pflow/metamodel/metapetri"
 	"github.com/pflow-xyz/go-pflow/petri"
 	"github.com/pflow-xyz/go-pflow/verify"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
@@ -102,29 +103,54 @@ func handleVerify(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	// scalar metamodel here would strand base-name properties: the expanded
 	// model only has "pool.red"-style places, and the ColorMap that maps
 	// "pool" onto them exists only on this path.
-	net, _, isPflow, perr := parsePflowNet(modelJSON)
-	if perr != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("invalid model: %v", perr)), nil
-	}
-	if !isPflow {
-		net = buildVerifyNet(parsed.Model)
-	}
-
-	v := verify.New(net)
+	maxStates := 0
 	if raw := request.GetString("max_states", ""); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n <= 0 {
 			return mcp.NewToolResultError(fmt.Sprintf("max_states must be a positive integer, got %q", raw)), nil
 		}
-		v = v.WithMaxStates(n)
+		maxStates = n
 	}
 
-	report := v.Check(props...)
+	net, _, isPflow, perr := parsePflowNet(modelJSON)
+	if perr != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid model: %v", perr)), nil
+	}
+
+	var report *verify.Report
+	var caveats []string
+	if isPflow {
+		v := verify.New(net)
+		if maxStates > 0 {
+			v = v.WithMaxStates(maxStates)
+		}
+		report = v.Check(props...)
+	} else {
+		// Array-format models go through go-pflow's metapetri bridge, which
+		// records what the analysable net could and could not carry: a
+		// capacity becomes a post-firing bound, a read arc a reversed
+		// inhibitor, an inhibitor weight a threshold, a guard is dropped.
+		// Each note is returned as a caveat so a verdict that rests on an
+		// approximation says so. sim.pflow.xyz has surfaced these since its
+		// readings landed; this surface built its own net and said nothing.
+		res, err := metapetri.Convert(parsed.Model, metapetri.Options{MaxStates: maxStates})
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("model does not convert for analysis: %v", err)), nil
+		}
+		report, err = metapetri.Verify(res, props...)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("verification failed: %v", err)), nil
+		}
+		for _, n := range res.Diag.Notes {
+			caveats = append(caveats, n.String())
+		}
+	}
 
 	output, err := json.MarshalIndent(struct {
 		*verify.Report
-		Summary string `json:"summary"`
-	}{Report: report, Summary: report.Summary()}, "", "  ")
+		Summary string   `json:"summary"`
+		Caveats []string `json:"caveats,omitempty"`
+	}{Report: report, Summary: report.Summary(), Caveats: caveats}, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 	}
@@ -137,6 +163,14 @@ func buildVerifyNet(model *goflowmetamodel.Model) *petri.PetriNet {
 	builder := petri.Build()
 
 	for _, p := range model.Places {
+		// Capacity is a post-firing bound the reachability graph enforces —
+		// but only if the net carries it. Dropping it here let petri_verify
+		// refute "queue <= 8" on a place declared with capacity 8 by walking
+		// to nine, a marking no engine that fires the net can reach.
+		if p.Capacity > 0 {
+			builder = builder.PlaceWithCapacity(p.ID, float64(p.Initial), float64(p.Capacity))
+			continue
+		}
 		builder = builder.Place(p.ID, float64(p.Initial))
 	}
 	for _, t := range model.Transitions {

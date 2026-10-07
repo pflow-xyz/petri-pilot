@@ -39,7 +39,7 @@ type Reference struct {
 }
 
 // ApplicationInput is what the application compiler consumes: the
-// petri_application entity spec plus explicit cross-entity fusions.
+// petri_build "spec" entity spec plus explicit cross-entity fusions.
 type ApplicationInput struct {
 	Name     string
 	Entities []extensions.Entity

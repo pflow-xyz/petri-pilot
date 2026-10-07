@@ -139,7 +139,9 @@ const summarise = (err) => {
 }
 process.on('unhandledRejection', summarise)
 
-const browser = await chromium.launch()
+// PFLOW_BROWSER names a Chromium/Chrome binary to drive when Playwright has no
+// bundled build for this host (its downloads lag new Ubuntu releases).
+const browser = await chromium.launch(process.env.PFLOW_BROWSER ? { executablePath: process.env.PFLOW_BROWSER } : {})
 const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
 
 const consoleErrors = []

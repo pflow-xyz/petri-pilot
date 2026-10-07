@@ -57,12 +57,12 @@ func defiConcepts() map[string]concept {
 		"mass_action_kinetics": {
 			Name:       "mass_action_kinetics",
 			Category:   "ode",
-			Summary:    "Continuous-time firing rate = rate constant × product of inputs.",
-			Intuition:  "When we go from discrete firings to continuous flow, a transition's instantaneous rate becomes the product of its reactants. The more inputs available, the faster things flow.",
-			Formula:    "rate(t) = k_t · ∏_(p ∈ •t) C(m(p), w(p,t))\n\nFor weight-1 arcs:   rate(t) = k_t · ∏ m(p)",
-			Derivation: "This is the law of mass action from chemical kinetics, applied to Petri nets. C(m, w) is the multiset selection coefficient — for w=1 it's just m. The transition fires more often when it has access to more 'reagent' tokens, naturally.\n\nThe exception: an input arc marked non-kinetic is left out of the product. Mass action is the right law for chemistry and the wrong one for a service system — a barista is a prerequisite for making a drink, not a catalyst, and a fuller pantry does not make a drink pour faster. A non-kinetic input still gates the firing and is still consumed by it; it simply does not scale the rate. The discrete engines honour this; a continuous solve cannot express it, which is why petri_ode caveats such a model.",
-			Example:    "Coffee shop with k=1.0 for every transition:\n  rate(start_brew) = 1.0 × order_pending × barista_idle = 1.0 × 2 × 1 = 2.0\n  rate(finish_brew) = 1.0 × brewing\n  rate(deliver) = 1.0 × ready\n\nThe rate vector drives the ODE.",
-			SeeAlso:    []string{"petri_ode", "petri_rate_scan", "petri_ode_sensitivity"},
+			Summary:    "petri_ode's continuous-time firing rate = rate constant × product of input concentrations, once each — NOT the SSA propensity's C(m, weight).",
+			Intuition:  "When we go from discrete firings to continuous flow, a transition's instantaneous rate becomes the product of its reactants — but petri_ode multiplies each input place's concentration in exactly once, regardless of that arc's weight. Weight only decides how much moves once the transition fires, not how fast it fires.",
+			Formula:    "rate(t) = k_t · ∏_(p ∈ •t) m(p)          (petri_ode: weight NOT in the rate)\n\nCompare petri_stochastic's propensity, which IS weight-sensitive:\n  a(t) = k_t · ∏_(p ∈ •t, kinetic) C(m(p), w(p,t))",
+			Derivation: "This is go-pflow's actual implementation (solver/ode.go buildODEFunction), not the textbook chemistry convention — verified directly against source, since the two are easy to conflate: it is not 'weight-1 mass action generalizes to C(m,w) at higher weight,' it is 'petri_ode never looks at weight when computing the rate at all.' A weight-20 arc feeding a transition contributes the same single factor of the source place's concentration as a weight-1 arc would; the 20 only appears when applying the computed flux to update du/dt. petri_stochastic's propensity is the real combinatorial mass action, C(m,w), which coincides with petri_ode's rate only at weight 1. Above weight 1 the two engines are computing genuinely different rate laws, not just a continuous vs. discrete version of the same one — see petri_ode's own model-refusal notes and docs/engine-selection.md (go-pflow) for a worked case (stochastic/consistency_test.go's dimerisation case exists specifically to assert the two disagree on a weighted arc, as a regression guard).\n\nThe non-kinetic exception applies identically to both engines: an input arc marked non-kinetic is left out of the product entirely (in petri_ode's single-power term and in petri_stochastic's C(m,w) term alike). Mass action is the right law for chemistry and the wrong one for a service system — a barista is a prerequisite for making a drink, not a catalyst, and a fuller pantry does not make a drink pour faster. A non-kinetic input still gates the firing and is still consumed by it; it simply does not scale the rate.",
+			Example:    "Coffee shop, coffee_beans feeds make_espresso at weight 20, k=1.0:\n  petri_ode:         rate = 1.0 × order_pending × coffee_beans × cups   (weight 20 absent)\n  petri_stochastic:  a    = 1.0 × order_pending × C(coffee_beans, 20) × cups\nWith coffee_beans near its declared capacity, petri_ode refuses the whole\nmodel outright (Diverged=true) rather than pretend the pantry is infinite —\nsee petri_ode's caveats and the simulation_choice topic.",
+			SeeAlso:    []string{"petri_ode", "petri_stochastic", "petri_rate_scan", "petri_ode_sensitivity", "simulation_choice"},
 		},
 
 		"constant_product_amm": {
@@ -95,7 +95,7 @@ func defiConcepts() map[string]concept {
 			Formula:    "Per step:\n  a_i = k_i · ∏_(p ∈ •t_i, kinetic) C(m(p), w(p, t_i))    propensities\n  A   = Σ a_i                          total rate\n  τ   ~ Exp(A)                         wait time to next event\n  P(t_i) = a_i / A                     which transition fires\n\nThe product runs over the KINETIC inputs only. An input arc marked\nnon-kinetic is left out of it — but if that input is unsatisfied the\ntransition is not enabled and a_i = 0 regardless, and when t_i fires the\ninput is consumed like any other.",
 			Derivation: "In a continuous-time Markov chain with total leaving rate A, the time to the next jump is Exponential(A) — that's a basic Markov property. Which jump happens is independent of when, and proportional to each transition's propensity.\n\nWhy some inputs are excluded from the product: multiplying every input into the rate is the law of mass action, which is right for chemistry and wrong for a service system. A barista is a prerequisite for making a drink, not a reactant, and a fuller pantry does not make a drink pour faster. Left kinetic, a staff pool made two drinks in progress each finish twice as fast, and a queue arc made pickup scale with the number of people waiting — so the wait, and the walkouts, stopped responding to staffing at all. Marking those arcs non-kinetic keeps them as gates and as consumption while taking them out of the rate law. Both SSA engines honour this; a continuous solve cannot express it, which is why petri_ode caveats or refuses such a model.",
 			Example:    "Two transitions: a_1 = 2, a_2 = 3. Total A = 5.\n  Wait time: τ ~ Exp(5), mean = 1/5 = 0.2 time units.\n  Probability t_1 fires: 2/5 = 40%.\n  Probability t_2 fires: 3/5 = 60%.\nDraw u_1, u_2 ∈ U(0,1) → τ = −ln(u_1)/5; if u_2 < 0.4 fire t_1 else t_2.\n\nNon-kinetic input: 'start_brew' takes 1 order (kinetic) and 1 free barista\n(non-kinetic), k = 720/h. With 4 orders waiting and 3 baristas free:\n  a = 720 × 4 = 2880/h        (the 3 does not enter)\n  With 0 baristas free: a = 0 — not enabled.\nFiring still consumes one order and one barista.",
-			SeeAlso:    []string{"petri_stochastic", "petri_simulate"},
+			SeeAlso:    []string{"petri_stochastic", "petri_simulate", "petri_fit_discrete", "ctmc_likelihood"},
 		},
 
 		"euler_maruyama": {
@@ -123,12 +123,12 @@ func defiConcepts() map[string]concept {
 		"simulation_choice": {
 			Name:       "simulation_choice",
 			Category:   "guide",
-			Summary:    "When to use ODE vs SSA vs SDE. Quick decision tree.",
-			Intuition:  "Three flavors of dynamics — pick by the nature of your state. Counts vs concentrations. Discrete events vs continuous flow. Noiseless vs noisy.",
-			Formula:    "Discrete tokens, small counts, variance matters?     →  SSA (petri_stochastic)\nContinuous quantities, counts large, noise negligible?  →  ODE (petri_ode)\nContinuous quantities, noisy (e.g. prices)?             →  SDE (petri_sde)",
-			Derivation: "ODE is the mean-field limit of SSA as token counts → ∞. For 2 orders pending, the SSA noise is huge (±1 is the unit). For 10,000 orders pending, the ODE is fine and 1000× faster. SDE adds Brownian noise without discrete state — appropriate for prices, rates, anything that's continuous but uncertain.",
-			Example:    "Coffee shop, 2 orders: variance matters → use petri_stochastic.\nCoffee shop, 10,000 orders: ODE smooth → use petri_ode.\nETH price over 1 year: continuous + noisy → use petri_sde.\nLiquidation cascade with 100 positions: SSA captures the cascades best.",
-			SeeAlso:    []string{"petri_ode", "petri_stochastic", "petri_sde"},
+			Summary:    "When to use ODE vs SSA vs SDE — four rules, not a size threshold. Full version: go-pflow docs/engine-selection.md.",
+			Intuition:  "Population size is the SECOND question, not the first. The first is whether the model has a firing instant the ODE cannot see at all — a read arc, an inhibitor, a reached capacity, a guard. If it does, petri_ode does not give a slightly-wrong answer; it refuses outright (Diverged=true), because a continuous flow has nothing to test the constraint against.",
+			Formula:    "1. Read arc / inhibitor / reached capacity / guard present?  →  petri_ode refuses; use petri_stochastic\n2. No gating, large population, want the average?            →  petri_ode\n3. No gating, small counts, want the actual distribution?     →  petri_stochastic\n4. Any input arc weight > 1?  →  expect the two engines to disagree quantitatively (see mass_action_kinetics) — not a bug, a different rate law\n5. Exogenous continuous noise on top of the ODE (price, demand)?  →  petri_sde, today\n6. Intrinsic firing noise, cheap enough to sweep?  →  not shipped yet (go-pflow ROADMAP G6)",
+			Derivation: "Verified against the shared coffeeshop.json fixture, not asserted: it declares capacity on coffee_beans/milk/cups, and its restock transitions actually reach it, so petri_ode's Forecast refuses the whole model rather than silently assume an infinite pantry — the exact text is 'capacity is declared on [coffee_beans milk cups] but is a post-firing bound, which has no continuous analogue.' Where the ODE DOES answer, it is the true mean-field limit of the SSA ensemble mean (go-pflow's LLN consistency gate proves this, not just states it) — and the gap between them at finite population is a real, provably-shrinking effect: ~5% of N at N=1000, provably below 2% and provably smaller at N=10,000 on the same net scaled up, on go-pflow's SIR test case. So '10,000 is fine, 2 is not' is directionally right but not the FIRST filter — a net with only 2 tokens and no gating at all is still a legitimate petri_ode question if you only want the average, and a net with a million tokens but a reachable capacity still gets refused.",
+			Example:    "Coffee shop as shipped (has reachable capacities): petri_ode refuses; petri_stochastic answers ~840 beans remaining, ~32 orders/hour (seed 42, 20 realizations).\nSame shop with capacity removed, 2 orders pending: no refusal, but variance is the answer → petri_stochastic anyway.\nSame shop, capacity removed, 10,000 orders queued: petri_ode is the mean-field answer and 1000× faster.\ncoffee_beans feeding make_espresso at weight 20: petri_ode and petri_stochastic compute genuinely different rate laws above weight 1 — see mass_action_kinetics.\nETH price over 1 year: continuous + exogenous noise → petri_sde.",
+			SeeAlso:    []string{"petri_ode", "petri_stochastic", "petri_sde", "mass_action_kinetics"},
 		},
 
 		"pareto_optimization": {
@@ -151,6 +151,17 @@ func defiConcepts() map[string]concept {
 			Derivation: "Pure function evaluation — no gradients required. Works on noisy losses where gradient methods fail. The simplex 'rolls downhill' through reflection, expanding when finding new territory, contracting when stuck. Convergence is heuristic: stop when the simplex spread (vertex value range) drops below tolerance.",
 			Example:    "Fitting 3 ODE rates against 14 observations. Initial simplex: 4 points around guess [1, 1, 1]. After ~200 iterations of reflect/expand/contract, simplex converges to [2.00, 1.49, 1.00] with loss ≈ 1e-7.",
 			SeeAlso:    []string{"petri_fit"},
+		},
+
+		"ctmc_likelihood": {
+			Name:       "ctmc_likelihood",
+			Category:   "fitting",
+			Summary:    "Recover rate constants from which-transition-fired-when data by exact CTMC maximum likelihood.",
+			Intuition:  "A Petri net under mass action is a continuous-time Markov chain. Every observed firing says two things: this transition was the one that won (reward its propensity at that moment) and nothing else fired during the wait (penalise everyone's propensity for the wait's duration). Add those up over the whole path and you have the exact probability the model assigns to what you saw. The rates that maximise it are the fit.",
+			Formula:    "log L(k) = Σ_events log a_chosen(x_pre) − ∫_0^T a0(x(t)) dt\n  a_j(x) = k_j · C_j(x)   (C_j = product of C(m, w) over kinetic inputs, 0 where not enabled)\n  a0 = Σ_j a_j\n\n∂(−log L)/∂k_j = ∫_0^T C_j(x(t)) dt − n_j / k_j\n\nSetting it to zero: k_j* = n_j / exposure_j, where n_j is how often j fired and exposure_j = ∫ C_j dt.",
+			Derivation: "Between events the marking is constant, so the survival integral is a sum of (segment length × a0 at that marking) — piecewise, cheap, no ODE solve. Each propensity is linear in its own rate, so differentiating a0 with respect to k_j leaves exactly C_j and nothing about any other rate: the gradient is closed-form and the objective is separable and convex in each log-rate. petri_fit_discrete runs Adam anyway (it is the shared learn.MinimizeGradient entry point) and reports the closed-form MLE beside the optimiser's answer; if they disagree, the fit stopped early.",
+			Example:    "Coffee shop with 300 orders, 4 baristas, true rates {start_brew: 2.0, finish_brew: 0.7, deliver: 1.3}. One SSA path over 40 time units yields ~900 firings. Fitting all three rates from a unit start recovers each within a few percent, and each matches n_j / exposure_j. With three paths the error halves — likelihoods sum.\n\nWhat it cannot do: fit from a smoothed population curve (use petri_fit), or from partially observed paths where some firings were missed — every event must be in the record.",
+			SeeAlso:    []string{"petri_fit_discrete", "petri_stochastic", "petri_fit", "gillespie_ssa", "simulation_choice"},
 		},
 
 		"equilibrium_detection": {
@@ -271,6 +282,12 @@ func verboseAnnotation(kind string, runSummary string) string {
 			"Algorithm: Nelder-Mead simplex — gradient-free minimization of squared residual loss.",
 			"Simplex: N+1 points in N-dim parameter space.\nPer iteration:\n  1. Sort by loss\n  2. Reflect worst through centroid of others (α=1)\n  3. If reflection beats best: expand further (γ=2)\n  4. Else if reflection beats second-worst: replace worst\n  5. Else: contract (ρ=0.5) or shrink (σ=0.5)\nLoss: Σ (model(t_i) − observed_i)² over observation points.",
 			"nelder_mead",
+		)
+	case "ctmc_likelihood":
+		return header(
+			"Algorithm: exact CTMC maximum likelihood over observed firings, minimised by Adam on the closed-form gradient.",
+			"log L(k) = Σ_events log a_chosen(x_pre) − ∫_0^T a0(x(t)) dt\na_j(x) = k_j · C_j(x), so ∂(−log L)/∂k_j = ∫C_j dt − n_j / k_j\nClosed-form optimum: k_j* = n_j / ∫C_j(x(t)) dt (firings / exposure).\nPaths are independent: their log-likelihoods and gradients sum.",
+			"ctmc_likelihood",
 		)
 	case "optimize":
 		return header(

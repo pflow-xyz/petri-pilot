@@ -79,6 +79,9 @@ func handleParamHeatmap(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	paramX, err := request.RequireString("param_x")
 	if err != nil {
@@ -148,10 +151,7 @@ func handleParamHeatmap(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		ys = linspace(rangeY[0], rangeY[1], ny)
 	}
 
-	baseRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		baseRates[t.ID] = 1.0
-	}
+	baseRates := modelRates(model)
 	if s := request.GetString("fixed_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

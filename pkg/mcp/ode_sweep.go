@@ -41,7 +41,7 @@ func odeSweepTool() mcp.Tool {
 			mcp.Description("JSON array [start, stop, n] generating n equally-spaced rates. Alternative to values"),
 		),
 		mcp.WithString("fixed_rates",
-			mcp.Description("JSON object of other transition rates (default 1.0)"),
+			mcp.Description("JSON object of other transition rates (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 10])"),
@@ -84,6 +84,9 @@ func handleOdeSweep(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	transitionFound, observableFound := false, false
 	for _, t := range model.Transitions {
@@ -125,10 +128,7 @@ func handleOdeSweep(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 	sort.Float64s(values)
 
-	baseRates := map[string]float64{}
-	for _, t := range model.Transitions {
-		baseRates[t.ID] = 1.0
-	}
+	baseRates := modelRates(model)
 	if s := request.GetString("fixed_rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

@@ -35,7 +35,7 @@ func phasePlotTool() mcp.Tool {
 			mcp.Description("Place ID for the y-axis"),
 		),
 		mcp.WithString("rates",
-			mcp.Description("JSON object of rate constants (default 1.0 per transition)"),
+			mcp.Description("JSON object of rate constants (default: the rate each transition declares in the model, 1.0 where none)"),
 		),
 		mcp.WithString("tspan",
 			mcp.Description("Integration span (default [0, 20])"),
@@ -59,6 +59,9 @@ func handlePhasePlot(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("invalid model JSON: %v", err)), nil
 	}
 	model := parsed.Model
+	if refused := refuseContinuous(model); refused != nil {
+		return refused, nil
+	}
 
 	placeX, err := request.RequireString("place_x")
 	if err != nil {
@@ -79,10 +82,7 @@ func handlePhasePlot(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("place_y %q not found in model", placeY)), nil
 	}
 
-	rates := map[string]float64{}
-	for _, t := range model.Transitions {
-		rates[t.ID] = 1.0
-	}
+	rates := modelRates(model)
 	if s := request.GetString("rates", ""); s != "" {
 		var user map[string]float64
 		if err := json.Unmarshal([]byte(s), &user); err != nil {

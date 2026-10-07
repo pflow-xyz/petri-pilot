@@ -40,6 +40,42 @@ make fit              # fit policy scalars against labeled positions
                        # keep the declared structure, learn each family's
                        # rate as a learn.LinearRateFunc regression over
                        # board state instead of a constant; finding 12
+make verify-fork       # referee the blk2_* "block-the-block" tier, sibling
+                       # to force_*/blk_*, still one solve per move; finding 13
+./ode-connect3 diagnose-fork [w] [b] [f] [l]  # the blk2_* evaluator's failures
+./ode-connect3 fit-fork [games] [iters]
+                       # extend fit.go's Nelder-Mead to a fourth parameter,
+                       # forkBias, the blk2_* tier's shared rate; finding 13
+./ode-connect3 verify-parity [parityForceBias] [parityBlockBias] [tempoBias]
+                       # champion winBias/blockBias/lambda held fixed; the
+                       # structural "future support"/gravity-parity claim
+                       # tier (parity.go) as the only new knobs; finding 14
+./ode-connect3 diagnose-parity [parityForceBias] [parityBlockBias] [tempoBias]
+                       # the parity evaluator's failures, same format as
+                       # diagnose-naive/diagnose-deep
+./ode-connect3 fit-parity [games] [iters]
+                       # minimal-freedom fit: winBias/blockBias/lambda fixed
+                       # at champion values, fit parityForceBias/
+                       # parityBlockBias/tempoBias only; finding 14
+./ode-connect3 fit-tempo [games] [iters]
+                       # fit-parity narrowed to the one live knob (tempoBias
+                       # alone); finding 14
+./ode-connect3 fit-parity-joint [games] [iters]
+                       # comparison point: all six scalars (winBias,
+                       # blockBias, parityForceBias, parityBlockBias,
+                       # tempoBias, lambda) fit together; finding 14
+./ode-connect3 verify-oracle [maxPlies] [lambda]
+                       # seed the exact oracle's strict forced-reply
+                       # projection into the marking before one static ODE
+                       # solve, no search, no tuning; finding 15
+./ode-connect3 verify-oracle-canonical [maxPlies] [lambda]
+                       # same, but the projection also breaks ties instead
+                       # of stopping at the first real choice; finding 15
+./ode-connect3 diagnose-oracle [maxPlies] [canonical]   # the oracle evaluator's failures
+./ode-connect3 debug-oracle-terminal [maxPlies] [canonical]
+                       # what fraction of seeded leaves are already a
+                       # completed line, i.e. how much relaxation the ODE
+                       # actually still has left to do; finding 15
 ```
 
 ## Declared game net
@@ -337,6 +373,268 @@ finding 10's number was actually obtained.
     what matters" is not sufficient on its own — the feature has to be
     locally relevant to the transition reading it, the same lesson finding
     7's grouping schemes ran into from the tuning side.
+13. **A structural "block-the-block" tier does not reproduce 2-ply search's
+    gain, and diagnosis shows exactly why: it never engages the decisions
+    that are actually wrong.** `fork.go`'s `blk2_*` family adds a third
+    catalytic tier, sibling to force_*/blk_*: one more catalyzed copy of
+    `side_play_c` per (side, cell, unordered pair of win lines through that
+    cell) — 288 transitions (16 cells give 144 (cell, line-pair)
+    combinations, x2 sides), the same order as force_*/blk_*'s own 288.
+    Each copy's catalysts are the *union* of both lines' "opponent holds the
+    other two cells" pattern — blk_*'s own per-line predicate, applied to a
+    pair instead of one line. Mass action multiplies every catalyst marking
+    together, so the copy's rate turns on only when a cell is a genuine
+    two-line fork square for the opponent (all four opponent marks present
+    at once) — a pattern no single blk_* copy, and no amount of scanning
+    blk_*'s own scalar (finding 3), can express. Still exactly one
+    `odeFinal` solve per candidate move: the exhaustive sweep at the best
+    point found below ran in 12.5s, the same order as the plain calibrated
+    evaluator's own referee runs (10-12s), not 2-ply search's reported 62s
+    — the "search-free" cost claim holds.
+
+    Swept at blockBias=0 — the value finding 3 already established as
+    exhaustive-optimal for the two existing tiers — forkBias in
+    {0, 0.5, 1, 2, 4, 8} crossed with winBias in {0.01, 0.05, 0.1} (18
+    points, `verify-fork`): every point either reproduced the naive
+    baseline's 8 errors exactly (6 O-losing + 2 O-missed, X perfect) or was
+    strictly worse, monotonically worse as forkBias grew past roughly 1-2
+    (e.g. winBias 0.01: 8 at forkBias<=1, 10 at forkBias=2, 12 at
+    forkBias>=4). No point in the grid beat 8. `fit-fork` — the fourth free
+    parameter dropped into `fit.go`'s existing Nelder-Mead machinery
+    (`fitPolicyFork`/`rankLossFork`) — confirms the same direction from the
+    tuning side: an 8-game/63-position, 15-iteration run (not converged,
+    loss 1.019→0.077) landed at winBias 0.2014, blockBias 1.1141, forkBias
+    1.2876, lambda 1.7426 — **12** total errors (8 O-losing, 4 O-missed),
+    *worse* than the untuned baseline, reproducing finding 3/4's Goodhart
+    pattern (positive blockBias trades one defensive line for another) with
+    blk2_* riding along rather than compensating for it.
+
+    The diagnostic reason is sharper than "it didn't help." At one
+    representative grid point that reproduces the baseline exactly
+    (winBias 0.01, blockBias 0, forkBias 1.0 — the decision path shifts
+    from 462 to 442 O-decisions visited, but the error count does not),
+    `diagnose-fork` reports the *exact same eight failure positions*,
+    byte-for-byte, as `diagnose-naive` at forkBias 0: same boards, same
+    wrong choices, same optimal sets, the same 2-immediate-win/6-no-
+    immediate-win split finding 6 already named. blk2_*'s catalysts never
+    reach a nonzero product on any of the eight decisions that are actually
+    wrong; the tier only perturbs *already-correct* decisions elsewhere in
+    the game tree, and once its bias is large enough to perturb anything at
+    all, it starts breaking those instead of ever touching the real eight.
+    This is not a new failure mode — it is finding 6's diagnosis holding a
+    second time against a strictly richer catalyst pattern: an *immediate*
+    two-line-fork predicate is still a snapshot of marks already on the
+    board, and six of the eight failures were never about the current
+    board. They are the "late gravity-tempo positions where the unique
+    defense controls which upper cells become available several drops
+    later" — cells that have not opened yet, which no product over
+    currently-placed marks, however many lines it multiplies together, can
+    read. Depth-2 search closes part of this gap not by reading the board
+    differently but by *simulating forward* through the exact discrete
+    game — two real turns of gravity actually resolving — which is
+    information a fixed-horizon catalyst product over the present marking
+    structurally cannot contain. **Net result: this construction is a
+    legitimate negative result, not an inconclusive one.** The search-free
+    cost claim holds (12.5s vs. 2-ply's 62s), but the accuracy claim does
+    not transfer: fixed-depth structure plateaus exactly at the naive
+    baseline's 8 and degrades from there, while 2-ply search reaches 5.
+    Depth genuinely buys information about *future* board states that no
+    declared pattern over the *current* one can encode, confirming finding
+    9/10's resolution from the structural side instead of the tuning side.
+14. **A declared future-support/gravity-parity place (ROADMAP.md Phase 1a,
+    `parity.go`) ties the referee, it does not beat it — and the two
+    mechanisms tried inside it fail for two different, both legible,
+    reasons.** The construction: a Claimeven pairing fact fixed by board
+    size alone (4 rows is even, so rows {1,3} are X's "on-parity" rows and
+    rows {0,2} are O's, uniformly across every column, no game history, no
+    fitting) seeds a new place `claim_<side>_<col>` per column and per side
+    — populated both from cells that side has *already* played on-parity in
+    the position being scored (a derived readout of `mk`, exactly as
+    `m.position()` already derives landing tokens from occupancy) and, for
+    the rest of the horizon, from the *same* existing `x_play_/o_play_`
+    transitions continuing to fire fractionally (one extra output arc
+    apiece, no new inputs) — so claim mass keeps accruing from hypothetical
+    future on-parity plays inside the solve. `TestParityZeroBiasesReproducesBaseline`
+    pins the plumbing: with every new rate at 0 the construction reproduces
+    the champion's 462/6/2 and 45/0/0 exactly, decision for decision.
+
+    Two independent tiers read that place, both calibrated the same way
+    finding 10 calibrates its scalars — Nelder-Mead + hinge rank loss over
+    197 positions (30 self-play games, seed 7, plus the 4 standing audits),
+    with `winBias`/`blockBias`/`lambda` held at the champion's values so
+    only the new tier's own knob(s) move (the minimal-freedom experiment
+    findings 7/12 both argue for):
+
+    - **`pforce_/pblk_`: a parity-gated catalyzed copy of every force_/blk_
+      transition (`derive.AddCatalyzedCopy`, the same tool `blk_` itself is
+      built from), gated on the mover's own claim place for that cell's
+      column.** This is provably inert on this referee's 8 residual
+      failures, not just empirically flat: `AddCatalyzedCopy` multiplies
+      every catalyst together (AND, not OR), and `force_`/`blk_`'s own
+      pre-existing two-mark catalyst is 0 at every position among these 8
+      — six of them are finding 6's "deep" class, with no line anywhere
+      near complete. Zero times any `parityForceBias`/`parityBlockBias` is
+      still zero. Confirmed by sweeping both individually and jointly over
+      `[0.01, 0.3]` (`verify-parity`): the referee count does not move at
+      all (stays exactly 6 losing + 2 missed = 8) until the bias is large
+      enough to start doing unrelated damage elsewhere on the board
+      (`parityForceBias 1.0` → 56 losing).
+    - **`tempo_<side>_<col>`: a read-arc transition whose only reactant is
+      `claim_<side>_<col>` itself, depositing straight into `win_<side>`.**
+      Under mass action this is `d(win_side)/dt += tempoBias*claim`, the
+      literal "the flow integral reads the claim place directly" mechanism
+      the pforce_/pblk_ tier turned out not to be. This tier is genuinely
+      live: sweeping `tempoBias` alone (`parityForceBias = parityBlockBias
+      = 0`) gives 18-24 total O errors (worse than baseline) below 0.045,
+      a **floor of exactly 8** (8 losing, 0 missed — X still perfect) across
+      `[0.048, 0.06]`, and new X-side failures (2+ losing) from 0.062 up —
+      a strictly worse trade regardless of O's count, since the stop
+      condition forbids any new X failure. Four manual `(parityForceBias,
+      parityBlockBias, tempoBias)` combinations in the same tempo sweet
+      spot (e.g. `0.01 0.05 0.055`) land at the same floor, never below.
+      `fit-tempo` (Nelder-Mead, 29 iterations to convergence) drove the
+      sampled hinge loss from 24.59 to 0.11 and landed on `tempoBias =
+      0.0084` — an order of magnitude below the manual sweet spot — whose
+      referee result is 478/10/2 for O and 48/0/0 for X, **12 total errors,
+      worse than the untouched champion's 8**: another clean instance of
+      the Goodhart pattern findings 4, 7 and 12 already established, this
+      time on a construction with real, non-inert structure behind it.
+
+    `diagnose-parity` at the manual floor (`tempoBias 0.055`) shows the
+    tempo tier is not merely tied with the champion by coincidence: **the 8
+    residual failures are a different set of positions than the original
+    8**, and shallower — mostly 4-8 pieces on the board (e.g.
+    `........O...X..XO`) against the original set's mostly 10-13
+    (`.....OX.XXO.OXOXO`, finding 6's "late gravity-tempo" class). The
+    construction appears to genuinely route around several of the original
+    deep failures while introducing an unrelated new set of early ones —
+    a lateral trade at the referee's total, not a reduction, and a
+    different failure mode than either "inert" (`pforce_/pblk_` above) or
+    "Goodharts under fitting" (the auto-fit result above): here a
+    hand-picked point in the live tier's range is simply not better on
+    net, even though it is doing something real.
+
+    **Stop condition: not met.** The best configuration found across every
+    variant tried — a ~20-point manual scan (both tiers, individually and
+    jointly) and the single-knob `fit-tempo` auto-fit — is an 8-error tie
+    with the champion, never fewer, and several configurations that reach 8
+    do so with X still perfect but others (`tempoBias >= 0.062`, the
+    auto-fit point) cost X correctness or make O strictly worse. The
+    3-parameter joint fit (`fit-parity`, all of `parityForceBias`,
+    `parityBlockBias` and `tempoBias` free at once) and the 6-parameter
+    joint fit (`fit-parity-joint`, adding `winBias`/`blockBias`/`lambda`)
+    were started but not run to convergence inside this session's time
+    budget — each sensitivity-free solve over this net (664 transitions,
+    roughly double the champion's 368) costs noticeably more than the
+    champion's own fits, and a 3-4 dimensional Nelder-Mead needs several
+    times the function evaluations per iteration that `fit-tempo`'s single
+    dimension did (finding 7's own unrun schemes are the same shape of gap
+    for the same reason: cost, not a decision that they wouldn't matter).
+    Given `pforce_/pblk_`'s parameters are separately *proven* inert
+    (not merely observed flat) on these 8 positions, and every point found
+    so far in the live tempo tier's own successful range plateaus at
+    exactly 8 rather than trending toward fewer, there is no positive
+    signal in this data that finishing those two runs would cross the
+    "fewer than 8" bar — but that is an inference, not a completed
+    measurement, and is recorded as an open question rather than folded
+    into the result above. This is the same class of negative result as
+    finding 7, arrived at differently: finding 7 showed
+    *more freedom on the existing structure* moves away from the goal;
+    this shows a genuinely *new* piece of structure, built to the letter of
+    ROADMAP.md's Phase 1a description and gated the same way this file's
+    working tiers are gated, still does not supply the missing predicate —
+    because the two ways tried to *read* the claim place are either gated
+    behind evidence (line-completion catalysts) that is exactly what is
+    missing at these positions, or ungated and therefore rewards on-parity
+    investment independent of whether it was ever going to matter, which
+    trades one failure set for another rather than closing the gap. Finding
+    6's own diagnosis — "ownership of future support" needs representing,
+    not "current two-in-a-row geometry" — is not refuted by this result:
+    what this finding adds is that *a* structural, non-fitted, per-column
+    parity place is not automatically sufficient by itself; it still needs
+    a way to matter to the score that neither an AND-gate on existing
+    line-completion catalysts nor an ungated pump into `win_side` provides.
+15. **Handed the exact predicate instead of a heuristic approximation of it,
+    the flow integral gets most — not all — of the way to 0, and the
+    remainder is informative about where the two prior heuristic attempts'
+    failure actually lived.** Two follow-ups not otherwise recorded in this
+    file tried to derive "future support" (finding 6) from the CURRENT
+    marking alone — a parity/tempo place and a richer now-only AND-gate
+    "block-the-block" tier — and both failed to move naive's 8 errors;
+    diagnose-fork proved the second one's catalysts never fire on any of
+    the 8 failures, because those are about cells not yet open under
+    gravity, which no predicate over current marks can see. `oraclefuture.go`
+    stops approximating: `oracleForcedSeed` walks forward from a candidate
+    move using the exact memoized oracle (`m.minimax`/`m.optimalSet`,
+    players.go), but only through plies where the mover's `optimalSet` has
+    exactly one member — a genuine forced reply, not a tie broken
+    arbitrarily — and seeds `x<cell>`/`o<cell>` for every cell filled along
+    that forced prefix directly into the marking `odeFinal` starts from.
+    Net structure, rates, horizon and score readout are byte-identical to
+    every other evaluator in this file; the only change is what the single
+    relaxed solve is allowed to start from, computed entirely offline
+    before the solve runs. This is deliberately unavailable to a real
+    player and is offered as an upper bound, per the experiment's stated
+    purpose.
+
+    `verify-oracle` (`odeOraclePlayer`, strict/forced-only): exhaustive
+    referee errors drop from naive's 8 (6 O-losing, 2 missed, X perfect) to
+    **4** (4 O-losing, 0 missed, X still perfect) — already at 1 ply, and
+    completely flat from 1 ply through 32 plies tried. This is not "not
+    enough plies allowed": `debug-oracle-terminal` shows the fraction of
+    seeded leaves that already contain a completed line plateaus at 32.9%
+    by 4 plies and never rises through 16 — the strict predicate itself,
+    not a ply budget, is what stops. `diagnose-oracle` shows the same 4
+    positions fail at every plies value tried; two are exact board-for-board
+    repeats of naive's original 8 (the `.XX..OO..OX.XXO.O`/`o_play_20` and
+    `.XX..OO..XO..OXXO`/`o_play_23` positions), and two are new — reachable
+    only once the other naive failures were fixed and the referee's fixed
+    O-seat walk found a different path through the game. All 4 share naive's
+    original signature exactly: no immediate opponent win after the
+    evaluator's choice (finding 6's future-support class), X untouched.
+
+    `verify-oracle-canonical` (same function, `canonical=true`: don't stop
+    at a tie, take the row-major-first optimal move and keep projecting)
+    reaches **0** total errors, stable from 8 plies through 24. Read alone
+    this would be the "representation is not the ceiling" branch of the
+    plan's stop condition. But `debug-oracle-terminal` shows why it needed
+    exactly that many plies and why it should not be over-read: the
+    fraction of *canonical* seeded leaves already containing a completed
+    line rises from 46.5% at 1 ply to 91.3% at 8 to 98.7% at 16 — canonical
+    seeding at the depth it needed to succeed is, the large majority of the
+    time, not leaving the ODE a partially-open position to relax at all,
+    it is handing it an already-finished game and asking it to notice.
+    That the flow integral does correctly read out an already-complete
+    line is a real, useful confirmation (a wrong final-state readout would
+    have failed even that), but it is a much weaker claim than "the flow
+    integral can rank moves correctly given perfect partial information" —
+    the strict variant is the test of that claim, and it does not reach 0.
+
+    **Stop condition:** this lands in the "does not reach 0" branch, but
+    not the pessimistic reading of it. The literal predicate the plan asked
+    for — forced-reply/parity-decided future ownership, computed exactly
+    and fed in before the solve, with the *same* net and *same* readout as
+    every other evaluator here — closes half the gap (8→4) with no new
+    tuning and, per the terminal-fraction check, while still doing genuine
+    relaxation on two-thirds of the positions it's asked about (67.1% of
+    seeded leaves are non-terminal at the plateau). It does not close the
+    other half, and the canonical control shows that gap is not obviously a
+    final-state-coordinate ceiling in finding 11's sense (win_x/win_o read
+    out correctly once the position is actually decided) — it is that the 4
+    residual positions hit a genuine strategic choice, not a forced fact,
+    soon enough after the candidate move that "already decided" is false
+    for them under any non-arbitrary reading of that phrase. That reframes
+    the open question rather than closing it: the remaining gap is not
+    "find a cheaper way to compute the predicate this file hand-fed" — the
+    exact version of that predicate provably cannot reach further for these
+    4 positions, because for them there is no such fact to find. What
+    would have to change is the same lever findings 8-10 already used
+    (real search over the actual choice), not a better predicate over the
+    current one. This experiment therefore narrows, rather than replaces,
+    the roadmap: predicate-seeding and search are not competing
+    explanations for the residual gap, they cover disjoint subsets of it —
+    4 of naive's 8 errors were forced-fact-shaped and are now closed for
+    free, and the other 4 were never predicate-shaped to begin with.
 
 ## Resolution
 
@@ -369,7 +667,10 @@ contribution on top of it still unsettled past one ply. This doesn't reach 0
 either, and the remaining errors at every depth tried are
 still the future-support class finding 6 named — search is buying the same
 thing finding 6 asked for (seeing further into the game), just less
-efficiently than a dedicated structural predicate would. The honest reading:
+efficiently than a dedicated structural predicate would *if one could be
+built* — finding 14 tests that parenthetical directly and finds it does not
+hold: the predicate it built could not be constructed search-free at all.
+The honest reading:
 deeper search is real, composable progress and a legitimate alternative to
 the structural fix, not a replacement for the conclusion that tuning alone
 cannot get there — it is a different lever (information, not calibration)
@@ -402,3 +703,52 @@ when the missing predicate is inherently per-transition-local), not an
 opaque one. That is a meaningfully different kind of negative result than
 finding 11's: the middle ground is real and the tooling for it works, this
 particular feature choice inside it just wasn't the right one.
+
+Finding 13 closes the specific question findings 8-10 left open: can the
+2-ply search result (naive 8 → 5 errors) be reached *structurally*, at the
+same search-free, one-solve-per-move cost as every other tier in this file?
+The answer is no, and the mechanism is now diagnosed rather than assumed. A
+strictly richer catalyst — an AND over two win lines instead of one, the
+natural next step past blk_*'s own single-line predicate, and past finding
+7's conclusion that retuning blk_*'s *existing* scalar cannot do it — still
+computes a function of marks already on the board. It reproduces the naive
+baseline exactly (8 errors) at its best, and `diagnose-fork` shows why: the
+same eight failures, unchanged down to the exact board and choice, because
+the tier's catalysts never activate on any of them. Search does not merely
+see the same threats sooner; two-ply lookahead is evaluating positions after
+real, discrete drops have happened — cells that were not on the board yet
+when the static evaluator (structural or not) had to decide. No fixed
+catalytic pattern over the *present* marking, however many lines it
+multiplies together, can be gated on a cell's *future* value, because that
+value depends on whose turn it is when the cell opens — a fact about play
+that has not happened, not about tokens that are already placed. This is the
+plan's original go/no-go risk (quoted under finding 7) restated one level
+up: a static rate cannot represent "N drops from now, whose turn," and a
+richer static predicate is still a static predicate. Search remains the only
+mechanism in this experiment that closes part of that gap, and it does so by
+spending runtime (62s at depth 2 vs. this tier's 12.5s), not by being
+smarter about the current board.
+
+Finding 15 answers the question every earlier finding in this file left
+open by construction: findings 1-7 and 12 all tried to *derive* the
+future-support predicate finding 6 named, cheaply, from current marks, and
+none of them could reduce naive's 8 errors even once. Handed the same
+predicate exactly instead of approximated — the oracle's strict forced-reply
+projection, no arbitrary tie-breaks, seeded into the same net with the same
+readout — the flow integral closes exactly half the gap (8→4) and then
+provably cannot close the rest, not for lack of plies but because the
+remaining 4 positions contain a genuine strategic choice rather than a
+forced fact this early after the candidate move. The canonical control
+(break ties too) does reach 0, but the terminal-fraction check shows it
+gets there mostly by handing the ODE an already-finished game to confirm,
+not by ranking a genuinely open position — so it does not overturn that
+reading. Combined with findings 8-10, this experiment's honest map of the
+remaining 4-8 errors is: some are a fact about the position that a smarter
+predicate could in principle supply (finding 15 closes exactly those, for
+free, with zero tuning), and the rest are a choice that only looking ahead
+over the actual game tree can resolve (findings 8-10's lever, not this
+one's). Neither lever, alone or as implemented here, reaches 507/507; the
+two together — an exact or well-approximated future-support predicate as
+the *leaf* evaluator inside real search, rather than either technique
+substituting for the other — is the combination this experiment did not
+try and is the concrete next step it leaves behind.

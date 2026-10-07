@@ -27,7 +27,9 @@ func conformanceTool() mcp.Tool {
 				"against it. Returns fitness (can the model reproduce the observed traces?), precision "+
 				"(does the model allow behavior never observed?), and per-trace diagnostics naming the "+
 				"activities that could not be replayed. Use after petri_validate/petri_verify to confirm "+
-				"the model describes reality, not just a self-consistent fiction."),
+				"the model describes reality, not just a self-consistent fiction. The log is replayed one case at a "+
+				"time from the model's initial marking, so the model should be the per-case workflow (one order, "+
+				"one patient); a resource net whose places are shared across cases will not fit."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),

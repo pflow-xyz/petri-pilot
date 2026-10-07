@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -19,14 +17,12 @@ import (
 	"github.com/pflow-xyz/go-pflow/petri"
 	tokenmodelds "github.com/pflow-xyz/go-pflow/tokenmodel/dsl"
 	"github.com/pflow-xyz/petri-pilot/internal/version"
-	"github.com/pflow-xyz/petri-pilot/pkg/bundle"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/core"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/esmodules"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/golang"
 	"github.com/pflow-xyz/petri-pilot/pkg/codegen/zkgo"
 	"github.com/pflow-xyz/petri-pilot/pkg/delegate"
 	"github.com/pflow-xyz/petri-pilot/pkg/extensions"
-	"github.com/pflow-xyz/petri-pilot/pkg/metamodel"
 	"github.com/pflow-xyz/petri-pilot/pkg/validator"
 	jsonschema "github.com/pflow-xyz/petri-pilot/schema"
 	"github.com/pflow-xyz/petri-pilot/services"
@@ -48,6 +44,10 @@ func NewServer() *server.MCPServer {
 	s.AddTool(analyzeTool(), handleAnalyze)
 	s.AddTool(verifyTool(), handleVerify)
 	s.AddTool(conformanceTool(), handleConformance)
+	s.AddTool(invariantsTool(), handleInvariants)
+	s.AddTool(canonicalTool(), handleCanonical)
+	s.AddTool(lumpingTool(), handleLumping)
+	s.AddTool(datasetTool(), handleDataset)
 	s.AddTool(simulateTool(), handleSimulateWithSteps)
 	s.AddTool(odeTool(), handleOde)
 	s.AddTool(heatmapTool(), handleHeatmap)
@@ -58,6 +58,7 @@ func NewServer() *server.MCPServer {
 	s.AddTool(stochasticTool(), handleStochastic)
 	s.AddTool(scenarioTool(), handleScenario)
 	s.AddTool(fitTool(), handleFit)
+	s.AddTool(fitDiscreteTool(), handleFitDiscrete)
 	s.AddTool(templateTool(), handleTemplate)
 	s.AddTool(sdeTool(), handleSde)
 	s.AddTool(ammQuoteTool(), handleAmmQuote)
@@ -76,8 +77,11 @@ func NewServer() *server.MCPServer {
 	s.AddTool(codegenTool(), handleCodegen)
 	s.AddTool(frontendTool(), handleFrontend)
 	s.AddTool(visualizeTool(), handleVisualize)
-	s.AddTool(applicationTool(), handleApplication)
-	s.AddTool(bundleTool(), handleBundle)
+	s.AddTool(buildTool(), handleBuild)
+	s.AddTool(historyTool(), handleHistory)
+	s.AddTool(appSaveTool(), handleAppSave)
+	s.AddTool(appGetTool(), handleAppGet)
+	s.AddTool(appListTool(), handleAppList)
 	s.AddTool(docsTool(), handleDocs)
 	s.AddTool(migrateTool(), handleMigrate)
 
@@ -307,27 +311,32 @@ func diffTool() mcp.Tool {
 
 func extendTool() mcp.Tool {
 	return mcp.NewTool("petri_extend",
-		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_event, remove_binding. Returns the modified model."),
+		mcp.WithDescription("Modify an existing Petri net model by applying operations. Operations: add_place, add_transition, add_arc, add_event, add_event_field, add_binding, remove_place, remove_transition, remove_arc, remove_event, remove_binding. Returns the modified model. Optionally persists to the content-addressed app store: pass 'id' to load the starting model from a previously stored spec instead of 'model' (if both are given, 'id' wins and 'model' is ignored), and/or 'prompt' to record the free-text intent behind this edit. Giving either triggers persistence — the starting spec (stored fresh as a root if 'id' was not given), the resulting spec, the prompt (if any), and a lineage edge are all recorded, and the result carries 'id' (the new spec's id) and 'parentId'. Calling with neither 'id' nor 'prompt' (the original shape) persists nothing and behaves exactly as before."),
 		mcp.WithString("model",
-			mcp.Required(),
-			mcp.Description("The Petri net model as JSON"),
+			mcp.Description("The Petri net model as JSON. Required unless 'id' is given."),
 		),
 		mcp.WithString("operations",
 			mcp.Required(),
 			mcp.Description("JSON array of operations. Each operation has 'op' (operation type) and operation-specific fields. Examples: {\"op\":\"add_place\",\"id\":\"new_state\"}, {\"op\":\"add_transition\",\"id\":\"transfer\",\"event\":\"transferred\",\"guard\":\"balances[from] >= amount\",\"bindings\":[{\"name\":\"from\",\"type\":\"string\",\"keys\":[\"from\"]},{\"name\":\"amount\",\"type\":\"number\",\"value\":true}]}, {\"op\":\"add_arc\",\"from\":\"pending\",\"to\":\"approve\"}, {\"op\":\"add_event\",\"id\":\"transferred\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"number\"}]}, {\"op\":\"add_binding\",\"transition\":\"transfer\",\"name\":\"to\",\"type\":\"string\",\"keys\":[\"to\"]}"),
+		),
+		mcp.WithString("id",
+			mcp.Description("Optional: load the starting model from this previously stored spec id instead of 'model'. Wins over 'model' if both are given. Triggers persistence of the result."),
+		),
+		mcp.WithString("prompt",
+			mcp.Description("Optional: free-text description of the intent behind this edit, recorded in the app store's lineage. Triggers persistence of the result."),
 		),
 	)
 }
 
 func codegenTool() mcp.Tool {
 	return mcp.NewTool("petri_codegen",
-		mcp.WithDescription("Generate executable code from a validated Petri net model. Language 'go' produces a full event-sourced application (state machine, events, API handlers); 'zk-go' produces gnark ZK circuits; 'go-core', 'rust', 'python', and 'javascript' produce a dependency-free single-file state-machine core (token places only, no expression guards) for embedding in an existing codebase; 'lean' produces the proof form — the generator model-checks the net and emits Lean 4 theorems the kernel re-derives at compile time."),
+		mcp.WithDescription("Generate executable code from a validated Petri net model. 'zk-go' produces gnark ZK circuits; 'go-core', 'rust', 'python', and 'javascript' produce a dependency-free single-file state-machine core (token places only, no expression guards) for embedding in an existing codebase; 'lean' produces the proof form — the generator model-checks the net and emits Lean 4 theorems the kernel re-derives at compile time. For a full event-sourced HTTP application (what 'language=go' used to do here), use petri_build instead — it writes a runnable app to disk and can verify it actually runs."),
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The Petri net model as JSON or tokenmodel DSL (S-expression format starting with '(')"),
 		),
 		mcp.WithString("language",
-			mcp.Description("Target language: go (application), zk-go (ZK circuits), go-core, rust, python, javascript (state-machine core), lean (proof form). Default: go"),
+			mcp.Description("Target language: zk-go (ZK circuits), go-core, rust, python, javascript (state-machine core), lean (proof form). 'go' is no longer accepted here — use petri_build."),
 		),
 		mcp.WithString("form",
 			mcp.Description("Core-mode implementation form: generated (default; arcs unrolled into straight-line code), interpreter (net as runtime data + generic engine), lambda (pure per-transition functions in a fixed schedule), contract (public entry points that refuse when not enabled). Ignored for 'go', 'zk-go', and 'lean' (always proof)."),
@@ -398,41 +407,6 @@ func migrateTool() mcp.Tool {
 		mcp.WithString("model",
 			mcp.Required(),
 			mcp.Description("The v1 Petri net model as a JSON string"),
-		),
-	)
-}
-
-func applicationTool() mcp.Tool {
-	return mcp.NewTool("petri_application",
-		mcp.WithDescription("Generate a composed application from an Application specification: every entity becomes its own Petri net (subnet), the app is their composition. Cross-entity field references are validated; declared fusions become atomic cross-entity commands with coordinators. Pass output_dir to write the generated Go application to disk."),
-		mcp.WithString("spec",
-			mcp.Required(),
-			mcp.Description("Application specification as JSON (entities with fields/states/actions; roles/pages/workflows accepted)"),
-		),
-		mcp.WithString("fusions",
-			mcp.Description("Optional JSON array of cross-entity rendezvous: [{\"id\":\"order_reserves_stock\",\"members\":[{\"entity\":\"order\",\"action\":\"place_order\"},{\"entity\":\"inventory\",\"action\":\"reserve_stock\"}]}] — fused actions fire together atomically"),
-		),
-		mcp.WithString("output_dir",
-			mcp.Description("Directory to write the generated application into; omitted = report the file list only"),
-		),
-		mcp.WithString("module_path",
-			mcp.Description("Go module/import path of the generated app root (default: app/<name>)"),
-		),
-	)
-}
-
-func bundleTool() mcp.Tool {
-	return mcp.NewTool("petri_bundle",
-		mcp.WithDescription("Generate a composed application from a raw bundle document: subnets (inline Petri net models) joined by token/data/event/guard links. The bundle is validated and flattened; each subnet becomes its own Go package with its own aggregate and event log, and fused transitions get atomic coordinators."),
-		mcp.WithString("bundle",
-			mcp.Required(),
-			mcp.Description("Bundle document JSON: {name, subnets: [{id, net_type, model}], links: [{id, kind, from: {subnet, transition|place}, to: ...}]} (model_ref is CLI-only)"),
-		),
-		mcp.WithString("output_dir",
-			mcp.Description("Directory to write the generated application into; omitted = return file contents inline"),
-		),
-		mcp.WithString("module_path",
-			mcp.Description("Go module/import path of the generated app root (default: app/<name>)"),
 		),
 	)
 }
@@ -559,6 +533,8 @@ func handlePreview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
 	}
+
+	gen.WithAccess(parsed.Roles, parsed.Access)
 
 	// Preview the requested file
 	content, err := gen.Preview(model, templateName)
@@ -717,9 +693,29 @@ func compareModels(a, b *goflowmetamodel.Model) ModelDiff {
 }
 
 func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	modelJSON, err := request.RequireString("model")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("missing model parameter: %v", err)), nil
+	specID := request.GetString("id", "")
+	prompt := request.GetString("prompt", "")
+	persist := specID != "" || prompt != ""
+
+	modelJSON := request.GetString("model", "")
+
+	var startSpecID string
+	if specID != "" {
+		store, err := getAppStore()
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", err)), nil
+		}
+		kind, content, err := store.Get(specID)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("loading spec %q: %v", specID, err)), nil
+		}
+		if kind != "model" {
+			return mcp.NewToolResultError(fmt.Sprintf("spec %q is a %q, not a model", specID, kind)), nil
+		}
+		modelJSON = string(content)
+		startSpecID = specID
+	} else if modelJSON == "" {
+		return mcp.NewToolResultError("missing model parameter (or pass 'id' to load a stored spec)"), nil
 	}
 
 	opsJSON, err := request.RequireString("operations")
@@ -778,18 +774,64 @@ func handleExtend(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal model: %v", err)), nil
 	}
 
+	var newSpecID, parentSpecID string
+	if persist {
+		store, serr := getAppStore()
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("opening app store: %v", serr)), nil
+		}
+
+		// Resolve the starting spec: 'id' already resolved it above
+		// (startSpecID); otherwise the incoming model JSON becomes a fresh
+		// root spec (Put is idempotent, so re-persisting an already-known
+		// root is a no-op).
+		if startSpecID == "" {
+			startSpecID, serr = store.Put("model", []byte(modelJSON))
+			if serr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("storing starting spec: %v", serr)), nil
+			}
+		}
+		parentSpecID = startSpecID
+
+		newSpecID, serr = store.Put("model", modelOutput)
+		if serr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("storing result spec: %v", serr)), nil
+		}
+
+		var promptID *string
+		if prompt != "" {
+			pid, perr := store.RecordPrompt(prompt, startSpecID, newSpecID)
+			if perr != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("recording prompt: %v", perr)), nil
+			}
+			promptID = &pid
+		}
+
+		note := fmt.Sprintf("applied %d operation(s)", len(applied))
+		if len(errors) > 0 {
+			note = fmt.Sprintf("%s, %d error(s)", note, len(errors))
+		}
+		if lerr := store.RecordLineage(newSpecID, &parentSpecID, "petri_extend", promptID, note); lerr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("recording lineage: %v", lerr)), nil
+		}
+	}
+
 	result := struct {
-		Success bool     `json:"success"`
-		Applied []string `json:"applied"`
-		Errors  []string `json:"errors,omitempty"`
-		Valid   bool     `json:"valid"`
-		Model   string   `json:"model"`
+		Success  bool     `json:"success"`
+		Applied  []string `json:"applied"`
+		Errors   []string `json:"errors,omitempty"`
+		Valid    bool     `json:"valid"`
+		Model    string   `json:"model"`
+		ID       string   `json:"id,omitempty"`
+		ParentID string   `json:"parentId,omitempty"`
 	}{
-		Success: len(errors) == 0,
-		Applied: applied,
-		Errors:  errors,
-		Valid:   validationResult.Valid,
-		Model:   string(modelOutput),
+		Success:  len(errors) == 0,
+		Applied:  applied,
+		Errors:   errors,
+		Valid:    validationResult.Valid,
+		Model:    string(modelOutput),
+		ID:       newSpecID,
+		ParentID: parentSpecID,
 	}
 
 	outputJSON, err := json.MarshalIndent(result, "", "  ")
@@ -1140,21 +1182,23 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 	}
 	model := parseResult.Model
 
-	language := request.GetString("language", "go")
+	language := request.GetString("language", "zk-go")
 	pkgName := request.GetString("package", model.Name)
-	extensionsJSON := request.GetString("extensions", "")
+
+	if language == "go" || language == "golang" {
+		return mcp.NewToolResultError("petri_codegen no longer generates Go applications (language='go'): use petri_build instead, which writes a runnable app to disk and can verify it actually runs"), nil
+	}
 
 	// Core-mode languages emit a dependency-free single-file state machine
-	// (pkg/codegen/core); "go" and "zk-go" keep their application/circuit
-	// generators.
+	// (pkg/codegen/core); "zk-go" keeps its circuit generator.
 	coreLangs := map[string]string{
 		"go-core": "go", "rust": "rust", "python": "python",
 		"javascript": "javascript", "js": "javascript", "lean": "lean",
 	}
 	coreLang, isCore := coreLangs[language]
 
-	if !isCore && language != "go" && language != "golang" && language != "zk-go" {
-		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (supported: 'go', 'zk-go', 'go-core', 'rust', 'python', 'javascript', 'lean')", language)), nil
+	if !isCore && language != "zk-go" {
+		return mcp.NewToolResultError(fmt.Sprintf("unsupported language: %s (supported: 'zk-go', 'go-core', 'rust', 'python', 'javascript', 'lean')", language)), nil
 	}
 
 	// Validate first
@@ -1204,78 +1248,28 @@ func handleCodegen(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallT
 		return mcp.NewToolResultError(fmt.Sprintf("model not implementable:\n%s", errJSON)), nil
 	}
 
-	// Build ApplicationSpec with extensions
-	app := extensions.NewApplicationSpec(model)
-
-	// For v2 schemas, parse embedded extensions
-	if parseResult.Version == "2.0" && len(parseResult.Extensions) > 0 {
-		if err := parseV2Extensions(app, parseResult.Extensions); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("invalid v2 extensions: %v", err)), nil
-		}
-	}
-
-	// Also support separate extensions parameter (for v1 or override)
-	if extensionsJSON != "" {
-		if err := parseExtensions(app, extensionsJSON); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("invalid extensions JSON: %v", err)), nil
-		}
-	}
-
-	// Handle ZK code generation
-	if language == "zk-go" {
-		zkGen, err := zkgo.New(zkgo.Options{
-			PackageName:  pkgName,
-			IncludeTests: true,
-		})
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to create ZK generator: %v", err)), nil
-		}
-
-		zkFiles, err := zkGen.GenerateFiles(model)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("ZK code generation failed: %v", err)), nil
-		}
-
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Generated %d ZK circuit files for package '%s':\n\n", len(zkFiles), pkgName))
-		for _, file := range zkFiles {
-			sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
-			sb.WriteString(string(file.Content))
-			sb.WriteString("\n\n")
-		}
-		return mcp.NewToolResultText(sb.String()), nil
-	}
-
-	// Create Go generator
-	gen, err := golang.New(golang.Options{
+	// Only zk-go remains below core mode: go-core/rust/python/javascript/lean
+	// already returned above, and "go" was rejected at the top.
+	zkGen, err := zkgo.New(zkgo.Options{
 		PackageName:  pkgName,
 		IncludeTests: true,
 	})
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to create generator: %v", err)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create ZK generator: %v", err)), nil
 	}
 
-	// Generate files using ApplicationSpec if extensions provided
-	var files []golang.GeneratedFile
-	if app.HasRoles() || app.HasViews() || app.HasNavigation() || app.HasAdmin() {
-		files, err = gen.GenerateFilesFromApp(app)
-	} else {
-		files, err = gen.GenerateFiles(model)
-	}
+	zkFiles, err := zkGen.GenerateFiles(model)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("code generation failed: %v", err)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("ZK code generation failed: %v", err)), nil
 	}
 
-	// Build output showing all generated files
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Generated %d files for package '%s':\n\n", len(files), pkgName))
-
-	for _, file := range files {
+	sb.WriteString(fmt.Sprintf("Generated %d ZK circuit files for package '%s':\n\n", len(zkFiles), pkgName))
+	for _, file := range zkFiles {
 		sb.WriteString(fmt.Sprintf("=== %s ===\n", file.Name))
 		sb.WriteString(string(file.Content))
 		sb.WriteString("\n\n")
 	}
-
 	return mcp.NewToolResultText(sb.String()), nil
 }
 
@@ -1824,20 +1818,25 @@ type pflowProbe struct {
 	Places      map[string]json.RawMessage `json:"places"`
 }
 
-// parsePflowNet returns the go-pflow petri net for a pflow.xyz-format model,
-// or ok=false when the input is some other format. The returned net keeps
-// its color vectors and inhibitor flags — callers that can consume a
-// petri.PetriNet directly (verify) should, rather than round-tripping
-// through the scalar metamodel.
+// parsePflowNet returns the go-pflow petri net for an editor-shape
+// (pflow.xyz JSON-LD) model, or ok=false when the input is some other shape.
+// Only petri_verify wants the colored net itself, so that base-name
+// properties resolve as per-color sums; every other tool takes the metamodel
+// that parser.ModelFromJSON produces. Detection and the color-name rule both
+// live in go-pflow now, so this repo carries no opinion of its own about the
+// editor shape.
 func parsePflowNet(jsonStr string) (*petri.PetriNet, *pflowProbe, bool, error) {
-	var probe pflowProbe
-	if err := json.Unmarshal([]byte(jsonStr), &probe); err != nil || len(probe.Places) == 0 {
+	data := []byte(jsonStr)
+	if !goflowparser.IsPflowJSON(data) {
 		return nil, nil, false, nil
 	}
-	net, err := goflowparser.FromJSON([]byte(jsonStr))
+	var probe pflowProbe
+	_ = json.Unmarshal(data, &probe)
+	net, err := goflowparser.FromJSON(data)
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("pflow.xyz model: %w", err)
 	}
+	net.Token = goflowparser.ShortColorNames(net.Token)
 	return net, &probe, true, nil
 }
 
@@ -1857,20 +1856,70 @@ type ParseResult struct {
 	Model      *goflowmetamodel.Model
 	Extensions map[string]json.RawMessage
 	Version    string
+
+	// Roles and Access are the model's own access-control declarations:
+	// top-level "roles"/"access" on a flat v1 document, or the
+	// petri-pilot/roles and petri-pilot/access extensions on a v2 envelope
+	// (the shape petri_migrate emits). go-pflow's Model has no field for
+	// them, so json.Unmarshal used to drop them silently and petri_preview
+	// reported "No access control rules defined" for a model that declared
+	// six.
+	Roles  []goflowmetamodel.Role
+	Access []goflowmetamodel.AccessRule
+}
+
+// accessDecls is the slice of a document that carries access control.
+type accessDecls struct {
+	Roles  []goflowmetamodel.Role       `json:"roles,omitempty"`
+	Access []goflowmetamodel.AccessRule `json:"access,omitempty"`
+}
+
+// HasAccess reports whether the parsed document declared any roles or rules.
+func (p *ParseResult) HasAccess() bool {
+	return p != nil && (len(p.Roles) > 0 || len(p.Access) > 0)
 }
 
 // parseModelV2 parses a model and returns both the model and any v2 extensions.
 // Supports JSON (v1/v2) and tokenmodel DSL (S-expression) formats.
+// dslBody returns the input with leading ';' comment lines and blank lines
+// removed, so format detection sees the first S-expression.
+func dslBody(input string) string {
+	for {
+		input = strings.TrimLeft(input, " \t\r\n")
+		if !strings.HasPrefix(input, ";") {
+			return input
+		}
+		if i := strings.IndexByte(input, '\n'); i >= 0 {
+			input = input[i+1:]
+		} else {
+			return ""
+		}
+	}
+}
+
 func parseModelV2(input string) (*ParseResult, error) {
 	trimmed := strings.TrimSpace(input)
 
-	// DSL format: starts with '('
-	if strings.HasPrefix(trimmed, "(") {
+	// DSL format: starts with '(' — after any leading ';' comment lines. A
+	// schema that opened with a comment block used to be routed to the JSON
+	// parser and fail on the semicolon.
+	if strings.HasPrefix(dslBody(trimmed), "(") {
 		schema, err := tokenmodelds.ParseSchema(input)
 		if err != nil {
 			return nil, fmt.Errorf("DSL parse error: %w", err)
 		}
 		model := goflowmetamodel.FromTokenModel(schema)
+		// FromTokenModel sets Initial = 0 for every data state and never
+		// copies the DSL's :initial value, so a ledger declared
+		// `:initial 0` or a map with seed entries started life as nil. The
+		// runtime then had nothing to bind the name to.
+		for i := range model.Places {
+			for _, st := range schema.States {
+				if st.ID == model.Places[i].ID && !st.IsToken() && st.Initial != nil {
+					model.Places[i].InitialValue = st.Initial
+				}
+			}
+		}
 		return &ParseResult{
 			Model:   model,
 			Version: "dsl",
@@ -1895,11 +1944,22 @@ func parseModelV2(input string) (*ParseResult, error) {
 		if version == "" {
 			version = "2.0"
 		}
-		return &ParseResult{
+		res := &ParseResult{
 			Model:      model,
 			Extensions: v2.Extensions,
 			Version:    version,
-		}, nil
+		}
+		if raw, ok := v2.Extensions[extensions.RolesExtensionName]; ok {
+			if err := json.Unmarshal(raw, &res.Roles); err != nil {
+				return nil, fmt.Errorf("parsing %s: %w", extensions.RolesExtensionName, err)
+			}
+		}
+		if raw, ok := v2.Extensions["petri-pilot/access"]; ok {
+			if err := json.Unmarshal(raw, &res.Access); err != nil {
+				return nil, fmt.Errorf("parsing petri-pilot/access: %w", err)
+			}
+		}
+		return res, nil
 	}
 
 	// Fall back to v1 parsing
@@ -1907,70 +1967,26 @@ func parseModelV2(input string) (*ParseResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ParseResult{
+	res := &ParseResult{
 		Model:   model,
 		Version: "1.0",
-	}, nil
+	}
+	var decls accessDecls
+	if err := json.Unmarshal([]byte(input), &decls); err == nil {
+		res.Roles = decls.Roles
+		res.Access = decls.Access
+	}
+	return res, nil
 }
 
 func parseModel(jsonStr string) (*goflowmetamodel.Model, error) {
-	// First try pflow.xyz format (places as object with string keys). This
-	// path goes through go-pflow's own parser and colored-net unfolding
-	// rather than a hand-rolled conversion: the previous converter kept only
-	// Initial[0] and Weight[0] — silently truncating multi-color models to
-	// their first color — and dropped inhibitor flags entirely.
-	if net, probe, isPflow, err := parsePflowNet(jsonStr); isPflow {
-		if err != nil {
-			return nil, err
-		}
-		// Multi-color nets are unfolded to per-color places so the metamodel
-		// (whose Initial/Weight are scalars) represents them exactly.
-		net, _ = net.ExpandColors()
-
-		model := &goflowmetamodel.Model{
-			Name:        probe.Name,
-			Description: probe.Description,
-		}
-		placeIDs := make([]string, 0, len(net.Places))
-		for id := range net.Places {
-			placeIDs = append(placeIDs, id)
-		}
-		sort.Strings(placeIDs)
-		for _, id := range placeIDs {
-			pl := net.Places[id]
-			model.Places = append(model.Places, goflowmetamodel.Place{
-				ID:      id,
-				Initial: int(pl.GetTokenCount()),
-				X:       int(pl.X),
-				Y:       int(pl.Y),
-			})
-		}
-		transIDs := make([]string, 0, len(net.Transitions))
-		for id := range net.Transitions {
-			transIDs = append(transIDs, id)
-		}
-		sort.Strings(transIDs)
-		for _, id := range transIDs {
-			tr := net.Transitions[id]
-			model.Transitions = append(model.Transitions, goflowmetamodel.Transition{
-				ID: id,
-				X:  int(tr.X),
-				Y:  int(tr.Y),
-			})
-		}
-		for _, a := range net.Arcs {
-			arc := goflowmetamodel.Arc{
-				From:   a.Source,
-				To:     a.Target,
-				Weight: int(a.GetWeightSum()),
-			}
-			if a.InhibitTransition {
-				arc.Type = goflowmetamodel.InhibitorArc
-			}
-			model.Arcs = append(model.Arcs, arc)
-		}
-
-		return model, nil
+	// The editor shape reaches every tool through go-pflow's one converter:
+	// color unfolding, the read-arc encoding of an output-side inhibitor,
+	// pruning of arc-less color copies and capacity all happen there, once,
+	// for this server, for sim.pflow.xyz and for anyone else.
+	if data := []byte(jsonStr); goflowparser.IsPflowJSON(data) {
+		model, _, err := goflowparser.ModelFromJSON(data)
+		return model, err
 	}
 
 	// Standard go-pflow format (places as array)
@@ -2230,138 +2246,6 @@ func colorSlug(hex string) string {
 func escapeXML(s string) string {
 	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;")
 	return r.Replace(s)
-}
-
-func handleApplication(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	specJSON, err := request.RequireString("spec")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("missing spec parameter: %v", err)), nil
-	}
-
-	var app metamodel.Application
-	if err := json.Unmarshal([]byte(specJSON), &app); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("invalid application spec JSON: %v", err)), nil
-	}
-	if len(app.Entities) == 0 {
-		return mcp.NewToolResultError("application spec must contain at least one entity"), nil
-	}
-
-	// Entities compile into ONE composed bundle — one subnet per entity —
-	// rather than the retired behavior of N independent, unrelated nets.
-	// Cross-entity FieldReferences are validated and reported instead of
-	// silently dropped.
-	input := bundle.ApplicationInput{Name: app.Name}
-	for _, e := range app.Entities {
-		converted, err := e.ToExtensions()
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("entity %q: %v", e.ID, err)), nil
-		}
-		input.Entities = append(input.Entities, converted)
-	}
-
-	if fusionsJSON := request.GetString("fusions", ""); fusionsJSON != "" {
-		if err := json.Unmarshal([]byte(fusionsJSON), &input.Fusions); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("invalid fusions JSON: %v", err)), nil
-		}
-	}
-
-	compiled, err := bundle.CompileApplication(input)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("compiling application bundle: %v", err)), nil
-	}
-
-	gen, err := golang.New(golang.Options{
-		ModulePath:   request.GetString("module_path", "app/"+bundle.PackageNameFor(app.Name)),
-		IncludeTests: true,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("creating generator: %v", err)), nil
-	}
-	files, err := gen.GenerateBundleFiles(compiled.Bundle)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("generating application: %v", err)), nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Application '%s': %d entities composed into one bundle\n\n", app.Name, len(app.Entities)))
-	for _, sn := range compiled.Bundle.Subnets {
-		sb.WriteString(fmt.Sprintf("- entity %s: %d places, %d transitions\n", sn.ID, len(sn.Model.Places), len(sn.Model.Transitions)))
-	}
-	if len(compiled.Bundle.Links) > 0 {
-		sb.WriteString(fmt.Sprintf("- links: %d (fused cross-entity commands get atomic coordinators)\n", len(compiled.Bundle.Links)))
-	}
-	for _, ref := range compiled.References {
-		sb.WriteString(fmt.Sprintf("- reference: %s.%s -> %s (on_delete=%s) — enforced by the generated app\n",
-			ref.FromEntity, ref.FromField, ref.ToEntity, ref.OnDelete))
-	}
-	if len(app.Roles) > 0 || len(app.Pages) > 0 || len(app.Workflows) > 0 {
-		sb.WriteString("- roles/pages/workflows: accepted, not yet wired into bundle output (single-net generator still supports them)\n")
-	}
-	sb.WriteString("\n")
-
-	if outputDir := request.GetString("output_dir", ""); outputDir != "" {
-		for _, file := range files {
-			p := filepath.Join(outputDir, file.Name)
-			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("creating %s: %v", filepath.Dir(p), err)), nil
-			}
-			if err := os.WriteFile(p, file.Content, 0o644); err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("writing %s: %v", file.Name, err)), nil
-			}
-		}
-		sb.WriteString(fmt.Sprintf("Wrote %d files to %s\n", len(files), outputDir))
-	} else {
-		sb.WriteString(fmt.Sprintf("Generated %d files (pass output_dir to write them):\n", len(files)))
-		for _, file := range files {
-			sb.WriteString("  " + file.Name + "\n")
-		}
-	}
-
-	return mcp.NewToolResultText(sb.String()), nil
-}
-
-func handleBundle(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	docJSON, err := request.RequireString("bundle")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("missing bundle parameter: %v", err)), nil
-	}
-
-	b, err := bundle.Load([]byte(docJSON), nil)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("loading bundle: %v", err)), nil
-	}
-
-	gen, err := golang.New(golang.Options{
-		ModulePath:   request.GetString("module_path", "app/"+bundle.PackageNameFor(b.Name)),
-		IncludeTests: true,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("creating generator: %v", err)), nil
-	}
-	files, err := gen.GenerateBundleFiles(b)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("generating bundle app: %v", err)), nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Bundle '%s': %d subnets, %d links\n\n", b.Name, len(b.Subnets), len(b.Links)))
-	if outputDir := request.GetString("output_dir", ""); outputDir != "" {
-		for _, file := range files {
-			p := filepath.Join(outputDir, file.Name)
-			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("creating %s: %v", filepath.Dir(p), err)), nil
-			}
-			if err := os.WriteFile(p, file.Content, 0o644); err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("writing %s: %v", file.Name, err)), nil
-			}
-		}
-		sb.WriteString(fmt.Sprintf("Wrote %d files to %s\n", len(files), outputDir))
-	} else {
-		for _, file := range files {
-			sb.WriteString(fmt.Sprintf("=== %s ===\n%s\n\n", file.Name, file.Content))
-		}
-	}
-	return mcp.NewToolResultText(sb.String()), nil
 }
 
 // Helper to generate frontend with pages

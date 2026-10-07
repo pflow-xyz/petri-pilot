@@ -3,6 +3,7 @@ package validator
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/pflow-xyz/go-pflow/metamodel"
@@ -178,6 +179,14 @@ func (v *Validator) buildNet(model *metamodel.Model) (*petri.PetriNet, error) {
 	builder := petri.Build()
 
 	for _, p := range model.Places {
+		// Capacity is a post-firing bound the reachability graph enforces —
+		// but only if the net carries it. Dropping it here let petri_verify
+		// refute "queue <= 8" on a place declared with capacity 8 by walking
+		// to nine, a marking no engine that fires the net can reach.
+		if p.Capacity > 0 {
+			builder = builder.PlaceWithCapacity(p.ID, float64(p.Initial), float64(p.Capacity))
+			continue
+		}
 		builder = builder.Place(p.ID, float64(p.Initial))
 	}
 
@@ -293,18 +302,45 @@ func (v *Validator) analyzeSensitivity(net *petri.PetriNet) *metamodel.AnalysisR
 
 	analysis := &metamodel.AnalysisResult{}
 
+	// go-pflow reports +Inf for an element whose removal collapses the net
+	// (no places or no transitions left) and can report NaN/Inf from a
+	// diverging comparison solve. Neither survives json.Marshal, which used
+	// to fail the whole petri_analyze call with "unsupported value: +Inf" —
+	// a colored net unfolded to arc-less color copies trips it every time.
+	// Clamp to the largest finite impact seen (or 1 when there is none) and
+	// name the element critical, so the ranking stays honest and the JSON
+	// stays valid.
+	maxFinite := 0.0
+	for _, elem := range sensResult.Elements {
+		if !math.IsInf(elem.Impact, 0) && !math.IsNaN(elem.Impact) && elem.Impact > maxFinite {
+			maxFinite = elem.Impact
+		}
+	}
+	if maxFinite == 0 {
+		maxFinite = 1
+	}
+
 	// Group by impact for symmetry detection
 	impactGroups := make(map[float64][]string)
 	for _, elem := range sensResult.Elements {
-		// Round to 3 decimal places for grouping
-		roundedImpact := float64(int(elem.Impact*1000)) / 1000
-		impactGroups[roundedImpact] = append(impactGroups[roundedImpact], elem.ID)
+		impact := elem.Impact
+		category := elem.Category
+		if math.IsInf(impact, 0) || math.IsNaN(impact) {
+			impact = maxFinite
+			category = "critical"
+		} else {
+			// Round to 3 decimal places for grouping; a non-finite value
+			// would round to garbage rather than fail, so only finite ones
+			// take part in symmetry detection.
+			roundedImpact := float64(int(impact*1000)) / 1000
+			impactGroups[roundedImpact] = append(impactGroups[roundedImpact], elem.ID)
+		}
 
 		analysis.Importance = append(analysis.Importance, metamodel.ElementAnalysis{
 			ID:         elem.ID,
 			Type:       elem.Type,
-			Importance: elem.Impact,
-			Category:   elem.Category,
+			Importance: impact,
+			Category:   category,
 		})
 
 		if elem.Category == "redundant" || elem.Impact == 0 {

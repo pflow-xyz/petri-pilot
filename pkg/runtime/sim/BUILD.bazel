@@ -3,10 +3,18 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "sim",
     srcs = [
+        "classify.go",
+        "clue.go",
+        "diffeq.go",
+        "evidence.go",
         "http.go",
+        "invariants.go",
+        "orbits.go",
+        "ported_support.go",
+        "readings.go",
         "scenario.go",
         "sim.go",
-        "supply.go",
+        "siphons.go",
     ],
     importpath = "github.com/pflow-xyz/petri-pilot/pkg/runtime/sim",
     visibility = ["//visibility:public"],
@@ -14,9 +22,9 @@ go_library(
         "//pkg/dsl",
         "//pkg/runtime/api",
         "@com_github_pflow_xyz_go_pflow//metamodel",
-        "@com_github_pflow_xyz_go_pflow//petri",
+        "@com_github_pflow_xyz_go_pflow//metamodel/metapetri",
         "@com_github_pflow_xyz_go_pflow//reachability",
-        "@com_github_pflow_xyz_go_pflow//solver",
+        "@com_github_pflow_xyz_go_pflow//stochastic",
     ],
 )
 
@@ -26,19 +34,28 @@ go_test(
         "cafe_e2e_test.go",
         "cafe_fitness_test.go",
         "cafe_service_test.go",
-        "contention_test.go",
+        "continue_streams_test.go",
         "gating_test.go",
+        "golden_test.go",
         "http_smoke_test.go",
-        "kinetic_test.go",
         "metrics_test.go",
+        "orbits_test.go",
+        "ported_catalog_test.go",
         "scenario_test.go",
-        "sim_test.go",
+        "siphons_test.go",
         "supply_test.go",
         "vetclinic_fitness_test.go",
     ],
     # The vet-clinic fitness gates read ../../../services/vet-clinic.json from
     # disk; supply it as a data runfile so the test is hermetic.
-    data = ["//services:vet-clinic.json"],  # keep
+    # golden_test.go reads services/coffeeshop.json the same way and compares
+    # against the pre-move goldens under testdata/.
+    # The ported siphon/orbit catalog tests walk every services/*.json.
+    data = [
+        "//services:coffeeshop.json",
+        "//services:models",
+        "//services:vet-clinic.json",
+    ] + glob(["testdata/**"]),  # keep
     embed = [":sim"],
     deps = [
         "//generated",

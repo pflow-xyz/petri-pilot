@@ -70,11 +70,15 @@ petri-pilot mcp
 | `petri_analyze` | Reachability, deadlocks, liveness, P/T-invariants |
 | `petri_verify` | Check stated properties — proved/refuted/unknown + counterexample |
 | `petri_conformance` | Replay a real event log against the model (fitness/precision) |
+| `petri_invariants` | Farkas conservation laws, T-invariants, siphons and traps with deadlock witnesses, plus encoding caveats |
+| `petri_canonical` | Exact automorphism orbits and a renaming-invariant canonical id |
+| `petri_lumping` | Proved place-level ODE reductions: backward differential equivalence, constrained lumping |
+| `petri_dataset` | Seeded synthetic event log (CSV) in the shape `petri_conformance` replays |
 | `petri_simulate` | Fire transitions, trace state |
 | `petri_code_to_flow` | Convert source code into a Petri net model |
-| `petri_codegen` | Generate Go backend |
+| `petri_codegen` | Generate ZK circuits / dependency-free state-machine core / Lean proofs |
 | `petri_frontend` | Generate ES modules frontend |
-| `petri_application` | Full-stack from high-level spec |
+| `petri_build` | Generate, write to disk, build and (by default) runtime-verify a full Go application — from a model, an entity spec, or a raw bundle document |
 | `petri_extend` | Modify existing models |
 | `service_start/stop/logs` | Manage running services |
 

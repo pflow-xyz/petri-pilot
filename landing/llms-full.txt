@@ -109,6 +109,15 @@ Model checking and behaviour:
   against the model: fitness (can the model reproduce observed traces?),
   precision (does it permit behaviour never seen?), per-trace diagnostics,
   worst-fitting first.
+- `petri_invariants` — conservation laws (Farkas P-invariants), T-invariants,
+  siphons and traps with deadlock witnesses; caveats name what the analysis
+  net encoded lossily (capacity bound, read arc, inhibitor weight).
+- `petri_canonical` — exact automorphism orbits and a canonical id that two
+  models share when they differ only by renaming.
+- `petri_lumping` — proved place-level reductions of the mass-action ODE
+  (backward differential equivalence; constrained lumping for a named sum).
+- `petri_dataset` — a seeded synthetic event log (CSV: case_id, activity,
+  timestamp), the shape `petri_conformance` replays: generate → fit → conform.
 - `petri_simulate` — fire a transition sequence and return the step-by-step
   state trace.
 - `petri_scenario` — what-if: override the initial marking and/or rates
@@ -148,6 +157,10 @@ go-pflow exactly):
   percentiles, max drawdown, CVaR (expected shortfall, worst 5%).
 - `petri_fit` — fit transition rates to observed (t, value) data by
   Nelder-Mead under the mass-action ODE; fitted rates plus a plot.
+- `petri_fit_discrete` — fit transition rates to observed discrete events
+  (which transition fired when) by maximising the exact CTMC log-likelihood;
+  the stochastic counterpart of `petri_fit`. Takes the `paths` that
+  `petri_stochastic` emits with `record_events=true`.
 - `petri_optimize` — multi-objective Monte Carlo over rates; Pareto frontier
   with every sample flagged `is_pareto`, scatter or parallel-coordinates plot.
 - `petri_corr_matrix` — render a correlation matrix heatmap (pre-flight check

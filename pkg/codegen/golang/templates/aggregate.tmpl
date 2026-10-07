@@ -364,15 +364,15 @@ func apply{{.FuncName}}(state *State, event *eventsource.Event) error {
 {{- else if .IsNumeric}}
 	// Subtract from {{.FieldName}}
 {{- if eq (len .Keys) 1}}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] -= {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] -= {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if .UsesCompositeKey}}
 	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
-	state.{{.FieldName}}[{{camel .FieldName}}Key] -= {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] -= {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
 		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make(map[string]int64)
 	}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] -= {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] -= {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- end}}
 {{- end}}
 {{- end}}
@@ -380,32 +380,32 @@ func apply{{.FuncName}}(state *State, event *eventsource.Event) error {
 {{- range .OutputDataArcs}}
 {{- if .IsSimple}}
 	// Set {{.FieldName}} (simple type) from binding
-	state.{{.FieldName}} = {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}} = {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if .IsNumeric}}
 	// Add to {{.FieldName}}
 {{- if eq (len .Keys) 1}}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] += {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] += {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if .UsesCompositeKey}}
 	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
-	state.{{.FieldName}}[{{camel .FieldName}}Key] += {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] += {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
 		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make(map[string]int64)
 	}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] += {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] += {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- end}}
 {{- else}}
 	// Set {{.FieldName}} at key from binding (non-numeric map)
 {{- if eq (len .Keys) 1}}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if .UsesCompositeKey}}
 	{{camel .FieldName}}Key := bindings.{{index .KeyFields 0}} + ":" + bindings.{{index .KeyFields 1}}
-	state.{{.FieldName}}[{{camel .FieldName}}Key] = {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[{{camel .FieldName}}Key] = {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- else if eq (len .Keys) 2}}
 	if state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] == nil {
 		state.{{.FieldName}}[bindings.{{index .KeyFields 0}}] = make({{.ValueType}})
 	}
-	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] = {{if $.UsesMetamodelRuntime}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
+	state.{{.FieldName}}[bindings.{{index .KeyFields 0}}][bindings.{{index .KeyFields 1}}] = {{if and $.UsesMetamodelRuntime .IsNumeric}}bindings.{{.ValueField}}.Int64(){{else}}bindings.{{.ValueField}}{{end}}
 {{- end}}
 {{- end}}
 {{- end}}

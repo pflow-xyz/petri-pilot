@@ -235,6 +235,75 @@ func main() {
 		}
 		fmt.Printf("deep+policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
 		printReferee(m, "deep+policy", odeLookaheadPlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "verify-oracle":
+		// The oracle-ceiling experiment: seed the exact forced-reply
+		// projection (oraclefuture.go) into the marking before the single
+		// static ODE solve, no search, no structural policy, no new
+		// tuning. Establishes an upper bound on the flow integral given
+		// the future-support predicate findings 6/7 asked for, solved
+		// exactly instead of approximated.
+		plies := oracleSeedPlies
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &lam)
+		}
+		fmt.Printf("oracle: horizon %.3f lambda %.3f maxPlies %d\n", odeHorizon, lam, plies)
+		printReferee(m, "oracle", odeOraclePlayer(m.toPetriBaseline(), lam, plies, false))
+	case "verify-oracle-canonical":
+		// The stronger cheat: don't stop at a tie, take the row-major-first
+		// optimal move and keep projecting (oraclefuture.go's `canonical`).
+		// Distinguishes "the representation has a ceiling" from "the
+		// forced-reply-only predicate was too conservative to reach it".
+		plies := oracleSeedPlies
+		lam := scoreLambda
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &lam)
+		}
+		fmt.Printf("oracle-canonical: horizon %.3f lambda %.3f maxPlies %d\n", odeHorizon, lam, plies)
+		printReferee(m, "oracle-canonical", odeOraclePlayer(m.toPetriBaseline(), lam, plies, true))
+	case "debug-oracle-terminal":
+		// How often does the canonical seed just finish the game outright
+		// (leaf marking already has win_x/win_o set, so odeFinal has
+		// nothing left to relax) vs. leaving real work for the ODE? Answers
+		// whether verify-oracle-canonical's 0 errors is a meaningful test
+		// of the flow integral or a near-tautology at the plies it needed.
+		plies := oracleSeedPlies
+		canonical := true
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%t", &canonical)
+		}
+		positions := collectPositions(m, 60, 7)
+		total, terminal := 0, 0
+		for _, p := range positions {
+			for _, mv := range p.moves {
+				seeded := m.oracleForcedSeed(m.fire(mv, p.mk), plies, canonical)
+				total++
+				if m.hasLine(seeded, "x") || m.hasLine(seeded, "o") {
+					terminal++
+				}
+			}
+		}
+		fmt.Printf("plies=%d canonical=%v: %d/%d seeded leaves already terminal (%.1f%%)\n",
+			plies, canonical, terminal, total, 100*float64(terminal)/float64(total))
+	case "diagnose-oracle":
+		plies := oracleSeedPlies
+		canonical := false
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &plies)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%t", &canonical)
+		}
+		diagnose(m, "oracle", odeOraclePlayer(m.toPetriBaseline(), scoreLambda, plies, canonical), 20)
 	case "verify-deep2":
 		// 2-ply extension of finding 8 on the plain calibrated evaluator.
 		lam := scoreLambda
@@ -262,6 +331,16 @@ func main() {
 		fmt.Printf("fitted: winBias %.4f blockBias %.4f lambda %.4f loss %.6g\n",
 			winBias, blockBias, lam, rankLossDeep(m, positions, winBias, blockBias, lam, plies))
 		printReferee(m, "fit-deep", odeSearchPlayer(m.toPetriPolicy(winBias, blockBias), lam, plies))
+	case "count-positions":
+		for g := 1; g <= 40; g++ {
+			pos := collectPositions(m, g, 7)
+			total := 0
+			for _, p := range pos {
+				total += len(p.moves)
+			}
+			fmt.Printf("games=%d positions=%d totalMoveEvals=%d\n", g, len(pos), total)
+		}
+		return
 	case "debug-hybrid-col-one":
 		hg := m.toHybridColumnNet()
 		positions := collectPositions(m, 5, 7)
@@ -372,6 +451,19 @@ func main() {
 			fmt.Sscanf(os.Args[4], "%f", &lam)
 		}
 		diagnose(m, "policy", odePlayer(m.toPetriPolicy(winBias, blockBias), lam), 20)
+	case "diagnose-parity":
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := candidateParityForceBias, candidateParityBlockBias, candidateTempoBias
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &parityForceBias)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &parityBlockBias)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%f", &tempoBias)
+		}
+		diagnose(m, "parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam), 20)
 	case "verify":
 		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
 		if len(os.Args) > 4 {
@@ -381,6 +473,119 @@ func main() {
 		}
 		fmt.Printf("policy: winBias %.3f blockBias %.3f lambda %.3f\n", winBias, blockBias, lam)
 		printReferee(m, "policy", odePlayer(m.toPetriPolicy(winBias, blockBias), lam))
+	case "verify-fork":
+		// blk2_* tier, sibling to force_*/blk_*; still one odeFinal solve
+		// per candidate move (no search). See fork.go.
+		winBias, blockBias, forkBias, lam := candidateForceBias, candidateBlockBias, candidateForkBias, scoreLambda
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[2], "%f", &winBias)
+			fmt.Sscanf(os.Args[3], "%f", &blockBias)
+			fmt.Sscanf(os.Args[4], "%f", &forkBias)
+			fmt.Sscanf(os.Args[5], "%f", &lam)
+		}
+		fmt.Printf("policy+fork: winBias %.3f blockBias %.3f forkBias %.3f lambda %.3f\n",
+			winBias, blockBias, forkBias, lam)
+		start := time.Now()
+		printReferee(m, "policy+fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam))
+		fmt.Printf("exhaustive sweep wall clock: %v\n", time.Since(start))
+	case "diagnose-fork":
+		winBias, blockBias, forkBias, lam := candidateForceBias, candidateBlockBias, candidateForkBias, scoreLambda
+		if len(os.Args) > 5 {
+			fmt.Sscanf(os.Args[2], "%f", &winBias)
+			fmt.Sscanf(os.Args[3], "%f", &blockBias)
+			fmt.Sscanf(os.Args[4], "%f", &forkBias)
+			fmt.Sscanf(os.Args[5], "%f", &lam)
+		}
+		diagnose(m, "policy+fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam), 20)
+	case "fit-fork":
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-fork: training positions: %d\n", len(positions))
+		winBias, blockBias, forkBias, lam := fitPolicyFork(m, positions, iters, true)
+		fmt.Printf("fitted: winBias %.4f blockBias %.4f forkBias %.4f lambda %.4f loss %.6g\n",
+			winBias, blockBias, forkBias, lam, rankLossFork(m, positions, winBias, blockBias, forkBias, lam))
+		start := time.Now()
+		printReferee(m, "fit-fork", odePlayer(m.toPetriPolicyFork(winBias, blockBias, forkBias), lam))
+		fmt.Printf("exhaustive sweep wall clock: %v\n", time.Since(start))
+	case "verify-parity":
+		// The structural "future support" construction: champion
+		// winBias/blockBias/lambda held fixed, parityForceBias/
+		// parityBlockBias/tempoBias as the only new knobs (default:
+		// untuned, the candidate* constants in parity.go).
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := candidateParityForceBias, candidateParityBlockBias, candidateTempoBias
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%f", &parityForceBias)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%f", &parityBlockBias)
+		}
+		if len(os.Args) > 4 {
+			fmt.Sscanf(os.Args[4], "%f", &tempoBias)
+		}
+		fmt.Printf("parity: winBias %.3f blockBias %.3f parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f lambda %.3f\n",
+			winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam)
+		printReferee(m, "parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
+	case "fit-parity":
+		// Minimal-freedom fit: hold the champion's winBias/blockBias/lambda
+		// fixed, calibrate only the three new rate constants.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-parity: training positions: %d\n", len(positions))
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		parityForceBias, parityBlockBias, tempoBias := fitParityOnly(m, positions, winBias, blockBias, lam, iters, true)
+		fmt.Printf("fitted: parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f loss %.6g\n",
+			parityForceBias, parityBlockBias, tempoBias, rankLossParity(m, positions, winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam))
+		printReferee(m, "fit-parity", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
+	case "fit-tempo":
+		// The single-knob fit: hold everything else at the champion/
+		// untuned values and fit only tempoBias -- the one live knob the
+		// manual scan (README finding 14) found.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-tempo: training positions: %d\n", len(positions))
+		winBias, blockBias, lam := candidateForceBias, candidateBlockBias, scoreLambda
+		tempoBias := fitTempoOnly(m, positions, winBias, blockBias, 0, 0, lam, iters, true)
+		fmt.Printf("fitted: tempoBias %.4f loss %.6g\n",
+			tempoBias, rankLossParity(m, positions, winBias, blockBias, 0, 0, tempoBias, lam))
+		printReferee(m, "fit-tempo", parityOdePlayer(m.toPetriParity(winBias, blockBias, 0, 0, tempoBias), lam))
+	case "fit-parity-joint":
+		// Comparison point: all six scalars fit together. Expected, per
+		// findings 7/12, to risk re-diffusing the already-good
+		// winBias/blockBias calibration -- kept for the record, not the
+		// primary claim.
+		games, iters := 30, 50
+		if len(os.Args) > 2 {
+			fmt.Sscanf(os.Args[2], "%d", &games)
+		}
+		if len(os.Args) > 3 {
+			fmt.Sscanf(os.Args[3], "%d", &iters)
+		}
+		positions := collectPositions(m, games, 7)
+		fmt.Printf("fit-parity-joint: training positions: %d\n", len(positions))
+		winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam := fitPolicyParity(m, positions, iters, true)
+		fmt.Printf("fitted: winBias %.4f blockBias %.4f parityForceBias %.4f parityBlockBias %.4f tempoBias %.4f lambda %.4f loss %.6g\n",
+			winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam,
+			rankLossParity(m, positions, winBias, blockBias, parityForceBias, parityBlockBias, tempoBias, lam))
+		printReferee(m, "fit-parity-joint", parityOdePlayer(m.toPetriParity(winBias, blockBias, parityForceBias, parityBlockBias, tempoBias), lam))
 	case "fit":
 		games, iters := 30, 50
 		if len(os.Args) > 2 {

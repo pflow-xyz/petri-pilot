@@ -67,7 +67,7 @@ Or run the server locally:
 1. Design a model: `petri_validate(model='{"name":"order",...}')`
 2. Check it against the requirements: `petri_verify(model='...', properties='["deadlock-free","mutex:busy1,busy2"]')`
 3. Simulate behavior: `petri_simulate(model='...', transitions='["ship"]')`
-4. Generate code: `petri_codegen(model='...', language='go')`
+4. Generate code: `petri_build(model='...', output_dir='...')`
 5. Start service: `service_start(directory='/path/to/app')`
 6. Test in browser and iterate
 

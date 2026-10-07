@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/pflow-xyz/go-pflow/eventsource"
 )
@@ -22,7 +21,7 @@ func main() {
 	}
 
 	// Initialize event store based on DATABASE_TYPE
-	var store eventsource.EventStore
+	var store eventsource.Store
 	switch cfg.DatabaseType {
 	case "memory":
 		store = eventsource.NewMemoryStore()

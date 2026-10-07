@@ -100,21 +100,45 @@ there, tagging, and bumping the `require` line here.
 
 ### 2. Generate Code
 
-For a composed application where every entity is its own Petri net (the
-entities compile into a metamodel.Bundle — one subnet per entity, cross-entity
+**`petri_build` is the one tool that produces a full Go application**, and it
+is the only MCP tool that actually runs the result. It replaces the retired
+`petri_application` and `petri_bundle` tools outright (same compilation
+pipeline underneath, `pkg/bundle`), and it also took over `petri_codegen`'s
+old `language='go'` option — `petri_codegen` no longer accepts `'go'` at all;
+passing it returns an error pointing here. `output_dir` is required (this
+tool always writes to disk, never previews), and `verify` defaults to `true`:
+after generating and type-checking, it runs `go build ./...`, then — unless
+`verify=false` — starts the real binary on a free port and runs
+`pkg/appverify` against it (health check, schema check, initial-marking
+check, then a bounded walk of reachable states firing whichever transition
+the model's own firing rule enables next and diffing the live marking against
+an oracle `pkg/metamodel.Runtime` after every firing). The returned report is
+`{output_dir, files_written, build: {ok, errors}, verify: {ran, passed,
+transitions_fired, mismatches}}` — mirroring how sim-pflow-xyz calibrates a
+model before publishing it, but for "does this generated app actually run
+correctly" rather than "does this model fit the data".
+
+A single-net model:
+
+```
+petri_build(model='...', output_dir='generated/ordertracker', module_path='github.com/example/ordertracker')
+```
+
+A composed application where every entity is its own Petri net (the entities
+compile into a metamodel.Bundle — one subnet per entity, cross-entity
 FieldReferences validated, declared fusions become atomic cross-entity
 commands with coordinators; see pkg/bundle):
 
 ```
-petri_application(spec='{"name":"shop","entities":[...]}',
-                  fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
-                  output_dir='examples/shop')
+petri_build(spec='{"name":"shop","entities":[...]}',
+            fusions='[{"id":"order_reserves_stock","members":[{"entity":"order","action":"place_order"},{"entity":"inventory","action":"reserve_stock"}]}]',
+            output_dir='examples/shop')
 ```
 
 For a raw bundle document (subnets + token/data/event/guard links):
 
 ```
-petri_bundle(bundle='{"name":"shop","subnets":[{"id":"order","model":{...}}],"links":[...]}', output_dir='...')
+petri_build(bundle='{"name":"shop","subnets":[{"id":"order","model":{...}}],"links":[...]}', output_dir='...')
 ```
 
 CLI equivalent — `*.bundle.json` routes to the composed generator
@@ -130,13 +154,23 @@ event log) plus a root package: bundle.go (composition tables), flatmodel.go
 fires atomically across member entities via eventsource.MultiAppender, HTTP
 POST /fire/<transition>, refusals are 409 and append nothing). examples/shop
 is the reference app; cmd/petri-pilot/bundle_freeze_test.go diffs the
-generator's output against it byte-for-byte.
+generator's output against it byte-for-byte (that freeze target is
+`GenerateBundleFiles` alone — `petri_build`'s own combined run harness,
+below, is additional and not part of the frozen tree).
 
-For just a backend from a Petri net model:
-
-```
-petri_codegen(model='...', language='go', package='ordertracker')
-```
+**A composed app previously had no single HTTP entry point that could reach
+an entity at all** — `app.go`'s `Handler()` only ever mounted the fused
+`/fire/<transition>` commands, registered as a *separate* `serve.Register`
+service from each entity's own (only reachable with `IncludeInfra`, and even
+then as N independent services on N ports). `petri_build` closes that gap
+for real by generating one more file outside the frozen tree,
+`cmd/server/main.go`: a combined harness that mounts the bundle-level
+`/health`, `/ready`, `/api/schema`, the fused commands at `/fire/<transition>`
+unchanged, and every entity's own generated `BuildRouter` at
+`/<subnet-id>/...` via `http.StripPrefix` (so its internal routes —
+`/api/<slug>`, `/api/<transition>`, `/api/<slug>/{id}/events` — resolve
+exactly as they do served standalone). This is what makes a composed app
+verifiable — and runnable — at all.
 
 For a dependency-free, single-file state-machine core to embed in an existing
 codebase — no API, no persistence, just marking/enablement/firing plus a demo
@@ -214,10 +248,73 @@ If something isn't working:
 4. Regenerate and restart:
    ```
    service_stop(service_id='svc-1')
-   petri_application(spec='...')  # or petri_codegen
+   petri_build(spec='...', output_dir='...')  # or model=/bundle=
    service_start(directory='...', port=8080)
    ```
 5. Refresh browser and retest
+
+### 4b. Iterative refinement with a persistent history (pkg/appstore)
+
+`petri_extend` and `petri_build` can optionally persist to a content-addressed
+store (`pkg/appstore`, SQLite at `~/.petri-pilot/appstore.db`, overridable via
+`PETRI_APPSTORE_DB`) instead of the stateless "JSON in, JSON out" shape above.
+This turns "an app" into (spec + the sequence of prompts/edits/builds that
+produced it), so a session can pick a model back up by id days later with its
+full history intact — rather than every tool call starting from whatever JSON
+the caller happens to still have around.
+
+**Nothing changes unless you ask for it.** Calling `petri_extend`/`petri_build`
+exactly as documented above — no `id`, no `prompt` — behaves identically to
+before and writes nothing to the store. Passing either `id` or `prompt` opts
+into persistence for that call.
+
+Start a spec and record why, in one call — `petri_extend` with a `prompt` and
+no `id` stores the incoming model as a fresh root (idempotently — the same
+content always hashes to the same id) and the edited result as a new spec,
+returning both:
+
+```
+petri_extend(model='...', operations='[...]', prompt='add a cancelled state for the refund path')
+# => {"id": "<new spec id>", "parentId": "<root spec id>", "model": "...", ...}
+```
+
+Keep refining by id instead of re-pasting the model — pass the id back in and
+give the next edit its own prompt:
+
+```
+petri_extend(id='<spec id>', operations='[...]', prompt='add a transition to clear the jam')
+```
+
+Inspect the whole chain — root first, one entry per prompt/edit/build, each
+naming its `activity` (`petri_extend`, `petri_build`, ...), its `prompt` (if
+any) and a short outcome `note`:
+
+```
+petri_history(id='<spec id>')
+```
+
+Name it, so it can be found again without remembering the hash:
+
+```
+petri_app_save(name='order-tracker', id='<spec id>')
+petri_app_get(name='order-tracker')   # -> {id, kind, content}
+petri_app_list()                      # every named app and its current head id
+```
+
+Build the named app's current spec — `petri_build(id=...)` resolves the spec
+from the store instead of taking `model`/`spec`/`bundle` inline, and (since
+`id` was given) records a `petri_build` lineage edge on that same spec noting
+the outcome (`"build ok, verify passed, N transition(s) fired"` or
+`"build failed: ..."`), whether or not the build succeeded:
+
+```
+petri_build(id='<spec id>', output_dir='generated/order-tracker')
+petri_history(id='<spec id>')   # now shows the build too
+```
+
+A build never derives a *new* spec — it annotates the one it was given — so
+its lineage edge carries no parent of its own; `petri_history` still finds the
+real parent chain from the earlier `petri_extend` edges on that same id.
 
 ### 5. Cleanup
 
@@ -402,11 +499,14 @@ every static claim about the net.
 
 Before it existed, five implementations disagreed. `pkg/mcp/simulate.go` and the
 bundle setup search were right; `pkg/runtime/sim`'s SSA **dropped** read and
-inhibitor arcs, and `pkg/mcp/stochastic.go` and `buildOdeNet` **consumed** them —
-turning a read arc into a drain and an inhibitor into a *source* feeding the
-transition it blocks. `buildOdeNet` is shared by twelve tools, so one line
-mis-modelled every gated net across the whole analytic surface, silently and in
-the same direction each time. Nothing compared them, so nothing failed.
+inhibitor arcs, and `pkg/mcp/stochastic.go` (then its own copy of the same loop)
+and `buildOdeNet` **consumed** them — turning a read arc into a drain and an
+inhibitor into a *source* feeding the transition it blocks. `buildOdeNet` is
+shared by twelve tools, so one line mis-modelled every gated net across the
+whole analytic surface, silently and in the same direction each time. Nothing
+compared them, so nothing failed. `pkg/mcp/stochastic.go`'s copy is gone now —
+`petri_stochastic` calls `sim.Simulate` (pkg/runtime/sim) directly, so there is
+one SSA engine in this repo, not two.
 
 **Never re-derive it from `arc.From`/`arc.To`.** Classify through `Inputs`,
 `Outputs` and `Tests`; index-address the result if the inner loop needs speed
@@ -442,6 +542,12 @@ how the composed app came to ship with no simulation at all.
 - **`schedule`** is piecewise-constant, run segment by segment because SSA draws
   a waiting time from the current total propensity. The last segment holds to the
   horizon rather than reverting to the model's rate.
+  Each realization keeps **one random stream across every segment** (go-pflow
+  `Options.ContinueStreams`, set in `sim.Simulate` and `Scenario.options`): the
+  engine's default restarts it at each boundary, replaying the same draws
+  segment after segment, which inflated a Poisson source's spread and moved
+  the café's mean. A boundary that changes no rate is therefore invisible —
+  `continue_streams_test.go` pins it on both entry points.
 - **`Compare` forces one seed.** Two SSA runs of the same shop differ; without a
   shared seed a caller cannot tell staffing from dice. That is enforceable only
   server-side, which is why it is one request.
@@ -466,8 +572,9 @@ how the composed app came to ship with no simulation at all.
   so a resource consumed exactly as fast as it is supplied is invisible to it.
   The café shipped in that state on milk (990 units an hour of demand against
   1000 of supply) and a run reported eight idle baristas losing half the trade,
-  an empty `Depleted`, and nothing anywhere naming the cause. Both SSA engines
-  report it; `pkg/mcp/stochastic.go` carries the same rule under `contended`.
+  an empty `Depleted`, and nothing anywhere naming the cause. `pkg/runtime/sim`
+  reports it, and `petri_stochastic` reports the same `sim.Contention` values
+  under `contended` — one engine, read by both.
   **A scheduled run reports it too**, over one ledger merged across every
   segment. It has to be merged rather than assembled from the segments' own:
   a segment's fractions are shares of that segment, so a two-hour rush's 100%
@@ -507,9 +614,9 @@ barista pool in the product, two drinks in progress made *both* finish twice as
 fast, and a drink was favoured over its neighbour for using more milk. An arc
 marked `"kinetic": false` (go-pflow `Arc.Kinetic`, absent means true, so every
 existing model is byte-identical) still gates the firing and is still consumed by
-it — it just leaves the product. Both SSA engines honour it (`pkg/runtime/sim`
-and `pkg/mcp/stochastic.go`, which are separate copies of the propensity loop;
-change them together).
+it — it just leaves the product. `pkg/runtime/sim` honours it, and
+`petri_stochastic` (`pkg/mcp/stochastic.go`) gets it for free by calling into
+the same engine rather than carrying its own copy of the propensity loop.
 
 The queue is one of these too, and less obviously. `pending_X -> start_X` kinetic
 meant a waiting order was picked up at 60/h *per waiting customer* against
@@ -931,7 +1038,7 @@ viewExtensions.stateRenderers['balance'] = (value) =>
 
 ### Workflow for Adding Customizations
 
-1. Generate the app: `petri_codegen(model='...', package='myapp')`
+1. Generate the app: `petri_build(model='...', package='myapp', output_dir='...')`
 2. Edit `custom/extensions.js` to add your customizations
 3. Regenerate when model changes - customizations are preserved
 4. For universal features, add to templates instead
