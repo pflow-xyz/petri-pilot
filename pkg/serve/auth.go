@@ -297,7 +297,11 @@ func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/callback", h.HandleCallback)
 	mux.HandleFunc("POST /auth/logout", h.HandleLogout)
 	mux.HandleFunc("GET /auth/me", h.HandleMe)
-	mux.HandleFunc("POST /auth/debug/login", h.HandleDebugLogin)
+	// The debug login mints a session with caller-chosen roles: development only. It used to be registered
+	// unconditionally with an nginx deny as the only guard (security audit 2026-10-09, M12).
+	if os.Getenv("DEV_MODE") == "true" {
+		mux.HandleFunc("POST /auth/debug/login", h.HandleDebugLogin)
+	}
 }
 
 // RequireAuth returns middleware that requires authentication.
